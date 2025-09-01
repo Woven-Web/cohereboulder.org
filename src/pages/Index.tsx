@@ -46,13 +46,27 @@ const Index = () => {
         {/* Newsletter Section */}
         <section className="py-12 bg-gradient-community">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h2 className="text-2xl lg:text-3xl font-bold text-white">
                 [CO]here 2024 is complete.
               </h2>
               <h3 className="text-xl lg:text-2xl font-semibold text-white/90">
                 & the community cultivation continues
               </h3>
+              
+              {/* YouTube Video Embed */}
+              <div className="max-w-2xl mx-auto">
+                <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
+                  <iframe
+                    src="https://www.youtube.com/embed/wMDpVsSGY5M"
+                    title="COhere 2024 Video"
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+              
               <Button variant="outline" size="lg" className="bg-white/20 text-white border-white/30 hover:bg-white hover:text-primary">
                 <ArrowRight className="mr-2 h-5 w-5" />
                 Get the COhere newsletter for a curation of weekly events
