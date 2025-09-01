@@ -61,10 +61,6 @@ export const HeroSection = () => {
               Regístrate en español
             </Button>
           </div>
-
-          <div className="text-sm text-muted-foreground">
-            <p>Join our community-driven immersive experience</p>
-          </div>
         </div>
 
         {/* Right Image */}

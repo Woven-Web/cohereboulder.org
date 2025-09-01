@@ -35,42 +35,13 @@ export const MissionSection = () => {
             [CO]here is a…
           </h3>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="group hover:shadow-warm transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-gradient-community rounded-full flex items-center justify-center group-hover:animate-pulse-soft">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <h4 className="text-xl font-semibold text-foreground">Community Game</h4>
-                <p className="text-muted-foreground">
-                  An immersive experience that brings neighbors together through shared activities and challenges.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-warm transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-gradient-nature rounded-full flex items-center justify-center group-hover:animate-pulse-soft">
-                  <Sprout className="h-8 w-8 text-white" />
-                </div>
-                <h4 className="text-xl font-semibold text-foreground">Regenerative Network</h4>
-                <p className="text-muted-foreground">
-                  A living map of projects and people working towards a sustainable, resilient Boulder.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-warm transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-gradient-earth rounded-full flex items-center justify-center group-hover:animate-pulse-soft">
-                  <Heart className="h-8 w-8 text-white" />
-                </div>
-                <h4 className="text-xl font-semibold text-foreground">Cross-Pollination</h4>
-                <p className="text-muted-foreground">
-                  A space for ideas, resources, and relationships to flow between different parts of our community.
-                </p>
-              </CardContent>
-            </Card>
+          {/* Hex image placeholder */}
+          <div className="text-center mb-12">
+            <div className="bg-muted/30 rounded-2xl p-8 max-w-2xl mx-auto">
+              <p className="text-muted-foreground italic">
+                Hexagonal explanation graphic from original site
+              </p>
+            </div>
           </div>
         </div>
 
@@ -84,25 +55,25 @@ export const MissionSection = () => {
             <div className="space-y-6">
               <ul className="space-y-4">
                 <li className="flex items-start space-x-3">
-                  <ArrowRight className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-primary font-semibold">•</span>
                   <span className="text-muted-foreground">
-                    Attend events on our <a href="#calendar" className="text-primary hover:underline">co-curated calendar</a>
+                    Attend events on our <a href="/calendar" className="text-primary hover:underline">co-curated calendar</a>
                   </span>
                 </li>
                 <li className="flex items-start space-x-3">
-                  <ArrowRight className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-primary font-semibold">•</span>
                   <span className="text-muted-foreground">
-                    Practice elements of shared gameplay throughout your daily life
+                    Practice elements of shared <a href="#" className="text-primary hover:underline">gameplay</a> throughout your daily life
                   </span>
                 </li>
                 <li className="flex items-start space-x-3">
-                  <ArrowRight className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-primary font-semibold">•</span>
                   <span className="text-muted-foreground">
                     Step into a 'community activator' mindset
                   </span>
                 </li>
                 <li className="flex items-start space-x-3">
-                  <ArrowRight className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-primary font-semibold">•</span>
                   <span className="text-muted-foreground">
                     Put yourself and things you care about 'on the map'
                   </span>
@@ -118,11 +89,6 @@ export const MissionSection = () => {
                 <li>• You're looking to collaborate or co-create with folks who care about our future.</li>
                 <li>• You are curious what Boulder has to offer.</li>
               </ul>
-              
-              <Button variant="community" size="lg" className="w-full">
-                Join the Community
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
             </div>
           </div>
         </div>
