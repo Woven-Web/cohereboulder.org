@@ -25,20 +25,20 @@ const CoCreate = () => {
         <section className="py-20 bg-gradient-community">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl lg:text-6xl font-bold text-white mb-6">
-              Co-Create With Us
+              What does joining this game look like?
             </h1>
             <p className="text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto mb-8">
-              Join our regenerative community ecosystem and help shape the future 
-              of collaborative connection in Boulder.
+              Step into a 'community activator' mindset and help weave Boulder's 
+              regenerative community web more tightly together.
             </p>
             <Button variant="outline" size="lg" className="bg-white/20 text-white border-white/30 hover:bg-white hover:text-primary">
-              Start Co-Creating
+              Join the Game
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </section>
 
-        {/* Ways to Engage */}
+        {/* Ways to Participate */}
         <section className="py-20">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
@@ -46,60 +46,120 @@ const CoCreate = () => {
                 Get Involved
               </Badge>
               <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-                Ways to Co-Create
+                How to Participate
               </h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                There are many ways to contribute to our regenerative ecosystem. 
-                Find the approach that resonates with your unique gifts and availability.
+                There are multiple ways to engage with [CO]here throughout the 10 days. 
+                Choose what resonates with your energy and availability.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               <Card className="shadow-soft hover:shadow-warm transition-all duration-300 group">
                 <CardContent className="p-8 text-center">
                   <div className="w-16 h-16 mx-auto bg-nature-primary/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Lightbulb className="h-8 w-8 text-nature-primary" />
+                    <Calendar className="h-8 w-8 text-nature-primary" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-4">Share Ideas</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Have a vision for regenerative collaboration? We'd love to hear 
-                    your innovative ideas and explore them together.
+                  <h3 className="text-xl font-bold text-foreground mb-4">Attend Events</h3>
+                  <p className="text-muted-foreground">
+                    Join events on our co-curated calendar throughout the 10 days.
                   </p>
-                  <Button variant="nature" size="sm">
-                    Submit Idea
-                  </Button>
                 </CardContent>
               </Card>
 
               <Card className="shadow-soft hover:shadow-warm transition-all duration-300 group">
                 <CardContent className="p-8 text-center">
                   <div className="w-16 h-16 mx-auto bg-community-yellow/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Users className="h-8 w-8 text-primary" />
+                    <Lightbulb className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-4">Host Gatherings</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Create spaces for meaningful connection by hosting [CO]here 
-                    community gatherings in your space or neighborhood.
+                  <h3 className="text-xl font-bold text-foreground mb-4">Practice Gameplay</h3>
+                  <p className="text-muted-foreground">
+                    Practice elements of shared gameplay throughout your daily life.
                   </p>
-                  <Button variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-white">
-                    Become Host
-                  </Button>
                 </CardContent>
               </Card>
 
               <Card className="shadow-soft hover:shadow-warm transition-all duration-300 group">
                 <CardContent className="p-8 text-center">
                   <div className="w-16 h-16 mx-auto bg-earth-primary/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Handshake className="h-8 w-8 text-earth-primary" />
+                    <Users className="h-8 w-8 text-earth-primary" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-4">Partner Organizations</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Connect your regenerative organization to our ecosystem and 
-                    amplify your impact through collaboration.
+                  <h3 className="text-xl font-bold text-foreground mb-4">Community Activator</h3>
+                  <p className="text-muted-foreground">
+                    Step into a 'community activator' mindset and help connect others.
                   </p>
-                  <Button variant="earth" size="sm">
-                    Join Network
-                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-soft hover:shadow-warm transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 mx-auto bg-nature-primary/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <MapPin className="h-8 w-8 text-nature-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-4">Get On the Map</h3>
+                  <p className="text-muted-foreground">
+                    Put yourself and things you care about 'on the map' for others to discover.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* This is for you if */}
+        <section className="py-20 bg-earth-light/20">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <Badge className="mb-4 bg-community-yellow/20 text-primary border-primary/30">
+                Is This For You?
+              </Badge>
+              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+                This is for you if...
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <Card className="shadow-soft hover:shadow-warm transition-all duration-300">
+                <CardContent className="p-8">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 rounded-full bg-nature-primary mt-3 flex-shrink-0"></div>
+                    <p className="text-lg text-muted-foreground">
+                      You care about community and want to meet others who do too.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-soft hover:shadow-warm transition-all duration-300">
+                <CardContent className="p-8">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-3 flex-shrink-0"></div>
+                    <p className="text-lg text-muted-foreground">
+                      You have a gift and want to offer it.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-soft hover:shadow-warm transition-all duration-300">
+                <CardContent className="p-8">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 rounded-full bg-earth-primary mt-3 flex-shrink-0"></div>
+                    <p className="text-lg text-muted-foreground">
+                      You're looking to collaborate or co-create with folks who care about our future.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-soft hover:shadow-warm transition-all duration-300">
+                <CardContent className="p-8">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 rounded-full bg-community-yellow mt-3 flex-shrink-0"></div>
+                    <p className="text-lg text-muted-foreground">
+                      You are curious what Boulder has to offer.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
