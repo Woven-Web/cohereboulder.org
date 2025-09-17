@@ -226,7 +226,7 @@ const Index = () => {
             {/* PDF Embed */}
             <div className="bg-white rounded-lg shadow-warm p-4 mb-8">
               <iframe
-                src="/Ecosystem.pdf"
+                src={`${import.meta.env.BASE_URL}Ecosystem.pdf`}
                 className="w-full h-[600px] rounded"
                 title="Boulder Regenerative Ecosystem Map"
               />

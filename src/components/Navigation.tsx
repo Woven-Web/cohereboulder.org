@@ -40,7 +40,7 @@ export const Navigation = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
               <img
-                src="/COHERE-Logo-Branding-2.webp"
+                src={`${import.meta.env.BASE_URL}COHERE-Logo-Branding-2.webp`}
                 alt="[CO]here Logo"
                 className="h-10 w-auto"
               />
