@@ -19,7 +19,7 @@ export const Footer = () => {
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
               <img
-                src="/COHERE-Logo-Branding-2.webp"
+                src={`${import.meta.env.BASE_URL}COHERE-Logo-Branding-2.webp`}
                 alt="[CO]here Logo"
                 className="h-10 w-auto brightness-0 invert"
               />

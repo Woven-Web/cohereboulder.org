@@ -13,7 +13,7 @@ export const EcosystemMap = () => {
             <Card className="relative overflow-hidden">
               <CardContent className="p-0">
                 <iframe
-                  src="/Ecosystem.pdf"
+                  src={`${import.meta.env.BASE_URL}Ecosystem.pdf`}
                   title="Boulder's Regenerative Ecosystem Map"
                   className="w-full h-[500px] rounded-lg"
                   style={{ border: "none" }}

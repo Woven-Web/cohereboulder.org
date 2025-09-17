@@ -140,7 +140,7 @@ const Archive2024 = () => {
               </h2>
               <div className="w-full max-w-5xl mx-auto mb-8">
                 <iframe
-                  src="/Ecosystem.pdf"
+                  src={`${import.meta.env.BASE_URL}Ecosystem.pdf`}
                   title="Boulder's Regenerative Community Map"
                   className="w-full h-[600px] rounded-2xl shadow-warm"
                   style={{ border: "none" }}
