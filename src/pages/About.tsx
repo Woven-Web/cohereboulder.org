@@ -1,11 +1,8 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
-import spiderWebImg from "@/assets/spider-web.png";
-import gameStructureImg from "@/assets/game-structure.jpg";
-import collaborationImg from "@/assets/collaboration.png";
+import { ArrowRight, Heart, Users, Sparkles } from "lucide-react";
 
 const About = () => {
   return (
@@ -13,236 +10,346 @@ const About = () => {
       <Navigation />
       <main>
         {/* Hero Section */}
-        <section className="py-20 bg-gradient-community">
+        <section className="py-20 bg-gradient-to-br from-earth-light to-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl lg:text-6xl font-bold text-white mb-6">
-              Tell Me More
+            <h1 className="text-4xl lg:text-6xl font-bold text-foreground mb-6">
+              The COhere Blueprint
             </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              A repeatable model for weaving resilient communities through
+              intentional gathering and connection
+            </p>
           </div>
         </section>
 
-        {/* A Game You Say Section */}
+        {/* The Three Phases */}
         <section className="py-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-8">
-              A Game You Say?
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
+              The Three-Phase Rhythm
             </h2>
-            
-            <div className="prose prose-lg max-w-none text-muted-foreground space-y-6">
-              <p>
-                During these 10 days, we'll be engaging in an immersive game.
-              </p>
-              
-              <p>
-                Rather than an escape from day-to-day life, this game invites you to lean deeper into it and try on new mindsets.
-              </p>
-              
-              <p>
-                As we go about our days, we will notice, celebrate, and create the nodes & threads of connection that weave our community more tightly and resiliently together.
-              </p>
-              
-              <p>
-                Take the spider's web as a metaphor for our community. We have many strong threads—anchored by gifted community activators—radiating outward into various aspects of life: food, movement, government, social justice. Kind of like the spider web woven with fewer cross-threads. This game is focused on weaving across our normal patterns to create a denser and more supportive community web.
-              </p>
+
+            <div className="space-y-8">
+              <Card className="shadow-warm">
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-nature-teal/20 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-nature-teal">
+                        1
+                      </span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Invitation</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Core contributors gather
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    For those who feel the call to contribute in a more direct
+                    way to weaving a more resilient local community, we invite
+                    you to gather and co-create what COhere can be.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">What happens:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Reflect on events to steward</li>
+                      <li>• Connect with other contributors</li>
+                      <li>• Commit to enacting visions</li>
+                      <li>• Shape the upcoming cycle</li>
+                    </ul>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4 italic">
+                    Note: Invitations are typically sent personally to those
+                    ready to step into greater service
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-warm">
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-community-orange/20 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-community-orange">
+                        2
+                      </span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Invocation</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Community-wide launch
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    We come together as a whole community to speak, listen,
+                    dance, sing, celebrate and envision. We invoke the spirit of
+                    COhere, calling forward a spirit of togetherness and a more
+                    beautiful vision for our home.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">What happens:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Community-wide celebration</li>
+                      <li>• Launch the 10-day experience</li>
+                      <li>• Share offerings and events</li>
+                      <li>• Set collective intentions</li>
+                      <li>• Invoke the spirit of connection</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-warm">
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-nature-green/20 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-nature-green">
+                        3
+                      </span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Integration</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Reflection & commitments
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    We gather to explore what has unfolded, reflect on who we
+                    are as a community, and touch into what now feels possible.
+                    We deepen our bonds and form commitments to continue showing
+                    up and weaving our resilient local community.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">What happens:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Share stories and learnings</li>
+                      <li>• Recognize our interconnectivity</li>
+                      <li>• Form ongoing commitments</li>
+                      <li>• Shape what comes next</li>
+                      <li>• Celebrate and rest</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            
-            <div className="my-12">
-              <img 
-                src={spiderWebImg} 
-                alt="Spider web metaphor for community connections" 
-                className="w-full max-w-4xl mx-auto rounded-lg shadow-soft"
-              />
+
+            <div className="mt-12 p-6 bg-muted/30 rounded-xl text-center">
+              <p className="text-lg text-muted-foreground italic">
+                "The journey of weaving our resilience never begins and never
+                ends. COhere is simply a blueprint to call deeper attention to
+                this process in which we all engage."
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Choose Your Own Path Section */}
-        <section className="py-20 bg-muted/30">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-8">
-              Choose Your Own Path
-            </h2>
-            
-            <div className="prose prose-lg max-w-none text-muted-foreground space-y-6 mb-8">
-              <p>
-                The structure of the 10-day container will include a Kick-off gathering, 2 convergence gatherings where we all come together to share and see what's been happening, and a closing party. In between, there will be a myriad of pre-planned and emergent events, encouraged collaboration time, and interactive gameplay that pervades all aspects of day-to-day life.
-              </p>
-            </div>
-            
-            <div className="my-12">
-              <img 
-                src={gameStructureImg} 
-                alt="Game structure and timeline" 
-                className="w-full max-w-4xl mx-auto rounded-lg shadow-soft"
-              />
-            </div>
-            
-            <div className="prose prose-lg max-w-none text-muted-foreground space-y-6 mb-8">
-              <p>
-                You are invited to engage in however much or little of the game's offerings throughout this period. Your participation should feel aligned with your enthusiasm and pre-existing commitments.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-foreground mb-6">
-                <Link to="/calendar" className="text-primary hover:underline">
-                  View the Calendar here!
-                </Link>
-              </h3>
-            </div>
-          </div>
-        </section>
-
-        {/* Collaboration Image */}
-        <section className="py-12">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="my-8">
-              <img 
-                src={collaborationImg} 
-                alt="Collaboration illustration" 
-                className="w-full max-w-3xl mx-auto rounded-lg"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Where is this coming from Section */}
+        {/* Why This Works */}
         <section className="py-20 bg-earth-light/20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-8">
-              Where is this coming from?
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
+              Why This Blueprint Works
             </h2>
-            
-            <div className="space-y-12">
-              {/* CO]here emergence */}
-              <div>
-                <h3 className="text-xl font-bold text-foreground mb-4">
-                  [CO]here is an emergence sprouting from a few heartful friends.
-                </h3>
-                <p className="text-lg text-muted-foreground">
-                  Some of them are part of{" "}
-                  <a 
-                    href="https://wovenweb.org/" 
-                    className="text-primary hover:underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Woven web
-                  </a>
-                  , a local org exploring how to encourage interconnectivity across Boulder.
+
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Natural Rhythm</h3>
+                <p className="text-muted-foreground">
+                  The three phases mirror how communities naturally grow: small
+                  groups commit, the wider community celebrates, then we
+                  integrate learnings. This creates sustainable change rather
+                  than one-time events.
                 </p>
               </div>
 
-              {/* Our Wider Web */}
-              <div>
-                <h3 className="text-xl font-bold text-foreground mb-4">
-                  Our Wider Web
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">
+                  Distributed Leadership
                 </h3>
-                <p className="text-lg text-muted-foreground mb-4">
-                  [CO]here is also part of a wider emergence. We want to uplift our relationship to and the inspiration we draw from:
-                </p>
-                <ul className="space-y-2 text-lg text-muted-foreground">
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://ecoversities.org/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      the ecoversities alliance
-                    </a>
-                  </li>
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://decolonialfutures.net/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Decolonial Futures
-                    </a>
-                  </li>
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://www.emergencenetwork.org/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      ten (the emergence network)
-                    </a>
-                  </li>
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://secondrenaissance.net/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Second Renaissance
-                    </a>
-                  </li>
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://www.ecogather.sterlingcollege.edu/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      EcoGather
-                    </a>
-                  </li>
-                  <li>
-                    •{" "}
-                    <a 
-                      href="https://regeneratecascadia.org/" 
-                      className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Regenerate Cascadia
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Why now */}
-              <div>
-                <h3 className="text-xl font-bold text-foreground mb-4">
-                  Why now?
-                </h3>
-                <p className="text-lg text-muted-foreground italic mb-4">
-                  <a 
-                    href="https://www.bayoakomolafe.net/post/the-times-are-urgent-lets-slow-down"
-                    className="text-primary hover:underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Times are urgent we must slow down.
-                  </a>
-                </p>
-                <p className="text-lg text-muted-foreground">
-                  This 'game' is meant to get to the heart of the resilience work we need to be doing — deepening into relationships and using our collective imagination to enact life in a way that works for all life.
+                <p className="text-muted-foreground">
+                  Rather than top-down organization, COhere emerges from many
+                  people offering their gifts. This creates resilience—the web
+                  remains strong even as individual threads change.
                 </p>
               </div>
 
-              {/* Silly and serious */}
-              <div>
-                <h3 className="text-xl font-bold text-foreground mb-4">
-                  Is this really meant to be <em>silly AND serious?</em>
-                </h3>
-                <p className="text-lg text-muted-foreground mb-4">
-                  Gratitude. Grief. Glee. Giggles. Have you ever felt all of these at the same time?
-                </p>
-                <p className="text-lg text-muted-foreground">
-                  We have. They are all appropriate responses to being alive; here, now. We want the full spectrum of emotions to feel welcome.
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Cross-Pollination</h3>
+                <p className="text-muted-foreground">
+                  By bringing together diverse communities that don't usually
+                  interact, we create unexpected connections and collaborations
+                  that strengthen the whole ecosystem.
                 </p>
               </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Ongoing Process</h3>
+                <p className="text-muted-foreground">
+                  COhere isn't a one-time festival—it's an ongoing rhythm that
+                  deepens with each cycle. Relationships strengthen, trust
+                  builds, and our collective capacity grows.
+                </p>
+              </div>
+            </div>
+
+            <Card className="shadow-warm bg-white">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-xl font-semibold mb-4">
+                  Adaptable for Any Community
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  This blueprint can be adapted to any community's needs. The
+                  rhythm can be yearly, quarterly, or whatever serves your
+                  place. The key is creating regular cycles of connection,
+                  action, and integration.
+                </p>
+                <Button variant="outline">
+                  Learn How to Bring COhere to Your Community
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* Our Values */}
+        <section className="py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
+              Living Values
+            </h2>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Heart className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Active Participation</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    This game, much like life, becomes more fun when we are all
+                    leaning in, being courageously participatory and supporting
+                    one another.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Users className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Care for the Collective</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Let's nurture our collective well-being, ensuring that
+                    everyone feels held, valued, and seen. Together, we thrive.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Sparkles className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Radical Interdependence</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Be bold with offers and requests. Let's find out what's
+                    possible when we lean on one another.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Heart className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Roots to Fruits</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    We focus on foundational relationships and shared context.
+                    From strong roots, beautiful fruits naturally emerge.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Users className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Anchor Abundance</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Collectively, we are so resourced. Give generously, and
+                    trust that the rising tide will lift all ships.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Sparkles className="h-8 w-8 text-primary" />
+                    <h3 className="font-semibold">Amplify What's Good</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Celebrate and amplify the aspects of individuals, this
+                    place, and this community we love.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Origins */}
+        <section className="py-20 bg-gradient-to-br from-community-yellow/10 to-transparent">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
+              Where This Comes From
+            </h2>
+
+            <div className="prose prose-lg max-w-none text-muted-foreground space-y-6">
+              <p>
+                COhere emerged from a group of friends asking: How do we weave a
+                more resilient community in Boulder? How do we move beyond
+                individual efforts to collective thriving?
+              </p>
+
+              <p>
+                We drew inspiration from indigenous wisdom about community, from
+                emergence theory, from the mycelial networks that connect
+                forests, and from movements worldwide that are reimagining how
+                we live together.
+              </p>
+
+              <p>
+                What started as conversations became gatherings, which became
+                the first COhere cycle in 2024. Now, we're learning and evolving
+                with each iteration, discovering together what's possible when a
+                community commits to weaving itself stronger.
+              </p>
+
+              <p>
+                COhere is part of a wider emergence happening
+                globally—communities remembering how to be in right relationship
+                with each other and the land. We're connected to and inspired by
+                regenerative movements everywhere.
+              </p>
+            </div>
+
+            <div className="mt-12 text-center">
+              <Button variant="community" size="lg">
+                Join the Next Cycle
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
           </div>
         </section>
