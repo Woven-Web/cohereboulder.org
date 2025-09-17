@@ -2,31 +2,35 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
-import cohereLogoImage from "@/assets/cohere-logo.png";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [language, setLanguage] = useState("en");
+  const { language, toggleLanguage, t, tr } = useLanguage();
   const location = useLocation();
 
-  const toggleLanguage = () => {
-    setLanguage(prev => prev === "en" ? "es" : "en");
-  };
-
   const navItems = [
-    { href: "/about", label: language === "en" ? "Tell Me More" : "Cuéntame Más" },
-    { href: "/co-create", label: language === "en" ? "Co-Create With Us" : "Co-Crear Con Nosotros" },
-    { href: "/calendar", label: language === "en" ? "Calendar" : "Calendario" }
+    {
+      href: "/about",
+      label: tr("nav.about"),
+    },
+    {
+      href: "/join-2025",
+      label: tr("nav.join2025"),
+    },
+    {
+      href: "/co-create",
+      label: tr("nav.participate"),
+    },
+    { href: "/calendar", label: tr("nav.calendar") },
+    { href: "/archive", label: tr("nav.archive") },
   ];
 
   return (
     <>
       {/* Announcement Bar */}
       <div className="bg-community-yellow text-foreground text-center py-2 px-4 text-sm">
-        {language === "en" 
-          ? "[CO]here has completed and continues! Subscribe to our newsletter to stay in the loop!" 
-          : "¡[CO]here ha completado y continúa! ¡Suscríbete a nuestro boletín para mantenerte al tanto!"
-        }
+        {tr("nav.announcement")}
       </div>
 
       {/* Main Navigation */}
@@ -35,12 +39,14 @@ export const Navigation = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
-              <img 
-                src={cohereLogoImage} 
-                alt="[CO]here Logo" 
-                className="h-8 w-8"
+              <img
+                src="/COHERE-Logo-Branding-2.webp"
+                alt="[CO]here Logo"
+                className="h-10 w-auto"
               />
-              <span className="text-xl font-bold text-foreground">[CO]here</span>
+              <span className="text-xl font-bold text-foreground">
+                [CO]here
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -50,15 +56,15 @@ export const Navigation = () => {
                   key={item.href}
                   to={item.href}
                   className={`transition-colors duration-300 font-medium ${
-                    location.pathname === item.href 
-                      ? "text-primary border-b-2 border-primary" 
+                    location.pathname === item.href
+                      ? "text-primary border-b-2 border-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {item.label}
                 </Link>
               ))}
-              
+
               {/* Language Toggle */}
               <Button
                 variant="ghost"
@@ -87,7 +93,11 @@ export const Navigation = () => {
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="rounded-full"
               >
-                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {isMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </Button>
             </div>
           </div>
@@ -101,8 +111,8 @@ export const Navigation = () => {
                     key={item.href}
                     to={item.href}
                     className={`block px-3 py-2 transition-colors duration-300 font-medium ${
-                      location.pathname === item.href 
-                        ? "text-primary bg-primary/10" 
+                      location.pathname === item.href
+                        ? "text-primary bg-primary/10"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => setIsMenuOpen(false)}
