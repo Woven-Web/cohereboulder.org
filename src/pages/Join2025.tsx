@@ -124,7 +124,7 @@ const Join2025 = () => {
       <section className="py-16 px-4 bg-white/50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
-            {t("Ways to Participate", "Formas de Participar")}
+            {t("Ways to Co-Create", "Formas de Co-Crear")}
           </h2>
 
           <div className="space-y-6">
@@ -150,36 +150,17 @@ const Join2025 = () => {
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">🤝</span>
-                {t("Organize With Us", "Organiza Con Nosotros")}
+                {t("Co-Create With Us", "Co-Crea Con Nosotros")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "Help weave the web by exploring partnerships, supporting outreach, or anchoring a theme. We're looking for organizations and leaders who want to invest in Boulder's cultural vitality.",
-                  "Ayuda a tejer la red explorando asociaciones, apoyando el alcance o anclando un tema. Estamos buscando organizaciones y líderes que quieran invertir en la vitalidad cultural de Boulder.",
-                )}
-              </p>
-              <Link to="/get-involved">
-                <Button variant="outline" className="gap-2">
-                  {t("Express Interest", "Expresar Interés")}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </Card>
-
-            <Card className="p-6">
-              <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                <span className="text-2xl">✨</span>
-                {t("Host an Event", "Organiza un Evento")}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {t(
-                  "Share your vision and gifts in support of the community and reach new audiences. We're looking for values-aligned events during October 16-26 that strengthen our community web.",
-                  "Comparte tu visión y dones en apoyo a la comunidad y alcanza nuevas audiencias. Estamos buscando eventos alineados con valores durante el 16-26 de octubre que fortalezcan nuestra red comunitaria.",
+                  "Share your vision and gifts in support of the community! Whether you want to host an event, organize partnerships, support outreach, or anchor a theme, we're looking for collaborators who want to invest in Boulder's cultural vitality.",
+                  "¡Comparte tu visión y dones en apoyo a la comunidad! Ya sea que quieras organizar un evento, organizar asociaciones, apoyar el alcance o anclar un tema, estamos buscando colaboradores que quieran invertir en la vitalidad cultural de Boulder.",
                 )}
               </p>
               <Link to="/co-create">
                 <Button variant="outline" className="gap-2">
-                  {t("Learn About Co-Creating", "Aprende sobre Co-Crear")}
+                  {t("Start Co-Creating", "Comenzar a Co-Crear")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -196,7 +177,7 @@ const Join2025 = () => {
                   "Invierte en la comunidad apoyando la cultura, conexión y accesibilidad. Destaca tu negocio como una piedra angular de la comunidad de Boulder.",
                 )}
               </p>
-              <Link to="/get-involved">
+              <Link to="/co-create">
                 <Button variant="outline" className="gap-2">
                   {t("Become a Sponsor", "Conviértete en Patrocinador")}
                   <ArrowRight className="h-4 w-4" />
