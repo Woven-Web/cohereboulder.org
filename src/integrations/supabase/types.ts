@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_preferences: {
+        Row: {
+          created_at: string
+          email: string
+          event_notifications: boolean
+          id: string
+          marketing_consent: boolean
+          subscribed: boolean
+          unsubscribe_token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          event_notifications?: boolean
+          id?: string
+          marketing_consent?: boolean
+          subscribed?: boolean
+          unsubscribe_token?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          event_notifications?: boolean
+          id?: string
+          marketing_consent?: boolean
+          subscribed?: boolean
+          unsubscribe_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interest_submissions: {
         Row: {
           created_at: string
@@ -89,6 +122,7 @@ export type Database = {
           full_name: string
           how_did_you_hear: string | null
           id: string
+          marketing_consent: boolean | null
           organizations: string | null
           phone_number: string | null
           updated_at: string
@@ -105,6 +139,7 @@ export type Database = {
           full_name: string
           how_did_you_hear?: string | null
           id?: string
+          marketing_consent?: boolean | null
           organizations?: string | null
           phone_number?: string | null
           updated_at?: string
@@ -121,6 +156,7 @@ export type Database = {
           full_name?: string
           how_did_you_hear?: string | null
           id?: string
+          marketing_consent?: boolean | null
           organizations?: string | null
           phone_number?: string | null
           updated_at?: string
