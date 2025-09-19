@@ -2,6 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterestForm } from "@/components/InterestForm";
+import { Button } from "@/components/ui/button";
 import { Heart, Calendar, Home, Mic, Music, Palette } from "lucide-react";
 
 const CoCreate = () => {
@@ -224,12 +225,26 @@ const CoCreate = () => {
             {/* Contact Info */}
             <Card className="shadow-warm bg-white">
               <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground mb-4">
                   Have questions? Reach out to{" "}
                   <a href="mailto:cohere@wovenweb.org" className="text-primary hover:underline">
                     cohere@wovenweb.org
                   </a>
                 </p>
+                
+                <div className="border-t pt-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Love what we're creating? Help us keep COhere accessible to everyone:
+                  </p>
+                  <Button 
+                    variant="community" 
+                    className="gap-2"
+                    onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
+                  >
+                    <Heart className="h-4 w-4" />
+                    Support COhere with a Donation
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

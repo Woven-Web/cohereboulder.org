@@ -177,12 +177,22 @@ const Join2025 = () => {
                   "Invierte en la comunidad apoyando la cultura, conexión y accesibilidad. Destaca tu negocio como una piedra angular de la comunidad de Boulder.",
                 )}
               </p>
-              <Link to="/co-create">
-                <Button variant="outline" className="gap-2">
-                  {t("Become a Sponsor", "Conviértete en Patrocinador")}
-                  <ArrowRight className="h-4 w-4" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link to="/co-create">
+                  <Button variant="outline" className="gap-2">
+                    {t("Become a Sponsor", "Conviértete en Patrocinador")}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="community" 
+                  className="gap-2"
+                  onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
+                >
+                  {t("Donate Now", "Donar Ahora")}
+                  <Heart className="h-4 w-4" />
                 </Button>
-              </Link>
+              </div>
             </Card>
           </div>
         </div>

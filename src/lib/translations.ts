@@ -10,6 +10,7 @@ export const translations = {
     participate: { en: "Co-Create", es: "Co-Crear" },
     calendar: { en: "Calendar", es: "Calendario" },
     archive: { en: "Archive", es: "Archivo" },
+    donateNow: { en: "Donate Now", es: "Donar Ahora" },
     announcement: {
       en: "COhere continues weaving Boulder's resilient community. Join our newsletter to stay connected!",
       es: "COhere continúa tejiendo la comunidad resiliente de Boulder. ¡Únete a nuestro boletín para mantenerte conectado!",
