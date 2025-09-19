@@ -35,24 +35,28 @@ const Index = () => {
               {tr("hero.description")}
             </p>
 
-            {/* Next Gathering */}
+            {/* Main Event Container */}
             <Card className="max-w-xl mx-auto shadow-warm bg-white/95">
               <CardContent className="p-8">
                 <h2 className="text-xl font-semibold mb-4">
-                  {tr("hero.nextGathering")}
+                  {tr("hero.mainEvent")}
                 </h2>
                 <p className="text-3xl font-bold text-primary mb-2">
-                  {tr("hero.date")}
+                  {tr("hero.dates")}
                 </p>
                 <p className="text-muted-foreground mb-6">
-                  {tr("hero.launchDescription")}
+                  {tr("hero.tenDayContainer")}
                 </p>
-                <Link to="/join-2025">
+                <a
+                  href="https://airtable.com/appvqbL9YkDWtQyRy/pagvobmgDlnnUG95A/form"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Button variant="community" size="lg">
-                    {tr("hero.learnMore")}
+                    {tr("hero.registerHere")}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                </Link>
+                </a>
               </CardContent>
             </Card>
           </div>
@@ -71,6 +75,126 @@ const Index = () => {
               <p>{tr("whatIs.p2")}</p>
 
               <p>{tr("whatIs.p3")}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 2024 Recap Video */}
+        <section className="py-20 bg-gradient-to-br from-earth-light/30 to-transparent">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-8">
+              Experience COhere
+            </h2>
+            <p className="text-xl text-center text-muted-foreground mb-8">
+              See what happened during our inaugural 10-day immersive experience
+              in 2024
+            </p>
+
+            {/* YouTube Video Embed */}
+            <div className="max-w-3xl mx-auto">
+              <div className="aspect-video rounded-lg overflow-hidden shadow-warm">
+                <iframe
+                  src="https://www.youtube.com/embed/wMDpVsSGY5M"
+                  title="COhere 2024 Video"
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+
+            <p className="text-center text-muted-foreground mt-6">
+              COhere 2024 brought together 300+ community members for 50+ events
+              across Boulder, weaving stronger connections and planting seeds
+              for our regenerative future.
+            </p>
+          </div>
+        </section>
+
+        {/* COhere Themes */}
+        <section className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-4">
+              Our Themes
+            </h2>
+            <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
+              COhere events explore six interconnected themes that weave
+              together to create a resilient community
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">🌱</div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Ecology & Food Systems
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Exploring regenerative agriculture, local food networks, and
+                    our relationship with the land
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">🎨</div>
+                  <h3 className="text-lg font-semibold mb-2">Arts & Culture</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Celebrating creativity, music, storytelling, and cultural
+                    expression in all its forms
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">💚</div>
+                  <h3 className="text-lg font-semibold mb-2">Wellness</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Supporting physical, mental, and spiritual health through
+                    community practices
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">💡</div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Technology & Innovation
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Harnessing innovation for social good and environmental
+                    sustainability
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">🏛️</div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Governance & Business
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Reimagining economic systems and decision-making for
+                    collective benefit
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-warm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-3xl mb-3">🏘️</div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Villaging & Neighboring
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Building strong neighborhoods and mutual support networks
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
