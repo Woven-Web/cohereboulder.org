@@ -14,7 +14,7 @@ import Join2025 from "./pages/Join2025";
 import Invitation2025 from "./pages/Invitation2025";
 import Archive from "./pages/Archive";
 import Archive2024 from "./pages/Archive2024";
-import GetInvolved from "./pages/GetInvolved";
+
 import Registration from "./pages/Registration";
 import Auth from "./pages/Auth";
 import VerificationSuccess from "./pages/VerificationSuccess";
@@ -39,7 +39,7 @@ const App = () => (
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/join-2025" element={<Join2025 />} />
               <Route path="/invitation-2025" element={<Invitation2025 />} />
-              <Route path="/get-involved" element={<GetInvolved />} />
+              
               <Route path="/register" element={<Registration />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/verification-success" element={<VerificationSuccess />} />

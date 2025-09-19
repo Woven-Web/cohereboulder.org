@@ -1,8 +1,8 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Heart, Calendar, Home, Mic, Music, Palette, Mail } from "lucide-react";
+import { InterestForm } from "@/components/InterestForm";
+import { Heart, Calendar, Home, Mic, Music, Palette } from "lucide-react";
 
 const CoCreate = () => {
   return (
@@ -44,13 +44,10 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Host an Event</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Workshops, gatherings, ceremonies, skill-shares, or
                     experiences that bring people together
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Event Hosting Guide
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -60,13 +57,10 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Open Your Space</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Offer your home, yard, studio, or venue for gatherings and
                     connections
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Space Hosting Info
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -76,13 +70,10 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Share Your Story</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Lightning talks, storytelling, or sharing your vision for
                     Boulder's future
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Speaking Opportunities
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -92,13 +83,10 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Bring Art & Music</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Performances, installations, creative experiences that
                     inspire and connect
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Artist Information
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -108,13 +96,10 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Offer Support</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Volunteer, provide resources, help with logistics, or
                     support other's offerings
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Support Opportunities
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -124,12 +109,9 @@ const CoCreate = () => {
                   <CardTitle className="text-lg">Something Else?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Have a unique offering or wild idea? We want to hear it!
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Share Your Idea
-                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -226,25 +208,28 @@ const CoCreate = () => {
               </div>
             </div>
 
-            {/* Get Started */}
-            <Card className="shadow-warm bg-white">
-              <CardContent className="p-8 text-center">
-                <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
+            {/* Co-Creation Interest Form */}
+            <div className="mb-16">
+              <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold mb-4">Ready to Co-Create?</h3>
-                <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                <p className="text-muted-foreground max-w-2xl mx-auto">
                   Whether you have a fully formed idea or just a spark of
                   inspiration, we want to hear from you. Let's weave something
                   beautiful together.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button variant="community" size="lg">
-                    Share Your Offering
-                  </Button>
-                  <Button variant="outline" size="lg">
-                    <Mail className="mr-2 h-5 w-5" />
-                    Contact: cohere@wovenweb.org
-                  </Button>
-                </div>
+              </div>
+              <InterestForm />
+            </div>
+
+            {/* Contact Info */}
+            <Card className="shadow-warm bg-white">
+              <CardContent className="p-6 text-center">
+                <p className="text-muted-foreground">
+                  Have questions? Reach out to{" "}
+                  <a href="mailto:cohere@wovenweb.org" className="text-primary hover:underline">
+                    cohere@wovenweb.org
+                  </a>
+                </p>
               </CardContent>
             </Card>
           </div>
