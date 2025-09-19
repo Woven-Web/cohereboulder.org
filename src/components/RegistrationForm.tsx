@@ -1,106 +1,131 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowRight, Loader2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { CheckCircle, ExternalLink, Mail, Loader2 } from "lucide-react";
 
 interface RegistrationFormData {
   fullName: string;
   email: string;
+  password: string;
   phoneNumber: string;
   organizations: string;
-  canAttendInvocation: string; // "yes" | "no" | ""
-  canAttendIntegration: string; // "yes" | "no" | ""
-  howDidYouHear: string;
+  canAttendInvocation: string;
+  canAttendIntegration: string;
   coCreatingInterests: string[];
   financialContributionInterest: boolean;
+  howDidYouHear: string;
   additionalNotes: string;
 }
 
-export const RegistrationForm = () => {
+export function RegistrationForm() {
+  const { toast } = useToast();
+  const { user, signUp } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+
   const [formData, setFormData] = useState<RegistrationFormData>({
-    fullName: "",
-    email: "",
+    fullName: user?.user_metadata?.full_name || "",
+    email: user?.email || "",
+    password: "",
     phoneNumber: "",
     organizations: "",
     canAttendInvocation: "",
     canAttendIntegration: "",
-    howDidYouHear: "",
     coCreatingInterests: [],
     financialContributionInterest: false,
+    howDidYouHear: "",
     additionalNotes: "",
   });
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const { toast } = useToast();
 
-  const handleInputChange = (field: keyof RegistrationFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCheckboxChange = (field: 'coCreatingInterests', value: string, checked: boolean) => {
+  const handleCheckboxChange = (value: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      [field]: checked 
-        ? [...prev[field], value]
-        : prev[field].filter(item => item !== value)
+      coCreatingInterests: checked 
+        ? [...prev.coCreatingInterests, value]
+        : prev.coCreatingInterests.filter(item => item !== value)
     }));
   };
 
-  const submitToSupabase = async (data: RegistrationFormData) => {
+  const submitToSupabase = async (data: RegistrationFormData, userId?: string) => {
+    const registrationData = {
+      full_name: data.fullName,
+      email: data.email,
+      phone_number: data.phoneNumber,
+      organizations: data.organizations,
+      can_attend_invocation: data.canAttendInvocation === "yes",
+      can_attend_integration: data.canAttendIntegration === "yes",
+      co_creating_interests: data.coCreatingInterests,
+      financial_contribution_interest: data.financialContributionInterest,
+      how_did_you_hear: data.howDidYouHear,
+      additional_notes: data.additionalNotes,
+      user_id: userId || null,
+    };
+
     const { error } = await supabase
-      .from('registrations')
-      .insert({
-        full_name: data.fullName,
-        email: data.email,
-        phone_number: data.phoneNumber || null,
-        organizations: data.organizations || null,
-        can_attend_invocation: data.canAttendInvocation === "yes" ? true : data.canAttendInvocation === "no" ? false : null,
-        can_attend_integration: data.canAttendIntegration === "yes" ? true : data.canAttendIntegration === "no" ? false : null,
-        how_did_you_hear: data.howDidYouHear || null,
-        co_creating_interests: data.coCreatingInterests,
-        financial_contribution_interest: data.financialContributionInterest,
-        additional_notes: data.additionalNotes || null,
-      });
+      .from("registrations")
+      .insert(registrationData);
 
     if (error) {
-      throw new Error(`Database error: ${error.message}`);
+      throw error;
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.fullName || !formData.email) {
-      toast({
-        title: "Required fields missing",
-        description: "Please fill in your full name and email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      await submitToSupabase(formData);
+      // Basic validation
+      if (!formData.fullName || !formData.email) {
+        throw new Error("Please fill in all required fields");
+      }
+
+      let userId = user?.id;
+
+      // If user is not authenticated and wants to create account
+      if (!user && formData.password) {
+        const { error: authError } = await signUp(formData.email, formData.password, formData.fullName);
+        
+        if (authError) {
+          throw new Error(authError.message);
+        }
+
+        // Show verification message instead of completing registration
+        setNeedsVerification(true);
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account, then complete your registration.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      await submitToSupabase(formData, userId);
       setSubmitted(true);
+      
       toast({
-        title: "Registration successful!",
-        description: "Welcome to COhere Boulder 2025! You'll receive updates soon.",
+        title: "Registration submitted successfully!",
+        description: "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
       });
-    } catch (error) {
-      console.error('Error submitting registration:', error);
+
+    } catch (error: any) {
       toast({
-        title: "Registration failed",
-        description: "There was an error with your registration. Please try again or contact us directly.",
+        title: "Error submitting registration",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -108,18 +133,53 @@ export const RegistrationForm = () => {
     }
   };
 
+  if (needsVerification) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <Mail className="h-16 w-16 text-blue-500 mx-auto" />
+            <h2 className="text-2xl font-bold text-blue-700">Check Your Email!</h2>
+            <p className="text-muted-foreground">
+              We've sent you a verification link. Please verify your email address to complete your registration.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              After verification, you can return to this page to complete your registration for COhere Boulder 2025.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (submitted) {
     return (
-      <Card className="max-w-3xl mx-auto">
-        <CardContent className="p-8 text-center">
-          <h3 className="text-2xl font-bold mb-4 text-primary">Welcome to COhere Boulder 2025!</h3>
-          <p className="text-muted-foreground mb-6">
-            Thank you for registering! We're excited to weave you into the fabric of our community. 
-            You'll receive updates and communications as we approach the October 16-26 container.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Check your email for next steps and watch for the Telegram group invitation if you provided your phone number.
-          </p>
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+            <h2 className="text-2xl font-bold text-green-700">Registration Complete!</h2>
+            <p className="text-muted-foreground">
+              Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You'll receive a confirmation email shortly with next steps and event details.
+            </p>
+            
+            <div className="pt-4">
+              <Button asChild>
+                <a 
+                  href="https://donate.stripe.com/00g02wd3C4ZHdG0bII" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2"
+                >
+                  Support COhere with a Donation
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -169,39 +229,68 @@ export const RegistrationForm = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name *</Label>
-                <Input 
-                  id="fullName" 
-                  required 
-                  placeholder="Your full name"
+                <Input
+                  id="fullName"
+                  name="fullName"
                   value={formData.fullName}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  onChange={handleInputChange}
+                  required
+                  disabled={!!user}
                 />
+                {user && <p className="text-sm text-muted-foreground">Using your account name</p>}
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address *</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  required 
-                  placeholder="your@email.com"
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={handleInputChange}
+                  required
+                  disabled={!!user}
                 />
+                {user && <p className="text-sm text-muted-foreground">Using your account email</p>}
               </div>
             </div>
 
+            {!user && (
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <h3 className="font-semibold">Create an Account (Optional)</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create an account to save your registration, access member features, and stay updated on COhere events.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password (optional)</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Choose a password to create an account"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to register without creating an account
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input 
-                id="phoneNumber" 
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
                 type="tel"
                 placeholder="Your phone number"
                 value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                onChange={handleInputChange}
               />
               <p className="text-xs text-muted-foreground">
                 So we can invite you to the Telegram group if you miss the link.
@@ -210,11 +299,12 @@ export const RegistrationForm = () => {
 
             <div className="space-y-2">
               <Label htmlFor="organizations">Organization(s)</Label>
-              <Input 
-                id="organizations" 
+              <Input
+                id="organizations"
+                name="organizations"
                 placeholder="Your organization(s) or business"
                 value={formData.organizations}
-                onChange={(e) => handleInputChange('organizations', e.target.value)}
+                onChange={handleInputChange}
               />
             </div>
 
@@ -229,7 +319,7 @@ export const RegistrationForm = () => {
                 </p>
                 <RadioGroup 
                   value={formData.canAttendInvocation} 
-                  onValueChange={(value) => handleInputChange('canAttendInvocation', value)}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, canAttendInvocation: value }))}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="invocation-yes" />
@@ -255,7 +345,7 @@ export const RegistrationForm = () => {
                 </p>
                 <RadioGroup 
                   value={formData.canAttendIntegration} 
-                  onValueChange={(value) => handleInputChange('canAttendIntegration', value)}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, canAttendIntegration: value }))}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="integration-yes" />
@@ -277,10 +367,11 @@ export const RegistrationForm = () => {
               <Label htmlFor="howDidYouHear">How did you hear about COhere?</Label>
               <Textarea
                 id="howDidYouHear"
+                name="howDidYouHear"
                 placeholder="Tell us how you discovered COhere..."
                 rows={3}
                 value={formData.howDidYouHear}
-                onChange={(e) => handleInputChange('howDidYouHear', e.target.value)}
+                onChange={handleInputChange}
               />
             </div>
 
@@ -301,7 +392,7 @@ export const RegistrationForm = () => {
                       id={option}
                       checked={formData.coCreatingInterests.includes(option)}
                       onCheckedChange={(checked) => 
-                        handleCheckboxChange('coCreatingInterests', option, checked as boolean)
+                        handleCheckboxChange(option, checked as boolean)
                       }
                     />
                     <label htmlFor={option} className="text-sm">{option}</label>
@@ -340,10 +431,11 @@ export const RegistrationForm = () => {
               <Label htmlFor="additionalNotes">Additional Notes or Comments</Label>
               <Textarea
                 id="additionalNotes"
+                name="additionalNotes"
                 placeholder="Anything else you'd like us to know?"
                 rows={3}
                 value={formData.additionalNotes}
-                onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
+                onChange={handleInputChange}
               />
             </div>
 
@@ -351,12 +443,11 @@ export const RegistrationForm = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registering...
+                  {!user && formData.password ? "Creating Account..." : "Registering..."}
                 </>
               ) : (
                 <>
                   Complete Registration
-                  <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
             </Button>
@@ -365,4 +456,4 @@ export const RegistrationForm = () => {
       </Card>
     </div>
   );
-};
+}

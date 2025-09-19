@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email_verified: boolean | null
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_verified?: boolean | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_verified?: boolean | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       registrations: {
         Row: {
           additional_notes: string | null
@@ -65,6 +92,7 @@ export type Database = {
           organizations: string | null
           phone_number: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           additional_notes?: string | null
@@ -80,6 +108,7 @@ export type Database = {
           organizations?: string | null
           phone_number?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           additional_notes?: string | null
@@ -95,6 +124,7 @@ export type Database = {
           organizations?: string | null
           phone_number?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
