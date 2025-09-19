@@ -5,6 +5,7 @@ export const translations = {
   // Navigation & Common
   nav: {
     about: { en: "About", es: "Acerca de" },
+    register: { en: "Register", es: "Registrar" },
     join2025: { en: "Join 2025", es: "Únete 2025" },
     participate: { en: "Participate", es: "Participar" },
     calendar: { en: "Calendar", es: "Calendario" },

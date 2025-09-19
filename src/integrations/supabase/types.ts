@@ -50,6 +50,54 @@ export type Database = {
         }
         Relationships: []
       }
+      registrations: {
+        Row: {
+          additional_notes: string | null
+          can_attend_integration: boolean | null
+          can_attend_invocation: boolean | null
+          co_creating_interests: string[] | null
+          created_at: string
+          email: string
+          financial_contribution_interest: boolean | null
+          full_name: string
+          how_did_you_hear: string | null
+          id: string
+          organizations: string | null
+          phone_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          can_attend_integration?: boolean | null
+          can_attend_invocation?: boolean | null
+          co_creating_interests?: string[] | null
+          created_at?: string
+          email: string
+          financial_contribution_interest?: boolean | null
+          full_name: string
+          how_did_you_hear?: string | null
+          id?: string
+          organizations?: string | null
+          phone_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          can_attend_integration?: boolean | null
+          can_attend_invocation?: boolean | null
+          co_creating_interests?: string[] | null
+          created_at?: string
+          email?: string
+          financial_contribution_interest?: boolean | null
+          full_name?: string
+          how_did_you_hear?: string | null
+          id?: string
+          organizations?: string | null
+          phone_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -15,6 +15,10 @@ export const Navigation = () => {
       label: tr("nav.about"),
     },
     {
+      href: "/register",
+      label: tr("nav.register"),
+    },
+    {
       href: "/join-2025",
       label: tr("nav.join2025"),
     },
