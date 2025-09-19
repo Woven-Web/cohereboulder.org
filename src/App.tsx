@@ -18,6 +18,7 @@ import GetInvolved from "./pages/GetInvolved";
 import Registration from "./pages/Registration";
 import Auth from "./pages/Auth";
 import VerificationSuccess from "./pages/VerificationSuccess";
+import Unsubscribe from "./pages/Unsubscribe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/register" element={<Registration />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/verification-success" element={<VerificationSuccess />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/archive/2024" element={<Archive2024 />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

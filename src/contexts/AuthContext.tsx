@@ -10,6 +10,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resendVerification: () => Promise<{ error: any }>;
+  linkExistingRegistration: (email: string, userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        
+        // Link existing registrations when user signs up or signs in
+        if (session?.user && event === 'SIGNED_IN') {
+          setTimeout(() => {
+            linkExistingRegistration(session.user.email!, session.user.id);
+          }, 0);
+        }
       }
     );
 
@@ -63,6 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  // Account linking: check if email exists in registrations and link to new account
+  const linkExistingRegistration = async (email: string, userId: string) => {
+    try {
+      // Update any existing registrations with this email to link to the new user account
+      const { error } = await supabase
+        .from('registrations')
+        .update({ user_id: userId })
+        .eq('email', email)
+        .is('user_id', null);
+
+      if (error) {
+        console.error('Error linking existing registration:', error);
+      }
+    } catch (error) {
+      console.error('Error in linkExistingRegistration:', error);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -89,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signIn,
     signOut,
-    resendVerification
+    resendVerification,
+    linkExistingRegistration
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

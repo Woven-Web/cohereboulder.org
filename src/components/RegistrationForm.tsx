@@ -23,6 +23,7 @@ interface RegistrationFormData {
   financialContributionInterest: boolean;
   howDidYouHear: string;
   additionalNotes: string;
+  marketingConsent: boolean;
 }
 
 export function RegistrationForm() {
@@ -44,6 +45,7 @@ export function RegistrationForm() {
     financialContributionInterest: false,
     howDidYouHear: "",
     additionalNotes: "",
+    marketingConsent: false,
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -61,25 +63,47 @@ export function RegistrationForm() {
   };
 
   const submitToSupabase = async (data: RegistrationFormData, userId?: string) => {
-    const registrationData = {
-      full_name: data.fullName,
-      email: data.email,
-      phone_number: data.phoneNumber,
-      organizations: data.organizations,
-      can_attend_invocation: data.canAttendInvocation === "yes",
-      can_attend_integration: data.canAttendIntegration === "yes",
-      co_creating_interests: data.coCreatingInterests,
-      financial_contribution_interest: data.financialContributionInterest,
-      how_did_you_hear: data.howDidYouHear,
-      additional_notes: data.additionalNotes,
-      user_id: userId || null,
-    };
+    try {
+      // Insert registration
+      const registrationData = {
+        full_name: data.fullName,
+        email: data.email,
+        phone_number: data.phoneNumber,
+        organizations: data.organizations,
+        can_attend_invocation: data.canAttendInvocation === "yes",
+        can_attend_integration: data.canAttendIntegration === "yes",
+        co_creating_interests: data.coCreatingInterests,
+        financial_contribution_interest: data.financialContributionInterest,
+        how_did_you_hear: data.howDidYouHear,
+        additional_notes: data.additionalNotes,
+        user_id: userId || null,
+        marketing_consent: data.marketingConsent,
+      };
 
-    const { error } = await supabase
-      .from("registrations")
-      .insert(registrationData);
+      const { error: regError } = await supabase
+        .from("registrations")
+        .insert(registrationData);
 
-    if (error) {
+      if (regError) throw regError;
+
+      // Insert/update email preferences
+      const { error: emailError } = await supabase
+        .from('email_preferences')
+        .upsert({
+          email: data.email,
+          marketing_consent: data.marketingConsent,
+          event_notifications: true, // Default to true for event registrations
+          subscribed: true,
+        }, {
+          onConflict: 'email'
+        });
+
+      if (emailError) {
+        console.error('Error updating email preferences:', emailError);
+        // Don't throw here - registration should still succeed
+      }
+    } catch (error) {
+      console.error('Error submitting to Supabase:', error);
       throw error;
     }
   };
@@ -437,6 +461,35 @@ export function RegistrationForm() {
                 value={formData.additionalNotes}
                 onChange={handleInputChange}
               />
+            </div>
+
+            {/* Email Consent */}
+            <div className="space-y-4 p-4 bg-muted/20 rounded-lg border">
+              <Label className="text-base font-semibold">Email Preferences</Label>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-2">
+                  <Checkbox 
+                    id="marketingConsent"
+                    checked={formData.marketingConsent}
+                    onCheckedChange={(checked) => 
+                      setFormData(prev => ({ ...prev, marketingConsent: checked as boolean }))
+                    }
+                  />
+                  <div className="space-y-1">
+                    <label htmlFor="marketingConsent" className="text-sm font-medium">
+                      Yes, I'd like to receive marketing emails and community updates
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Stay informed about COhere events, community news, and partnership opportunities. 
+                      You can unsubscribe at any time.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Note: You'll automatically receive important notifications about events you register for, 
+                  regardless of this setting.
+                </p>
+              </div>
             </div>
 
             <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
