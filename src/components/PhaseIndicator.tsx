@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type CoherePhase = "invitation" | "invocation" | "integration" | "between";
+export type CoherePhase = "invocation" | "cohering" | "integration" | "between";
 
 interface PhaseIndicatorProps {
   currentPhase?: CoherePhase;
@@ -11,24 +11,24 @@ interface PhaseIndicatorProps {
 }
 
 export const PhaseIndicator = ({
-  currentPhase = "invitation",
+  currentPhase = "invocation",
   showDates = true,
   className
 }: PhaseIndicatorProps) => {
   const phases = [
     {
-      id: "invitation",
-      name: "Invitation",
-      date: "Sept 24, 2025",
-      description: "Core contributors gather",
+      id: "invocation",
+      name: "Invocation",
+      date: "Ongoing",
+      description: "Community events & connecting",
       color: "border-nature-teal text-nature-teal",
       bgColor: "bg-nature-teal/10"
     },
     {
-      id: "invocation",
-      name: "Invocation",
+      id: "cohering",
+      name: "Cohering",
       date: "Oct 16, 2025",
-      description: "Community-wide launch",
+      description: "Community-wide gathering",
       color: "border-community-orange text-community-orange",
       bgColor: "bg-community-orange/10"
     },

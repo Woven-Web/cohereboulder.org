@@ -67,16 +67,16 @@ const Join2025 = () => {
               <div className="flex items-center gap-3 mb-4">
                 <Users className="h-8 w-8 text-earth" />
                 <h3 className="text-xl font-semibold">
-                  {t("Invitation", "Invitación")}
+                  {t("Invocation", "Invocación")}
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
-                {t("September 24, 2025", "24 de Septiembre, 2025")}
+                {t("Ongoing Period", "Período Continuo")}
               </p>
               <p className="text-muted-foreground">
                 {t(
-                  "Core contributors gather to vision, commit resources, and shape the October experience",
-                  "Los contribuyentes principales se reúnen para visualizar, comprometer recursos y dar forma a la experiencia de octubre",
+                  "Community-created events and connecting between formal cycles",
+                  "Eventos creados por la comunidad y conexión entre ciclos formales",
                 )}
               </p>
             </Card>
@@ -85,7 +85,7 @@ const Join2025 = () => {
               <div className="flex items-center gap-3 mb-4">
                 <Sparkles className="h-8 w-8 text-sage" />
                 <h3 className="text-xl font-semibold">
-                  {t("Invocation", "Invocación")}
+                  {t("Cohering", "Cohesión")}
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
@@ -93,8 +93,8 @@ const Join2025 = () => {
               </p>
               <p className="text-muted-foreground">
                 {t(
-                  "Community-wide launch! Ten days of events, connections, and collaborative experiences",
-                  "¡Lanzamiento comunitario! Diez días de eventos, conexiones y experiencias colaborativas",
+                  "Community-wide gathering! Ten days of events, connections, and collaborative experiences",
+                  "¡Reunión comunitaria! Diez días de eventos, conexiones y experiencias colaborativas",
                 )}
               </p>
             </Card>
@@ -226,8 +226,8 @@ const Join2025 = () => {
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t(
-                    "10 days of community experiences, with Invocation opening on the 16th and Integration closing on the 26th",
-                    "10 días de experiencias comunitarias, con Invocación abriendo el 16 y la Integración cerrando el 26",
+                    "10 days of community experiences, with Cohering opening on the 16th and Integration closing on the 26th",
+                    "10 días de experiencias comunitarias, con Cohesión abriendo el 16 y la Integración cerrando el 26",
                   )}
                 </p>
               </div>
