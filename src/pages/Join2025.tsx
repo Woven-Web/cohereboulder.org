@@ -5,7 +5,15 @@ import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { PhaseIndicator } from "@/components/PhaseIndicator";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Calendar, Users, Heart, Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Heart,
+  Sparkles,
+  MapPin,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 
 const Join2025 = () => {
   const { t } = useLanguage();
@@ -23,7 +31,7 @@ const Join2025 = () => {
           <p className="text-xl text-muted-foreground mb-8">
             {t(
               "Be part of an ongoing community weaving process that's creating resilience through connection",
-              "Sé parte de un proceso continuo de tejido comunitario que está creando resiliencia a través de la conexión"
+              "Sé parte de un proceso continuo de tejido comunitario que está creando resiliencia a través de la conexión",
             )}
           </p>
           <PhaseIndicator />
@@ -41,14 +49,14 @@ const Join2025 = () => {
             <p className="text-muted-foreground">
               {t(
                 "COhere Boulder is evolving from a one-time event into a living process. In 2025, we're launching our first full cycle of community weaving—a repeatable blueprint for building resilience that any community can adapt and implement.",
-                "COhere Boulder está evolucionando de un evento único a un proceso vivo. En 2025, estamos lanzando nuestro primer ciclo completo de tejido comunitario: un modelo repetible para construir resiliencia que cualquier comunidad puede adaptar e implementar."
+                "COhere Boulder está evolucionando de un evento único a un proceso vivo. En 2025, estamos lanzando nuestro primer ciclo completo de tejido comunitario: un modelo repetible para construir resiliencia que cualquier comunidad puede adaptar e implementar.",
               )}
             </p>
 
             <p className="text-muted-foreground">
               {t(
                 "This isn't just another conference or workshop series. It's a carefully designed journey that helps our community discover its own resilience patterns, strengthen existing connections, and create new pathways for collaboration.",
-                "Esto no es solo otra conferencia o serie de talleres. Es un viaje cuidadosamente diseñado que ayuda a nuestra comunidad a descubrir sus propios patrones de resiliencia, fortalecer las conexiones existentes y crear nuevos caminos para la colaboración."
+                "Esto no es solo otra conferencia o serie de talleres. Es un viaje cuidadosamente diseñado que ayuda a nuestra comunidad a descubrir sus propios patrones de resiliencia, fortalecer las conexiones existentes y crear nuevos caminos para la colaboración.",
               )}
             </p>
           </div>
@@ -68,7 +76,7 @@ const Join2025 = () => {
               <p className="text-muted-foreground">
                 {t(
                   "Core contributors gather to vision, commit resources, and shape the October experience",
-                  "Los contribuyentes principales se reúnen para visualizar, comprometer recursos y dar forma a la experiencia de octubre"
+                  "Los contribuyentes principales se reúnen para visualizar, comprometer recursos y dar forma a la experiencia de octubre",
                 )}
               </p>
             </Card>
@@ -86,7 +94,7 @@ const Join2025 = () => {
               <p className="text-muted-foreground">
                 {t(
                   "Community-wide launch! Ten days of events, connections, and collaborative experiences",
-                  "¡Lanzamiento comunitario! Diez días de eventos, conexiones y experiencias colaborativas"
+                  "¡Lanzamiento comunitario! Diez días de eventos, conexiones y experiencias colaborativas",
                 )}
               </p>
             </Card>
@@ -104,7 +112,7 @@ const Join2025 = () => {
               <p className="text-muted-foreground">
                 {t(
                   "Reflection, harvest learnings, and commit to ongoing connections",
-                  "Reflexión, cosecha de aprendizajes y compromiso con conexiones continuas"
+                  "Reflexión, cosecha de aprendizajes y compromiso con conexiones continuas",
                 )}
               </p>
             </Card>
@@ -123,17 +131,17 @@ const Join2025 = () => {
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">🌱</span>
-                {t("Join the October Experience", "Únete a la Experiencia de Octubre")}
+                {t("Join In - October 16-26", "Únete - 16-26 de Octubre")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "The main community experience happens October 16-26. Participate in as many or as few events as you like. Some are drop-in, others require registration. All are designed to weave our community web stronger.",
-                  "La experiencia comunitaria principal ocurre del 16 al 26 de octubre. Participa en tantos o tan pocos eventos como desees. Algunos son sin cita previa, otros requieren registro. Todos están diseñados para fortalecer nuestra red comunitaria."
+                  "Experience Boulder's culture, community, and creativity during our 10-day container. From the opening Invocation on October 16th to the closing Integration on October 26th, participate in curated events designed to weave our community web stronger. Drop in to what calls to you!",
+                  "Experimenta la cultura, comunidad y creatividad de Boulder durante nuestro contenedor de 10 días. Desde la Invocación de apertura el 16 de octubre hasta la Integración de cierre el 26 de octubre, participa en eventos curados diseñados para fortalecer nuestra red comunitaria. ¡Únete a lo que te llame!",
                 )}
               </p>
               <Link to="/calendar">
                 <Button variant="outline" className="gap-2">
-                  {t("View Calendar", "Ver Calendario")}
+                  {t("View October Events", "Ver Eventos de Octubre")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -142,31 +150,31 @@ const Join2025 = () => {
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">🤝</span>
-                {t("Become a Core Contributor", "Conviértete en Contribuyente Principal")}
+                {t("Organize With Us", "Organiza Con Nosotros")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "If you're ready to help shape and resource the COhere experience, consider joining as a core contributor. This involves attending the September 24 Invitation gathering and committing to support the October experience.",
-                  "Si estás listo para ayudar a dar forma y recursos a la experiencia COhere, considera unirte como contribuyente principal. Esto implica asistir a la reunión de Invitación del 24 de septiembre y comprometerse a apoyar la experiencia de octubre."
+                  "Help weave the web by exploring partnerships, supporting outreach, or anchoring a theme. We're looking for organizations and leaders who want to invest in Boulder's cultural vitality.",
+                  "Ayuda a tejer la red explorando asociaciones, apoyando el alcance o anclando un tema. Estamos buscando organizaciones y líderes que quieran invertir en la vitalidad cultural de Boulder.",
                 )}
               </p>
-              <p className="text-sm text-muted-foreground italic">
-                {t(
-                  "Core contributor invitations are by nomination. Connect with current organizers to learn more.",
-                  "Las invitaciones de contribuyentes principales son por nominación. Conecta con los organizadores actuales para aprender más."
-                )}
-              </p>
+              <Link to="/get-involved">
+                <Button variant="outline" className="gap-2">
+                  {t("Express Interest", "Expresar Interés")}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </Card>
 
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">✨</span>
-                {t("Host or Co-Create an Event", "Organiza o Co-Crea un Evento")}
+                {t("Host an Event", "Organiza un Evento")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "Have an idea for an experience that would strengthen our community web? We're looking for event hosts, facilitators, and co-creators who can offer workshops, gatherings, skill-shares, or other collaborative experiences during the October window.",
-                  "¿Tienes una idea para una experiencia que fortalecería nuestra red comunitaria? Estamos buscando anfitriones de eventos, facilitadores y co-creadores que puedan ofrecer talleres, reuniones, intercambios de habilidades u otras experiencias colaborativas durante la ventana de octubre."
+                  "Share your vision and gifts in support of the community and reach new audiences. We're looking for values-aligned events during October 16-26 that strengthen our community web.",
+                  "Comparte tu visión y dones en apoyo a la comunidad y alcanza nuevas audiencias. Estamos buscando eventos alineados con valores durante el 16-26 de octubre que fortalezcan nuestra red comunitaria.",
                 )}
               </p>
               <Link to="/co-create">
@@ -180,18 +188,20 @@ const Join2025 = () => {
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">💫</span>
-                {t("Stay Connected Year-Round", "Mantente Conectado Todo el Año")}
+                {t("Sponsor COhere", "Patrocina COhere")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "The COhere spirit doesn't end after October. Join our newsletter to stay connected with the community, receive updates about gatherings throughout the year, and be first to know about the 2026 cycle.",
-                  "El espíritu COhere no termina después de octubre. Únete a nuestro boletín para mantenerte conectado con la comunidad, recibir actualizaciones sobre reuniones durante todo el año y ser el primero en saber sobre el ciclo 2026."
+                  "Invest in community by supporting culture, connection, and accessibility. Highlight your business as a cornerstone of the Boulder community.",
+                  "Invierte en la comunidad apoyando la cultura, conexión y accesibilidad. Destaca tu negocio como una piedra angular de la comunidad de Boulder.",
                 )}
               </p>
-              <Button className="gap-2">
-                {t("Join Newsletter", "Únete al Boletín")}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <Link to="/get-involved">
+                <Button variant="outline" className="gap-2">
+                  {t("Become a Sponsor", "Conviértete en Patrocinador")}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </Card>
           </div>
         </div>
@@ -217,7 +227,7 @@ const Join2025 = () => {
                 <p className="text-sm text-muted-foreground mt-2">
                   {t(
                     "10 days of community experiences, with Invocation opening on the 16th and Integration closing on the 26th",
-                    "10 días de experiencias comunitarias, con Invocación abriendo el 16 y la Integración cerrando el 26"
+                    "10 días de experiencias comunitarias, con Invocación abriendo el 16 y la Integración cerrando el 26",
                   )}
                 </p>
               </div>
@@ -228,12 +238,15 @@ const Join2025 = () => {
                   {t("Where", "Dónde")}
                 </h3>
                 <p className="text-muted-foreground">
-                  {t("Throughout Boulder, Colorado", "Por todo Boulder, Colorado")}
+                  {t(
+                    "Throughout Boulder, Colorado",
+                    "Por todo Boulder, Colorado",
+                  )}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t(
                     "Events happen at various locations—parks, community centers, local businesses, and homes",
-                    "Los eventos ocurren en varios lugares: parques, centros comunitarios, negocios locales y hogares"
+                    "Los eventos ocurren en varios lugares: parques, centros comunitarios, negocios locales y hogares",
                   )}
                 </p>
               </div>
@@ -246,7 +259,7 @@ const Join2025 = () => {
                 <p className="text-muted-foreground">
                   {t(
                     "Open to all Boulder community members interested in building resilience through connection",
-                    "Abierto a todos los miembros de la comunidad de Boulder interesados en construir resiliencia a través de la conexión"
+                    "Abierto a todos los miembros de la comunidad de Boulder interesados en construir resiliencia a través de la conexión",
                   )}
                 </p>
               </div>
@@ -259,7 +272,7 @@ const Join2025 = () => {
                 <p className="text-muted-foreground">
                   {t(
                     "Mix of scheduled events and emergent gatherings. Some free, some with suggested donations",
-                    "Mezcla de eventos programados y reuniones emergentes. Algunos gratuitos, algunos con donaciones sugeridas"
+                    "Mezcla de eventos programados y reuniones emergentes. Algunos gratuitos, algunos con donaciones sugeridas",
                   )}
                 </p>
               </div>
@@ -270,11 +283,14 @@ const Join2025 = () => {
             <p className="text-lg text-muted-foreground mb-6">
               {t(
                 "Ready to be part of something transformative?",
-                "¿Listo para ser parte de algo transformador?"
+                "¿Listo para ser parte de algo transformador?",
               )}
             </p>
             <Link to="/calendar">
-              <Button size="lg" className="bg-gradient-to-r from-sage to-earth hover:from-sage/90 hover:to-earth/90">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-sage to-earth hover:from-sage/90 hover:to-earth/90"
+              >
                 {t("Explore October Events", "Explora Eventos de Octubre")}
               </Button>
             </Link>

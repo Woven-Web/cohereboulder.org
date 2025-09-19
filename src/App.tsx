@@ -13,6 +13,7 @@ import Join2025 from "./pages/Join2025";
 import Invitation2025 from "./pages/Invitation2025";
 import Archive from "./pages/Archive";
 import Archive2024 from "./pages/Archive2024";
+import GetInvolved from "./pages/GetInvolved";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/join-2025" element={<Join2025 />} />
             <Route path="/invitation-2025" element={<Invitation2025 />} />
+            <Route path="/get-involved" element={<GetInvolved />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/archive/2024" element={<Archive2024 />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
