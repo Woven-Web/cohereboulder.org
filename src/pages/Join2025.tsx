@@ -71,12 +71,12 @@ const Join2025 = () => {
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
-                {t("Ongoing Period", "Período Continuo")}
+                {t("October 16, 2025", "16 de Octubre, 2025")}
               </p>
               <p className="text-muted-foreground">
                 {t(
-                  "Community-created events and connecting between formal cycles",
-                  "Eventos creados por la comunidad y conexión entre ciclos formales",
+                  "Opening ceremony to launch the community gathering period",
+                  "Ceremonia de apertura para lanzar el período de reunión comunitaria",
                 )}
               </p>
             </Card>
@@ -89,12 +89,12 @@ const Join2025 = () => {
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
-                {t("October 16, 2025", "16 de Octubre, 2025")}
+                {t("October 16-26, 2025", "16-26 de Octubre, 2025")}
               </p>
               <p className="text-muted-foreground">
                 {t(
-                  "Community-wide gathering! Ten days of events, connections, and collaborative experiences",
-                  "¡Reunión comunitaria! Diez días de eventos, conexiones y experiencias colaborativas",
+                  "Ten days of community events, connections, and collaborative experiences",
+                  "Diez días de eventos comunitarios, conexiones y experiencias colaborativas",
                 )}
               </p>
             </Card>
@@ -226,8 +226,8 @@ const Join2025 = () => {
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t(
-                    "10 days of community experiences, with Cohering opening on the 16th and Integration closing on the 26th",
-                    "10 días de experiencias comunitarias, con Cohesión abriendo el 16 y la Integración cerrando el 26",
+                    "Invocation opens on the 16th, followed by 10 days of Cohering, closing with Integration on the 26th",
+                    "Invocación abre el 16, seguida de 10 días de Cohesión, cerrando con Integración el 26",
                   )}
                 </p>
               </div>

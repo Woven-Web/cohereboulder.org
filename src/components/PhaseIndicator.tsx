@@ -19,16 +19,16 @@ export const PhaseIndicator = ({
     {
       id: "invocation",
       name: "Invocation",
-      date: "Ongoing",
-      description: "Community events & connecting",
+      date: "Oct 16, 2025",
+      description: "Opening ceremony launch",
       color: "border-nature-teal text-nature-teal",
       bgColor: "bg-nature-teal/10"
     },
     {
       id: "cohering",
       name: "Cohering",
-      date: "Oct 16, 2025",
-      description: "Community-wide gathering",
+      date: "Oct 16-26, 2025",
+      description: "Community gathering period",
       color: "border-community-orange text-community-orange",
       bgColor: "bg-community-orange/10"
     },
