@@ -182,7 +182,7 @@ const Join2025 = () => {
                 className="gap-2"
                 onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
               >
-                {t("nav.supportCohere", "Apoyar COhere")}
+                {t("Support COhere", "Apoyar COhere")}
                 <Heart className="h-4 w-4" />
               </Button>
             </Card>
