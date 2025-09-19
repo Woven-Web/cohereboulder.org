@@ -7,7 +7,7 @@ export const translations = {
     about: { en: "About", es: "Acerca de" },
     register: { en: "Register", es: "Registrar" },
     join2025: { en: "Join 2025", es: "Únete 2025" },
-    participate: { en: "Participate", es: "Participar" },
+    participate: { en: "Co-Create", es: "Co-Crear" },
     calendar: { en: "Calendar", es: "Calendario" },
     archive: { en: "Archive", es: "Archivo" },
     announcement: {

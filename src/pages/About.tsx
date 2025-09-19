@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -204,16 +205,12 @@ const About = () => {
                 <h3 className="text-xl font-semibold mb-4">
                   Adaptable for Any Community
                 </h3>
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground">
                   This blueprint can be adapted to any community's needs. The
                   rhythm can be yearly, quarterly, or whatever serves your
                   place. The key is creating regular cycles of connection,
                   action, and integration.
                 </p>
-                <Button variant="outline">
-                  Learn How to Bring COhere to Your Community
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -346,10 +343,12 @@ const About = () => {
             </div>
 
             <div className="mt-12 text-center">
-              <Button variant="community" size="lg">
-                Join the Next Cycle
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <Link to="/join-2025">
+                <Button variant="community" size="lg">
+                  Join the Next Cycle
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
