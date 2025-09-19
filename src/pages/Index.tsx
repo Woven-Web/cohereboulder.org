@@ -47,16 +47,12 @@ const Index = () => {
                 <p className="text-muted-foreground mb-6">
                   {tr("hero.tenDayContainer")}
                 </p>
-                <a
-                  href="https://airtable.com/appvqbL9YkDWtQyRy/pagvobmgDlnnUG95A/form"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <Link to="/register">
                   <Button variant="community" size="lg">
                     {tr("hero.registerHere")}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                </a>
+                </Link>
               </CardContent>
             </Card>
           </div>
