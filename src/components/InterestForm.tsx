@@ -7,11 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-// Airtable configuration - Replace these with your actual values
-const AIRTABLE_API_KEY = "your_airtable_api_key_here";
-const AIRTABLE_BASE_ID = "your_base_id_here";
-const AIRTABLE_TABLE_NAME = "Participants";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormData {
   name: string;
@@ -49,34 +45,21 @@ export const InterestForm = () => {
     }));
   };
 
-  const submitToAirtable = async (data: FormData) => {
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
-    
-    const response = await fetch(airtableUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          'Name': data.name,
-          'Email': data.email,
-          'Organization': data.organization,
-          'Participation Types': data.participationTypes,
-          'Themes of Interest': data.themes,
-          'Message': data.message,
-          'Submitted Date': new Date().toISOString(),
-          'Status': 'New'
-        }
-      })
-    });
+  const submitToSupabase = async (data: FormData) => {
+    const { error } = await supabase
+      .from('interest_submissions')
+      .insert({
+        name: data.name,
+        email: data.email,
+        organization: data.organization || null,
+        participation_types: data.participationTypes,
+        themes: data.themes,
+        message: data.message || null,
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
     }
-
-    return response.json();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,14 +77,14 @@ export const InterestForm = () => {
     setIsLoading(true);
 
     try {
-      await submitToAirtable(formData);
+      await submitToSupabase(formData);
       setSubmitted(true);
       toast({
         title: "Success!",
         description: "Your interest has been submitted successfully.",
       });
     } catch (error) {
-      console.error('Error submitting to Airtable:', error);
+      console.error('Error submitting form:', error);
       toast({
         title: "Submission failed",
         description: "There was an error submitting your form. Please try again or contact us directly.",
@@ -129,11 +112,6 @@ export const InterestForm = () => {
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl">Express Your Interest</CardTitle>
-        {AIRTABLE_API_KEY === "your_airtable_api_key_here" && (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-sm">
-            <strong>Setup Required:</strong> Please update the Airtable API key and Base ID in the InterestForm component to enable form submissions.
-          </div>
-        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
