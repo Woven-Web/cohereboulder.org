@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Globe, User, LogOut } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { language, toggleLanguage, t, tr } = useLanguage();
-  const { user, signOut } = useAuth();
   const location = useLocation();
 
   const navItems = [
@@ -77,28 +69,6 @@ export const Navigation = () => {
                 <Globe className="h-4 w-4" />
                 <span className="text-sm font-medium">{language === "en" ? "En/Es" : "Es/En"}</span>
               </Button>
-
-              {/* Auth Section */}
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="rounded-full">
-                      <User className="h-4 w-4 mr-2" />
-                      {user.user_metadata?.full_name || user.email}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => signOut()}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button asChild variant="outline">
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -111,26 +81,6 @@ export const Navigation = () => {
                 <Globe className="h-4 w-4" />
                 <span className="text-sm">{language === "en" ? "En/Es" : "Es/En"}</span>
               </Button>
-              
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <User className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => signOut()}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button asChild variant="ghost" size="sm">
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-              )}
               
               <Button
                 variant="ghost"
