@@ -87,7 +87,7 @@ export function RegistrationForm() {
       if (regError) throw regError;
 
       // Insert/update email preferences
-      const { error: emailError } = await supabase
+      const { data: emailPref, error: emailError } = await supabase
         .from('email_preferences')
         .upsert({
           email: data.email,
@@ -96,11 +96,34 @@ export function RegistrationForm() {
           subscribed: true,
         }, {
           onConflict: 'email'
-        });
+        })
+        .select('unsubscribe_token')
+        .single();
 
       if (emailError) {
         console.error('Error updating email preferences:', emailError);
         // Don't throw here - registration should still succeed
+      }
+
+      // Send registration confirmation email
+      try {
+        const { error: emailSendError } = await supabase.functions.invoke('send-registration-confirmation', {
+          body: {
+            email: data.email,
+            fullName: data.fullName,
+            canAttendInvocation: data.canAttendInvocation === "yes",
+            canAttendIntegration: data.canAttendIntegration === "yes",
+            unsubscribeToken: emailPref?.unsubscribe_token
+          }
+        });
+
+        if (emailSendError) {
+          console.error('Error sending confirmation email:', emailSendError);
+          // Don't throw here - registration succeeded, email is just a bonus
+        }
+      } catch (emailSendError) {
+        console.error('Error calling email function:', emailSendError);
+        // Don't throw here - registration succeeded
       }
     } catch (error) {
       console.error('Error submitting to Supabase:', error);
