@@ -111,7 +111,7 @@ export const PhaseIndicator = ({
               {phase.name}
             </h3>
             {currentPhase === phase.id && (
-              <Badge className="mb-1" variant="outline" size="sm">Current</Badge>
+              <Badge className="mb-1 text-xs" variant="outline">Current</Badge>
             )}
             {showDates && (
               <p className="text-xs text-muted-foreground mb-1">{phase.date}</p>

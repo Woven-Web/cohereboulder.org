@@ -68,12 +68,11 @@ export const Navigation = () => {
               {/* Language Toggle */}
               <Button
                 variant="ghost"
-                size="icon"
                 onClick={toggleLanguage}
-                className="rounded-full"
+                className="rounded-full px-3 flex items-center gap-1"
               >
                 <Globe className="h-4 w-4" />
-                <span className="sr-only">Toggle language</span>
+                <span className="text-sm font-medium">{language === "en" ? "En/Es" : "Es/En"}</span>
               </Button>
             </div>
 
@@ -81,11 +80,11 @@ export const Navigation = () => {
             <div className="md:hidden flex items-center space-x-2">
               <Button
                 variant="ghost"
-                size="icon"
                 onClick={toggleLanguage}
-                className="rounded-full"
+                className="rounded-full px-2 flex items-center gap-1"
               >
                 <Globe className="h-4 w-4" />
+                <span className="text-sm">{language === "en" ? "En/Es" : "Es/En"}</span>
               </Button>
               <Button
                 variant="ghost"
