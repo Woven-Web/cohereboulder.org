@@ -17,6 +17,7 @@ import Archive2024 from "./pages/Archive2024";
 
 import Registration from "./pages/Registration";
 import Auth from "./pages/Auth";
+import AdminDashboard from "./pages/AdminDashboard";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import Unsubscribe from "./pages/Unsubscribe";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
               
               <Route path="/register" element={<Registration />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/verification-success" element={<VerificationSuccess />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/archive" element={<Archive />} />

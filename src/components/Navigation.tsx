@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Globe } from "lucide-react";
+import { Menu, X, Globe, Shield } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { language, toggleLanguage, t, tr } = useLanguage();
   const location = useLocation();
+  const { isAdmin } = useAdminStatus();
 
   const navItems = [
     {
@@ -59,6 +61,21 @@ export const Navigation = () => {
                   {item.label}
                 </Link>
               ))}
+
+              {/* Admin Dashboard Link */}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className={`transition-colors duration-300 font-medium flex items-center gap-2 ${
+                    location.pathname === "/admin"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Shield className="h-4 w-4" />
+                  {t("Admin", "Admin")}
+                </Link>
+              )}
 
               {/* Language Toggle */}
               <Button
@@ -115,6 +132,22 @@ export const Navigation = () => {
                     {item.label}
                   </Link>
                 ))}
+                
+                {/* Admin Dashboard Link - Mobile */}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className={`block px-3 py-2 transition-colors duration-300 font-medium flex items-center gap-2 ${
+                      location.pathname === "/admin"
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4" />
+                    {t("Admin", "Admin")}
+                  </Link>
+                )}
               </div>
             </div>
           )}
