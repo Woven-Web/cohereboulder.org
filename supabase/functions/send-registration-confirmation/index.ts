@@ -94,7 +94,7 @@ serve(async (req) => {
     `;
 
     const { error } = await resend.emails.send({
-      from: "COhere Boulder <events@resend.dev>",
+      from: "COhere Boulder <cohere@wovenweb.org>",
       to: [email],
       subject: "Welcome to COhere Boulder 2025 - Registration Confirmed! 🎉",
       html: htmlContent,
