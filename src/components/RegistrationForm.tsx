@@ -23,6 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COHERE_EVENT = "october2025"; // Current event identifier
 
@@ -43,6 +44,7 @@ interface RegistrationFormData {
 export function RegistrationForm() {
   const { toast } = useToast();
   const { user, signUp } = useAuth();
+  const { tr } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -148,9 +150,8 @@ export function RegistrationForm() {
           });
 
           toast({
-            title: "Welcome back!",
-            description:
-              "We found your existing registration. You can update your information below.",
+            title: tr("registration.welcomeBack"),
+            description: tr("registration.foundExisting"),
           });
         } else {
           // Profile exists but no registration for this event
@@ -232,9 +233,7 @@ export function RegistrationForm() {
         if (profileError) {
           if (profileError.code === "23505") {
             // Unique violation
-            throw new Error(
-              "This email is already registered. Please sign in to update your registration.",
-            );
+            throw new Error(tr("registration.errorMessages.emailRegistered"));
           }
           throw profileError;
         }
@@ -295,7 +294,7 @@ export function RegistrationForm() {
           if (insertError.code === "23505") {
             // Unique violation
             throw new Error(
-              "You're already registered for this event. Please refresh the page to see your registration.",
+              tr("registration.errorMessages.alreadyRegisteredEvent"),
             );
           }
           throw insertError;
@@ -345,13 +344,13 @@ export function RegistrationForm() {
     try {
       // Basic validation
       if (!formData.fullName || !formData.email) {
-        throw new Error("Please fill in all required fields");
+        throw new Error(tr("registration.errorMessages.fillRequired"));
       }
 
       // Check for duplicate email for non-authenticated users
       if (!user && emailExists && !formData.password) {
         throw new Error(
-          "This email is already registered. Please sign in to update your registration or create an account with a password.",
+          tr("registration.errorMessages.emailRegisteredPassword"),
         );
       }
 
@@ -372,9 +371,8 @@ export function RegistrationForm() {
         // Show verification message instead of completing registration
         setNeedsVerification(true);
         toast({
-          title: "Account created!",
-          description:
-            "Please check your email to verify your account, then complete your registration.",
+          title: tr("registration.errorMessages.accountCreated"),
+          description: tr("registration.errorMessages.checkEmailVerify"),
         });
         setIsLoading(false);
         return;
@@ -385,16 +383,17 @@ export function RegistrationForm() {
 
       toast({
         title: isEditMode
-          ? "Registration updated successfully!"
-          : "Registration submitted successfully!",
+          ? tr("registration.errorMessages.registrationUpdatedSuccess")
+          : tr("registration.errorMessages.registrationSubmittedSuccess"),
         description: isEditMode
-          ? "Your registration has been updated with your latest information."
-          : "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
+          ? tr("registration.errorMessages.registrationUpdatedDescription")
+          : tr("registration.errorMessages.registrationSubmittedDescription"),
       });
     } catch (error) {
       toast({
-        title: "Error submitting registration",
-        description: error.message || "Please try again later.",
+        title: tr("registration.errorMessages.errorSubmitting"),
+        description:
+          error.message || tr("registration.errorMessages.tryAgainLater"),
         variant: "destructive",
       });
     } finally {
@@ -409,15 +408,13 @@ export function RegistrationForm() {
           <div className="text-center space-y-4">
             <Mail className="h-16 w-16 text-blue-500 mx-auto" />
             <h2 className="text-2xl font-bold text-blue-700">
-              Check Your Email!
+              {tr("registration.checkYourEmail")}
             </h2>
             <p className="text-muted-foreground">
-              We've sent you a verification link. Please verify your email
-              address to complete your registration.
+              {tr("registration.verificationSent")}
             </p>
             <p className="text-sm text-muted-foreground">
-              After verification, you can return to this page to complete your
-              registration for COhere Boulder 2025.
+              {tr("registration.afterVerification")}
             </p>
           </div>
         </CardContent>
@@ -432,17 +429,18 @@ export function RegistrationForm() {
           <div className="text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
             <h2 className="text-2xl font-bold text-green-700">
-              {isEditMode ? "Registration Updated!" : "Registration Complete!"}
+              {isEditMode
+                ? tr("registration.registrationUpdated")
+                : tr("registration.registrationComplete")}
             </h2>
             <p className="text-muted-foreground">
               {isEditMode
-                ? "Your registration has been successfully updated."
-                : "Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey."}
+                ? tr("registration.registrationUpdateMessage")
+                : tr("registration.registrationSuccessMessage")}
             </p>
             {!isEditMode && (
               <p className="text-sm text-muted-foreground">
-                You'll receive a confirmation email shortly with next steps and
-                event details.
+                {tr("registration.confirmationEmailMessage")}
               </p>
             )}
 
@@ -454,7 +452,7 @@ export function RegistrationForm() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2"
                 >
-                  Support COhere with a Donation
+                  {tr("registration.supportWithDonation")}
                   <ExternalLink className="h-4 w-4" />
                 </a>
               </Button>
@@ -466,10 +464,10 @@ export function RegistrationForm() {
   }
 
   const coCreatingOptions = [
-    "I would like to host or collaboratively design an event during COhere",
-    "I would like to host a community dinner (potluck style) during COhere",
-    "I would like to volunteer in supporting an event",
-    "I would like to help tell the stories that unfold through writing, photo, or video",
+    tr("registration.coCreatingOptions.hostEvent"),
+    tr("registration.coCreatingOptions.hostDinner"),
+    tr("registration.coCreatingOptions.volunteer"),
+    tr("registration.coCreatingOptions.tellStories"),
   ];
 
   return (
@@ -478,35 +476,29 @@ export function RegistrationForm() {
       <Card>
         <CardContent className="p-8">
           <h1 className="text-3xl font-bold mb-4">
-            {isEditMode ? "Update Your Registration" : "Register"} for COhere
-            Boulder 2025
+            {isEditMode
+              ? tr("registration.updateTitle")
+              : tr("registration.title")}
           </h1>
           {isEditMode ? (
             <p className="text-muted-foreground mb-4">
-              Welcome back! You can update your registration information below.
-              Changes will be saved immediately.
+              {tr("registration.welcomeBack")}{" "}
+              {tr("registration.foundExisting")}
             </p>
           ) : (
             <>
               <p className="text-muted-foreground mb-4">
-                Please complete this form to receive communications and stay
-                up-to-date on what's unfolding with COhere. Registration is free
-                and all events are opt-in.
+                {tr("registration.description")}
               </p>
               <p className="text-primary font-medium">
-                We can't wait to weave you into the fabric of this community!
+                {tr("registration.weaveYou")}
               </p>
             </>
           )}
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              COhere stokes Boulder's culture and engagement by connecting
-              residents, organizations, artists, leaders, and innovators during
-              a 10-day container (and beyond!). Through a curated calendar of
-              values-aligned events and memorable opening & closing gatherings,
-              we strengthen community ties, highlight our city's vibrancy, and
-              inspire action toward a more regenerative, resilient future.
+              {tr("registration.cohereDescription")}
             </p>
           </div>
         </CardContent>
@@ -517,15 +509,15 @@ export function RegistrationForm() {
         <CardHeader>
           <CardTitle>
             {isEditMode
-              ? "Update Registration Details"
-              : "Registration Details"}
+              ? tr("registration.updateDetails")
+              : tr("registration.registrationDetails")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name *</Label>
+                <Label htmlFor="fullName">{tr("registration.fullName")}</Label>
                 <Input
                   id="fullName"
                   name="fullName"
@@ -536,7 +528,7 @@ export function RegistrationForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="email">{tr("registration.email")}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -548,18 +540,18 @@ export function RegistrationForm() {
                 />
                 {user && (
                   <p className="text-sm text-muted-foreground">
-                    Using your account email
+                    {tr("registration.usingAccountEmail")}
                   </p>
                 )}
                 {!user && emailExists && !isCheckingEmail && (
                   <div className="flex items-center gap-2 text-amber-600">
                     <AlertCircle className="h-4 w-4" />
                     <p className="text-sm">
-                      This email is already registered.
+                      {tr("registration.emailAlreadyRegistered")}
                       <Link to="/auth" className="ml-1 underline">
-                        Sign in
+                        {tr("registration.signIn")}
                       </Link>{" "}
-                      to update your registration.
+                      {tr("registration.toUpdateRegistration")}
                     </p>
                   </div>
                 )}
@@ -568,17 +560,18 @@ export function RegistrationForm() {
 
             {!user && !isEditMode && (
               <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold">Create an Account (Optional)</h3>
+                <h3 className="font-semibold">
+                  {tr("registration.createAccount")}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Create an account to save your registration, access member
-                  features, and stay updated on COhere events.
+                  {tr("registration.createAccountDescription")}
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="password">
-                    Password{" "}
+                    {tr("registration.password")}{" "}
                     {emailExists
-                      ? "(required to register with this email)"
-                      : "(optional)"}
+                      ? tr("registration.passwordRequired")
+                      : tr("registration.passwordOptional")}
                   </Label>
                   <Input
                     id="password"
@@ -588,42 +581,46 @@ export function RegistrationForm() {
                     onChange={handleInputChange}
                     placeholder={
                       emailExists
-                        ? "Create a password to claim this email"
-                        : "Choose a password to create an account"
+                        ? tr("registration.createPasswordClaim")
+                        : tr("registration.choosePassword")
                     }
                     minLength={6}
                     required={emailExists}
                   />
                   <p className="text-xs text-muted-foreground">
                     {emailExists
-                      ? "Create an account with a password to register with this email address"
-                      : "Leave blank to register without creating an account"}
+                      ? tr("registration.createAccountWithPassword")
+                      : tr("registration.leaveBlankNoAccount")}
                   </p>
                 </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Label htmlFor="phoneNumber">
+                {tr("registration.phoneNumber")}
+              </Label>
               <Input
                 id="phoneNumber"
                 name="phoneNumber"
                 type="tel"
-                placeholder="Your phone number"
+                placeholder={tr("registration.phoneNumberPlaceholder")}
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
               />
               <p className="text-xs text-muted-foreground">
-                So we can invite you to the Telegram group if you miss the link.
+                {tr("registration.phoneNumberHelp")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="organizations">Organization(s)</Label>
+              <Label htmlFor="organizations">
+                {tr("registration.organizations")}
+              </Label>
               <Input
                 id="organizations"
                 name="organizations"
-                placeholder="Your organization(s) or business"
+                placeholder={tr("registration.organizationsPlaceholder")}
                 value={formData.organizations}
                 onChange={handleInputChange}
               />
@@ -632,15 +629,9 @@ export function RegistrationForm() {
             {/* Event Attendance */}
             <div className="space-y-4">
               <div className="space-y-3">
-                <Label>
-                  Can you attend the Invocation (Opening) Gathering?
-                </Label>
+                <Label>{tr("registration.canAttendInvocation")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  COhere will officially kick-off with the Invocation--a
-                  gathering on the evening of Thursday, October 16th at The
-                  Riverside. The event will include a shared meal, speakers,
-                  activities, and live music. This is the best way to get
-                  oriented to COhere and the events to come.
+                  {tr("registration.invocationDescription")}
                 </p>
                 <RadioGroup
                   value={formData.canAttendInvocation}
@@ -653,26 +644,29 @@ export function RegistrationForm() {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="invocation-yes" />
-                    <Label htmlFor="invocation-yes">Yes, I can attend</Label>
+                    <Label htmlFor="invocation-yes">
+                      {tr("registration.yesCanAttend")}
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="invocation-no" />
-                    <Label htmlFor="invocation-no">No, I cannot attend</Label>
+                    <Label htmlFor="invocation-no">
+                      {tr("registration.noCannotAttend")}
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="maybe" id="invocation-maybe" />
-                    <Label htmlFor="invocation-maybe">Maybe</Label>
+                    <Label htmlFor="invocation-maybe">
+                      {tr("registration.maybe")}
+                    </Label>
                   </div>
                 </RadioGroup>
               </div>
 
               <div className="space-y-3">
-                <Label>Can you attend the Integration (Closing) Party?</Label>
+                <Label>{tr("registration.canAttendIntegration")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  COhere closes with a festive Integration gathering to
-                  celebrate the connections and new possibilities formed during
-                  the container. There will be harvest activities, live music,
-                  food and drink, and more.
+                  {tr("registration.integrationDescription")}
                 </p>
                 <RadioGroup
                   value={formData.canAttendIntegration}
@@ -685,15 +679,21 @@ export function RegistrationForm() {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="integration-yes" />
-                    <Label htmlFor="integration-yes">Yes, I can attend</Label>
+                    <Label htmlFor="integration-yes">
+                      {tr("registration.yesCanAttend")}
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="integration-no" />
-                    <Label htmlFor="integration-no">No, I cannot attend</Label>
+                    <Label htmlFor="integration-no">
+                      {tr("registration.noCannotAttend")}
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="maybe" id="integration-maybe" />
-                    <Label htmlFor="integration-maybe">Maybe</Label>
+                    <Label htmlFor="integration-maybe">
+                      {tr("registration.maybe")}
+                    </Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -701,12 +701,12 @@ export function RegistrationForm() {
 
             <div className="space-y-2">
               <Label htmlFor="howDidYouHear">
-                How did you hear about COhere?
+                {tr("registration.howDidYouHear")}
               </Label>
               <Textarea
                 id="howDidYouHear"
                 name="howDidYouHear"
-                placeholder="Tell us how you discovered COhere..."
+                placeholder={tr("registration.howDidYouHearPlaceholder")}
                 rows={3}
                 value={formData.howDidYouHear}
                 onChange={handleInputChange}
@@ -717,12 +717,10 @@ export function RegistrationForm() {
             <div className="space-y-4">
               <div>
                 <Label className="text-lg font-semibold">
-                  Co-creating COhere
+                  {tr("registration.coCreatingCOhere")}
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Everyone is invited to contribute their gifts to help
-                  co-create COhere the ways you feel called. Let us know if we
-                  should reach out to you about any of the following...
+                  {tr("registration.coCreatingDescription")}
                 </p>
               </div>
 
@@ -749,17 +747,13 @@ export function RegistrationForm() {
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <Label className="font-semibold">
-                    Financial Contribution
+                    {tr("registration.financialContribution")}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    This event is free. It is offered in the spirit of the gift
-                    and your participation is a beautiful contribution.
+                    {tr("registration.financialDescription1")}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    If you are in a position to contribute financially--no
-                    matter the amount--to cover raw expenses and support the
-                    organizers and artists making this happen, please consider
-                    donating:
+                    {tr("registration.financialDescription2")}
                   </p>
                   <Button
                     type="button"
@@ -774,7 +768,7 @@ export function RegistrationForm() {
                     }
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Donate to Support COhere
+                    {tr("registration.donateToSupport")}
                   </Button>
                 </div>
               </CardContent>
@@ -782,12 +776,12 @@ export function RegistrationForm() {
 
             <div className="space-y-2">
               <Label htmlFor="additionalNotes">
-                Additional Notes or Comments
+                {tr("registration.additionalNotes")}
               </Label>
               <Textarea
                 id="additionalNotes"
                 name="additionalNotes"
-                placeholder="Anything else you'd like us to know?"
+                placeholder={tr("registration.additionalNotesPlaceholder")}
                 rows={3}
                 value={formData.additionalNotes}
                 onChange={handleInputChange}
@@ -797,7 +791,7 @@ export function RegistrationForm() {
             {/* Email Consent */}
             <div className="space-y-4 p-4 bg-muted/20 rounded-lg border">
               <Label className="text-base font-semibold">
-                Communication Preferences
+                {tr("registration.communicationPreferences")}
               </Label>
               <div className="space-y-3">
                 <div className="flex items-start space-x-2">
@@ -813,12 +807,10 @@ export function RegistrationForm() {
                   />
                   <div className="space-y-1">
                     <label htmlFor="subscribed" className="text-sm font-medium">
-                      Yes, I'd like to receive COhere updates and community news
+                      {tr("registration.subscribeNewsletter")}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Get regular updates about upcoming events during COhere,
-                      community news, and opportunities to connect. You can
-                      update your preferences at any time.
+                      {tr("registration.subscribeDescription")}
                     </p>
                   </div>
                 </div>
@@ -833,7 +825,9 @@ export function RegistrationForm() {
               }
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditMode ? "Update Registration" : "Submit Registration"}
+              {isEditMode
+                ? tr("registration.updateRegistration")
+                : tr("registration.submitRegistration")}
             </Button>
           </form>
         </CardContent>

@@ -882,6 +882,543 @@ export const translations = {
       es: "Video de COhere 2024",
     },
   },
+
+  // About Page
+  about: {
+    title: {
+      en: "The COhere Blueprint",
+      es: "El Modelo COhere",
+    },
+    subtitle: {
+      en: "A repeatable model for weaving resilient communities through intentional gathering and connection",
+      es: "Un modelo repetible para tejer comunidades resilientes a través de encuentros y conexiones intencionales",
+    },
+    threePhaseRhythm: {
+      en: "The Three-Phase Rhythm",
+      es: "El Ritmo de Tres Fases",
+    },
+    invitation: {
+      title: { en: "Invitation", es: "Invitación" },
+      subtitle: {
+        en: "Core contributors gather",
+        es: "Se reúnen los contribuyentes principales",
+      },
+      description: {
+        en: "For those who feel the call to contribute in a more direct way to weaving a more resilient local community, we invite you to gather and co-create what COhere can be.",
+        es: "Para aquellos que sienten el llamado a contribuir de manera más directa a tejer una comunidad local más resiliente, los invitamos a reunirse y co-crear lo que COhere puede ser.",
+      },
+      whatHappens: { en: "What happens:", es: "Qué sucede:" },
+      points: {
+        p1: {
+          en: "Reflect on events to steward",
+          es: "Reflexionar sobre eventos para administrar",
+        },
+        p2: {
+          en: "Connect with other contributors",
+          es: "Conectar con otros contribuyentes",
+        },
+        p3: {
+          en: "Commit to enacting visions",
+          es: "Comprometerse a realizar visiones",
+        },
+        p4: {
+          en: "Shape the upcoming cycle",
+          es: "Dar forma al próximo ciclo",
+        },
+      },
+      note: {
+        en: "Note: Invitations are typically sent personally to those ready to step into greater service",
+        es: "Nota: Las invitaciones se envían típicamente de forma personal a aquellos listos para asumir un mayor servicio",
+      },
+    },
+    invocation: {
+      title: { en: "Invocation", es: "Invocación" },
+      subtitle: { en: "Community-wide launch", es: "Lanzamiento comunitario" },
+      description: {
+        en: "We come together as a whole community to speak, listen, dance, sing, celebrate and envision. We invoke the spirit of COhere, calling forward a spirit of togetherness and a more beautiful vision for our home.",
+        es: "Nos reunimos como comunidad completa para hablar, escuchar, bailar, cantar, celebrar y visualizar. Invocamos el espíritu de COhere, llamando a un espíritu de unión y una visión más hermosa para nuestro hogar.",
+      },
+      whatHappens: { en: "What happens:", es: "Qué sucede:" },
+      points: {
+        p1: { en: "Community-wide celebration", es: "Celebración comunitaria" },
+        p2: {
+          en: "Launch the 10-day experience",
+          es: "Lanzar la experiencia de 10 días",
+        },
+        p3: {
+          en: "Share offerings and events",
+          es: "Compartir ofertas y eventos",
+        },
+        p4: {
+          en: "Set collective intentions",
+          es: "Establecer intenciones colectivas",
+        },
+        p5: {
+          en: "Invoke the spirit of connection",
+          es: "Invocar el espíritu de conexión",
+        },
+      },
+    },
+    integration: {
+      title: { en: "Integration", es: "Integración" },
+      subtitle: {
+        en: "Reflection & commitments",
+        es: "Reflexión y compromisos",
+      },
+      description: {
+        en: "We gather to explore what has unfolded, reflect on who we are as a community, and touch into what now feels possible. We deepen our bonds and form commitments to continue showing up and weaving our resilient local community.",
+        es: "Nos reunimos para explorar lo que ha surgido, reflexionar sobre quiénes somos como comunidad y tocar lo que ahora se siente posible. Profundizamos nuestros lazos y formamos compromisos para continuar presentándonos y tejiendo nuestra comunidad local resiliente.",
+      },
+      whatHappens: { en: "What happens:", es: "Qué sucede:" },
+      points: {
+        p1: {
+          en: "Share stories and learnings",
+          es: "Compartir historias y aprendizajes",
+        },
+        p2: {
+          en: "Recognize our interconnectivity",
+          es: "Reconocer nuestra interconectividad",
+        },
+        p3: {
+          en: "Form ongoing commitments",
+          es: "Formar compromisos continuos",
+        },
+        p4: { en: "Shape what comes next", es: "Dar forma a lo que viene" },
+        p5: { en: "Celebrate and rest", es: "Celebrar y descansar" },
+      },
+    },
+    journeyQuote: {
+      en: "The journey of weaving our resilience never begins and never ends. COhere is simply a blueprint to call deeper attention to this process in which we all engage.",
+      es: "El viaje de tejer nuestra resiliencia nunca comienza ni termina. COhere es simplemente un modelo para prestar mayor atención a este proceso en el que todos participamos.",
+    },
+    whyThisWorks: {
+      title: {
+        en: "Why This Blueprint Works",
+        es: "Por Qué Funciona Este Modelo",
+      },
+      naturalRhythm: {
+        title: { en: "Natural Rhythm", es: "Ritmo Natural" },
+        description: {
+          en: "The three phases mirror how communities naturally grow: small groups commit, the wider community celebrates, then we integrate learnings. This creates sustainable change rather than one-time events.",
+          es: "Las tres fases reflejan cómo las comunidades crecen naturalmente: grupos pequeños se comprometen, la comunidad más amplia celebra, luego integramos aprendizajes. Esto crea un cambio sostenible en lugar de eventos únicos.",
+        },
+      },
+      distributedLeadership: {
+        title: { en: "Distributed Leadership", es: "Liderazgo Distribuido" },
+        description: {
+          en: "Rather than top-down organization, COhere emerges from many people offering their gifts. This creates resilience—the web remains strong even as individual threads change.",
+          es: "En lugar de una organización de arriba hacia abajo, COhere emerge de muchas personas ofreciendo sus dones. Esto crea resiliencia: la red permanece fuerte incluso cuando los hilos individuales cambian.",
+        },
+      },
+      crossPollination: {
+        title: { en: "Cross-Pollination", es: "Polinización Cruzada" },
+        description: {
+          en: "By bringing together diverse communities that don't usually interact, we create unexpected connections and collaborations that strengthen the whole ecosystem.",
+          es: "Al reunir comunidades diversas que generalmente no interactúan, creamos conexiones y colaboraciones inesperadas que fortalecen todo el ecosistema.",
+        },
+      },
+      ongoingProcess: {
+        title: { en: "Ongoing Process", es: "Proceso Continuo" },
+        description: {
+          en: "COhere isn't a one-time festival—it's an ongoing rhythm that deepens with each cycle. Relationships strengthen, trust builds, and our collective capacity grows.",
+          es: "COhere no es un festival único: es un ritmo continuo que se profundiza con cada ciclo. Las relaciones se fortalecen, la confianza se construye y nuestra capacidad colectiva crece.",
+        },
+      },
+      adaptable: {
+        title: {
+          en: "Adaptable for Any Community",
+          es: "Adaptable para Cualquier Comunidad",
+        },
+        description: {
+          en: "This blueprint can be adapted to any community's needs. The rhythm can be yearly, quarterly, or whatever serves your place. The key is creating regular cycles of connection, action, and integration.",
+          es: "Este modelo puede adaptarse a las necesidades de cualquier comunidad. El ritmo puede ser anual, trimestral o lo que sirva a tu lugar. La clave es crear ciclos regulares de conexión, acción e integración.",
+        },
+      },
+    },
+    livingValues: {
+      title: { en: "Living Values", es: "Valores Vivientes" },
+      activeParticipation: {
+        title: { en: "Active Participation", es: "Participación Activa" },
+        description: {
+          en: "This game, much like life, becomes more fun when we are all leaning in, being courageously participatory and supporting one another.",
+          es: "Este juego, como la vida, se vuelve más divertido cuando todos nos involucramos, siendo valientemente participativos y apoyándonos mutuamente.",
+        },
+      },
+      careForCollective: {
+        title: { en: "Care for the Collective", es: "Cuidado del Colectivo" },
+        description: {
+          en: "Let's nurture our collective well-being, ensuring that everyone feels held, valued, and seen. Together, we thrive.",
+          es: "Nutramos nuestro bienestar colectivo, asegurando que todos se sientan sostenidos, valorados y vistos. Juntos, prosperamos.",
+        },
+      },
+      radicalInterdependence: {
+        title: {
+          en: "Radical Interdependence",
+          es: "Interdependencia Radical",
+        },
+        description: {
+          en: "Be bold with offers and requests. Let's find out what's possible when we lean on one another.",
+          es: "Sé audaz con ofertas y solicitudes. Descubramos qué es posible cuando nos apoyamos mutuamente.",
+        },
+      },
+      rootsToFruits: {
+        title: { en: "Roots to Fruits", es: "De las Raíces a los Frutos" },
+        description: {
+          en: "We focus on foundational relationships and shared context. From strong roots, beautiful fruits naturally emerge.",
+          es: "Nos enfocamos en relaciones fundamentales y contexto compartido. De raíces fuertes, emergen naturalmente frutos hermosos.",
+        },
+      },
+      anchorAbundance: {
+        title: { en: "Anchor Abundance", es: "Anclar la Abundancia" },
+        description: {
+          en: "Collectively, we are so resourced. Give generously, and trust that the rising tide will lift all ships.",
+          es: "Colectivamente, tenemos tantos recursos. Da generosamente y confía en que la marea creciente elevará todos los barcos.",
+        },
+      },
+      amplifyGood: {
+        title: { en: "Amplify What's Good", es: "Amplifica lo Bueno" },
+        description: {
+          en: "Celebrate and amplify the aspects of individuals, this place, and this community we love.",
+          es: "Celebra y amplifica los aspectos de los individuos, este lugar y esta comunidad que amamos.",
+        },
+      },
+    },
+    whereThisComesFrom: {
+      title: { en: "Where This Comes From", es: "De Dónde Viene Esto" },
+      p1: {
+        en: "COhere emerged from a group of friends asking: How do we weave a more resilient community in Boulder? How do we move beyond individual efforts to collective thriving?",
+        es: "COhere surgió de un grupo de amigos preguntando: ¿Cómo tejemos una comunidad más resiliente en Boulder? ¿Cómo pasamos de esfuerzos individuales a la prosperidad colectiva?",
+      },
+      p2: {
+        en: "We drew inspiration from indigenous wisdom about community, from emergence theory, from the mycelial networks that connect forests, and from movements worldwide that are reimagining how we live together.",
+        es: "Nos inspiramos en la sabiduría indígena sobre la comunidad, en la teoría de la emergencia, en las redes miceliales que conectan los bosques y en movimientos mundiales que están reimaginando cómo vivimos juntos.",
+      },
+      p3: {
+        en: "What started as conversations became gatherings, which became the first COhere cycle in 2024. Now, we're learning and evolving with each iteration, discovering together what's possible when a community commits to weaving itself stronger.",
+        es: "Lo que comenzó como conversaciones se convirtió en reuniones, que se convirtieron en el primer ciclo de COhere en 2024. Ahora, estamos aprendiendo y evolucionando con cada iteración, descubriendo juntos lo que es posible cuando una comunidad se compromete a tejerse más fuerte.",
+      },
+      p4: {
+        en: "COhere is part of a wider emergence happening globally—communities remembering how to be in right relationship with each other and the land. We're connected to and inspired by regenerative movements everywhere.",
+        es: "COhere es parte de una emergencia más amplia que está sucediendo globalmente: comunidades recordando cómo estar en relación correcta entre sí y con la tierra. Estamos conectados e inspirados por movimientos regenerativos en todas partes.",
+      },
+    },
+    joinNextCycle: {
+      en: "Join the Next Cycle",
+      es: "Únete al Próximo Ciclo",
+    },
+  },
+
+  // Registration Form
+  registration: {
+    title: {
+      en: "Register for COhere Boulder 2025",
+      es: "Regístrate para COhere Boulder 2025",
+    },
+    updateTitle: {
+      en: "Update Your Registration for COhere Boulder 2025",
+      es: "Actualiza Tu Registro para COhere Boulder 2025",
+    },
+    welcomeBack: {
+      en: "Welcome back!",
+      es: "¡Bienvenido de vuelta!",
+    },
+    foundExisting: {
+      en: "We found your existing registration. You can update your information below.",
+      es: "Encontramos tu registro existente. Puedes actualizar tu información a continuación.",
+    },
+    description: {
+      en: "Please complete this form to receive communications and stay up-to-date on what's unfolding with COhere. Registration is free and all events are opt-in.",
+      es: "Por favor completa este formulario para recibir comunicaciones y mantenerte al día sobre lo que está sucediendo con COhere. El registro es gratuito y todos los eventos son opcionales.",
+    },
+    weaveYou: {
+      en: "We can't wait to weave you into the fabric of this community!",
+      es: "¡No podemos esperar para tejerte en el tejido de esta comunidad!",
+    },
+    cohereDescription: {
+      en: "COhere stokes Boulder's culture and engagement by connecting residents, organizations, artists, leaders, and innovators during a 10-day container (and beyond!). Through a curated calendar of values-aligned events and memorable opening & closing gatherings, we strengthen community ties, highlight our city's vibrancy, and inspire action toward a more regenerative, resilient future.",
+      es: "COhere aviva la cultura y el compromiso de Boulder conectando residentes, organizaciones, artistas, líderes e innovadores durante un contenedor de 10 días (¡y más allá!). A través de un calendario curado de eventos alineados con valores y reuniones memorables de apertura y cierre, fortalecemos los lazos comunitarios, destacamos la vitalidad de nuestra ciudad e inspiramos acción hacia un futuro más regenerativo y resiliente.",
+    },
+    registrationDetails: {
+      en: "Registration Details",
+      es: "Detalles del Registro",
+    },
+    updateDetails: {
+      en: "Update Registration Details",
+      es: "Actualizar Detalles del Registro",
+    },
+    fullName: {
+      en: "Full Name *",
+      es: "Nombre Completo *",
+    },
+    email: {
+      en: "Email Address *",
+      es: "Dirección de Correo Electrónico *",
+    },
+    usingAccountEmail: {
+      en: "Using your account email",
+      es: "Usando el correo electrónico de tu cuenta",
+    },
+    emailAlreadyRegistered: {
+      en: "This email is already registered.",
+      es: "Este correo electrónico ya está registrado.",
+    },
+    signIn: {
+      en: "Sign in",
+      es: "Iniciar sesión",
+    },
+    toUpdateRegistration: {
+      en: "to update your registration.",
+      es: "para actualizar tu registro.",
+    },
+    createAccount: {
+      en: "Create an Account (Optional)",
+      es: "Crear una Cuenta (Opcional)",
+    },
+    createAccountDescription: {
+      en: "Create an account to save your registration, access member features, and stay updated on COhere events.",
+      es: "Crea una cuenta para guardar tu registro, acceder a funciones de miembro y mantenerte actualizado sobre los eventos de COhere.",
+    },
+    password: {
+      en: "Password",
+      es: "Contraseña",
+    },
+    passwordRequired: {
+      en: "(required to register with this email)",
+      es: "(requerida para registrarte con este correo electrónico)",
+    },
+    passwordOptional: {
+      en: "(optional)",
+      es: "(opcional)",
+    },
+    createPasswordClaim: {
+      en: "Create a password to claim this email",
+      es: "Crea una contraseña para reclamar este correo electrónico",
+    },
+    choosePassword: {
+      en: "Choose a password to create an account",
+      es: "Elige una contraseña para crear una cuenta",
+    },
+    createAccountWithPassword: {
+      en: "Create an account with a password to register with this email address",
+      es: "Crea una cuenta con una contraseña para registrarte con esta dirección de correo electrónico",
+    },
+    leaveBlankNoAccount: {
+      en: "Leave blank to register without creating an account",
+      es: "Deja en blanco para registrarte sin crear una cuenta",
+    },
+    phoneNumber: {
+      en: "Phone Number",
+      es: "Número de Teléfono",
+    },
+    phoneNumberPlaceholder: {
+      en: "Your phone number",
+      es: "Tu número de teléfono",
+    },
+    phoneNumberHelp: {
+      en: "So we can invite you to the Telegram group if you miss the link.",
+      es: "Para que podamos invitarte al grupo de Telegram si pierdes el enlace.",
+    },
+    organizations: {
+      en: "Organization(s)",
+      es: "Organización(es)",
+    },
+    organizationsPlaceholder: {
+      en: "Your organization(s) or business",
+      es: "Tu(s) organización(es) o negocio",
+    },
+    canAttendInvocation: {
+      en: "Can you attend the Invocation (Opening) Gathering?",
+      es: "¿Puedes asistir a la Reunión de Invocación (Apertura)?",
+    },
+    invocationDescription: {
+      en: "COhere will officially kick-off with the Invocation--a gathering on the evening of Thursday, October 16th at The Riverside. The event will include a shared meal, speakers, activities, and live music. This is the best way to get oriented to COhere and the events to come.",
+      es: "COhere comenzará oficialmente con la Invocación: una reunión en la noche del jueves 16 de octubre en The Riverside. El evento incluirá una comida compartida, oradores, actividades y música en vivo. Esta es la mejor manera de orientarse sobre COhere y los eventos por venir.",
+    },
+    canAttendIntegration: {
+      en: "Can you attend the Integration (Closing) Party?",
+      es: "¿Puedes asistir a la Fiesta de Integración (Cierre)?",
+    },
+    integrationDescription: {
+      en: "COhere closes with a festive Integration gathering to celebrate the connections and new possibilities formed during the container. There will be harvest activities, live music, food and drink, and more.",
+      es: "COhere cierra con una reunión festiva de Integración para celebrar las conexiones y nuevas posibilidades formadas durante el contenedor. Habrá actividades de cosecha, música en vivo, comida y bebida, y más.",
+    },
+    yesCanAttend: {
+      en: "Yes, I can attend",
+      es: "Sí, puedo asistir",
+    },
+    noCannotAttend: {
+      en: "No, I cannot attend",
+      es: "No, no puedo asistir",
+    },
+    maybe: {
+      en: "Maybe",
+      es: "Tal vez",
+    },
+    howDidYouHear: {
+      en: "How did you hear about COhere?",
+      es: "¿Cómo te enteraste de COhere?",
+    },
+    howDidYouHearPlaceholder: {
+      en: "Tell us how you discovered COhere...",
+      es: "Cuéntanos cómo descubriste COhere...",
+    },
+    coCreatingCOhere: {
+      en: "Co-creating COhere",
+      es: "Co-creando COhere",
+    },
+    coCreatingDescription: {
+      en: "Everyone is invited to contribute their gifts to help co-create COhere the ways you feel called. Let us know if we should reach out to you about any of the following...",
+      es: "Todos están invitados a contribuir con sus dones para ayudar a co-crear COhere de las formas que se sientan llamados. Haznos saber si deberíamos contactarte sobre alguno de los siguientes...",
+    },
+    coCreatingOptions: {
+      hostEvent: {
+        en: "I would like to host or collaboratively design an event during COhere",
+        es: "Me gustaría organizar o diseñar colaborativamente un evento durante COhere",
+      },
+      hostDinner: {
+        en: "I would like to host a community dinner (potluck style) during COhere",
+        es: "Me gustaría organizar una cena comunitaria (estilo potluck) durante COhere",
+      },
+      volunteer: {
+        en: "I would like to volunteer in supporting an event",
+        es: "Me gustaría ser voluntario para apoyar un evento",
+      },
+      tellStories: {
+        en: "I would like to help tell the stories that unfold through writing, photo, or video",
+        es: "Me gustaría ayudar a contar las historias que se desarrollan a través de la escritura, fotos o video",
+      },
+    },
+    financialContribution: {
+      en: "Financial Contribution",
+      es: "Contribución Financiera",
+    },
+    financialDescription1: {
+      en: "This event is free. It is offered in the spirit of the gift and your participation is a beautiful contribution.",
+      es: "Este evento es gratuito. Se ofrece en el espíritu del don y tu participación es una hermosa contribución.",
+    },
+    financialDescription2: {
+      en: "If you are in a position to contribute financially--no matter the amount--to cover raw expenses and support the organizers and artists making this happen, please consider donating:",
+      es: "Si estás en posición de contribuir financieramente--sin importar la cantidad--para cubrir gastos básicos y apoyar a los organizadores y artistas que hacen esto posible, por favor considera donar:",
+    },
+    donateToSupport: {
+      en: "Donate to Support COhere",
+      es: "Donar para Apoyar COhere",
+    },
+    additionalNotes: {
+      en: "Additional Notes or Comments",
+      es: "Notas o Comentarios Adicionales",
+    },
+    additionalNotesPlaceholder: {
+      en: "Anything else you'd like us to know?",
+      es: "¿Algo más que te gustaría que supiéramos?",
+    },
+    communicationPreferences: {
+      en: "Communication Preferences",
+      es: "Preferencias de Comunicación",
+    },
+    subscribeNewsletter: {
+      en: "Yes, I'd like to receive COhere updates and community news",
+      es: "Sí, me gustaría recibir actualizaciones de COhere y noticias de la comunidad",
+    },
+    subscribeDescription: {
+      en: "Get regular updates about upcoming events during COhere, community news, and opportunities to connect. You can update your preferences at any time.",
+      es: "Recibe actualizaciones regulares sobre próximos eventos durante COhere, noticias de la comunidad y oportunidades para conectar. Puedes actualizar tus preferencias en cualquier momento.",
+    },
+    submitRegistration: {
+      en: "Submit Registration",
+      es: "Enviar Registro",
+    },
+    updateRegistration: {
+      en: "Update Registration",
+      es: "Actualizar Registro",
+    },
+    registrationComplete: {
+      en: "Registration Complete!",
+      es: "¡Registro Completo!",
+    },
+    registrationUpdated: {
+      en: "Registration Updated!",
+      es: "¡Registro Actualizado!",
+    },
+    registrationSuccessMessage: {
+      en: "Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey.",
+      es: "Gracias por registrarte para COhere Boulder 2025. Estamos emocionados de que te unas a nuestro viaje de construcción comunitaria.",
+    },
+    registrationUpdateMessage: {
+      en: "Your registration has been successfully updated.",
+      es: "Tu registro ha sido actualizado exitosamente.",
+    },
+    confirmationEmailMessage: {
+      en: "You'll receive a confirmation email shortly with next steps and event details.",
+      es: "Recibirás un correo de confirmación pronto con los próximos pasos y detalles del evento.",
+    },
+    supportWithDonation: {
+      en: "Support COhere with a Donation",
+      es: "Apoya COhere con una Donación",
+    },
+    checkYourEmail: {
+      en: "Check Your Email!",
+      es: "¡Revisa Tu Correo Electrónico!",
+    },
+    verificationSent: {
+      en: "We've sent you a verification link. Please verify your email address to complete your registration.",
+      es: "Te hemos enviado un enlace de verificación. Por favor verifica tu dirección de correo electrónico para completar tu registro.",
+    },
+    afterVerification: {
+      en: "After verification, you can return to this page to complete your registration for COhere Boulder 2025.",
+      es: "Después de la verificación, puedes volver a esta página para completar tu registro para COhere Boulder 2025.",
+    },
+    errorMessages: {
+      fillRequired: {
+        en: "Please fill in all required fields",
+        es: "Por favor completa todos los campos requeridos",
+      },
+      emailRegistered: {
+        en: "This email is already registered. Please sign in to update your registration.",
+        es: "Este correo electrónico ya está registrado. Por favor inicia sesión para actualizar tu registro.",
+      },
+      emailRegisteredPassword: {
+        en: "This email is already registered. Please sign in to update your registration or create an account with a password.",
+        es: "Este correo electrónico ya está registrado. Por favor inicia sesión para actualizar tu registro o crea una cuenta con una contraseña.",
+      },
+      alreadyRegisteredEvent: {
+        en: "You're already registered for this event. Please refresh the page to see your registration.",
+        es: "Ya estás registrado para este evento. Por favor actualiza la página para ver tu registro.",
+      },
+      errorSubmitting: {
+        en: "Error submitting registration",
+        es: "Error al enviar el registro",
+      },
+      tryAgainLater: {
+        en: "Please try again later.",
+        es: "Por favor intenta de nuevo más tarde.",
+      },
+      accountCreated: {
+        en: "Account created!",
+        es: "¡Cuenta creada!",
+      },
+      checkEmailVerify: {
+        en: "Please check your email to verify your account, then complete your registration.",
+        es: "Por favor revisa tu correo electrónico para verificar tu cuenta, luego completa tu registro.",
+      },
+      registrationUpdatedSuccess: {
+        en: "Registration updated successfully!",
+        es: "¡Registro actualizado exitosamente!",
+      },
+      registrationSubmittedSuccess: {
+        en: "Registration submitted successfully!",
+        es: "¡Registro enviado exitosamente!",
+      },
+      registrationUpdatedDescription: {
+        en: "Your registration has been updated with your latest information.",
+        es: "Tu registro ha sido actualizado con tu información más reciente.",
+      },
+      registrationSubmittedDescription: {
+        en: "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
+        es: "Gracias por registrarte para COhere Boulder 2025. Estaremos en contacto pronto con más detalles.",
+      },
+    },
+  },
 };
 
 // Helper function to get nested translation
