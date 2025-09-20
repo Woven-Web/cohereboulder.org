@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Globe } from "lucide-react";
 import heroImage from "@/assets/hero-community.jpg";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const HeroSection = () => {
+  const { tr, language } = useLanguage();
+
   return (
     <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-earth-light to-background relative overflow-hidden">
       {/* Background Pattern */}
@@ -25,40 +28,39 @@ export const HeroSection = () => {
             <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
               [CO]<span className="text-primary">here</span>
             </h1>
-            
+
             <div className="space-y-4">
               <p className="text-xl lg:text-2xl text-muted-foreground font-light">
-                A 10-day immersive game about people, place & cross-pollination.
+                {tr("heroSection.immersiveGame")}
               </p>
-              
-              <p className="text-lg text-muted-foreground italic">
-                Un juego inmersivo de 10 días sobre comunidad, tierra y polinización cruzada.
-              </p>
+
+              {language === "en" && (
+                <p className="text-lg text-muted-foreground italic">
+                  Un juego inmersivo de 10 días sobre comunidad, tierra y
+                  polinización cruzada.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center space-x-2 text-lg font-medium">
               <Calendar className="h-5 w-5 text-primary" />
-              <span className="text-foreground">October 17-26th, 2025 across Boulder</span>
+              <span className="text-foreground">{tr("heroSection.dates")}</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              variant="community" 
-              size="lg" 
-              className="text-lg px-8 py-6"
-            >
-              2025 Registration Coming Soon!
+            <Button variant="community" size="lg" className="text-lg px-8 py-6">
+              {tr("heroSection.registrationComing")}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               size="lg"
               className="text-lg px-8 py-6 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
             >
               <Globe className="mr-2 h-5 w-5" />
-              Regístrate en español
+              {tr("heroSection.registerSpanish")}
             </Button>
           </div>
         </div>
@@ -69,7 +71,7 @@ export const HeroSection = () => {
           <div className="relative">
             <img
               src={heroImage}
-              alt="Community cross-pollination artwork"
+              alt={tr("heroSection.communityArt")}
               className="w-full h-auto rounded-2xl shadow-warm transform group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent rounded-2xl"></div>
@@ -79,8 +81,14 @@ export const HeroSection = () => {
 
       {/* Floating Elements */}
       <div className="absolute top-1/4 right-1/4 w-3 h-3 bg-community-orange rounded-full animate-float"></div>
-      <div className="absolute bottom-1/3 left-1/4 w-2 h-2 bg-nature-teal rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-      <div className="absolute top-3/4 right-1/3 w-4 h-4 bg-nature-green rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+      <div
+        className="absolute bottom-1/3 left-1/4 w-2 h-2 bg-nature-teal rounded-full animate-float"
+        style={{ animationDelay: "1s" }}
+      ></div>
+      <div
+        className="absolute top-3/4 right-1/3 w-4 h-4 bg-nature-green rounded-full animate-float"
+        style={{ animationDelay: "2s" }}
+      ></div>
     </section>
   );
 };

@@ -79,11 +79,10 @@ const Index = () => {
         <section className="py-20 bg-gradient-to-br from-earth-light/30 to-transparent">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl lg:text-4xl font-bold text-center mb-8">
-              Experience COhere
+              {tr("recap2024.title")}
             </h2>
             <p className="text-xl text-center text-muted-foreground mb-8">
-              See what happened during our inaugural 10-day immersive experience
-              in 2024
+              {tr("recap2024.description")}
             </p>
 
             {/* YouTube Video Embed */}
@@ -91,7 +90,7 @@ const Index = () => {
               <div className="aspect-video rounded-lg overflow-hidden shadow-warm">
                 <iframe
                   src="https://www.youtube.com/embed/wMDpVsSGY5M"
-                  title="COhere 2024 Video"
+                  title={tr("recap2024.videoTitle")}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -100,9 +99,7 @@ const Index = () => {
             </div>
 
             <p className="text-center text-muted-foreground mt-6">
-              COhere 2024 brought together 300+ community members for 50+ events
-              across Boulder, weaving stronger connections and planting seeds
-              for our regenerative future.
+              {tr("recap2024.summary")}
             </p>
           </div>
         </section>

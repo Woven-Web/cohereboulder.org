@@ -170,10 +170,26 @@ export const translations = {
       es: "Ecosistema Regenerativo de Boulder",
     },
     description: {
-      en: "Together with Climatique, we're mapping the rich tapestry of projects and groups working towards regenerative change in our community.",
-      es: "Junto con Climatique, estamos mapeando el rico tapiz de proyectos y grupos que trabajan hacia el cambio regenerativo en nuestra comunidad.",
+      en: "Together with Climatique, we created this map to demonstrate the rich tapestry of projects and groups working towards regenerative change in our community.",
+      es: "Junto con Climatique, creamos este mapa para demostrar el rico tapiz de proyectos y grupos que trabajan hacia el cambio regenerativo en nuestra comunidad.",
     },
-    exploreMap: { en: "Explore the Living Map", es: "Explora el Mapa Vivo" },
+    onlyTaste: {
+      en: "It is only a taste — some of the most visible and approachable 'nodes' in our ecosystem. We encourage you to use this to start exploring, but know that there's much more to discover.",
+      es: "Es solo una muestra: algunos de los 'nodos' más visibles y accesibles en nuestro ecosistema. Te animamos a usar esto para comenzar a explorar, pero sabe que hay mucho más por descubrir.",
+    },
+    whichParts: {
+      en: "Which parts of the Boulder web excite you?",
+      es: "¿Qué partes de la red de Boulder te emocionan?",
+    },
+    whatNotDiscovered: {
+      en: "What have you not discovered yet?",
+      es: "¿Qué no has descubierto todavía?",
+    },
+    encourageInterplay: {
+      en: "To encourage more interplay across parts of the Boulder community we're making maps that bring visibility to our web.",
+      es: "Para fomentar más interacción entre las partes de la comunidad de Boulder, estamos haciendo mapas que dan visibilidad a nuestra red.",
+    },
+    exploreMap: { en: "Explore the Map", es: "Explora el Mapa" },
     addProject: { en: "Add Your Project", es: "Añade Tu Proyecto" },
   },
 
@@ -239,6 +255,244 @@ export const translations = {
     wovenWeb: {
       en: "A Woven Web Initiative",
       es: "Una Iniciativa de Red Tejida",
+    },
+  },
+
+  // Mission Section
+  mission: {
+    pivotalPoint: {
+      en: "We're at a pivotal point…",
+      es: "Estamos en un punto crucial...",
+    },
+    withSoMuch: {
+      en: "With so much unfolding in the wider world, our local mission is to",
+      es: "Con tanto sucediendo en el mundo, nuestra misión local es",
+    },
+    connectCommunity: {
+      en: "connect community",
+      es: "conectar la comunidad",
+    },
+    toCreate: {
+      en: "to create a",
+      es: "para crear un",
+    },
+    regenerativeFuture: {
+      en: "regenerative, resilient future.",
+      es: "futuro regenerativo y resiliente.",
+    },
+    togetherCelebrate: {
+      en: "Together, let's celebrate the bright spots unfolding here in our community and weave them together to increase our resilience, our sense of place, & our felt sense of belonging.",
+      es: "Juntos, celebremos los puntos brillantes que se desarrollan aquí en nuestra comunidad y tejámoslos juntos para aumentar nuestra resiliencia, nuestro sentido de lugar y nuestro sentido de pertenencia.",
+    },
+    cohereIsA: {
+      en: "[CO]here is a…",
+      es: "[CO]here es un...",
+    },
+    hexGraphicPlaceholder: {
+      en: "Hexagonal explanation graphic from original site",
+      es: "Gráfico hexagonal explicativo del sitio original",
+    },
+    whatDoesJoining: {
+      en: "What does joining this game look like?",
+      es: "¿Cómo es unirse a este juego?",
+    },
+    attendEvents: {
+      en: "Attend events on our",
+      es: "Asiste a eventos en nuestro",
+    },
+    coCuratedCalendar: {
+      en: "co-curated calendar",
+      es: "calendario co-curado",
+    },
+    practiceElements: {
+      en: "Practice elements of shared",
+      es: "Practica elementos del",
+    },
+    gameplay: {
+      en: "gameplay",
+      es: "juego compartido",
+    },
+    throughoutDaily: {
+      en: "throughout your daily life",
+      es: "a lo largo de tu vida diaria",
+    },
+    stepInto: {
+      en: "Step into a 'community activator' mindset",
+      es: "Adopta una mentalidad de 'activador comunitario'",
+    },
+    putYourself: {
+      en: "Put yourself and things you care about 'on the map'",
+      es: "Pon lo que te importa y a ti mismo 'en el mapa'",
+    },
+    thisIsForYou: {
+      en: "This is for you if…",
+      es: "Esto es para ti si...",
+    },
+    youCare: {
+      en: "You care about community and want to meet others who do too.",
+      es: "Te importa la comunidad y quieres conocer a otros que también.",
+    },
+    youHaveGift: {
+      en: "You have a gift and want to offer it.",
+      es: "Tienes un don y quieres ofrecerlo.",
+    },
+    youLooking: {
+      en: "You're looking to collaborate or co-create with folks who care about our future.",
+      es: "Buscas colaborar o co-crear con personas que se preocupan por nuestro futuro.",
+    },
+    youCurious: {
+      en: "You are curious what Boulder has to offer.",
+      es: "Tienes curiosidad sobre lo que Boulder tiene para ofrecer.",
+    },
+  },
+
+  // Values Section
+  values: {
+    title: {
+      en: "Our Norms and Values",
+      es: "Nuestras Normas y Valores",
+    },
+    subtitle: {
+      en: "The principles that guide our community game and create a foundation for meaningful connection.",
+      es: "Los principios que guían nuestro juego comunitario y crean una base para conexiones significativas.",
+    },
+    activeParticipation: {
+      title: {
+        en: "Active participation",
+        es: "Participación activa",
+      },
+      description: {
+        en: "This game, much like life, becomes more fun when we are all leaning in, being courageously participatory and supporting one another.",
+        es: "Este juego, como la vida, se vuelve más divertido cuando todos nos involucramos, siendo valientemente participativos y apoyándonos mutuamente.",
+      },
+    },
+    careForCollective: {
+      title: {
+        en: "Care for the collective",
+        es: "Cuidado del colectivo",
+      },
+      description: {
+        en: "Let's nurture our collective well-being, ensuring that everyone feels held, valued, and seen. Together, we thrive.",
+        es: "Nutramos nuestro bienestar colectivo, asegurando que todos se sientan sostenidos, valorados y vistos. Juntos, prosperamos.",
+      },
+    },
+    radicalInterdependence: {
+      title: {
+        en: "Radical INTERdependence",
+        es: "INTERdependencia radical",
+      },
+      description: {
+        en: "Be bold with offers and requests. Let's find out what's possible when we lean on one another.",
+        es: "Sé audaz con ofertas y solicitudes. Descubramos qué es posible cuando nos apoyamos mutuamente.",
+      },
+    },
+    fromRoots: {
+      title: {
+        en: "From the roots come the fruits",
+        es: "De las raíces vienen los frutos",
+      },
+      description: {
+        en: "We are capable of great things! But for these 10 days, let's focus on foundational relationships and shared context over outputs.",
+        es: "¡Somos capaces de grandes cosas! Pero durante estos 10 días, enfoquémonos en relaciones fundamentales y contexto compartido sobre resultados.",
+      },
+      ps: {
+        en: "P.S. There's no end to this game and we're stoked for the fruits to come!",
+        es: "P.D. ¡No hay fin para este juego y estamos emocionados por los frutos que vendrán!",
+      },
+    },
+    anchorAbundance: {
+      title: {
+        en: "Anchor abundance",
+        es: "Anclar la abundancia",
+      },
+      description: {
+        en: "Collectively, we are so resourced. Give generously, and trust that the rising tide will lift all ships. If you vision that would benefit from resources, see if other's in the community can contribute.",
+        es: "Colectivamente, tenemos tantos recursos. Da generosamente y confía en que la marea creciente elevará todos los barcos. Si tu visión se beneficiaría de recursos, ve si otros en la comunidad pueden contribuir.",
+      },
+    },
+    amplifyGood: {
+      title: {
+        en: "Amplify what's good",
+        es: "Amplifica lo bueno",
+      },
+      description: {
+        en: "Celebrate and amplify the aspects of individuals, this place, and this community we love.",
+        es: "Celebra y amplifica los aspectos de los individuos, este lugar y esta comunidad que amamos.",
+      },
+    },
+  },
+
+  // Support Section
+  support: {
+    title: {
+      en: "Support our mission",
+      es: "Apoya nuestra misión",
+    },
+    madeItFree: {
+      en: "We made [CO]here free because we believe everyone deserves to be woven into a strong, resilient community.",
+      es: "Hicimos [CO]here gratuito porque creemos que todos merecen estar tejidos en una comunidad fuerte y resiliente.",
+    },
+    fundedBy: {
+      en: "[CO]here is funded by the individuals on the organizing team, and whatever donations we receive. If you believe in this mission and are able to support financially, your donation will help reimburse our expenses and support the people who have spent hundreds of hours bringing [CO]here to life!",
+      es: "[CO]here es financiado por los individuos del equipo organizador y las donaciones que recibimos. Si crees en esta misión y puedes apoyar financieramente, tu donación ayudará a reembolsar nuestros gastos y apoyar a las personas que han dedicado cientos de horas para dar vida a [CO]here!",
+    },
+    considerDonation: {
+      en: "Consider making a tax-deductible donation to our 501(c)(3) via:",
+      es: "Considera hacer una donación deducible de impuestos a nuestro 501(c)(3) a través de:",
+    },
+    venmo: { en: "Venmo", es: "Venmo" },
+    paypal: { en: "PayPal", es: "PayPal" },
+    communityImpact: {
+      en: "Community Impact",
+      es: "Impacto Comunitario",
+    },
+    yourSupport: {
+      en: "Your support helps us keep this experience accessible to everyone in our community, regardless of their financial situation. Together, we're building a more connected Boulder.",
+      es: "Tu apoyo nos ayuda a mantener esta experiencia accesible para todos en nuestra comunidad, independientemente de su situación financiera. Juntos, estamos construyendo un Boulder más conectado.",
+    },
+  },
+
+  // Hero Section (old HeroSection.tsx component)
+  heroSection: {
+    immersiveGame: {
+      en: "A 10-day immersive game about people, place & cross-pollination.",
+      es: "Un juego inmersivo de 10 días sobre comunidad, tierra y polinización cruzada.",
+    },
+    dates: {
+      en: "October 17-26th, 2025 across Boulder",
+      es: "17-26 de Octubre, 2025 en todo Boulder",
+    },
+    registrationComing: {
+      en: "2025 Registration Coming Soon!",
+      es: "¡Registro 2025 Próximamente!",
+    },
+    registerSpanish: {
+      en: "Regístrate en español",
+      es: "Regístrate en español",
+    },
+    communityArt: {
+      en: "Community cross-pollination artwork",
+      es: "Arte de polinización cruzada comunitaria",
+    },
+  },
+
+  // 2024 Recap
+  recap2024: {
+    title: {
+      en: "Experience COhere",
+      es: "Experimenta COhere",
+    },
+    description: {
+      en: "See what happened during our inaugural 10-day immersive experience in 2024",
+      es: "Mira lo que sucedió durante nuestra experiencia inmersiva inaugural de 10 días en 2024",
+    },
+    summary: {
+      en: "COhere 2024 brought together 300+ community members for 50+ events across Boulder, weaving stronger connections and planting seeds for our regenerative future.",
+      es: "COhere 2024 reunió a más de 300 miembros de la comunidad para más de 50 eventos en todo Boulder, tejiendo conexiones más fuertes y plantando semillas para nuestro futuro regenerativo.",
+    },
+    videoTitle: {
+      en: "COhere 2024 Video",
+      es: "Video de COhere 2024",
     },
   },
 };
