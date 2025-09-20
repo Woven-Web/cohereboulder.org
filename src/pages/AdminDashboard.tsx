@@ -24,6 +24,7 @@ import {
   Download,
   Loader2,
   Shield,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -57,6 +58,25 @@ interface RegistrationData {
   updated_at: string;
 }
 
+interface MapSuggestion {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string;
+  category: string | null;
+  website: string | null;
+  contact_email: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    email: string;
+    user_metadata?: {
+      full_name?: string;
+    };
+  };
+}
+
 const COHERE_EVENT = "october2025";
 
 const AdminDashboard = () => {
@@ -65,6 +85,7 @@ const AdminDashboard = () => {
   const { toast } = useToast();
 
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [mapSuggestions, setMapSuggestions] = useState<MapSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
 
@@ -126,6 +147,38 @@ const AdminDashboard = () => {
       ];
 
       setProfiles(combinedProfiles);
+
+      // Load map suggestions
+      const { data: suggestionsData, error: suggestionsError } = await supabase
+        .from("map_suggestions")
+        .select(
+          `
+          *,
+          user:user_id (
+            email,
+            raw_user_meta_data
+          )
+        `,
+        )
+        .order("created_at", { ascending: false });
+
+      if (suggestionsError) {
+        console.error("Error loading map suggestions:", suggestionsError);
+      } else {
+        // Transform the data to match our interface
+        const transformedSuggestions = (suggestionsData || []).map(
+          (s: any) => ({
+            ...s,
+            user: s.user
+              ? {
+                  email: s.user.email,
+                  user_metadata: s.user.raw_user_meta_data,
+                }
+              : undefined,
+          }),
+        );
+        setMapSuggestions(transformedSuggestions);
+      }
     } catch (error) {
       console.error("Error loading admin data:", error);
       toast({
@@ -213,11 +266,6 @@ const AdminDashboard = () => {
   const subscribedProfiles = profiles.filter((p) => p.subscribed);
   const authenticatedProfiles = profiles.filter((p) => p.user_id !== null);
   const adminProfiles = profiles.filter((p) => p.role === "admin");
-  const coCreatorProfiles = profiles.filter((p) =>
-    p.registrations?.some(
-      (r) => r.co_creating_interests && r.co_creating_interests.length > 0,
-    ),
-  );
 
   if (adminLoading) {
     return (
@@ -338,12 +386,12 @@ const AdminDashboard = () => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Co-Creators
+                    Map Suggestions
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-xl font-bold">
-                    {coCreatorProfiles.length}
+                    {mapSuggestions.length}
                   </div>
                 </CardContent>
               </Card>
@@ -370,7 +418,9 @@ const AdminDashboard = () => {
                 <TabsTrigger value="all">All Profiles</TabsTrigger>
                 <TabsTrigger value="registered">Registered</TabsTrigger>
                 <TabsTrigger value="unregistered">Not Registered</TabsTrigger>
-                <TabsTrigger value="cocreators">Co-Creators</TabsTrigger>
+                <TabsTrigger value="map-suggestions">
+                  Map Suggestions
+                </TabsTrigger>
                 <TabsTrigger value="unsubscribed">Unsubscribed</TabsTrigger>
               </TabsList>
 
@@ -411,15 +461,34 @@ const AdminDashboard = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="cocreators">
-                <ProfilesList
-                  profiles={coCreatorProfiles}
-                  title="Co-Creators"
-                  description="Profiles interested in co-creating events and activities"
-                  exportFilename="cocreators.csv"
-                  onExport={() =>
-                    exportToCsv(coCreatorProfiles, "cocreators.csv")
-                  }
+              <TabsContent value="map-suggestions">
+                <MapSuggestionsList
+                  suggestions={mapSuggestions}
+                  onStatusChange={async (id, status) => {
+                    try {
+                      const { error } = await supabase
+                        .from("map_suggestions")
+                        .update({ status })
+                        .eq("id", id);
+
+                      if (error) throw error;
+
+                      toast({
+                        title: "Success",
+                        description: `Suggestion status updated to ${status}`,
+                      });
+
+                      // Reload data
+                      loadProfilesData();
+                    } catch (error) {
+                      console.error("Error updating suggestion status:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to update suggestion status",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 />
               </TabsContent>
 
@@ -629,6 +698,126 @@ const ProfilesList: React.FC<ProfilesListProps> = ({
                 </div>
               );
             })
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Component to display map suggestions
+interface MapSuggestionsListProps {
+  suggestions: MapSuggestion[];
+  onStatusChange: (id: string, status: string) => Promise<void>;
+}
+
+const MapSuggestionsList: React.FC<MapSuggestionsListProps> = ({
+  suggestions,
+  onStatusChange,
+}) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Map Suggestions</CardTitle>
+        <CardDescription>
+          Community suggestions for additions to the ecosystem map
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {suggestions.length === 0 ? (
+            <p className="text-muted-foreground">No map suggestions yet.</p>
+          ) : (
+            suggestions.map((suggestion) => (
+              <div key={suggestion.id} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{suggestion.name}</h3>
+                      <Badge
+                        variant={
+                          suggestion.status === "approved"
+                            ? "default"
+                            : suggestion.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {suggestion.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Submitted by: {suggestion.contact_email}
+                    </p>
+                    {suggestion.user && (
+                      <p className="text-sm text-muted-foreground">
+                        User:{" "}
+                        {suggestion.user.user_metadata?.full_name ||
+                          suggestion.user.email}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(suggestion.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <p className="text-sm">
+                    <strong>Description:</strong> {suggestion.description}
+                  </p>
+                </div>
+
+                {suggestion.website && (
+                  <p className="text-sm mt-2">
+                    <strong>Website:</strong>{" "}
+                    <a
+                      href={suggestion.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {suggestion.website}
+                    </a>
+                  </p>
+                )}
+
+                {suggestion.category && (
+                  <p className="text-sm mt-2">
+                    <strong>Category:</strong> {suggestion.category}
+                  </p>
+                )}
+
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStatusChange(suggestion.id, "approved")}
+                    disabled={suggestion.status === "approved"}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStatusChange(suggestion.id, "pending")}
+                    disabled={suggestion.status === "pending"}
+                  >
+                    Set Pending
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onStatusChange(suggestion.id, "rejected")}
+                    disabled={suggestion.status === "rejected"}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </CardContent>
