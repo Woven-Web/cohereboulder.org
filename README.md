@@ -1,73 +1,228 @@
-# Welcome to your Lovable project
+# COhere Boulder 🌱
 
-## Project info
+A community web application for Boulder's regenerative ecosystem, fostering connection and collaboration among changemakers.
 
-**URL**: https://lovable.dev/projects/0db2af12-4b3b-492c-b29e-c2dbee86d7b6
+## About COhere Boulder
 
-## How can I edit this code?
+COhere Boulder is a 10-day immersive community experience focused on strengthening the regenerative ecosystem in Boulder, Colorado. This web application serves as the digital hub for the community, providing:
 
-There are several ways of editing your application.
+- 🗺️ **Ecosystem Mapping** - Visual representation of Boulder's regenerative community network
+- 📅 **Event Calendar** - Schedule of community gatherings and collaborative sessions
+- 🤝 **Co-Creation Opportunities** - Ways for community members to contribute and participate
+- 🌍 **Bilingual Support** - Full Spanish/English translations for inclusive engagement
 
-**Use Lovable**
+### Our Mission
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/0db2af12-4b3b-492c-b29e-c2dbee86d7b6) and start prompting.
+To weave together Boulder's regenerative community through shared experiences, collaborative events, and meaningful connections. We believe in creating a resilient, interconnected ecosystem where every member can contribute to positive change.
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Live Site
 
-**Use your preferred IDE**
+Visit [cohereboulder.org](https://cohereboulder.org) to explore the community platform.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Technology Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+This modern web application is built with:
 
-Follow these steps:
+- **Frontend Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **Styling**: Tailwind CSS with custom earth-themed design system
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Database**: Supabase for backend services
+- **Routing**: React Router v6
+- **Forms**: React Hook Form with Zod validation
+- **Deployment**: GitHub Pages with GitHub Actions CI/CD
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📋 Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Node.js 18+ and npm (install via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Git for version control
+- A Supabase account (for database features)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🏃 Quick Start
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Woven-Web/cohereboulder.org.git
+cd cohereboulder.org
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Set up environment variables
+
+Copy the example environment file and add your Supabase credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Supabase project details:
+
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 4. Start the development server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at [http://localhost:8080](http://localhost:8080)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📚 Development
 
-**Use GitHub Codespaces**
+### Available Scripts
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+# Development server with hot reload
+npm run dev
 
-## What technologies are used for this project?
+# Build for production
+npm run build
 
-This project is built with:
+# Preview production build locally
+npm run preview
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Run linting
+npm run lint
 
-## How can I deploy this project?
+# Type checking
+npx tsc --noEmit
+```
 
-Simply open [Lovable](https://lovable.dev/projects/0db2af12-4b3b-492c-b29e-c2dbee86d7b6) and click on Share -> Publish.
+### Project Structure
 
-## Can I connect a custom domain to my Lovable project?
+```
+src/
+├── pages/          # Route components
+│   ├── Index.tsx   # Landing page
+│   ├── About.tsx   # Event details
+│   ├── CoCreate.tsx # Co-creation opportunities
+│   └── Calendar.tsx # Event calendar
+├── components/     # Reusable components
+│   ├── ui/        # shadcn/ui components
+│   └── ...        # App-specific components
+├── contexts/      # React context providers
+├── hooks/         # Custom React hooks
+├── lib/           # Utilities and helpers
+└── assets/        # Images and static files
+```
 
-Yes, you can!
+### Design System
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+The application features a custom earth-themed design system with:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Color Palette**: earth, sage, sunset, sky themes
+- **Animations**: Smooth float, pulse, and sway effects
+- **Gradients**: Community-inspired gradient backgrounds
+- **Typography**: Clean, accessible font hierarchy
+
+## 🚢 Deployment
+
+The site automatically deploys to GitHub Pages when changes are pushed to the `main` branch.
+
+For manual deployment or troubleshooting, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Setting up GitHub Secrets
+
+For deployment to work, configure these secrets in your GitHub repository:
+
+1. Go to Settings → Secrets and variables → Actions
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Here's how you can help:
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests and linting (`npm run lint && npm run build`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to your branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Code Standards
+
+- **TypeScript**: Strict mode enabled for type safety
+- **Components**: Functional components with proper TypeScript interfaces
+- **Styling**: Use Tailwind utility classes, follow existing patterns
+- **Accessibility**: Ensure WCAG compliance, semantic HTML
+- **Security**: Never commit secrets, use environment variables
+
+For detailed development guidelines, see [CLAUDE.md](./CLAUDE.md).
+
+## 📖 Documentation
+
+- [CLAUDE.md](./CLAUDE.md) - Development guidelines and project standards
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Detailed deployment instructions
+- [Design System](./src/index.css) - Custom theme and styling variables
+
+## 🌟 Features
+
+### Current Features
+
+- ✅ Responsive design for all devices
+- ✅ Bilingual support (English/Spanish)
+- ✅ Interactive ecosystem map
+- ✅ Event calendar with detailed schedules
+- ✅ Co-creation sign-up forms
+- ✅ Newsletter subscription
+- ✅ Global error boundary for production resilience
+
+### Roadmap
+
+- 🔄 User authentication and profiles
+- 🔄 Community forum and discussions
+- 🔄 Resource library
+- 🔄 Event RSVP system
+- 🔄 Community member directory
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Environment Variables Not Loading**
+
+- Ensure `.env` file exists in the root directory
+- Check that variable names start with `VITE_`
+- Restart the development server after changes
+
+**Build Failures**
+
+- Run `npm install` to ensure all dependencies are installed
+- Check TypeScript errors with `npx tsc --noEmit`
+- Clear node_modules and reinstall if needed
+
+**Deployment Issues**
+
+- Verify GitHub Secrets are configured correctly
+- Check GitHub Actions logs for detailed errors
+- Ensure main branch protections allow deployments
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 💬 Community & Support
+
+- **Website**: [cohereboulder.org](https://cohereboulder.org)
+- **Issues**: [GitHub Issues](https://github.com/Woven-Web/cohereboulder.org/issues)
+- **Discussions**: Join our community conversations
+
+## 🙏 Acknowledgments
+
+Built with love for the Boulder regenerative community. Special thanks to all contributors and community members who make this ecosystem thrive.
+
+---
+
+_"Weaving the web of regenerative changemakers in Boulder"_ 🌿
