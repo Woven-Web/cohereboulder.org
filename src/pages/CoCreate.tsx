@@ -4,8 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterestForm } from "@/components/InterestForm";
 import { Button } from "@/components/ui/button";
 import { Heart, Calendar, Home, Mic, Music, Palette } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getTranslation } from "@/lib/translations";
 
 const CoCreate = () => {
+  const { language } = useLanguage();
+  const tr = (key: string) => getTranslation(key, language);
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -14,11 +19,10 @@ const CoCreate = () => {
         <section className="py-20 bg-gradient-to-br from-community-yellow/20 to-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl lg:text-6xl font-bold text-foreground mb-6">
-              Co-Create With Us
+              {tr("coCreate.title")}
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              COhere is designed to be co-created. Your gifts, offerings, and
-              participation shape what emerges.
+              {tr("coCreate.subtitle")}
             </p>
           </div>
         </section>
@@ -28,12 +32,10 @@ const CoCreate = () => {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">
-                What gifts do you want to weave into community?
+                {tr("coCreate.whatGifts")}
               </h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                The 10 days between Invocation and Integration come alive
-                through what we all bring. Every offering—big or
-                small—strengthens our community web.
+                {tr("coCreate.tenDaysDescription")}
               </p>
             </div>
 
@@ -42,12 +44,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Calendar className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Host an Event</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.hostEvent.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Workshops, gatherings, ceremonies, skill-shares, or
-                    experiences that bring people together
+                    {tr("coCreate.hostEvent.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -55,12 +58,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Home className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Open Your Space</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.openSpace.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Offer your home, yard, studio, or venue for gatherings and
-                    connections
+                    {tr("coCreate.openSpace.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -68,12 +72,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Mic className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Share Your Story</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.shareStory.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Lightning talks, storytelling, or sharing your vision for
-                    Boulder's future
+                    {tr("coCreate.shareStory.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -81,12 +86,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Music className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Bring Art & Music</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.bringArt.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Performances, installations, creative experiences that
-                    inspire and connect
+                    {tr("coCreate.bringArt.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -94,12 +100,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Heart className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Offer Support</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.offerSupport.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Volunteer, provide resources, help with logistics, or
-                    support other's offerings
+                    {tr("coCreate.offerSupport.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -107,11 +114,13 @@ const CoCreate = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardHeader>
                   <Palette className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle className="text-lg">Something Else?</CardTitle>
+                  <CardTitle className="text-lg">
+                    {tr("coCreate.somethingElse.title")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Have a unique offering or wild idea? We want to hear it!
+                    {tr("coCreate.somethingElse.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -226,20 +235,28 @@ const CoCreate = () => {
             <Card className="shadow-warm bg-white">
               <CardContent className="p-6 text-center">
                 <p className="text-muted-foreground mb-4">
-                  Have questions? Reach out to{" "}
-                  <a href="mailto:cohere@wovenweb.org" className="text-primary hover:underline">
+                  {tr("coCreate.haveQuestions")}{" "}
+                  <a
+                    href="mailto:cohere@wovenweb.org"
+                    className="text-primary hover:underline"
+                  >
                     cohere@wovenweb.org
                   </a>
                 </p>
-                
+
                 <div className="border-t pt-4">
                   <p className="text-sm text-muted-foreground mb-3">
-                    Love what we're creating? Help us keep COhere accessible to everyone:
+                    {tr("coCreate.loveWhatWeCreate")}
                   </p>
-                  <Button 
-                    variant="community" 
+                  <Button
+                    variant="community"
                     className="gap-2"
-                    onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
+                    onClick={() =>
+                      window.open(
+                        "https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025",
+                        "_blank",
+                      )
+                    }
                   >
                     <Heart className="h-4 w-4" />
                     Support COhere with a Donation

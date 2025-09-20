@@ -10,10 +10,10 @@ import {
   Calendar,
   ExternalLink,
   Globe,
-  MessageCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 
 const Index = () => {
   const { tr } = useLanguage();
@@ -108,11 +108,10 @@ const Index = () => {
         <section className="py-20 bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl lg:text-4xl font-bold text-center mb-4">
-              Our Themes
+              {tr("themes.title")}
             </h2>
             <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
-              COhere events explore six interconnected themes that weave
-              together to create a resilient community
+              {tr("themes.subtitle")}
             </p>
 
             <div className="grid md:grid-cols-3 gap-6">
@@ -120,11 +119,10 @@ const Index = () => {
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">🌱</div>
                   <h3 className="text-lg font-semibold mb-2">
-                    Ecology & Food Systems
+                    {tr("themes.ecology.title")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Exploring regenerative agriculture, local food networks, and
-                    our relationship with the land
+                    {tr("themes.ecology.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -132,10 +130,11 @@ const Index = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">🎨</div>
-                  <h3 className="text-lg font-semibold mb-2">Arts & Culture</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {tr("themes.arts.title")}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Celebrating creativity, music, storytelling, and cultural
-                    expression in all its forms
+                    {tr("themes.arts.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -143,10 +142,11 @@ const Index = () => {
               <Card className="hover:shadow-warm transition-shadow">
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">💚</div>
-                  <h3 className="text-lg font-semibold mb-2">Wellness</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {tr("themes.wellness.title")}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Supporting physical, mental, and spiritual health through
-                    community practices
+                    {tr("themes.wellness.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -155,11 +155,10 @@ const Index = () => {
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">💡</div>
                   <h3 className="text-lg font-semibold mb-2">
-                    Technology & Innovation
+                    {tr("themes.technology.title")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Harnessing innovation for social good and environmental
-                    sustainability
+                    {tr("themes.technology.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -168,11 +167,10 @@ const Index = () => {
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">🏛️</div>
                   <h3 className="text-lg font-semibold mb-2">
-                    Governance & Business
+                    {tr("themes.economy.title")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Reimagining economic systems and decision-making for
-                    collective benefit
+                    {tr("themes.economy.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -181,10 +179,10 @@ const Index = () => {
                 <CardContent className="pt-6">
                   <div className="text-3xl mb-3">🏘️</div>
                   <h3 className="text-lg font-semibold mb-2">
-                    Villaging & Neighboring
+                    {tr("themes.community.title")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Building strong neighborhoods and mutual support networks
+                    {tr("themes.community.description")}
                   </p>
                 </CardContent>
               </Card>
@@ -354,14 +352,20 @@ const Index = () => {
                 {tr("ecosystem.description")}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button variant="outline" size="lg">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() =>
+                    window.open(
+                      `${import.meta.env.BASE_URL}Ecosystem.pdf`,
+                      "_blank",
+                    )
+                  }
+                >
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {tr("ecosystem.exploreMap")}
                 </Button>
-                <Button variant="outline" size="lg">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  {tr("ecosystem.addProject")}
-                </Button>
+                <SuggestAdditionForm />
               </div>
             </div>
           </div>
@@ -374,19 +378,9 @@ const Index = () => {
               {tr("join.title")}
             </h2>
 
-            <div className="prose prose-lg mx-auto mb-12">
+            <div className="prose prose-lg mx-auto">
               <p className="text-muted-foreground">{tr("join.p1")}</p>
               <p className="text-muted-foreground">{tr("join.p2")}</p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="community">
-                <MessageCircle className="mr-2 h-5 w-5" />
-                {tr("join.telegram")}
-              </Button>
-              <Button size="lg" variant="outline">
-                {tr("join.newsletter")}
-              </Button>
             </div>
           </div>
         </section>

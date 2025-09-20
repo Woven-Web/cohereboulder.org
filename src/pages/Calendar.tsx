@@ -4,8 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarIcon, ExternalLink, Users } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getTranslation } from "@/lib/translations";
 
 const Calendar = () => {
+  const { language } = useLanguage();
+  const tr = (key: string) => getTranslation(key, language);
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -17,7 +21,8 @@ const Calendar = () => {
               [CO]here Calendar of Events
             </h1>
             <p className="text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto">
-              Stay connected with community events and co-creation opportunities.
+              Stay connected with community events and co-creation
+              opportunities.
             </p>
           </div>
         </section>
@@ -33,7 +38,8 @@ const Calendar = () => {
                 Add Our Calendar
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Never miss a [CO]here event by syncing our calendar with your preferred platform.
+                Never miss a [CO]here event by syncing our calendar with your
+                preferred platform.
               </p>
             </div>
 
@@ -47,7 +53,7 @@ const Calendar = () => {
                     Google Calendar
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Add this Calendar on Google Calendar to stay up to date with all [CO]here events.
+                    {tr("calendar.googleCalendar.description")}
                   </p>
                   <Button variant="outline" size="lg" className="w-full">
                     <ExternalLink className="mr-2 h-5 w-5" />
@@ -65,7 +71,7 @@ const Calendar = () => {
                     iCal/Outlook
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Download the iCal file to sync with Apple Calendar, Outlook, or other calendar apps.
+                    {tr("calendar.ical.description")}
                   </p>
                   <Button variant="nature" size="lg" className="w-full">
                     <ExternalLink className="mr-2 h-5 w-5" />
@@ -84,15 +90,21 @@ const Calendar = () => {
                   </h3>
                   <div className="bg-muted/30 rounded-lg p-8 mb-8">
                     <div className="grid grid-cols-7 gap-2 mb-4">
-                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-                        <div key={i} className="text-center font-medium text-muted-foreground p-2">
+                      {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
+                        <div
+                          key={i}
+                          className="text-center font-medium text-muted-foreground p-2"
+                        >
                           {day}
                         </div>
                       ))}
                     </div>
                     <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: 30 }, (_, i) => (
-                        <div key={i} className="aspect-square flex items-center justify-center text-muted-foreground hover:bg-muted/50 rounded cursor-pointer">
+                        <div
+                          key={i}
+                          className="aspect-square flex items-center justify-center text-muted-foreground hover:bg-muted/50 rounded cursor-pointer"
+                        >
                           {i + 1}
                         </div>
                       ))}
@@ -118,10 +130,10 @@ const Calendar = () => {
                 Existing Community Calendars
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-3xl mx-auto">
-                Some of our favorite ways to find out about community events and volunteer opportunities are:
+                {tr("calendar.existingCalendars.description")}
               </p>
               <p className="text-lg text-muted-foreground">
-                We truly are here to AMPLIFY the already-rooted, beautiful opportunities across Boulder.
+                {tr("calendar.existingCalendars.amplify")}
               </p>
             </div>
 
@@ -135,11 +147,16 @@ const Calendar = () => {
                     Boulder.Earth
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Environmental events and sustainability initiatives throughout Boulder.
+                    {tr("calendar.boulderEarth.description")}
                   </p>
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      window.open("http://boulder.earth/calendar/", "_blank")
+                    }
+                  >
                     <ExternalLink className="mr-2 h-5 w-5" />
-                    Visit Boulder.Earth
+                    {tr("calendar.boulderEarth.button")}
                   </Button>
                 </CardContent>
               </Card>
@@ -153,11 +170,19 @@ const Calendar = () => {
                     Cool Boulder
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Community events and volunteer opportunities from Cool Boulder partners.
+                    {tr("calendar.coolBoulder.description")}
                   </p>
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      window.open(
+                        "https://www.coolboulder.org/cool-boulder-partners-events",
+                        "_blank",
+                      )
+                    }
+                  >
                     <ExternalLink className="mr-2 h-5 w-5" />
-                    Visit Cool Boulder
+                    {tr("calendar.coolBoulder.button")}
                   </Button>
                 </CardContent>
               </Card>
@@ -171,11 +196,19 @@ const Calendar = () => {
                     Boulder Poetry Scene
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Literary events, poetry readings, and creative gatherings.
+                    {tr("calendar.poetryScene.description")}
                   </p>
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      window.open(
+                        "https://boulderpoetryscene.com/calendar/",
+                        "_blank",
+                      )
+                    }
+                  >
                     <ExternalLink className="mr-2 h-5 w-5" />
-                    Visit Poetry Scene
+                    {tr("calendar.poetryScene.button")}
                   </Button>
                 </CardContent>
               </Card>
@@ -187,7 +220,8 @@ const Calendar = () => {
                   More resources coming soon!
                 </h3>
                 <p className="text-lg text-muted-foreground">
-                  We'll be adding a lot more resources in the coming weeks. Check back 🙂
+                  We'll be adding a lot more resources in the coming weeks.
+                  Check back 🙂
                 </p>
               </CardContent>
             </Card>

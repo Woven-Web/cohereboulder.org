@@ -191,6 +191,7 @@ export const translations = {
     },
     exploreMap: { en: "Explore the Map", es: "Explora el Mapa" },
     addProject: { en: "Add Your Project", es: "Añade Tu Proyecto" },
+    suggestAdditions: { en: "Suggest Additions", es: "Sugerir Adiciones" },
   },
 
   // Join Section
@@ -419,6 +420,392 @@ export const translations = {
         en: "Celebrate and amplify the aspects of individuals, this place, and this community we love.",
         es: "Celebra y amplifica los aspectos de los individuos, este lugar y esta comunidad que amamos.",
       },
+    },
+  },
+
+  // Our Themes Section
+  themes: {
+    title: {
+      en: "Our Themes",
+      es: "Nuestros Temas",
+    },
+    subtitle: {
+      en: "COhere events explore six interconnected themes that weave together to create a resilient community",
+      es: "Los eventos de COhere exploran seis temas interconectados que se entrelazan para crear una comunidad resiliente",
+    },
+    ecology: {
+      title: {
+        en: "Ecology & Food Systems",
+        es: "Ecología y Sistemas Alimentarios",
+      },
+      description: {
+        en: "Exploring regenerative agriculture, local food networks, and our relationship with the land",
+        es: "Explorando la agricultura regenerativa, las redes alimentarias locales y nuestra relación con la tierra",
+      },
+    },
+    arts: {
+      title: {
+        en: "Arts & Culture",
+        es: "Arte y Cultura",
+      },
+      description: {
+        en: "Celebrating creativity, music, storytelling, and cultural expression in all its forms",
+        es: "Celebrando la creatividad, la música, la narración de historias y la expresión cultural en todas sus formas",
+      },
+    },
+    wellness: {
+      title: {
+        en: "Wellness",
+        es: "Bienestar",
+      },
+      description: {
+        en: "Supporting physical, mental, and spiritual health through community practices",
+        es: "Apoyando la salud física, mental y espiritual a través de prácticas comunitarias",
+      },
+    },
+    technology: {
+      title: {
+        en: "Technology & Innovation",
+        es: "Tecnología e Innovación",
+      },
+      description: {
+        en: "Harnessing innovation for social good and environmental sustainability",
+        es: "Aprovechando la innovación para el bien social y la sostenibilidad ambiental",
+      },
+    },
+    community: {
+      title: {
+        en: "Community Building",
+        es: "Construcción de Comunidad",
+      },
+      description: {
+        en: "Strengthening connections, building trust, and weaving our social fabric",
+        es: "Fortaleciendo conexiones, construyendo confianza y tejiendo nuestro tejido social",
+      },
+    },
+    economy: {
+      title: {
+        en: "New Economy",
+        es: "Nueva Economía",
+      },
+      description: {
+        en: "Reimagining economic systems that prioritize people and planet",
+        es: "Reimaginando sistemas económicos que priorizan a las personas y al planeta",
+      },
+    },
+  },
+
+  // Calendar Page
+  calendar: {
+    title: {
+      en: "[CO]here Calendar of Events",
+      es: "Calendario de Eventos [CO]here",
+    },
+    subtitle: {
+      en: "Stay connected with community events and co-creation opportunities.",
+      es: "Mantente conectado con eventos comunitarios y oportunidades de co-creación.",
+    },
+    stayConnected: {
+      en: "Stay Connected",
+      es: "Mantente Conectado",
+    },
+    addCalendar: {
+      en: "Add Our Calendar",
+      es: "Añade Nuestro Calendario",
+    },
+    neverMiss: {
+      en: "Never miss a [CO]here event by syncing our calendar with your preferred platform.",
+      es: "Nunca te pierdas un evento de [CO]here sincronizando nuestro calendario con tu plataforma preferida.",
+    },
+    googleCalendar: {
+      title: {
+        en: "Google Calendar",
+        es: "Calendario de Google",
+      },
+      description: {
+        en: "Add this Calendar on Google Calendar to stay up to date with all [CO]here events.",
+        es: "Añade este calendario en Google Calendar para estar al día con todos los eventos de [CO]here.",
+      },
+      button: {
+        en: "Add to Google Calendar",
+        es: "Añadir a Google Calendar",
+      },
+    },
+    ical: {
+      title: {
+        en: "iCal/Outlook",
+        es: "iCal/Outlook",
+      },
+      description: {
+        en: "Download the iCal file to sync with Apple Calendar, Outlook, or other calendar apps.",
+        es: "Descarga el archivo iCal para sincronizar con Apple Calendar, Outlook u otras aplicaciones de calendario.",
+      },
+      button: {
+        en: "Download iCal File",
+        es: "Descargar Archivo iCal",
+      },
+    },
+    september2025: {
+      en: "September 2025",
+      es: "Septiembre 2025",
+    },
+    printCalendar: {
+      en: "Print Calendar",
+      es: "Imprimir Calendario",
+    },
+    wantMore: {
+      en: "Want More?",
+      es: "¿Quieres Más?",
+    },
+    existingCalendars: {
+      title: {
+        en: "Existing Community Calendars",
+        es: "Calendarios Comunitarios Existentes",
+      },
+      description: {
+        en: "Some of our favorite ways to find out about community events and volunteer opportunities are:",
+        es: "Algunas de nuestras formas favoritas de enterarnos sobre eventos comunitarios y oportunidades de voluntariado son:",
+      },
+      amplify: {
+        en: "We truly are here to AMPLIFY the already-rooted, beautiful opportunities across Boulder.",
+        es: "Realmente estamos aquí para AMPLIFICAR las hermosas oportunidades ya arraigadas en todo Boulder.",
+      },
+    },
+    boulderEarth: {
+      title: {
+        en: "Boulder.Earth",
+        es: "Boulder.Earth",
+      },
+      description: {
+        en: "Environmental events and sustainability initiatives throughout Boulder.",
+        es: "Eventos ambientales e iniciativas de sostenibilidad en todo Boulder.",
+      },
+      button: {
+        en: "Visit Boulder.Earth",
+        es: "Visitar Boulder.Earth",
+      },
+    },
+    coolBoulder: {
+      title: {
+        en: "Cool Boulder",
+        es: "Cool Boulder",
+      },
+      description: {
+        en: "Community events and volunteer opportunities from Cool Boulder partners.",
+        es: "Eventos comunitarios y oportunidades de voluntariado de los socios de Cool Boulder.",
+      },
+      button: {
+        en: "Visit Cool Boulder",
+        es: "Visitar Cool Boulder",
+      },
+    },
+    poetryScene: {
+      title: {
+        en: "Boulder Poetry Scene",
+        es: "Escena Poética de Boulder",
+      },
+      description: {
+        en: "Literary events, poetry readings, and creative gatherings.",
+        es: "Eventos literarios, lecturas de poesía y reuniones creativas.",
+      },
+      button: {
+        en: "Visit Poetry Scene",
+        es: "Visitar Escena Poética",
+      },
+    },
+    moreResourcesComing: {
+      title: {
+        en: "More resources coming soon!",
+        es: "¡Más recursos próximamente!",
+      },
+      description: {
+        en: "We'll be adding a lot more resources in the coming weeks. Check back 🙂",
+        es: "Estaremos añadiendo muchos más recursos en las próximas semanas. Vuelve a revisar 🙂",
+      },
+    },
+  },
+
+  // Co-Create Page
+  coCreate: {
+    title: {
+      en: "Co-Create With Us",
+      es: "Co-Crea Con Nosotros",
+    },
+    subtitle: {
+      en: "COhere is designed to be co-created. Your gifts, offerings, and participation shape what emerges.",
+      es: "COhere está diseñado para ser co-creado. Tus dones, ofertas y participación dan forma a lo que emerge.",
+    },
+    whatGifts: {
+      en: "What gifts do you want to weave into community?",
+      es: "¿Qué dones quieres tejer en la comunidad?",
+    },
+    tenDaysDescription: {
+      en: "The 10 days between Invocation and Integration come alive through what we all bring. Every offering—big or small—strengthens our community web.",
+      es: "Los 10 días entre la Invocación y la Integración cobran vida a través de lo que todos aportamos. Cada oferta—grande o pequeña—fortalece nuestra red comunitaria.",
+    },
+    hostEvent: {
+      title: {
+        en: "Host an Event",
+        es: "Organiza un Evento",
+      },
+      description: {
+        en: "Workshops, gatherings, ceremonies, skill-shares, or experiences that bring people together",
+        es: "Talleres, reuniones, ceremonias, intercambio de habilidades o experiencias que unen a las personas",
+      },
+    },
+    openSpace: {
+      title: {
+        en: "Open Your Space",
+        es: "Abre Tu Espacio",
+      },
+      description: {
+        en: "Offer your home, yard, studio, or venue for gatherings and connections",
+        es: "Ofrece tu hogar, jardín, estudio o lugar para reuniones y conexiones",
+      },
+    },
+    shareStory: {
+      title: {
+        en: "Share Your Story",
+        es: "Comparte Tu Historia",
+      },
+      description: {
+        en: "Lightning talks, storytelling, or sharing your vision for Boulder's future",
+        es: "Charlas relámpago, narración de historias o compartir tu visión para el futuro de Boulder",
+      },
+    },
+    bringArt: {
+      title: {
+        en: "Bring Art & Music",
+        es: "Trae Arte y Música",
+      },
+      description: {
+        en: "Performances, installations, creative experiences that inspire and connect",
+        es: "Actuaciones, instalaciones, experiencias creativas que inspiran y conectan",
+      },
+    },
+    offerSupport: {
+      title: {
+        en: "Offer Support",
+        es: "Ofrece Apoyo",
+      },
+      description: {
+        en: "Volunteer, provide resources, help with logistics, or support other's offerings",
+        es: "Voluntariado, proporcionar recursos, ayudar con la logística o apoyar las ofertas de otros",
+      },
+    },
+    somethingElse: {
+      title: {
+        en: "Something Else?",
+        es: "¿Algo Más?",
+      },
+      description: {
+        en: "Have a unique offering or wild idea? We want to hear it!",
+        es: "¿Tienes una oferta única o una idea salvaje? ¡Queremos escucharla!",
+      },
+    },
+    howItWorks: {
+      title: {
+        en: "How Co-Creation Works",
+        es: "Cómo Funciona la Co-Creación",
+      },
+      step1: {
+        title: {
+          en: "You Offer",
+          es: "Tú Ofreces",
+        },
+        description: {
+          en: "Share what you'd like to bring to the community during COhere",
+          es: "Comparte lo que te gustaría aportar a la comunidad durante COhere",
+        },
+      },
+      step2: {
+        title: {
+          en: "We Connect",
+          es: "Conectamos",
+        },
+        description: {
+          en: "We help connect you with spaces, collaborators, and resources",
+          es: "Te ayudamos a conectarte con espacios, colaboradores y recursos",
+        },
+      },
+      step3: {
+        title: {
+          en: "Magic Happens",
+          es: "La Magia Sucede",
+        },
+        description: {
+          en: "Your offering becomes part of the tapestry of COhere",
+          es: "Tu oferta se convierte en parte del tapiz de COhere",
+        },
+      },
+    },
+    principles: {
+      title: {
+        en: "Co-Creation Principles",
+        es: "Principios de Co-Creación",
+      },
+      giftEconomy: {
+        title: {
+          en: "Gift Economy",
+          es: "Economía del Don",
+        },
+        description: {
+          en: "COhere operates on gift economy principles. Offerings are freely given, creating abundance for all.",
+          es: "COhere opera con principios de economía del don. Las ofertas se dan libremente, creando abundancia para todos.",
+        },
+      },
+      yesAnd: {
+        title: {
+          en: "Yes, And...",
+          es: "Sí, Y...",
+        },
+        description: {
+          en: "We embrace what emerges. Your ideas can evolve and combine with others in unexpected ways.",
+          es: "Abrazamos lo que emerge. Tus ideas pueden evolucionar y combinarse con otras de formas inesperadas.",
+        },
+      },
+      accessibility: {
+        title: {
+          en: "Accessibility",
+          es: "Accesibilidad",
+        },
+        description: {
+          en: "We strive to make COhere accessible to all. Let us know how we can support participation.",
+          es: "Nos esforzamos por hacer COhere accesible para todos. Haznos saber cómo podemos apoyar la participación.",
+        },
+      },
+      regenerative: {
+        title: {
+          en: "Regenerative",
+          es: "Regenerativo",
+        },
+        description: {
+          en: "What we create together should leave our community stronger and more connected than before.",
+          es: "Lo que creamos juntos debe dejar nuestra comunidad más fuerte y conectada que antes.",
+        },
+      },
+    },
+    readyToCoCreate: {
+      title: {
+        en: "Ready to Co-Create?",
+        es: "¿Listo para Co-Crear?",
+      },
+      description: {
+        en: "Whether you have a fully formed idea or just a spark of inspiration, we want to hear from you. Let's weave something beautiful together.",
+        es: "Ya sea que tengas una idea completamente formada o solo una chispa de inspiración, queremos saber de ti. Tejamos algo hermoso juntos.",
+      },
+    },
+    haveQuestions: {
+      en: "Have questions? Reach out to",
+      es: "¿Tienes preguntas? Contacta a",
+    },
+    loveWhatWeCreate: {
+      en: "Love what we're creating? Help us keep COhere accessible to everyone:",
+      es: "¿Te encanta lo que estamos creando? Ayúdanos a mantener COhere accesible para todos:",
+    },
+    supportWithDonation: {
+      en: "Support COhere with a Donation",
+      es: "Apoya COhere con una Donación",
     },
   },
 
