@@ -25,7 +25,7 @@ export const Footer = () => {
   return (
     <footer className="bg-earth-warm text-primary-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 gap-8">
           {/* Brand */}
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
@@ -37,67 +37,12 @@ export const Footer = () => {
               <span className="text-2xl font-bold">[CO]here</span>
             </div>
             <p className="text-primary-foreground/80 leading-relaxed">
-              {tr("footer.description")}
+              Connecting local community to create a regenerative, resilient
+              future.
             </p>
             <div className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
               <span className="text-sm">Boulder, Colorado</span>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">{tr("footer.connect")}</h3>
-            <div className="space-y-3">
-              <a
-                href="#calendar"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <Calendar className="h-4 w-4" />
-                <span>{tr("footer.eventCalendar")}</span>
-              </a>
-              <a
-                href="#"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>{tr("footer.telegramCommunity")}</span>
-              </a>
-              <a
-                href="#"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <Mail className="h-4 w-4" />
-                <span>{tr("footer.newsletter")}</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Resources */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">{tr("footer.resources")}</h3>
-            <div className="space-y-3">
-              <a
-                href="#"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>{tr("footer.gameplayInstructions")}</span>
-              </a>
-              <a
-                href="#"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>{tr("footer.regenerativeMap")}</span>
-              </a>
-              <a
-                href="#"
-                className="flex items-center space-x-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>{tr("footer.webMap")}</span>
-              </a>
             </div>
           </div>
 
@@ -107,7 +52,7 @@ export const Footer = () => {
             <div className="space-y-3">
               <Button
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={() => window.open("/join-2025", "_self")}
+                onClick={() => window.open("/register", "_self")}
               >
                 {tr("footer.registration2025")}
               </Button>
@@ -138,7 +83,11 @@ export const Footer = () => {
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-primary-foreground/80 hover:text-primary-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-primary-foreground/80 hover:text-primary-foreground"
+                    >
                       <User className="h-4 w-4 mr-2" />
                       {user.user_metadata?.full_name || user.email}
                     </Button>
@@ -151,11 +100,16 @@ export const Footer = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button asChild variant="ghost" size="sm" className="text-primary-foreground/80 hover:text-primary-foreground">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary-foreground/80 hover:text-primary-foreground"
+                >
                   <Link to="/auth">Sign In</Link>
                 </Button>
               )}
-              
+
               {/* Language Toggle */}
               <div className="flex space-x-2 text-sm">
                 <button
