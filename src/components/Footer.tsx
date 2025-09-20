@@ -58,7 +58,7 @@ export const Footer = () => {
               </Button>
               <Button
                 variant="outline"
-                className="w-full border-earth bg-white text-earth hover:bg-earth hover:text-white hover:border-earth"
+                className="w-full border-earth-warm bg-white text-earth-warm hover:bg-earth-warm hover:text-white hover:border-earth-warm transition-colors"
                 onClick={() => window.open("/join-2025", "_self")}
               >
                 {tr("footer.learnMore")}
