@@ -21,6 +21,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import Unsubscribe from "./pages/Unsubscribe";
 import Telegram from "./pages/Telegram";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,8 @@ const App = () => (
 
               <Route path="/register" element={<Registration />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route
                 path="/verification-success"

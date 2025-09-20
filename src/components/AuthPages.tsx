@@ -125,6 +125,14 @@ export function AuthTabs() {
                   )}
                   Sign In
                 </Button>
+                <div className="text-center pt-2">
+                  <a
+                    href="/forgot-password"
+                    className="text-sm text-muted-foreground hover:text-primary"
+                  >
+                    Forgot your password?
+                  </a>
+                </div>
               </form>
             </CardContent>
           </Card>
