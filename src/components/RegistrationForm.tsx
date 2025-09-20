@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +29,7 @@ interface RegistrationFormData {
   financialContributionInterest: boolean;
   howDidYouHear: string;
   additionalNotes: string;
-  marketingConsent: boolean;
+  communityUpdates: boolean;
 }
 
 export function RegistrationForm() {
@@ -45,24 +51,29 @@ export function RegistrationForm() {
     financialContributionInterest: false,
     howDidYouHear: "",
     additionalNotes: "",
-    marketingConsent: false,
+    communityUpdates: true,
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCheckboxChange = (value: string, checked: boolean) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      coCreatingInterests: checked 
+      coCreatingInterests: checked
         ? [...prev.coCreatingInterests, value]
-        : prev.coCreatingInterests.filter(item => item !== value)
+        : prev.coCreatingInterests.filter((item) => item !== value),
     }));
   };
 
-  const submitToSupabase = async (data: RegistrationFormData, userId?: string) => {
+  const submitToSupabase = async (
+    data: RegistrationFormData,
+    userId?: string,
+  ) => {
     try {
       // Insert registration
       const registrationData = {
@@ -77,7 +88,7 @@ export function RegistrationForm() {
         how_did_you_hear: data.howDidYouHear,
         additional_notes: data.additionalNotes,
         user_id: userId || null,
-        marketing_consent: data.marketingConsent,
+        marketing_consent: data.communityUpdates,
       };
 
       const { error: regError } = await supabase
@@ -88,45 +99,51 @@ export function RegistrationForm() {
 
       // Insert/update email preferences
       const { data: emailPref, error: emailError } = await supabase
-        .from('email_preferences')
-        .upsert({
-          email: data.email,
-          marketing_consent: data.marketingConsent,
-          event_notifications: true, // Default to true for event registrations
-          subscribed: true,
-        }, {
-          onConflict: 'email'
-        })
-        .select('unsubscribe_token')
+        .from("email_preferences")
+        .upsert(
+          {
+            email: data.email,
+            marketing_consent: data.communityUpdates,
+            event_notifications: true, // Default to true for event registrations
+            subscribed: true,
+          },
+          {
+            onConflict: "email",
+          },
+        )
+        .select("unsubscribe_token")
         .single();
 
       if (emailError) {
-        console.error('Error updating email preferences:', emailError);
+        console.error("Error updating email preferences:", emailError);
         // Don't throw here - registration should still succeed
       }
 
       // Send registration confirmation email
       try {
-        const { error: emailSendError } = await supabase.functions.invoke('send-registration-confirmation', {
-          body: {
-            email: data.email,
-            fullName: data.fullName,
-            canAttendInvocation: data.canAttendInvocation === "yes",
-            canAttendIntegration: data.canAttendIntegration === "yes",
-            unsubscribeToken: emailPref?.unsubscribe_token
-          }
-        });
+        const { error: emailSendError } = await supabase.functions.invoke(
+          "send-registration-confirmation",
+          {
+            body: {
+              email: data.email,
+              fullName: data.fullName,
+              canAttendInvocation: data.canAttendInvocation === "yes",
+              canAttendIntegration: data.canAttendIntegration === "yes",
+              unsubscribeToken: emailPref?.unsubscribe_token,
+            },
+          },
+        );
 
         if (emailSendError) {
-          console.error('Error sending confirmation email:', emailSendError);
+          console.error("Error sending confirmation email:", emailSendError);
           // Don't throw here - registration succeeded, email is just a bonus
         }
       } catch (emailSendError) {
-        console.error('Error calling email function:', emailSendError);
+        console.error("Error calling email function:", emailSendError);
         // Don't throw here - registration succeeded
       }
     } catch (error) {
-      console.error('Error submitting to Supabase:', error);
+      console.error("Error submitting to Supabase:", error);
       throw error;
     }
   };
@@ -145,8 +162,12 @@ export function RegistrationForm() {
 
       // If user is not authenticated and wants to create account
       if (!user && formData.password) {
-        const { error: authError } = await signUp(formData.email, formData.password, formData.fullName);
-        
+        const { error: authError } = await signUp(
+          formData.email,
+          formData.password,
+          formData.fullName,
+        );
+
         if (authError) {
           throw new Error(authError.message);
         }
@@ -155,7 +176,8 @@ export function RegistrationForm() {
         setNeedsVerification(true);
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account, then complete your registration.",
+          description:
+            "Please check your email to verify your account, then complete your registration.",
         });
         setIsLoading(false);
         return;
@@ -163,12 +185,12 @@ export function RegistrationForm() {
 
       await submitToSupabase(formData, userId);
       setSubmitted(true);
-      
+
       toast({
         title: "Registration submitted successfully!",
-        description: "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
+        description:
+          "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
       });
-
     } catch (error: any) {
       toast({
         title: "Error submitting registration",
@@ -186,12 +208,16 @@ export function RegistrationForm() {
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             <Mail className="h-16 w-16 text-blue-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-blue-700">Check Your Email!</h2>
+            <h2 className="text-2xl font-bold text-blue-700">
+              Check Your Email!
+            </h2>
             <p className="text-muted-foreground">
-              We've sent you a verification link. Please verify your email address to complete your registration.
+              We've sent you a verification link. Please verify your email
+              address to complete your registration.
             </p>
             <p className="text-sm text-muted-foreground">
-              After verification, you can return to this page to complete your registration for COhere Boulder 2025.
+              After verification, you can return to this page to complete your
+              registration for COhere Boulder 2025.
             </p>
           </div>
         </CardContent>
@@ -205,19 +231,23 @@ export function RegistrationForm() {
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-green-700">Registration Complete!</h2>
+            <h2 className="text-2xl font-bold text-green-700">
+              Registration Complete!
+            </h2>
             <p className="text-muted-foreground">
-              Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey.
+              Thank you for registering for COhere Boulder 2025. We're excited
+              to have you join our community-building journey.
             </p>
             <p className="text-sm text-muted-foreground">
-              You'll receive a confirmation email shortly with next steps and event details.
+              You'll receive a confirmation email shortly with next steps and
+              event details.
             </p>
-            
+
             <div className="pt-4">
               <Button asChild>
-                <a 
-                  href="https://donate.stripe.com/00g02wd3C4ZHdG0bII" 
-                  target="_blank" 
+                <a
+                  href="https://donate.stripe.com/00g02wd3C4ZHdG0bII"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2"
                 >
@@ -233,15 +263,10 @@ export function RegistrationForm() {
   }
 
   const coCreatingOptions = [
-    "Event hosting or co-hosting",
-    "Marketing and outreach",
-    "Logistics and coordination",
-    "Art and creative expression",
-    "Documentation (photography, videography)",
-    "Technical support",
-    "Venue partnerships",
-    "Community partnerships",
-    "Volunteer coordination"
+    "I would like to host or collaboratively design an event during COhere",
+    "I would like to host a community dinner (potluck style) during COhere",
+    "I would like to volunteer in supporting an event",
+    "I would like to help tell the stories that unfold through writing, photo, or video",
   ];
 
   return (
@@ -249,21 +274,26 @@ export function RegistrationForm() {
       {/* Header Section */}
       <Card>
         <CardContent className="p-8">
-          <h1 className="text-3xl font-bold mb-4">Register for COhere Boulder 2025</h1>
+          <h1 className="text-3xl font-bold mb-4">
+            Register for COhere Boulder 2025
+          </h1>
           <p className="text-muted-foreground mb-4">
-            Please complete this form to receive communications and stay up-to-date on what's unfolding with COhere. 
-            Registration is free and all events are opt-in.
+            Please complete this form to receive communications and stay
+            up-to-date on what's unfolding with COhere. Registration is free and
+            all events are opt-in.
           </p>
           <p className="text-primary font-medium">
             We can't wait to weave you into the fabric of this community!
           </p>
-          
+
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              COhere stokes Boulder's culture and engagement by connecting residents, organizations, artists, leaders, 
-              and innovators during a 10-day container (and beyond!). Through a curated calendar of values-aligned 
-              events and memorable opening & closing gatherings, we strengthen community ties, highlight our city's 
-              vibrancy, and inspire action toward a more regenerative, resilient future.
+              COhere stokes Boulder's culture and engagement by connecting
+              residents, organizations, artists, leaders, and innovators during
+              a 10-day container (and beyond!). Through a curated calendar of
+              values-aligned events and memorable opening & closing gatherings,
+              we strengthen community ties, highlight our city's vibrancy, and
+              inspire action toward a more regenerative, resilient future.
             </p>
           </div>
         </CardContent>
@@ -287,7 +317,11 @@ export function RegistrationForm() {
                   required
                   disabled={!!user}
                 />
-                {user && <p className="text-sm text-muted-foreground">Using your account name</p>}
+                {user && (
+                  <p className="text-sm text-muted-foreground">
+                    Using your account name
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -301,7 +335,11 @@ export function RegistrationForm() {
                   required
                   disabled={!!user}
                 />
-                {user && <p className="text-sm text-muted-foreground">Using your account email</p>}
+                {user && (
+                  <p className="text-sm text-muted-foreground">
+                    Using your account email
+                  </p>
+                )}
               </div>
             </div>
 
@@ -309,7 +347,8 @@ export function RegistrationForm() {
               <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                 <h3 className="font-semibold">Create an Account (Optional)</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create an account to save your registration, access member features, and stay updated on COhere events.
+                  Create an account to save your registration, access member
+                  features, and stay updated on COhere events.
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password (optional)</Label>
@@ -358,15 +397,24 @@ export function RegistrationForm() {
             {/* Event Attendance */}
             <div className="space-y-4">
               <div className="space-y-3">
-                <Label>Can you attend the Invocation (Opening) Gathering?</Label>
+                <Label>
+                  Can you attend the Invocation (Opening) Gathering?
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  COhere will officially kick-off with the Invocation--a gathering on the evening of Thursday, 
-                  October 16th at The Riverside. The event will include a shared meal, speakers, activities, 
-                  and live music. This is the best way to get oriented to COhere and the events to come.
+                  COhere will officially kick-off with the Invocation--a
+                  gathering on the evening of Thursday, October 16th at The
+                  Riverside. The event will include a shared meal, speakers,
+                  activities, and live music. This is the best way to get
+                  oriented to COhere and the events to come.
                 </p>
-                <RadioGroup 
-                  value={formData.canAttendInvocation} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, canAttendInvocation: value }))}
+                <RadioGroup
+                  value={formData.canAttendInvocation}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      canAttendInvocation: value,
+                    }))
+                  }
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="invocation-yes" />
@@ -386,13 +434,19 @@ export function RegistrationForm() {
               <div className="space-y-3">
                 <Label>Can you attend the Integration (Closing) Party?</Label>
                 <p className="text-sm text-muted-foreground">
-                  COhere closes with a festive Integration gathering to celebrate the connections and new 
-                  possibilities formed during the container. There will be harvest activities, live music, 
+                  COhere closes with a festive Integration gathering to
+                  celebrate the connections and new possibilities formed during
+                  the container. There will be harvest activities, live music,
                   food and drink, and more.
                 </p>
-                <RadioGroup 
-                  value={formData.canAttendIntegration} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, canAttendIntegration: value }))}
+                <RadioGroup
+                  value={formData.canAttendIntegration}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      canAttendIntegration: value,
+                    }))
+                  }
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="integration-yes" />
@@ -411,7 +465,9 @@ export function RegistrationForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="howDidYouHear">How did you hear about COhere?</Label>
+              <Label htmlFor="howDidYouHear">
+                How did you hear about COhere?
+              </Label>
               <Textarea
                 id="howDidYouHear"
                 name="howDidYouHear"
@@ -425,24 +481,29 @@ export function RegistrationForm() {
             {/* Co-creating Section */}
             <div className="space-y-4">
               <div>
-                <Label className="text-lg font-semibold">Co-creating COhere</Label>
+                <Label className="text-lg font-semibold">
+                  Co-creating COhere
+                </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Everyone is invited to contribute their gifts to help co-create COhere the ways you feel called. 
-                  Let us know if we should reach out to you about any of the following...
+                  Everyone is invited to contribute their gifts to help
+                  co-create COhere the ways you feel called. Let us know if we
+                  should reach out to you about any of the following...
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 {coCreatingOptions.map((option) => (
                   <div key={option} className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id={option}
                       checked={formData.coCreatingInterests.includes(option)}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleCheckboxChange(option, checked as boolean)
                       }
                     />
-                    <label htmlFor={option} className="text-sm">{option}</label>
+                    <label htmlFor={option} className="text-sm">
+                      {option}
+                    </label>
                   </div>
                 ))}
               </div>
@@ -452,20 +513,30 @@ export function RegistrationForm() {
             <Card className="border-dashed">
               <CardContent className="p-4">
                 <div className="space-y-3">
-                  <Label className="font-semibold">Financial Contribution</Label>
+                  <Label className="font-semibold">
+                    Financial Contribution
+                  </Label>
                   <p className="text-sm text-muted-foreground">
-                    This event is free. It is offered in the spirit of the gift and your participation is a beautiful contribution.
+                    This event is free. It is offered in the spirit of the gift
+                    and your participation is a beautiful contribution.
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    If you are in a position to contribute financially--no matter the amount--to cover raw expenses 
-                    and support the organizers and artists making this happen, please consider donating:
+                    If you are in a position to contribute financially--no
+                    matter the amount--to cover raw expenses and support the
+                    organizers and artists making this happen, please consider
+                    donating:
                   </p>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     className="w-fit"
-                    onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
+                    onClick={() =>
+                      window.open(
+                        "https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025",
+                        "_blank",
+                      )
+                    }
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Donate to Support COhere
@@ -475,7 +546,9 @@ export function RegistrationForm() {
             </Card>
 
             <div className="space-y-2">
-              <Label htmlFor="additionalNotes">Additional Notes or Comments</Label>
+              <Label htmlFor="additionalNotes">
+                Additional Notes or Comments
+              </Label>
               <Textarea
                 id="additionalNotes"
                 name="additionalNotes"
@@ -488,43 +561,57 @@ export function RegistrationForm() {
 
             {/* Email Consent */}
             <div className="space-y-4 p-4 bg-muted/20 rounded-lg border">
-              <Label className="text-base font-semibold">Email Preferences</Label>
+              <Label className="text-base font-semibold">
+                Communication Preferences
+              </Label>
               <div className="space-y-3">
                 <div className="flex items-start space-x-2">
-                  <Checkbox 
-                    id="marketingConsent"
-                    checked={formData.marketingConsent}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, marketingConsent: checked as boolean }))
+                  <Checkbox
+                    id="communityUpdates"
+                    checked={formData.communityUpdates}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        communityUpdates: checked as boolean,
+                      }))
                     }
                   />
                   <div className="space-y-1">
-                    <label htmlFor="marketingConsent" className="text-sm font-medium">
-                      Yes, I'd like to receive marketing emails and community updates
+                    <label
+                      htmlFor="communityUpdates"
+                      className="text-sm font-medium"
+                    >
+                      Yes, I'd like to receive COhere updates and community news
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Stay informed about COhere events, community news, and partnership opportunities. 
-                      You can unsubscribe at any time.
+                      Get regular updates about upcoming events during COhere,
+                      community news, and opportunities to connect. You can
+                      update your preferences at any time.
                     </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Note: You'll automatically receive important notifications about events you register for, 
-                  regardless of this setting.
+                  Note: You'll automatically receive important notifications
+                  about events you register for, regardless of this setting.
                 </p>
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {!user && formData.password ? "Creating Account..." : "Registering..."}
+                  {!user && formData.password
+                    ? "Creating Account..."
+                    : "Registering..."}
                 </>
               ) : (
-                <>
-                  Complete Registration
-                </>
+                <>Complete Registration</>
               )}
             </Button>
           </form>

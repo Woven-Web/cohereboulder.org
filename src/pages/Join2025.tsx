@@ -169,18 +169,23 @@ const Join2025 = () => {
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
                 <span className="text-2xl">💫</span>
-                {t("Sponsor COhere", "Patrocina COhere")}
+                {t("Support COhere", "Apoya COhere")}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {t(
-                  "Invest in community by supporting culture, connection, and accessibility. Highlight your business as a cornerstone of the Boulder community.",
-                  "Invierte en la comunidad apoyando la cultura, conexión y accesibilidad. Destaca tu negocio como una piedra angular de la comunidad de Boulder.",
+                  "Help make COhere accessible to all by contributing to cover the raw expenses of the event. Your support directly funds venue costs, materials, and compensates the organizers and artists who pour their hearts into creating these transformative community experiences.",
+                  "Ayuda a hacer COhere accesible para todos contribuyendo a cubrir los gastos básicos del evento. Tu apoyo financia directamente los costos de los lugares, materiales, y compensa a los organizadores y artistas que ponen su corazón en crear estas experiencias comunitarias transformadoras.",
                 )}
               </p>
-              <Button 
-                variant="community" 
+              <Button
+                variant="community"
                 className="gap-2"
-                onClick={() => window.open('https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025', '_blank')}
+                onClick={() =>
+                  window.open(
+                    "https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025",
+                    "_blank",
+                  )
+                }
               >
                 {t("Support COhere", "Apoyar COhere")}
                 <Heart className="h-4 w-4" />
