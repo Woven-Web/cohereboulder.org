@@ -254,21 +254,6 @@ const CoCreate = () => {
                       <Mail className="h-5 w-5" />
                       Email Us Your Ideas
                     </Button>
-
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="gap-2"
-                      onClick={() =>
-                        window.open(
-                          "https://cohereboulder.org/telegram",
-                          "_blank",
-                        )
-                      }
-                    >
-                      <Users className="h-5 w-5" />
-                      Join Our Telegram
-                    </Button>
                   </div>
 
                   <p className="text-sm text-muted-foreground mt-4">
@@ -314,15 +299,8 @@ const CoCreate = () => {
                     <p className="text-sm text-muted-foreground mb-4">
                       Help with setup, facilitation, or support during events
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        (window.location.href =
-                          "mailto:cohere@wovenweb.org?subject=Volunteer Interest")
-                      }
-                    >
-                      Get Involved
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/register">Sign Up to Volunteer</a>
                     </Button>
                   </CardContent>
                 </Card>
