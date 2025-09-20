@@ -73,12 +73,21 @@ const Join2025 = () => {
               <p className="text-sm text-muted-foreground mb-2">
                 {t("October 16, 2025", "16 de Octubre, 2025")}
               </p>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-3">
                 {t(
                   "Opening ceremony to launch the community gathering period",
                   "Ceremonia de apertura para lanzar el período de reunión comunitaria",
                 )}
               </p>
+              <a
+                href="https://luma.com/u6ieh0rp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-earth hover:text-earth-dark transition-colors"
+              >
+                {t("RSVP for Invocation", "Reserva para la Invocación")}
+                <ArrowRight className="h-3 w-3" />
+              </a>
             </Card>
 
             <Card className="p-6 bg-gradient-to-br from-sage-light/30 to-transparent border-sage/30 border-2">

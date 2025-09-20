@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import Unsubscribe from "./pages/Unsubscribe";
+import Telegram from "./pages/Telegram";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,12 +41,16 @@ const App = () => (
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/join-2025" element={<Join2025 />} />
               <Route path="/invitation-2025" element={<Invitation2025 />} />
-              
+
               <Route path="/register" element={<Registration />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/verification-success" element={<VerificationSuccess />} />
+              <Route
+                path="/verification-success"
+                element={<VerificationSuccess />}
+              />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/telegram" element={<Telegram />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/archive/2024" element={<Archive2024 />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
