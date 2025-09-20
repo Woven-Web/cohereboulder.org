@@ -17,7 +17,7 @@ export const useAdminStatus = () => {
 
       try {
         const { data, error } = await supabase
-          .from("members")
+          .from("profiles")
           .select("role")
           .eq("user_id", user.id)
           .eq("role", "admin")

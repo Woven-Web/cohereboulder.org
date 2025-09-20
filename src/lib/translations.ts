@@ -887,6 +887,7 @@ export const translations = {
 // Helper function to get nested translation
 export function getTranslation(path: string, language: "en" | "es"): string {
   const keys = path.split(".");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let current: any = translations;
 
   for (const key of keys) {

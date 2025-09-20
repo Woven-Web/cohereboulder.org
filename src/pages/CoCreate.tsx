@@ -1,9 +1,18 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { InterestForm } from "@/components/InterestForm";
 import { Button } from "@/components/ui/button";
-import { Heart, Calendar, Home, Mic, Music, Palette } from "lucide-react";
+import {
+  Heart,
+  Calendar,
+  Home,
+  Mic,
+  Music,
+  Palette,
+  Mail,
+  Users,
+  Sparkles,
+} from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 
@@ -218,17 +227,128 @@ const CoCreate = () => {
               </div>
             </div>
 
-            {/* Co-Creation Interest Form */}
+            {/* Get Involved CTA */}
+            <Card className="shadow-warm bg-gradient-to-br from-primary/10 to-background mb-16">
+              <CardContent className="p-8">
+                <div className="text-center">
+                  <Sparkles className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold mb-4">
+                    Ready to Co-Create?
+                  </h3>
+                  <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+                    Whether you have a fully formed idea or just a spark of
+                    inspiration, we want to hear from you. Let's weave something
+                    beautiful together.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="gap-2"
+                      onClick={() =>
+                        (window.location.href =
+                          "mailto:cohere@wovenweb.org?subject=Co-Creation Interest for COhere Boulder 2025")
+                      }
+                    >
+                      <Mail className="h-5 w-5" />
+                      Email Us Your Ideas
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="gap-2"
+                      onClick={() =>
+                        window.open(
+                          "https://cohereboulder.org/telegram",
+                          "_blank",
+                        )
+                      }
+                    >
+                      <Users className="h-5 w-5" />
+                      Join Our Telegram
+                    </Button>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Email us at{" "}
+                    <a
+                      href="mailto:cohere@wovenweb.org"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      cohere@wovenweb.org
+                    </a>{" "}
+                    with your co-creation ideas and we'll help bring them to
+                    life!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* More Ways to Participate */}
             <div className="mb-16">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-4">Ready to Co-Create?</h3>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Whether you have a fully formed idea or just a spark of
-                  inspiration, we want to hear from you. Let's weave something
-                  beautiful together.
-                </p>
+              <h3 className="text-2xl font-bold text-center mb-8">
+                More Ways to Participate
+              </h3>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <Card className="text-center">
+                  <CardContent className="p-6">
+                    <Calendar className="h-10 w-10 text-primary mx-auto mb-3" />
+                    <h4 className="font-semibold mb-2">Attend Events</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Join workshops, gatherings, and celebrations throughout
+                      the 10 days
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/calendar">View Calendar</a>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="text-center">
+                  <CardContent className="p-6">
+                    <Users className="h-10 w-10 text-primary mx-auto mb-3" />
+                    <h4 className="font-semibold mb-2">Volunteer</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Help with setup, facilitation, or support during events
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        (window.location.href =
+                          "mailto:cohere@wovenweb.org?subject=Volunteer Interest")
+                      }
+                    >
+                      Get Involved
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="text-center">
+                  <CardContent className="p-6">
+                    <Heart className="h-10 w-10 text-primary mx-auto mb-3" />
+                    <h4 className="font-semibold mb-2">Support</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Contribute to making COhere accessible for all
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        window.open(
+                          "https://www.zeffy.com/en-US/donation-form/help-weave-boulders-resilience-support-cohere-boulder--2025",
+                          "_blank",
+                        )
+                      }
+                    >
+                      Donate
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
-              <InterestForm />
             </div>
 
             {/* Contact Info */}
@@ -238,7 +358,7 @@ const CoCreate = () => {
                   {tr("coCreate.haveQuestions")}{" "}
                   <a
                     href="mailto:cohere@wovenweb.org"
-                    className="text-primary hover:underline"
+                    className="text-primary hover:underline font-medium"
                   >
                     cohere@wovenweb.org
                   </a>

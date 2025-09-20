@@ -16,10 +16,10 @@ interface AuthContextType {
     email: string,
     password: string,
     fullName: string,
-  ) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  ) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  resendVerification: () => Promise<{ error: any }>;
+  resendVerification: () => Promise<{ error: Error | null }>;
   linkExistingRegistration: (email: string, userId: string) => Promise<void>;
 }
 
@@ -81,21 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  // Account linking: check if email exists in members table and link to new account
+  // Account linking: check if email exists in profiles table and link to new account
   const linkExistingRegistration = async (email: string, userId: string) => {
     try {
-      // Update any existing member record with this email to link to the new user account
+      // Update any existing profile record with this email to link to the new user account
       const { error } = await supabase
-        .from("members")
+        .from("profiles")
         .update({
           user_id: userId,
-          last_activity_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq("email", email)
         .is("user_id", null);
 
       if (error) {
-        console.error("Error linking existing member:", error);
+        console.error("Error linking existing profile:", error);
       }
     } catch (error) {
       console.error("Error in linkExistingRegistration:", error);

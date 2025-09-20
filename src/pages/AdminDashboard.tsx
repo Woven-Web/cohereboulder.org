@@ -27,60 +27,105 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface MemberData {
+interface ProfileData {
   id: string;
   user_id: string | null;
   email: string;
   full_name: string;
   phone_number: string;
   organizations: string;
-  registration_status: string;
+  subscribed: boolean;
+  role: "admin" | "moderator" | "user";
+  created_at: string;
+  updated_at: string;
+  registrations?: RegistrationData[];
+}
+
+interface RegistrationData {
+  id: string;
+  profile_id: string;
+  cohere_event: string;
   can_attend_invocation: boolean | null;
   can_attend_integration: boolean | null;
   co_creating_interests: string[];
-  financial_contribution_interest: boolean;
   how_did_you_hear: string;
   additional_notes: string;
   participation_types: string[];
   themes: string[];
-  subscribed: boolean;
-  marketing_consent: boolean;
-  event_notifications: boolean;
-  role: "admin" | "moderator" | "user";
   internal_notes: string;
   created_at: string;
   updated_at: string;
-  last_activity_at: string;
-  source: string;
 }
+
+const COHERE_EVENT = "october2025";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdminStatus();
   const { toast } = useToast();
 
-  const [members, setMembers] = useState<MemberData[]>([]);
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     if (!adminLoading && isAdmin) {
-      loadMembersData();
+      loadProfilesData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminLoading, isAdmin]);
 
-  const loadMembersData = async () => {
+  const loadProfilesData = async () => {
     try {
       setLoading(true);
 
-      // Load all member data from unified table
-      const { data: memberData, error: memberError } = await supabase
-        .from("members")
-        .select("*")
+      // Load all profiles with their registrations for the current event
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select(
+          `
+          *,
+          registrations!inner (
+            *
+          )
+        `,
+        )
+        .eq("registrations.cohere_event", COHERE_EVENT)
         .order("created_at", { ascending: false });
 
-      if (memberError) throw memberError;
-      setMembers(memberData || []);
+      const { data: profilesWithoutReg, error: profilesWithoutRegError } =
+        await supabase
+          .from("profiles")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+      if (profileError && profilesWithoutRegError) {
+        throw profileError || profilesWithoutRegError;
+      }
+
+      // Combine the data - profiles with registrations + profiles without
+      const profilesWithRegistrations = profileData || [];
+      const allProfiles = profilesWithoutReg || [];
+
+      // Create a map to track which profiles have registrations
+      const profilesWithRegMap = new Set(
+        profilesWithRegistrations.map((p: ProfileData) => p.id),
+      );
+
+      // Add profiles without registrations
+      const profilesWithoutRegistrations = allProfiles.filter(
+        (p: ProfileData) => !profilesWithRegMap.has(p.id),
+      );
+
+      const combinedProfiles = [
+        ...profilesWithRegistrations,
+        ...profilesWithoutRegistrations.map((p) => ({
+          ...p,
+          registrations: [],
+        })),
+      ];
+
+      setProfiles(combinedProfiles);
     } catch (error) {
       console.error("Error loading admin data:", error);
       toast({
@@ -93,21 +138,56 @@ const AdminDashboard = () => {
     }
   };
 
-  const exportToCsv = (data: any[], filename: string) => {
+  const exportToCsv = (data: ProfileData[], filename: string) => {
     if (data.length === 0) return;
 
-    const headers = Object.keys(data[0]);
+    // Flatten the data for CSV export
+    const flatData = data.map((profile) => {
+      const registration = profile.registrations?.[0];
+      return {
+        email: profile.email,
+        full_name: profile.full_name,
+        phone_number: profile.phone_number,
+        organizations: profile.organizations,
+        subscribed: profile.subscribed ? "Yes" : "No",
+        role: profile.role,
+        has_account: profile.user_id ? "Yes" : "No",
+        registered: registration ? "Yes" : "No",
+        can_attend_invocation: registration?.can_attend_invocation
+          ? "Yes"
+          : registration?.can_attend_invocation === false
+            ? "No"
+            : "",
+        can_attend_integration: registration?.can_attend_integration
+          ? "Yes"
+          : registration?.can_attend_integration === false
+            ? "No"
+            : "",
+        co_creating_interests:
+          registration?.co_creating_interests?.join("; ") || "",
+        how_did_you_hear: registration?.how_did_you_hear || "",
+        additional_notes: registration?.additional_notes || "",
+        participation_types:
+          registration?.participation_types?.join("; ") || "",
+        themes: registration?.themes?.join("; ") || "",
+        internal_notes: registration?.internal_notes || "",
+        profile_created: new Date(profile.created_at).toLocaleDateString(),
+        registration_created: registration
+          ? new Date(registration.created_at).toLocaleDateString()
+          : "",
+      };
+    });
+
+    const headers = Object.keys(flatData[0]);
     const csvContent = [
       headers.join(","),
-      ...data.map((row) =>
+      ...flatData.map((row) =>
         headers
           .map((header) => {
-            const value = row[header];
+            const value = row[header as keyof typeof row];
             if (value === null || value === undefined) return "";
-            if (Array.isArray(value)) return `"${value.join("; ")}"`;
             if (typeof value === "string")
               return `"${value.replace(/"/g, '""')}"`;
-            if (typeof value === "boolean") return value ? "Yes" : "No";
             return value;
           })
           .join(","),
@@ -123,18 +203,20 @@ const AdminDashboard = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Filter members based on different criteria
-  const registeredMembers = members.filter(
-    (m) => m.registration_status === "registered",
+  // Filter profiles based on different criteria
+  const registeredProfiles = profiles.filter(
+    (p) => p.registrations && p.registrations.length > 0,
   );
-  const interestedMembers = members.filter(
-    (m) => m.registration_status === "interested",
+  const unregisteredProfiles = profiles.filter(
+    (p) => !p.registrations || p.registrations.length === 0,
   );
-  const subscribedMembers = members.filter((m) => m.subscribed);
-  const authenticatedMembers = members.filter((m) => m.user_id !== null);
-  const adminMembers = members.filter((m) => m.role === "admin");
-  const coCreators = members.filter(
-    (m) => m.co_creating_interests && m.co_creating_interests.length > 0,
+  const subscribedProfiles = profiles.filter((p) => p.subscribed);
+  const authenticatedProfiles = profiles.filter((p) => p.user_id !== null);
+  const adminProfiles = profiles.filter((p) => p.role === "admin");
+  const coCreatorProfiles = profiles.filter((p) =>
+    p.registrations?.some(
+      (r) => r.co_creating_interests && r.co_creating_interests.length > 0,
+    ),
   );
 
   if (adminLoading) {
@@ -161,7 +243,7 @@ const AdminDashboard = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage COhere Boulder community members (unified database)
+            Manage COhere Boulder community members
           </p>
         </div>
 
@@ -176,14 +258,14 @@ const AdminDashboard = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Members
+                    Total Profiles
                   </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{members.length}</div>
+                  <div className="text-2xl font-bold">{profiles.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    All community members
+                    All community profiles
                   </p>
                 </CardContent>
               </Card>
@@ -197,10 +279,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {registeredMembers.length}
+                    {registeredProfiles.length}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Event registrations
+                    For {COHERE_EVENT}
                   </p>
                 </CardContent>
               </Card>
@@ -214,7 +296,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {subscribedMembers.length}
+                    {subscribedProfiles.length}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Active subscribers
@@ -231,7 +313,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {authenticatedMembers.length}
+                    {authenticatedProfiles.length}
                   </div>
                   <p className="text-xs text-muted-foreground">With accounts</p>
                 </CardContent>
@@ -243,12 +325,12 @@ const AdminDashboard = () => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Interested
+                    Not Registered
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-xl font-bold">
-                    {interestedMembers.length}
+                    {unregisteredProfiles.length}
                   </div>
                 </CardContent>
               </Card>
@@ -260,7 +342,9 @@ const AdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{coCreators.length}</div>
+                  <div className="text-xl font-bold">
+                    {coCreatorProfiles.length}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -269,7 +353,9 @@ const AdminDashboard = () => {
                   <CardTitle className="text-sm font-medium">Admins</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{adminMembers.length}</div>
+                  <div className="text-xl font-bold">
+                    {adminProfiles.length}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -281,67 +367,72 @@ const AdminDashboard = () => {
               className="space-y-4"
             >
               <TabsList>
-                <TabsTrigger value="all">All Members</TabsTrigger>
+                <TabsTrigger value="all">All Profiles</TabsTrigger>
                 <TabsTrigger value="registered">Registered</TabsTrigger>
-                <TabsTrigger value="interested">Interested</TabsTrigger>
+                <TabsTrigger value="unregistered">Not Registered</TabsTrigger>
                 <TabsTrigger value="cocreators">Co-Creators</TabsTrigger>
                 <TabsTrigger value="unsubscribed">Unsubscribed</TabsTrigger>
               </TabsList>
 
               <TabsContent value="all">
-                <MembersList
-                  members={members}
-                  title="All Community Members"
-                  description="Complete list of all members in the database"
-                  exportFilename="all-members.csv"
-                  onExport={() => exportToCsv(members, "all-members.csv")}
+                <ProfilesList
+                  profiles={profiles}
+                  title="All Community Profiles"
+                  description="Complete list of all profiles in the database"
+                  exportFilename="all-profiles.csv"
+                  onExport={() => exportToCsv(profiles, "all-profiles.csv")}
                 />
               </TabsContent>
 
               <TabsContent value="registered">
-                <MembersList
-                  members={registeredMembers}
-                  title="Registered for COhere 2025"
-                  description="Members who have completed event registration"
-                  exportFilename="registered-members.csv"
+                <ProfilesList
+                  profiles={registeredProfiles}
+                  title={`Registered for COhere ${COHERE_EVENT}`}
+                  description="Profiles who have completed event registration"
+                  exportFilename="registered-profiles.csv"
                   onExport={() =>
-                    exportToCsv(registeredMembers, "registered-members.csv")
+                    exportToCsv(registeredProfiles, "registered-profiles.csv")
                   }
                 />
               </TabsContent>
 
-              <TabsContent value="interested">
-                <MembersList
-                  members={interestedMembers}
-                  title="Interested Members"
-                  description="People who expressed interest but haven't registered yet"
-                  exportFilename="interested-members.csv"
+              <TabsContent value="unregistered">
+                <ProfilesList
+                  profiles={unregisteredProfiles}
+                  title="Not Yet Registered"
+                  description="Profiles without registrations for the current event"
+                  exportFilename="unregistered-profiles.csv"
                   onExport={() =>
-                    exportToCsv(interestedMembers, "interested-members.csv")
+                    exportToCsv(
+                      unregisteredProfiles,
+                      "unregistered-profiles.csv",
+                    )
                   }
                 />
               </TabsContent>
 
               <TabsContent value="cocreators">
-                <MembersList
-                  members={coCreators}
+                <ProfilesList
+                  profiles={coCreatorProfiles}
                   title="Co-Creators"
-                  description="Members interested in co-creating events and activities"
+                  description="Profiles interested in co-creating events and activities"
                   exportFilename="cocreators.csv"
-                  onExport={() => exportToCsv(coCreators, "cocreators.csv")}
+                  onExport={() =>
+                    exportToCsv(coCreatorProfiles, "cocreators.csv")
+                  }
                 />
               </TabsContent>
 
               <TabsContent value="unsubscribed">
-                <MembersList
-                  members={members.filter((m) => !m.subscribed)}
-                  title="Unsubscribed Members"
-                  description="Members who have opted out of email communications"
-                  exportFilename="unsubscribed-members.csv"
+                <ProfilesList
+                  profiles={profiles.filter((p) => !p.subscribed)}
+                  title="Unsubscribed Profiles"
+                  description="Profiles who have opted out of email communications"
+                  exportFilename="unsubscribed-profiles.csv"
                   onExport={() =>
                     exportToCsv(
-                      members.filter((m) => !m.subscribed),
-                      "unsubscribed-members.csv",
+                      profiles.filter((p) => !p.subscribed),
+                      "unsubscribed-profiles.csv",
                     )
                   }
                 />
@@ -356,17 +447,17 @@ const AdminDashboard = () => {
   );
 };
 
-// Component to display member list
-interface MembersListProps {
-  members: MemberData[];
+// Component to display profile list
+interface ProfilesListProps {
+  profiles: ProfileData[];
   title: string;
   description: string;
   exportFilename: string;
   onExport: () => void;
 }
 
-const MembersList: React.FC<MembersListProps> = ({
-  members,
+const ProfilesList: React.FC<ProfilesListProps> = ({
+  profiles,
   title,
   description,
   onExport,
@@ -385,152 +476,159 @@ const MembersList: React.FC<MembersListProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {members.length === 0 ? (
+          {profiles.length === 0 ? (
             <p className="text-muted-foreground">
-              No members found in this category.
+              No profiles found in this category.
             </p>
           ) : (
-            members.map((member) => (
-              <div key={member.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{member.full_name}</h3>
-                      {member.role === "admin" && (
-                        <Badge variant="destructive" className="gap-1">
-                          <Shield className="h-3 w-3" />
-                          Admin
-                        </Badge>
+            profiles.map((profile) => {
+              const registration = profile.registrations?.[0];
+              return (
+                <div key={profile.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{profile.full_name}</h3>
+                        {profile.role === "admin" && (
+                          <Badge variant="destructive" className="gap-1">
+                            <Shield className="h-3 w-3" />
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {profile.email}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">
+                        Profile:{" "}
+                        {new Date(profile.created_at).toLocaleDateString()}
+                      </div>
+                      {registration && (
+                        <div className="text-sm text-muted-foreground">
+                          Registered:{" "}
+                          {new Date(
+                            registration.created_at,
+                          ).toLocaleDateString()}
+                        </div>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {member.email}
-                    </p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(member.created_at).toLocaleDateString()}
-                    </div>
-                    {member.source && (
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {member.source}
+
+                  {profile.phone_number && (
+                    <p className="text-sm">
+                      <strong>Phone:</strong> {profile.phone_number}
+                    </p>
+                  )}
+
+                  {profile.organizations && (
+                    <p className="text-sm">
+                      <strong>Organizations:</strong> {profile.organizations}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {registration ? (
+                      <Badge variant="default">
+                        Registered for {COHERE_EVENT}
                       </Badge>
+                    ) : (
+                      <Badge variant="secondary">Not registered</Badge>
+                    )}
+
+                    {profile.user_id && (
+                      <Badge variant="secondary">Has Account</Badge>
+                    )}
+
+                    {registration?.can_attend_invocation && (
+                      <Badge variant="outline">Invocation</Badge>
+                    )}
+
+                    {registration?.can_attend_integration && (
+                      <Badge variant="outline">Integration</Badge>
+                    )}
+
+                    {profile.subscribed ? (
+                      <Badge variant="default">Subscribed</Badge>
+                    ) : (
+                      <Badge variant="destructive">Unsubscribed</Badge>
                     )}
                   </div>
-                </div>
 
-                {member.phone_number && (
-                  <p className="text-sm">
-                    <strong>Phone:</strong> {member.phone_number}
-                  </p>
-                )}
-
-                {member.organizations && (
-                  <p className="text-sm">
-                    <strong>Organizations:</strong> {member.organizations}
-                  </p>
-                )}
-
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  <Badge
-                    variant={
-                      member.registration_status === "registered"
-                        ? "default"
-                        : "secondary"
-                    }
-                  >
-                    {member.registration_status || "interested"}
-                  </Badge>
-
-                  {member.user_id && (
-                    <Badge variant="secondary">Has Account</Badge>
-                  )}
-
-                  {member.can_attend_invocation && (
-                    <Badge variant="outline">Invocation</Badge>
-                  )}
-
-                  {member.can_attend_integration && (
-                    <Badge variant="outline">Integration</Badge>
-                  )}
-
-                  {member.financial_contribution_interest && (
-                    <Badge variant="outline">May Contribute $</Badge>
-                  )}
-
-                  {member.subscribed ? (
-                    <Badge variant="default">Subscribed</Badge>
-                  ) : (
-                    <Badge variant="destructive">Unsubscribed</Badge>
-                  )}
-
-                  {member.marketing_consent && (
-                    <Badge variant="outline">Marketing OK</Badge>
-                  )}
-                </div>
-
-                {member.co_creating_interests?.length > 0 && (
-                  <div className="mt-2">
-                    <strong className="text-sm">Co-creating interests:</strong>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {member.co_creating_interests.map((interest, idx) => (
-                        <div key={idx}>• {interest}</div>
-                      ))}
+                  {registration?.co_creating_interests?.length > 0 && (
+                    <div className="mt-2">
+                      <strong className="text-sm">
+                        Co-creating interests:
+                      </strong>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {registration.co_creating_interests.map(
+                          (interest, idx) => (
+                            <div key={idx}>• {interest}</div>
+                          ),
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {member.participation_types?.length > 0 && (
-                  <div className="mt-2">
-                    <strong className="text-sm">Participation types:</strong>
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {member.participation_types.map((type, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {type}
-                        </Badge>
-                      ))}
+                  {registration?.participation_types?.length > 0 && (
+                    <div className="mt-2">
+                      <strong className="text-sm">Participation types:</strong>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {registration.participation_types.map((type, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {type}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {member.themes?.length > 0 && (
-                  <div className="mt-2">
-                    <strong className="text-sm">Themes:</strong>
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {member.themes.map((theme, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {theme}
-                        </Badge>
-                      ))}
+                  {registration?.themes?.length > 0 && (
+                    <div className="mt-2">
+                      <strong className="text-sm">Themes:</strong>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {registration.themes.map((theme, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {theme}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {member.how_did_you_hear && (
-                  <p className="text-sm mt-2">
-                    <strong>How they heard:</strong> {member.how_did_you_hear}
-                  </p>
-                )}
-
-                {member.additional_notes && (
-                  <p className="text-sm mt-2">
-                    <strong>Notes:</strong> {member.additional_notes}
-                  </p>
-                )}
-
-                {member.internal_notes && (
-                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                    <p className="text-sm">
-                      <strong>Internal notes:</strong> {member.internal_notes}
+                  {registration?.how_did_you_hear && (
+                    <p className="text-sm mt-2">
+                      <strong>How they heard:</strong>{" "}
+                      {registration.how_did_you_hear}
                     </p>
-                  </div>
-                )}
-              </div>
-            ))
+                  )}
+
+                  {registration?.additional_notes && (
+                    <p className="text-sm mt-2">
+                      <strong>Notes:</strong> {registration.additional_notes}
+                    </p>
+                  )}
+
+                  {registration?.internal_notes && (
+                    <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                      <p className="text-sm">
+                        <strong>Internal notes:</strong>{" "}
+                        {registration.internal_notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </CardContent>

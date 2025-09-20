@@ -34,8 +34,8 @@ serve(async (req) => {
     if (method === "GET") {
       // Get current preferences for the token
       const { data, error } = await supabase
-        .from("members")
-        .select("email, subscribed, marketing_consent, event_notifications")
+        .from("profiles")
+        .select("email, subscribed")
         .eq("unsubscribe_token", token)
         .single();
 
@@ -57,16 +57,13 @@ serve(async (req) => {
     if (method === "POST") {
       // Update preferences
       const body = await req.json();
-      const { subscribed, marketing_consent, event_notifications } = body;
+      const { subscribed } = body;
 
       const { data, error } = await supabase
-        .from("members")
+        .from("profiles")
         .update({
           subscribed: subscribed ?? false,
-          marketing_consent: marketing_consent ?? false,
-          event_notifications: event_notifications ?? false,
           updated_at: new Date().toISOString(),
-          last_activity_at: new Date().toISOString(),
         })
         .eq("unsubscribe_token", token)
         .select("email")

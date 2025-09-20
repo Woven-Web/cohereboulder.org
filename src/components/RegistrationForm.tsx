@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+const COHERE_EVENT = "october2025"; // Current event identifier
+
 interface RegistrationFormData {
   fullName: string;
   email: string;
@@ -33,10 +35,9 @@ interface RegistrationFormData {
   canAttendInvocation: string;
   canAttendIntegration: string;
   coCreatingInterests: string[];
-  financialContributionInterest: boolean;
   howDidYouHear: string;
   additionalNotes: string;
-  communityUpdates: boolean;
+  subscribed: boolean;
 }
 
 export function RegistrationForm() {
@@ -46,7 +47,22 @@ export function RegistrationForm() {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
-  const [existingMember, setExistingMember] = useState<any>(null);
+  const [existingProfile, setExistingProfile] = useState<{
+    id: string;
+    email: string;
+    full_name: string;
+    phone_number?: string;
+    organizations?: string;
+    subscribed?: boolean;
+  } | null>(null);
+  const [existingRegistration, setExistingRegistration] = useState<{
+    id: string;
+    can_attend_invocation: boolean | null;
+    can_attend_integration: boolean | null;
+    co_creating_interests?: string[];
+    how_did_you_hear?: string;
+    additional_notes?: string;
+  } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
 
@@ -59,17 +75,17 @@ export function RegistrationForm() {
     canAttendInvocation: "",
     canAttendIntegration: "",
     coCreatingInterests: [],
-    financialContributionInterest: false,
     howDidYouHear: "",
     additionalNotes: "",
-    communityUpdates: true,
+    subscribed: true,
   });
 
-  // Check for existing member record when component mounts or user changes
+  // Check for existing profile and registration when component mounts or user changes
   useEffect(() => {
     if (user?.email) {
-      checkExistingMember(user.email);
+      checkExistingData(user.email);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Check for duplicate email when email field changes (for non-authenticated users)
@@ -82,53 +98,74 @@ export function RegistrationForm() {
     }
   }, [formData.email, user]);
 
-  const checkExistingMember = async (email: string) => {
+  const checkExistingData = async (email: string) => {
     try {
-      const { data, error } = await supabase
-        .from("members")
+      // Check for existing profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
         .select("*")
         .eq("email", email)
         .single();
 
-      if (data && !error) {
-        setExistingMember(data);
-        setIsEditMode(true);
+      if (profile && !profileError) {
+        setExistingProfile(profile);
 
-        // Populate form with existing data
-        setFormData({
-          fullName: data.full_name || user?.user_metadata?.full_name || "",
-          email: data.email,
-          password: "",
-          phoneNumber: data.phone_number || "",
-          organizations: data.organizations || "",
-          canAttendInvocation:
-            data.can_attend_invocation === true
-              ? "yes"
-              : data.can_attend_invocation === false
-                ? "no"
-                : "maybe",
-          canAttendIntegration:
-            data.can_attend_integration === true
-              ? "yes"
-              : data.can_attend_integration === false
-                ? "no"
-                : "maybe",
-          coCreatingInterests: data.co_creating_interests || [],
-          financialContributionInterest:
-            data.financial_contribution_interest || false,
-          howDidYouHear: data.how_did_you_hear || "",
-          additionalNotes: data.additional_notes || "",
-          communityUpdates: data.marketing_consent !== false,
-        });
+        // Check for existing registration for this event
+        const { data: registration, error: regError } = await supabase
+          .from("registrations")
+          .select("*")
+          .eq("profile_id", profile.id)
+          .eq("cohere_event", COHERE_EVENT)
+          .single();
 
-        toast({
-          title: "Welcome back!",
-          description:
-            "We found your existing registration. You can update your information below.",
-        });
+        if (registration && !regError) {
+          setExistingRegistration(registration);
+          setIsEditMode(true);
+
+          // Populate form with existing data
+          setFormData({
+            fullName: profile.full_name || "",
+            email: profile.email,
+            password: "",
+            phoneNumber: profile.phone_number || "",
+            organizations: profile.organizations || "",
+            canAttendInvocation:
+              registration.can_attend_invocation === true
+                ? "yes"
+                : registration.can_attend_invocation === false
+                  ? "no"
+                  : "maybe",
+            canAttendIntegration:
+              registration.can_attend_integration === true
+                ? "yes"
+                : registration.can_attend_integration === false
+                  ? "no"
+                  : "maybe",
+            coCreatingInterests: registration.co_creating_interests || [],
+            howDidYouHear: registration.how_did_you_hear || "",
+            additionalNotes: registration.additional_notes || "",
+            subscribed: profile.subscribed !== false,
+          });
+
+          toast({
+            title: "Welcome back!",
+            description:
+              "We found your existing registration. You can update your information below.",
+          });
+        } else {
+          // Profile exists but no registration for this event
+          setFormData((prev) => ({
+            ...prev,
+            fullName: profile.full_name || "",
+            email: profile.email,
+            phoneNumber: profile.phone_number || "",
+            organizations: profile.organizations || "",
+            subscribed: profile.subscribed !== false,
+          }));
+        }
       }
     } catch (error) {
-      console.error("Error checking existing member:", error);
+      console.error("Error checking existing data:", error);
     }
   };
 
@@ -136,7 +173,7 @@ export function RegistrationForm() {
     setIsCheckingEmail(true);
     try {
       const { data, error } = await supabase
-        .from("members")
+        .from("profiles")
         .select("email")
         .eq("email", email)
         .single();
@@ -173,11 +210,56 @@ export function RegistrationForm() {
     userId?: string,
   ) => {
     try {
-      const memberData = {
-        full_name: data.fullName,
-        email: data.email,
-        phone_number: data.phoneNumber,
-        organizations: data.organizations,
+      let profileId = existingProfile?.id;
+
+      // Step 1: Create or update profile
+      if (!profileId) {
+        // Create new profile
+        const { data: newProfile, error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            email: data.email,
+            full_name: data.fullName,
+            phone_number: data.phoneNumber,
+            organizations: data.organizations,
+            user_id: userId || null,
+            subscribed: data.subscribed,
+            source: "registration",
+          })
+          .select()
+          .single();
+
+        if (profileError) {
+          if (profileError.code === "23505") {
+            // Unique violation
+            throw new Error(
+              "This email is already registered. Please sign in to update your registration.",
+            );
+          }
+          throw profileError;
+        }
+
+        profileId = newProfile.id;
+      } else {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: data.fullName,
+            phone_number: data.phoneNumber,
+            organizations: data.organizations,
+            subscribed: data.subscribed,
+            user_id: userId || existingProfile.user_id,
+          })
+          .eq("id", existingProfile.id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Step 2: Create or update registration for this event
+      const registrationData = {
+        profile_id: profileId,
+        cohere_event: COHERE_EVENT,
         can_attend_invocation:
           data.canAttendInvocation === "yes"
             ? true
@@ -191,37 +273,29 @@ export function RegistrationForm() {
               ? false
               : null,
         co_creating_interests: data.coCreatingInterests,
-        financial_contribution_interest: data.financialContributionInterest,
         how_did_you_hear: data.howDidYouHear,
         additional_notes: data.additionalNotes,
-        user_id: userId || existingMember?.user_id || null,
-        marketing_consent: data.communityUpdates,
-        subscribed: data.communityUpdates,
-        event_notifications: true,
-        registration_status: "registered",
-        source: "registration_form",
-        last_activity_at: new Date().toISOString(),
       };
 
-      if (isEditMode && existingMember) {
-        // Update existing member record
+      if (isEditMode && existingRegistration) {
+        // Update existing registration
         const { error: updateError } = await supabase
-          .from("members")
-          .update(memberData)
-          .eq("id", existingMember.id);
+          .from("registrations")
+          .update(registrationData)
+          .eq("id", existingRegistration.id);
 
         if (updateError) throw updateError;
       } else {
-        // Insert new member record
+        // Insert new registration
         const { error: insertError } = await supabase
-          .from("members")
-          .insert(memberData);
+          .from("registrations")
+          .insert(registrationData);
 
         if (insertError) {
           if (insertError.code === "23505") {
             // Unique violation
             throw new Error(
-              "This email is already registered. Please sign in to update your registration.",
+              "You're already registered for this event. Please refresh the page to see your registration.",
             );
           }
           throw insertError;
@@ -231,11 +305,11 @@ export function RegistrationForm() {
       // Send registration confirmation email (only for new registrations)
       if (!isEditMode) {
         try {
-          // Get the unsubscribe token for the new member
-          const { data: member } = await supabase
-            .from("members")
+          // Get the unsubscribe token for the profile
+          const { data: profile } = await supabase
+            .from("profiles")
             .select("unsubscribe_token")
-            .eq("email", data.email)
+            .eq("id", profileId)
             .single();
 
           const { error: emailSendError } = await supabase.functions.invoke(
@@ -246,7 +320,7 @@ export function RegistrationForm() {
                 fullName: data.fullName,
                 canAttendInvocation: data.canAttendInvocation === "yes",
                 canAttendIntegration: data.canAttendIntegration === "yes",
-                unsubscribeToken: member?.unsubscribe_token,
+                unsubscribeToken: profile?.unsubscribe_token,
               },
             },
           );
@@ -281,7 +355,7 @@ export function RegistrationForm() {
         );
       }
 
-      let userId = user?.id;
+      const userId = user?.id;
 
       // If user is not authenticated and wants to create account
       if (!user && formData.password) {
@@ -317,7 +391,7 @@ export function RegistrationForm() {
           ? "Your registration has been updated with your latest information."
           : "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error submitting registration",
         description: error.message || "Please try again later.",
@@ -363,7 +437,7 @@ export function RegistrationForm() {
             <p className="text-muted-foreground">
               {isEditMode
                 ? "Your registration has been successfully updated."
-                : "Thank you for registering for COhere Boulder 2025. We're excited  to have you join our community-building journey."}
+                : "Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey."}
             </p>
             {!isEditMode && (
               <p className="text-sm text-muted-foreground">
@@ -424,23 +498,6 @@ export function RegistrationForm() {
               </p>
             </>
           )}
-          {isEditMode ? (
-            <p className="text-muted-foreground mb-4">
-              Welcome back! You can update your registration information below.
-              Changes will be saved immediately.
-            </p>
-          ) : (
-            <>
-              <p className="text-muted-foreground mb-4">
-                Please complete this form to receive communications and stay
-                up-to-date on what's unfolding with COhere. Registration is free
-                and all events are opt-in.
-              </p>
-              <p className="text-primary font-medium">
-                We can't wait to weave you into the fabric of this community!
-              </p>
-            </>
-          )}
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
@@ -475,13 +532,7 @@ export function RegistrationForm() {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   required
-                  disabled={!!user && !isEditMode}
                 />
-                {user && !isEditMode && (
-                  <p className="text-sm text-muted-foreground">
-                    Using your account name
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -751,20 +802,17 @@ export function RegistrationForm() {
               <div className="space-y-3">
                 <div className="flex items-start space-x-2">
                   <Checkbox
-                    id="communityUpdates"
-                    checked={formData.communityUpdates}
+                    id="subscribed"
+                    checked={formData.subscribed}
                     onCheckedChange={(checked) =>
                       setFormData((prev) => ({
                         ...prev,
-                        communityUpdates: checked as boolean,
+                        subscribed: checked as boolean,
                       }))
                     }
                   />
                   <div className="space-y-1">
-                    <label
-                      htmlFor="communityUpdates"
-                      className="text-sm font-medium"
-                    >
+                    <label htmlFor="subscribed" className="text-sm font-medium">
                       Yes, I'd like to receive COhere updates and community news
                     </label>
                     <p className="text-xs text-muted-foreground">
@@ -784,8 +832,6 @@ export function RegistrationForm() {
                 isLoading || (emailExists && !formData.password && !user)
               }
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditMode ? "Update Registration" : "Submit Registration"}
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? "Update Registration" : "Submit Registration"}
             </Button>
