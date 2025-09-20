@@ -27,44 +27,80 @@ export const InterestForm = () => {
     themes: [],
     message: "",
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCheckboxChange = (field: 'participationTypes' | 'themes', value: string, checked: boolean) => {
-    setFormData(prev => ({
+  const handleCheckboxChange = (
+    field: "participationTypes" | "themes",
+    value: string,
+    checked: boolean,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: checked 
+      [field]: checked
         ? [...prev[field], value]
-        : prev[field].filter(item => item !== value)
+        : prev[field].filter((item) => item !== value),
     }));
   };
 
   const submitToSupabase = async (data: FormData) => {
-    const { error } = await supabase
-      .from('interest_submissions')
-      .insert({
-        name: data.name,
+    // Check if member already exists
+    const { data: existingMember } = await supabase
+      .from("members")
+      .select("id")
+      .eq("email", data.email)
+      .single();
+
+    if (existingMember) {
+      // Update existing member with interest data
+      const { error } = await supabase
+        .from("members")
+        .update({
+          full_name: data.name,
+          organizations: data.organization || null,
+          participation_types: data.participationTypes,
+          themes: data.themes,
+          additional_notes: data.message || null,
+          registration_status: "interested",
+          source: "interest_form",
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq("id", existingMember.id);
+
+      if (error) {
+        throw new Error(`Database error: ${error.message}`);
+      }
+    } else {
+      // Create new member record
+      const { error } = await supabase.from("members").insert({
+        full_name: data.name,
         email: data.email,
-        organization: data.organization || null,
+        organizations: data.organization || null,
         participation_types: data.participationTypes,
         themes: data.themes,
-        message: data.message || null,
+        additional_notes: data.message || null,
+        registration_status: "interested",
+        source: "interest_form",
+        subscribed: true,
+        marketing_consent: true,
+        event_notifications: true,
       });
 
-    if (error) {
-      throw new Error(`Database error: ${error.message}`);
+      if (error) {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.email) {
       toast({
         title: "Required fields missing",
@@ -84,10 +120,11 @@ export const InterestForm = () => {
         description: "Your interest has been submitted successfully.",
       });
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error("Error submitting form:", error);
       toast({
         title: "Submission failed",
-        description: "There was an error submitting your form. Please try again or contact us directly.",
+        description:
+          "There was an error submitting your form. Please try again or contact us directly.",
         variant: "destructive",
       });
     } finally {
@@ -101,7 +138,8 @@ export const InterestForm = () => {
         <CardContent className="p-8 text-center">
           <h3 className="text-2xl font-bold mb-4 text-primary">Thank You!</h3>
           <p className="text-muted-foreground">
-            We've received your interest in COhere Boulder 2025. We'll be in touch soon with more information about how you can participate.
+            We've received your interest in COhere Boulder 2025. We'll be in
+            touch soon with more information about how you can participate.
           </p>
         </CardContent>
       </Card>
@@ -118,56 +156,69 @@ export const InterestForm = () => {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
-              <Input 
-                id="name" 
-                required 
+              <Input
+                id="name"
+                required
                 placeholder="Your name"
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={(e) => handleInputChange("name", e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                required
                 placeholder="your@email.com"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
+                onChange={(e) => handleInputChange("email", e.target.value)}
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="organization">Organization (Optional)</Label>
-            <Input 
-              id="organization" 
+            <Input
+              id="organization"
               placeholder="Your organization or business"
               value={formData.organization}
-              onChange={(e) => handleInputChange('organization', e.target.value)}
+              onChange={(e) =>
+                handleInputChange("organization", e.target.value)
+              }
             />
           </div>
 
           <div className="space-y-3">
-            <Label>How would you like to participate? (Check all that apply)</Label>
+            <Label>
+              How would you like to participate? (Check all that apply)
+            </Label>
             <div className="space-y-2">
               {[
-                { id: 'attend', label: 'Attend events during October 16-26' },
-                { id: 'organize', label: 'Help organize and support COhere' },
-                { id: 'host', label: 'Host an event during the 10-day container' },
-                { id: 'sponsor', label: 'Sponsor COhere Boulder 2025' },
-                { id: 'volunteer', label: 'Volunteer during events' }
+                { id: "attend", label: "Attend events during October 16-26" },
+                { id: "organize", label: "Help organize and support COhere" },
+                {
+                  id: "host",
+                  label: "Host an event during the 10-day container",
+                },
+                { id: "sponsor", label: "Sponsor COhere Boulder 2025" },
+                { id: "volunteer", label: "Volunteer during events" },
               ].map(({ id, label }) => (
                 <div key={id} className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id={id}
                     checked={formData.participationTypes.includes(label)}
-                    onCheckedChange={(checked) => 
-                      handleCheckboxChange('participationTypes', label, checked as boolean)
+                    onCheckedChange={(checked) =>
+                      handleCheckboxChange(
+                        "participationTypes",
+                        label,
+                        checked as boolean,
+                      )
                     }
                   />
-                  <label htmlFor={id} className="text-sm">{label}</label>
+                  <label htmlFor={id} className="text-sm">
+                    {label}
+                  </label>
                 </div>
               ))}
             </div>
@@ -177,19 +228,19 @@ export const InterestForm = () => {
             <Label htmlFor="themes">Which themes interest you most?</Label>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {[
-                { id: 'ecology', label: 'Ecology & Food Systems' },
-                { id: 'arts', label: 'Arts & Culture' },
-                { id: 'wellness', label: 'Wellness' },
-                { id: 'tech', label: 'Technology & Innovation' },
-                { id: 'governance', label: 'Governance & Business' },
-                { id: 'villaging', label: 'Villaging & Neighboring' }
+                { id: "ecology", label: "Ecology & Food Systems" },
+                { id: "arts", label: "Arts & Culture" },
+                { id: "wellness", label: "Wellness" },
+                { id: "tech", label: "Technology & Innovation" },
+                { id: "governance", label: "Governance & Business" },
+                { id: "villaging", label: "Villaging & Neighboring" },
               ].map(({ id, label }) => (
                 <div key={id} className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id={id}
                     checked={formData.themes.includes(label)}
-                    onCheckedChange={(checked) => 
-                      handleCheckboxChange('themes', label, checked as boolean)
+                    onCheckedChange={(checked) =>
+                      handleCheckboxChange("themes", label, checked as boolean)
                     }
                   />
                   <label htmlFor={id}>{label}</label>
@@ -205,11 +256,16 @@ export const InterestForm = () => {
               placeholder="What excites you about COhere? What gifts might you bring to the community?"
               rows={4}
               value={formData.message}
-              onChange={(e) => handleInputChange('message', e.target.value)}
+              onChange={(e) => handleInputChange("message", e.target.value)}
             />
           </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

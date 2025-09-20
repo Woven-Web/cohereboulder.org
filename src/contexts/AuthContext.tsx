@@ -1,12 +1,22 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resendVerification: () => Promise<{ error: any }>;
@@ -22,20 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-        
-        // Link existing registrations when user signs up or signs in
-        if (session?.user && event === 'SIGNED_IN') {
-          setTimeout(() => {
-            linkExistingRegistration(session.user.email!, session.user.id);
-          }, 0);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+
+      // Link existing registrations when user signs up or signs in
+      if (session?.user && event === "SIGNED_IN") {
+        setTimeout(() => {
+          linkExistingRegistration(session.user.email!, session.user.id);
+        }, 0);
       }
-    );
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,16 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/verification-success`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName
-        }
-      }
+          full_name: fullName,
+        },
+      },
     });
     return { error };
   };
@@ -66,26 +76,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password,
     });
     return { error };
   };
 
-  // Account linking: check if email exists in registrations and link to new account
+  // Account linking: check if email exists in members table and link to new account
   const linkExistingRegistration = async (email: string, userId: string) => {
     try {
-      // Update any existing registrations with this email to link to the new user account
+      // Update any existing member record with this email to link to the new user account
       const { error } = await supabase
-        .from('registrations')
-        .update({ user_id: userId })
-        .eq('email', email)
-        .is('user_id', null);
+        .from("members")
+        .update({
+          user_id: userId,
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq("email", email)
+        .is("user_id", null);
 
       if (error) {
-        console.error('Error linking existing registration:', error);
+        console.error("Error linking existing member:", error);
       }
     } catch (error) {
-      console.error('Error in linkExistingRegistration:', error);
+      console.error("Error in linkExistingRegistration:", error);
     }
   };
 
@@ -95,15 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resendVerification = async () => {
     if (!user?.email) {
-      return { error: { message: 'No user email found' } };
+      return { error: { message: "No user email found" } };
     }
-    
+
     const { error } = await supabase.auth.resend({
-      type: 'signup',
+      type: "signup",
       email: user.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/verification-success`
-      }
+        emailRedirectTo: `${window.location.origin}/verification-success`,
+      },
     });
     return { error };
   };
@@ -116,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signOut,
     resendVerification,
-    linkExistingRegistration
+    linkExistingRegistration,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -125,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

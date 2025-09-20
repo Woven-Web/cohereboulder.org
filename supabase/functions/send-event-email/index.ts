@@ -40,9 +40,9 @@ serve(async (req) => {
       recipientFilter = "event_notifications",
     }: EventEmailRequest = await req.json();
 
-    // Get email addresses based on filter
+    // Get email addresses based on filter from the unified members table
     let query = supabase
-      .from("email_preferences")
+      .from("members")
       .select("email, unsubscribe_token")
       .eq("subscribed", true);
 
@@ -52,17 +52,17 @@ serve(async (req) => {
       query = query.eq("event_notifications", true);
     }
 
-    const { data: emailPrefs, error } = await query;
+    const { data: members, error } = await query;
 
     if (error) {
-      console.error("Error fetching email preferences:", error);
+      console.error("Error fetching members:", error);
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!emailPrefs || emailPrefs.length === 0) {
+    if (!members || members.length === 0) {
       return new Response(JSON.stringify({ message: "No subscribers found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -72,8 +72,8 @@ serve(async (req) => {
     const baseUrl = "https://pnvxrczcygrkbschkvkv.supabase.co/functions/v1";
 
     // Send emails to all recipients
-    const emailPromises = emailPrefs.map(async (pref) => {
-      const unsubscribeUrl = `${window.location.origin}/unsubscribe?token=${pref.unsubscribe_token}`;
+    const emailPromises = members.map(async (member) => {
+      const unsubscribeUrl = `${window.location.origin}/unsubscribe?token=${member.unsubscribe_token}`;
 
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -108,7 +108,7 @@ serve(async (req) => {
 
       return resend.emails.send({
         from: "COhere Boulder <cohere@wovenweb.org>",
-        to: [pref.email],
+        to: [member.email],
         subject: subject,
         html: htmlContent,
       });
@@ -127,7 +127,7 @@ serve(async (req) => {
         message: `Emails sent successfully`,
         successful,
         failed,
-        total: emailPrefs.length,
+        total: members.length,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

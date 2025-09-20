@@ -46,7 +46,7 @@ export function RegistrationForm() {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
-  const [existingRegistration, setExistingRegistration] = useState<any>(null);
+  const [existingMember, setExistingMember] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
 
@@ -65,10 +65,10 @@ export function RegistrationForm() {
     communityUpdates: true,
   });
 
-  // Check for existing registration when component mounts or user changes
+  // Check for existing member record when component mounts or user changes
   useEffect(() => {
     if (user?.email) {
-      checkExistingRegistration(user.email);
+      checkExistingMember(user.email);
     }
   }, [user]);
 
@@ -82,16 +82,16 @@ export function RegistrationForm() {
     }
   }, [formData.email, user]);
 
-  const checkExistingRegistration = async (email: string) => {
+  const checkExistingMember = async (email: string) => {
     try {
       const { data, error } = await supabase
-        .from("registrations")
+        .from("members")
         .select("*")
         .eq("email", email)
         .single();
 
       if (data && !error) {
-        setExistingRegistration(data);
+        setExistingMember(data);
         setIsEditMode(true);
 
         // Populate form with existing data
@@ -128,7 +128,7 @@ export function RegistrationForm() {
         });
       }
     } catch (error) {
-      console.error("Error checking existing registration:", error);
+      console.error("Error checking existing member:", error);
     }
   };
 
@@ -136,7 +136,7 @@ export function RegistrationForm() {
     setIsCheckingEmail(true);
     try {
       const { data, error } = await supabase
-        .from("registrations")
+        .from("members")
         .select("email")
         .eq("email", email)
         .single();
@@ -173,7 +173,7 @@ export function RegistrationForm() {
     userId?: string,
   ) => {
     try {
-      const registrationData = {
+      const memberData = {
         full_name: data.fullName,
         email: data.email,
         phone_number: data.phoneNumber,
@@ -194,59 +194,50 @@ export function RegistrationForm() {
         financial_contribution_interest: data.financialContributionInterest,
         how_did_you_hear: data.howDidYouHear,
         additional_notes: data.additionalNotes,
-        user_id: userId || existingRegistration?.user_id || null,
+        user_id: userId || existingMember?.user_id || null,
         marketing_consent: data.communityUpdates,
+        subscribed: data.communityUpdates,
+        event_notifications: true,
+        registration_status: "registered",
+        source: "registration_form",
+        last_activity_at: new Date().toISOString(),
       };
 
-      if (isEditMode && existingRegistration) {
-        // Update existing registration
+      if (isEditMode && existingMember) {
+        // Update existing member record
         const { error: updateError } = await supabase
-          .from("registrations")
-          .update(registrationData)
-          .eq("id", existingRegistration.id);
+          .from("members")
+          .update(memberData)
+          .eq("id", existingMember.id);
 
         if (updateError) throw updateError;
       } else {
-        // Insert new registration
-        const { error: regError } = await supabase
-          .from("registrations")
-          .insert(registrationData);
+        // Insert new member record
+        const { error: insertError } = await supabase
+          .from("members")
+          .insert(memberData);
 
-        if (regError) {
-          if (regError.code === "23505") {
+        if (insertError) {
+          if (insertError.code === "23505") {
             // Unique violation
             throw new Error(
               "This email is already registered. Please sign in to update your registration.",
             );
           }
-          throw regError;
+          throw insertError;
         }
-      }
-
-      // Insert/update email preferences
-      const { data: emailPref, error: emailError } = await supabase
-        .from("email_preferences")
-        .upsert(
-          {
-            email: data.email,
-            marketing_consent: data.communityUpdates,
-            event_notifications: true,
-            subscribed: true,
-          },
-          {
-            onConflict: "email",
-          },
-        )
-        .select("unsubscribe_token")
-        .single();
-
-      if (emailError) {
-        console.error("Error updating email preferences:", emailError);
       }
 
       // Send registration confirmation email (only for new registrations)
       if (!isEditMode) {
         try {
+          // Get the unsubscribe token for the new member
+          const { data: member } = await supabase
+            .from("members")
+            .select("unsubscribe_token")
+            .eq("email", data.email)
+            .single();
+
           const { error: emailSendError } = await supabase.functions.invoke(
             "send-registration-confirmation",
             {
@@ -255,7 +246,7 @@ export function RegistrationForm() {
                 fullName: data.fullName,
                 canAttendInvocation: data.canAttendInvocation === "yes",
                 canAttendIntegration: data.canAttendIntegration === "yes",
-                unsubscribeToken: emailPref?.unsubscribe_token,
+                unsubscribeToken: member?.unsubscribe_token,
               },
             },
           );
@@ -372,7 +363,7 @@ export function RegistrationForm() {
             <p className="text-muted-foreground">
               {isEditMode
                 ? "Your registration has been successfully updated."
-                : "Thank you for registering for COhere Boulder 2025. We're excited to have you join our community-building journey."}
+                : "Thank you for registering for COhere Boulder 2025. We're excited  to have you join our community-building journey."}
             </p>
             {!isEditMode && (
               <p className="text-sm text-muted-foreground">
@@ -416,6 +407,23 @@ export function RegistrationForm() {
             {isEditMode ? "Update Your Registration" : "Register"} for COhere
             Boulder 2025
           </h1>
+          {isEditMode ? (
+            <p className="text-muted-foreground mb-4">
+              Welcome back! You can update your registration information below.
+              Changes will be saved immediately.
+            </p>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Please complete this form to receive communications and stay
+                up-to-date on what's unfolding with COhere. Registration is free
+                and all events are opt-in.
+              </p>
+              <p className="text-primary font-medium">
+                We can't wait to weave you into the fabric of this community!
+              </p>
+            </>
+          )}
           {isEditMode ? (
             <p className="text-muted-foreground mb-4">
               Welcome back! You can update your registration information below.
@@ -776,6 +784,8 @@ export function RegistrationForm() {
                 isLoading || (emailExists && !formData.password && !user)
               }
             >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditMode ? "Update Registration" : "Submit Registration"}
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? "Update Registration" : "Submit Registration"}
             </Button>
