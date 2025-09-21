@@ -3,7 +3,7 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ExternalLink, Calendar } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 
 import { MissionSection } from "@/components/MissionSection";
 import { ValuesSection } from "@/components/ValuesSection";
