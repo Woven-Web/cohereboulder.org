@@ -148,36 +148,16 @@ const AdminDashboard = () => {
 
       setProfiles(combinedProfiles);
 
-      // Load map suggestions
+      // Load map suggestions (without auth.users join since it's not accessible from client)
       const { data: suggestionsData, error: suggestionsError } = await supabase
         .from("map_suggestions")
-        .select(
-          `
-          *,
-          user:user_id (
-            email,
-            raw_user_meta_data
-          )
-        `,
-        )
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (suggestionsError) {
         console.error("Error loading map suggestions:", suggestionsError);
       } else {
-        // Transform the data to match our interface
-        const transformedSuggestions = (suggestionsData || []).map(
-          (s: any) => ({
-            ...s,
-            user: s.user
-              ? {
-                  email: s.user.email,
-                  user_metadata: s.user.raw_user_meta_data,
-                }
-              : undefined,
-          }),
-        );
-        setMapSuggestions(transformedSuggestions);
+        setMapSuggestions(suggestionsData || []);
       }
     } catch (error) {
       console.error("Error loading admin data:", error);
@@ -749,13 +729,6 @@ const MapSuggestionsList: React.FC<MapSuggestionsListProps> = ({
                     <p className="text-sm text-muted-foreground">
                       Submitted by: {suggestion.contact_email}
                     </p>
-                    {suggestion.user && (
-                      <p className="text-sm text-muted-foreground">
-                        User:{" "}
-                        {suggestion.user.user_metadata?.full_name ||
-                          suggestion.user.email}
-                      </p>
-                    )}
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">
