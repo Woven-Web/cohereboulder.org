@@ -145,6 +145,39 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          client_ip: string | null
+          created_at: string | null
+          details: Json | null
+          email: string | null
+          event_type: string
+          id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          client_ip?: string | null
+          created_at?: string | null
+          details?: Json | null
+          email?: string | null
+          event_type: string
+          id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          client_ip?: string | null
+          created_at?: string | null
+          details?: Json | null
+          email?: string | null
+          event_type?: string
+          id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
