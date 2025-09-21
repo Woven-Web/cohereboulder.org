@@ -17,14 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
-  FileText,
   Mail,
   UserCheck,
   Calendar,
   Download,
   Loader2,
   Shield,
-  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -33,10 +31,10 @@ interface ProfileData {
   user_id: string | null;
   email: string;
   full_name: string;
-  phone_number: string;
-  organizations: string;
-  subscribed: boolean;
-  role: "admin" | "moderator" | "user";
+  phone_number: string | null;
+  organizations: string | null;
+  subscribed: boolean | null;
+  role: "admin" | "moderator" | "user" | null;
   created_at: string;
   updated_at: string;
   registrations?: RegistrationData[];
@@ -48,12 +46,9 @@ interface RegistrationData {
   cohere_event: string;
   can_attend_invocation: boolean | null;
   can_attend_integration: boolean | null;
-  co_creating_interests: string[];
-  how_did_you_hear: string;
-  additional_notes: string;
-  participation_types: string[];
-  themes: string[];
-  internal_notes: string;
+  co_creating_interests: string[] | null;
+  how_did_you_hear: string | null;
+  additional_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,13 +57,13 @@ interface MapSuggestion {
   id: string;
   user_id: string;
   name: string;
-  description: string;
+  description: string | null;
   category: string | null;
   website: string | null;
-  contact_email: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
+  contact_email: string | null;
+  status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   user?: {
     email: string;
     user_metadata?: {
@@ -200,10 +195,6 @@ const AdminDashboard = () => {
           registration?.co_creating_interests?.join("; ") || "",
         how_did_you_hear: registration?.how_did_you_hear || "",
         additional_notes: registration?.additional_notes || "",
-        participation_types:
-          registration?.participation_types?.join("; ") || "",
-        themes: registration?.themes?.join("; ") || "",
-        internal_notes: registration?.internal_notes || "",
         profile_created: new Date(profile.created_at).toLocaleDateString(),
         registration_created: registration
           ? new Date(registration.created_at).toLocaleDateString()
@@ -605,7 +596,7 @@ const ProfilesList: React.FC<ProfilesListProps> = ({
                     )}
                   </div>
 
-                  {registration?.co_creating_interests?.length > 0 && (
+                  {registration?.co_creating_interests?.length ? (
                     <div className="mt-2">
                       <strong className="text-sm">
                         Co-creating interests:
@@ -618,41 +609,8 @@ const ProfilesList: React.FC<ProfilesListProps> = ({
                         )}
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
-                  {registration?.participation_types?.length > 0 && (
-                    <div className="mt-2">
-                      <strong className="text-sm">Participation types:</strong>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {registration.participation_types.map((type, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {type}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {registration?.themes?.length > 0 && (
-                    <div className="mt-2">
-                      <strong className="text-sm">Themes:</strong>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {registration.themes.map((theme, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {theme}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {registration?.how_did_you_hear && (
                     <p className="text-sm mt-2">
@@ -665,15 +623,6 @@ const ProfilesList: React.FC<ProfilesListProps> = ({
                     <p className="text-sm mt-2">
                       <strong>Notes:</strong> {registration.additional_notes}
                     </p>
-                  )}
-
-                  {registration?.internal_notes && (
-                    <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                      <p className="text-sm">
-                        <strong>Internal notes:</strong>{" "}
-                        {registration.internal_notes}
-                      </p>
-                    </div>
                   )}
                 </div>
               );
@@ -732,7 +681,10 @@ const MapSuggestionsList: React.FC<MapSuggestionsListProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">
-                      {new Date(suggestion.created_at).toLocaleDateString()}
+                      {suggestion.created_at 
+                        ? new Date(suggestion.created_at).toLocaleDateString()
+                        : "N/A"
+                      }
                     </div>
                   </div>
                 </div>

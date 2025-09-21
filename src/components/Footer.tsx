@@ -1,10 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {
-  Calendar,
-  Mail,
-  MessageCircle,
   MapPin,
-  ExternalLink,
   User,
   LogOut,
 } from "lucide-react";

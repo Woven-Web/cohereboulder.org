@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -53,17 +52,18 @@ export function RegistrationForm() {
     id: string;
     email: string;
     full_name: string;
-    phone_number?: string;
-    organizations?: string;
-    subscribed?: boolean;
+    phone_number?: string | null;
+    organizations?: string | null;
+    subscribed?: boolean | null;
+    user_id?: string | null;
   } | null>(null);
   const [existingRegistration, setExistingRegistration] = useState<{
     id: string;
     can_attend_invocation: boolean | null;
     can_attend_integration: boolean | null;
-    co_creating_interests?: string[];
-    how_did_you_hear?: string;
-    additional_notes?: string;
+    co_creating_interests?: string[] | null;
+    how_did_you_hear?: string | null;
+    additional_notes?: string | null;
   } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
@@ -110,7 +110,16 @@ export function RegistrationForm() {
         .single();
 
       if (profile && !profileError) {
-        setExistingProfile(profile);
+        // Transform database data to match interface
+        setExistingProfile({
+          id: profile.id,
+          email: profile.email,
+          full_name: profile.full_name || "",
+          phone_number: profile.phone_number,
+          organizations: profile.organizations,
+          subscribed: profile.subscribed,
+          user_id: profile.user_id,
+        });
 
         // Check for existing registration for this event
         const { data: registration, error: regError } = await supabase
@@ -121,7 +130,15 @@ export function RegistrationForm() {
           .single();
 
         if (registration && !regError) {
-          setExistingRegistration(registration);
+          // Transform database data to match interface
+          setExistingRegistration({
+            id: registration.id,
+            can_attend_invocation: registration.can_attend_invocation,
+            can_attend_integration: registration.can_attend_integration,
+            co_creating_interests: registration.co_creating_interests,
+            how_did_you_hear: registration.how_did_you_hear,
+            additional_notes: registration.additional_notes,
+          });
           setIsEditMode(true);
 
           // Populate form with existing data
@@ -248,9 +265,9 @@ export function RegistrationForm() {
             phone_number: data.phoneNumber,
             organizations: data.organizations,
             subscribed: data.subscribed,
-            user_id: userId || existingProfile.user_id,
+            user_id: userId || existingProfile?.user_id,
           })
-          .eq("id", existingProfile.id);
+          .eq("id", existingProfile!.id);
 
         if (updateError) throw updateError;
       }
@@ -393,7 +410,7 @@ export function RegistrationForm() {
       toast({
         title: tr("registration.errorMessages.errorSubmitting"),
         description:
-          error.message || tr("registration.errorMessages.tryAgainLater"),
+          (error as Error)?.message || tr("registration.errorMessages.tryAgainLater"),
         variant: "destructive",
       });
     } finally {
