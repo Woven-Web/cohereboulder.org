@@ -228,23 +228,17 @@ export function RegistrationForm() {
       // Step 1: Create or update profile
       if (!profileId) {
         // Create new profile
-        const insertData = {
-          email: data.email,
-          full_name: data.fullName,
-          phone_number: data.phoneNumber,
-          organizations: data.organizations,
-          user_id: userId || null,
-          subscribed: data.subscribed,
-          source: "registration",
-        };
-        
-        console.log("Attempting to insert profile with data:", insertData);
-        console.log("Current auth.uid():", userId);
-        console.log("Is user authenticated?", !!userId);
-        
         const { data: newProfile, error: profileError } = await supabase
           .from("profiles")
-          .insert(insertData)
+          .insert({
+            email: data.email,
+            full_name: data.fullName,
+            phone_number: data.phoneNumber,
+            organizations: data.organizations,
+            user_id: userId || null,
+            subscribed: data.subscribed,
+            source: "registration",
+          })
           .select()
           .single();
 
