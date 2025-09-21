@@ -12,204 +12,204 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 export function AuthTabs() {
-  const { signIn, signUp } = useAuth();
+  const { signInWithOtp, verifyOtp } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("signin");
-  const [verificationPending, setVerificationPending] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
-  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const emailValue = formData.get("email") as string;
+    setEmail(emailValue);
 
-    const { error } = await signIn(email, password);
-
-    if (error) {
-      toast({
-        title: "Error signing in",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You've been signed in successfully.",
-      });
-    }
-
-    setIsLoading(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const fullName = formData.get("fullName") as string;
-
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signInWithOtp(emailValue);
 
     if (error) {
       toast({
-        title: "Error creating account",
+        title: "Error sending magic link",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
         title: "Check your email!",
-        description:
-          "We've sent you a verification link to complete your registration.",
+        description: "We've sent you a magic link and a verification code.",
       });
-      setVerificationPending(true);
-      e.currentTarget.reset();
-      setTimeout(() => {
-        setActiveTab("signin");
-        setVerificationPending(false);
-      }, 3000);
+      setOtpSent(true);
     }
 
     setIsLoading(false);
   };
 
+  const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (otpCode.length !== 6) {
+      toast({
+        title: "Invalid code",
+        description: "Please enter the complete 6-digit verification code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    const { error } = await verifyOtp(email, otpCode);
+
+    if (error) {
+      toast({
+        title: "Error verifying code",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Welcome!",
+        description: "You've been signed in successfully.",
+      });
+      setOtpSent(false);
+      setOtpCode("");
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    const { error } = await signInWithOtp(email);
+    
+    if (error) {
+      toast({
+        title: "Error resending code",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Code sent!",
+        description: "We've sent you a new verification code.",
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const resetFlow = () => {
+    setOtpSent(false);
+    setEmail("");
+    setOtpCode("");
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="signin">Sign In</TabsTrigger>
-          <TabsTrigger value="signup">Sign Up</TabsTrigger>
         </TabsList>
 
         <TabsContent value="signin">
           <Card>
             <CardHeader>
-              <CardTitle>Welcome back</CardTitle>
+              <CardTitle>
+                {otpSent ? "Enter Verification Code" : "Welcome back"}
+              </CardTitle>
               <CardDescription>
-                Sign in to your account to access additional features
+                {otpSent
+                  ? `We've sent a 6-digit code to ${email}. Enter it below or click the magic link in your email.`
+                  : "Enter your email to receive a magic link and verification code"}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
-                  <Input
-                    id="signin-email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="your@email.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
-                  <Input
-                    id="signin-password"
-                    name="password"
-                    type="password"
-                    required
-                    placeholder="Your password"
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Sign In
-                </Button>
-                <div className="text-center pt-2">
-                  <a
-                    href="/forgot-password"
-                    className="text-sm text-muted-foreground hover:text-primary"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="signup">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create account</CardTitle>
-              <CardDescription>
-                {verificationPending
-                  ? "Account created! Check your email for the verification link."
-                  : "Create an account to register for events and access member features"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {verificationPending ? (
-                <div className="text-center py-8 space-y-4">
-                  <div className="text-green-600">
-                    <svg
-                      className="w-16 h-16 mx-auto mb-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Redirecting to sign in...
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleSignUp} className="space-y-4">
+              {!otpSent ? (
+                <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Label htmlFor="signin-email">Email</Label>
                     <Input
-                      id="signup-name"
-                      name="fullName"
-                      type="text"
-                      required
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
+                      id="signin-email"
                       name="email"
                       type="email"
                       required
                       placeholder="your@email.com"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      name="password"
-                      type="password"
-                      required
-                      placeholder="Choose a strong password"
-                      minLength={6}
-                    />
-                  </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Create Account
+                    Send Magic Link
                   </Button>
                 </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Check your email for a magic link, or enter the 6-digit code below:
+                    </p>
+                  </div>
+                  
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="otp-code">Verification Code</Label>
+                      <div className="flex justify-center">
+                        <InputOTP
+                          value={otpCode}
+                          onChange={setOtpCode}
+                          maxLength={6}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    </div>
+                    
+                    <Button type="submit" className="w-full" disabled={isLoading || otpCode.length !== 6}>
+                      {isLoading && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Verify Code
+                    </Button>
+                  </form>
+
+                  <div className="flex flex-col gap-2 text-center">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleResendOtp}
+                      disabled={isLoading}
+                    >
+                      Resend code
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={resetFlow}
+                    >
+                      Use different email
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

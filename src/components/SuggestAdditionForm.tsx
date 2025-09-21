@@ -68,7 +68,7 @@ export function SuggestAdditionForm() {
         category: "community",
         website: formData.website || null,
         contact_email: formData.contactEmail || user?.email || "",
-      });
+      } as any);
 
       if (error) throw error;
 

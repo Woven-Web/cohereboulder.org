@@ -152,7 +152,7 @@ const AdminDashboard = () => {
       if (suggestionsError) {
         console.error("Error loading map suggestions:", suggestionsError);
       } else {
-        setMapSuggestions(suggestionsData || []);
+        setMapSuggestions((suggestionsData || []) as any);
       }
     } catch (error) {
       console.error("Error loading admin data:", error);

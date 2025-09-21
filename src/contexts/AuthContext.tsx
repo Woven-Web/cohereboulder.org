@@ -12,14 +12,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (
-    email: string,
-    password: string,
-    fullName: string,
-  ) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  resendVerification: () => Promise<{ error: Error | null }>;
+  resendOtp: (email: string) => Promise<{ error: Error | null }>;
   linkExistingRegistration: (email: string, userId: string) => Promise<void>;
 }
 
@@ -57,26 +53,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signInWithOtp = async (email: string) => {
     const redirectUrl = `${window.location.origin}/verification-success`;
 
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
       },
     });
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+  const verifyOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
       email,
-      password,
+      token,
+      type: 'email',
+    });
+    return { error };
+  };
+
+  const resendOtp = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/verification-success`;
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
     });
     return { error };
   };
@@ -106,29 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const resendVerification = async () => {
-    if (!user?.email) {
-      return { error: new Error("No user email found") };
-    }
-
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: user.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/verification-success`,
-      },
-    });
-    return { error };
-  };
-
   const value = {
     user,
     session,
     isLoading,
-    signUp,
-    signIn,
+    signInWithOtp,
+    verifyOtp,
     signOut,
-    resendVerification,
+    resendOtp,
     linkExistingRegistration,
   };
 

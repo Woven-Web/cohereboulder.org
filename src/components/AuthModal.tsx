@@ -9,11 +9,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 interface AuthModalProps {
   open: boolean;
@@ -22,59 +26,48 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
-  const { signIn, signUp } = useAuth();
+  const { signInWithOtp, verifyOtp } = useAuth();
   const { toast } = useToast();
   const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("signin");
+  const [otpSent, setOtpSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
-  const [signInData, setSignInData] = useState({
-    email: "",
-    password: "",
-  });
-
-  const [signUpData, setSignUpData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    fullName: "",
-  });
-
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(signInData.email, signInData.password);
+    const { error } = await signInWithOtp(email);
 
     if (error) {
       toast({
-        title: language === "es" ? "Error de inicio de sesión" : "Sign in error",
+        title: language === "es" ? "Error enviando código" : "Error sending code",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: language === "es" ? "¡Bienvenido!" : "Welcome back!",
+        title: language === "es" ? "¡Revisa tu email!" : "Check your email!",
         description: language === "es"
-          ? "Has iniciado sesión exitosamente."
-          : "You have successfully signed in.",
+          ? "Te hemos enviado un enlace mágico y código de verificación."
+          : "We've sent you a magic link and verification code.",
       });
-      onOpenChange(false);
-      onSuccess?.();
+      setOtpSent(true);
     }
 
     setIsLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (signUpData.password !== signUpData.confirmPassword) {
+    
+    if (otpCode.length !== 6) {
       toast({
-        title: language === "es" ? "Error" : "Error",
+        title: language === "es" ? "Código inválido" : "Invalid code",
         description: language === "es"
-          ? "Las contraseñas no coinciden"
-          : "Passwords do not match",
+          ? "Por favor ingresa el código completo de 6 dígitos."
+          : "Please enter the complete 6-digit verification code.",
         variant: "destructive",
       });
       return;
@@ -82,29 +75,58 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
 
     setIsLoading(true);
 
-    const { error } = await signUp(
-      signUpData.email,
-      signUpData.password,
-      signUpData.fullName
-    );
+    const { error } = await verifyOtp(email, otpCode);
 
     if (error) {
       toast({
-        title: language === "es" ? "Error de registro" : "Sign up error",
+        title: language === "es" ? "Error verificando código" : "Error verifying code",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: language === "es" ? "¡Cuenta creada!" : "Account created!",
+        title: language === "es" ? "¡Bienvenido!" : "Welcome!",
         description: language === "es"
-          ? "Por favor revisa tu correo electrónico para verificar tu cuenta."
-          : "Please check your email to verify your account.",
+          ? "Has iniciado sesión exitosamente."
+          : "You have successfully signed in.",
       });
       onOpenChange(false);
+      onSuccess?.();
+      // Reset state
+      setOtpSent(false);
+      setEmail("");
+      setOtpCode("");
     }
 
     setIsLoading(false);
+  };
+
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    const { error } = await signInWithOtp(email);
+    
+    if (error) {
+      toast({
+        title: language === "es" ? "Error reenviando código" : "Error resending code",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: language === "es" ? "¡Código enviado!" : "Code sent!",
+        description: language === "es"
+          ? "Te hemos enviado un nuevo código de verificación."
+          : "We've sent you a new verification code.",
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const resetFlow = () => {
+    setOtpSent(false);
+    setEmail("");
+    setOtpCode("");
   };
 
   return (
@@ -112,139 +134,103 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {language === "es"
-              ? "Autenticación requerida"
-              : "Authentication Required"}
+            {otpSent
+              ? (language === "es" ? "Ingresa el Código" : "Enter Verification Code")
+              : (language === "es" ? "Iniciar Sesión" : "Sign In")}
           </DialogTitle>
           <DialogDescription>
-            {language === "es"
-              ? "Por favor inicia sesión o crea una cuenta para sugerir adiciones al mapa."
-              : "Please sign in or create an account to suggest additions to the map."}
+            {otpSent
+              ? (language === "es"
+                  ? `Hemos enviado un código de 6 dígitos a ${email}. Ingrésalo abajo o haz clic en el enlace mágico en tu email.`
+                  : `We've sent a 6-digit code to ${email}. Enter it below or click the magic link in your email.`)
+              : (language === "es"
+                  ? "Ingresa tu email para recibir un enlace mágico y código de verificación"
+                  : "Enter your email to receive a magic link and verification code")}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">
-              {language === "es" ? "Iniciar Sesión" : "Sign In"}
-            </TabsTrigger>
-            <TabsTrigger value="signup">
-              {language === "es" ? "Registrarse" : "Sign Up"}
-            </TabsTrigger>
-          </TabsList>
+        {!otpSent ? (
+          <form onSubmit={handleSendOtp} className="space-y-4">
+            <div>
+              <Label htmlFor="signin-email">
+                {language === "es" ? "Correo Electrónico" : "Email"}
+              </Label>
+              <Input
+                id="signin-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+              />
+            </div>
 
-          <TabsContent value="signin">
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div>
-                <Label htmlFor="signin-email">
-                  {language === "es" ? "Correo Electrónico" : "Email"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {language === "es" ? "Enviar Enlace Mágico" : "Send Magic Link"}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-center">
+              <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground mb-4">
+                {language === "es"
+                  ? "Revisa tu email para un enlace mágico, o ingresa el código de 6 dígitos abajo:"
+                  : "Check your email for a magic link, or enter the 6-digit code below:"}
+              </p>
+            </div>
+            
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp-code">
+                  {language === "es" ? "Código de Verificación" : "Verification Code"}
                 </Label>
-                <Input
-                  id="signin-email"
-                  type="email"
-                  required
-                  value={signInData.email}
-                  onChange={(e) =>
-                    setSignInData({ ...signInData, email: e.target.value })
-                  }
-                  placeholder="tu@email.com"
-                />
+                <div className="flex justify-center">
+                  <InputOTP
+                    value={otpCode}
+                    onChange={setOtpCode}
+                    maxLength={6}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
               </div>
-
-              <div>
-                <Label htmlFor="signin-password">
-                  {language === "es" ? "Contraseña" : "Password"}
-                </Label>
-                <Input
-                  id="signin-password"
-                  type="password"
-                  required
-                  value={signInData.password}
-                  onChange={(e) =>
-                    setSignInData({ ...signInData, password: e.target.value })
-                  }
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {language === "es" ? "Iniciar Sesión" : "Sign In"}
+              
+              <Button type="submit" className="w-full" disabled={isLoading || otpCode.length !== 6}>
+                {isLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {language === "es" ? "Verificar Código" : "Verify Code"}
               </Button>
             </form>
-          </TabsContent>
 
-          <TabsContent value="signup">
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div>
-                <Label htmlFor="signup-name">
-                  {language === "es" ? "Nombre Completo" : "Full Name"}
-                </Label>
-                <Input
-                  id="signup-name"
-                  type="text"
-                  required
-                  value={signUpData.fullName}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, fullName: e.target.value })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="signup-email">
-                  {language === "es" ? "Correo Electrónico" : "Email"}
-                </Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  required
-                  value={signUpData.email}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, email: e.target.value })
-                  }
-                  placeholder="tu@email.com"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="signup-password">
-                  {language === "es" ? "Contraseña" : "Password"}
-                </Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  required
-                  value={signUpData.password}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, password: e.target.value })
-                  }
-                  minLength={6}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="signup-confirm-password">
-                  {language === "es" ? "Confirmar Contraseña" : "Confirm Password"}
-                </Label>
-                <Input
-                  id="signup-confirm-password"
-                  type="password"
-                  required
-                  value={signUpData.confirmPassword}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, confirmPassword: e.target.value })
-                  }
-                  minLength={6}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {language === "es" ? "Crear Cuenta" : "Create Account"}
+            <div className="flex flex-col gap-2 text-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleResendOtp}
+                disabled={isLoading}
+              >
+                {language === "es" ? "Reenviar código" : "Resend code"}
               </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetFlow}
+              >
+                {language === "es" ? "Usar otro email" : "Use different email"}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

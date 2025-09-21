@@ -9,13 +9,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const VerificationSuccess = () => {
-  const { user, resendVerification } = useAuth();
+  const { user, resendOtp } = useAuth();
   const { toast } = useToast();
   const [isResending, setIsResending] = useState(false);
 
   const handleResendVerification = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "No email found to resend verification to.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsResending(true);
-    const { error } = await resendVerification();
+    const { error } = await resendOtp(user.email);
     
     if (error) {
       toast({
