@@ -14,99 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      email_preferences: {
+      map_suggestions: {
         Row: {
-          created_at: string
-          email: string
-          event_notifications: boolean
+          category: string | null
+          contact_email: string | null
+          created_at: string | null
+          description: string | null
           id: string
-          marketing_consent: boolean
-          subscribed: boolean
-          unsubscribe_token: string
-          updated_at: string
+          name: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          website: string | null
         }
         Insert: {
-          created_at?: string
-          email: string
-          event_notifications?: boolean
+          category?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          description?: string | null
           id?: string
-          marketing_consent?: boolean
-          subscribed?: boolean
-          unsubscribe_token?: string
-          updated_at?: string
+          name: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          website?: string | null
         }
         Update: {
-          created_at?: string
-          email?: string
-          event_notifications?: boolean
+          category?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          description?: string | null
           id?: string
-          marketing_consent?: boolean
-          subscribed?: boolean
-          unsubscribe_token?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      interest_submissions: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          message: string | null
-          name: string
-          organization: string | null
-          participation_types: string[] | null
-          themes: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          message?: string | null
-          name: string
-          organization?: string | null
-          participation_types?: string[] | null
-          themes?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          message?: string | null
           name?: string
-          organization?: string | null
-          participation_types?: string[] | null
-          themes?: string[] | null
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
           created_at: string
-          email_verified: boolean | null
-          full_name: string | null
+          email: string
+          full_name: string
           id: string
+          organizations: string | null
+          phone_number: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          source: string | null
+          subscribed: boolean | null
+          unsubscribe_token: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
-          email_verified?: boolean | null
-          full_name?: string | null
+          email: string
+          full_name: string
           id?: string
+          organizations?: string | null
+          phone_number?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          source?: string | null
+          subscribed?: boolean | null
+          unsubscribe_token?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
-          email_verified?: boolean | null
-          full_name?: string | null
+          email?: string
+          full_name?: string
           id?: string
+          organizations?: string | null
+          phone_number?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          source?: string | null
+          subscribed?: boolean | null
+          unsubscribe_token?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -116,74 +104,46 @@ export type Database = {
           can_attend_integration: boolean | null
           can_attend_invocation: boolean | null
           co_creating_interests: string[] | null
+          cohere_event: string
           created_at: string
-          email: string
-          financial_contribution_interest: boolean | null
-          full_name: string
           how_did_you_hear: string | null
           id: string
-          marketing_consent: boolean | null
-          organizations: string | null
-          phone_number: string | null
+          profile_id: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           additional_notes?: string | null
           can_attend_integration?: boolean | null
           can_attend_invocation?: boolean | null
           co_creating_interests?: string[] | null
+          cohere_event?: string
           created_at?: string
-          email: string
-          financial_contribution_interest?: boolean | null
-          full_name: string
           how_did_you_hear?: string | null
           id?: string
-          marketing_consent?: boolean | null
-          organizations?: string | null
-          phone_number?: string | null
+          profile_id: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           additional_notes?: string | null
           can_attend_integration?: boolean | null
           can_attend_invocation?: boolean | null
           co_creating_interests?: string[] | null
+          cohere_event?: string
           created_at?: string
-          email?: string
-          financial_contribution_interest?: boolean | null
-          full_name?: string
           how_did_you_hear?: string | null
           id?: string
-          marketing_consent?: boolean | null
-          organizations?: string | null
-          phone_number?: string | null
+          profile_id?: string
           updated_at?: string
-          user_id?: string | null
         }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "registrations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -192,14 +152,7 @@ export type Database = {
     Functions: {
       get_user_role: {
         Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
+        Returns: string
       }
     }
     Enums: {
