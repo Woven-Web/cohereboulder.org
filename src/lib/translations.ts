@@ -1170,6 +1170,14 @@ export const translations = {
       en: "to update your registration.",
       es: "para actualizar tu registro.",
     },
+    signInHere: {
+      en: "Sign in here",
+      es: "Inicia sesión aquí",
+    },
+    pleaseSignInFirst: {
+      en: "Please sign in first",
+      es: "Por favor inicia sesión primero",
+    },
     createAccount: {
       en: "Create an Account (Optional)",
       es: "Crear una Cuenta (Opcional)",

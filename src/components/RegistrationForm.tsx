@@ -359,6 +359,11 @@ export function RegistrationForm() {
         throw new Error(tr("registration.errorMessages.fillRequired"));
       }
 
+      // Prevent submission if email exists and user is not authenticated
+      if (!user && emailExists) {
+        throw new Error(tr("registration.errorMessages.emailRegistered"));
+      }
+
       const userId = user?.id;
 
       await submitToSupabase(formData, userId);
@@ -506,15 +511,19 @@ export function RegistrationForm() {
                   </p>
                 )}
                 {!user && emailExists && !isCheckingEmail && (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertCircle className="h-4 w-4" />
-                    <p className="text-sm">
-                      {tr("registration.emailAlreadyRegistered")}
-                      <Link to="/auth" className="ml-1 underline">
-                        {tr("registration.signIn")}
-                      </Link>{" "}
-                      {tr("registration.toUpdateRegistration")}
-                    </p>
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium mb-1">
+                        {tr("registration.emailAlreadyRegistered")}
+                      </p>
+                      <p>
+                        {tr("registration.signIn")} {tr("registration.toUpdateRegistration")} {" "}
+                        <Link to="/auth" className="font-medium underline text-amber-700 hover:text-amber-900">
+                          {tr("registration.signInHere")}
+                        </Link>
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -746,12 +755,13 @@ export function RegistrationForm() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || (!user && emailExists)}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditMode
+              {(!user && emailExists) ? tr("registration.pleaseSignInFirst") : 
+               (isEditMode
                 ? tr("registration.updateRegistration")
-                : tr("registration.submitRegistration")}
+                : tr("registration.submitRegistration"))}
             </Button>
           </form>
         </CardContent>
