@@ -13,6 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
+// Create a secure function URL helper
+const createFunctionUrl = (functionName: string) => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error("VITE_SUPABASE_URL environment variable is not set");
+  }
+  return `${supabaseUrl}/functions/v1/${functionName}`;
+};
+
 interface EmailPreferences {
   email: string;
   subscribed: boolean;
@@ -42,8 +51,13 @@ const Unsubscribe = () => {
 
   const fetchPreferences = async () => {
     try {
+      // Input validation
+      if (!token || token.length < 10) {
+        throw new Error("Invalid token format");
+      }
+
       const response = await fetch(
-        `https://pnvxrczcygrkbschkvkv.supabase.co/functions/v1/unsubscribe?token=${token}`,
+        `${createFunctionUrl("unsubscribe")}?token=${encodeURIComponent(token)}`,
       );
 
       if (!response.ok) {
@@ -64,16 +78,30 @@ const Unsubscribe = () => {
   const updatePreferences = async () => {
     if (!preferences || !token) return;
 
+    // Input validation
+    if (!token || token.length < 10) {
+      toast({
+        title: "Error",
+        description: "Invalid token format",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUpdating(true);
     try {
       const response = await fetch(
-        `https://pnvxrczcygrkbschkvkv.supabase.co/functions/v1/unsubscribe?token=${token}`,
+        `${createFunctionUrl("unsubscribe")}?token=${encodeURIComponent(token)}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(preferences),
+          body: JSON.stringify({
+            subscribed: preferences.subscribed,
+            marketing_consent: preferences.marketing_consent,
+            event_notifications: preferences.event_notifications,
+          }),
         },
       );
 
