@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,6 @@ import { ExternalLink, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { useAuth } from "@/contexts/AuthContext";
-import { AuthModal } from "./AuthModal";
 import { supabase } from "@/integrations/supabase/client";
 
 export function SuggestAdditionForm() {
@@ -24,45 +23,51 @@ export function SuggestAdditionForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     organizationName: "",
     website: "",
     description: "",
+    contactName: "",
+    contactEmail: "",
   });
 
-  const handleFormOpen = () => {
-    if (!user) {
-      setShowAuthModal(true);
-    } else {
-      setOpen(true);
+  // Auto-fill form when user is logged in
+  useEffect(() => {
+    if (user && open) {
+      setFormData(prev => ({
+        ...prev,
+        contactName: user.user_metadata?.full_name || "",
+        contactEmail: user.email || "",
+      }));
     }
-  };
+  }, [user, open]);
 
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
+  const handleFormOpen = () => {
     setOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
+      // Basic validation
+      if (!formData.organizationName || !formData.description) {
+        throw new Error("Please fill in all required fields");
+      }
+
+      if (!formData.contactEmail && !user?.email) {
+        throw new Error("Please provide a contact email");
+      }
+
       const { error } = await supabase.from("map_suggestions").insert({
-        user_id: user.id,
+        user_id: user?.id || null,
         name: formData.organizationName,
         description: formData.description,
-        category: "community", // You can make this selectable in the future
+        category: "community",
         website: formData.website || null,
-        contact_email: user.email || "",
+        contact_email: formData.contactEmail || user?.email || "",
       });
 
       if (error) throw error;
@@ -80,6 +85,8 @@ export function SuggestAdditionForm() {
         organizationName: "",
         website: "",
         description: "",
+        contactName: "",
+        contactEmail: "",
       });
       setOpen(false);
     } catch (error) {
@@ -87,6 +94,7 @@ export function SuggestAdditionForm() {
       toast({
         title: language === "es" ? "Error" : "Error",
         description:
+          error instanceof Error ? error.message :
           language === "es"
             ? "Hubo un problema al enviar tu sugerencia. Por favor, intenta de nuevo."
             : "There was a problem submitting your suggestion. Please try again.",
@@ -99,12 +107,6 @@ export function SuggestAdditionForm() {
 
   return (
     <>
-      <AuthModal
-        open={showAuthModal}
-        onOpenChange={setShowAuthModal}
-        onSuccess={handleAuthSuccess}
-      />
-
       <Button variant="outline" size="lg" onClick={handleFormOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
         {tr("ecosystem.suggestAdditions")}
@@ -183,6 +185,53 @@ export function SuggestAdditionForm() {
                 }
                 rows={4}
               />
+            </div>
+
+            {/* Contact information */}
+            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+              <h3 className="font-medium">
+                {language === "es" ? "Información de Contacto" : "Contact Information"}
+              </h3>
+              
+              <div>
+                <Label htmlFor="contactName">
+                  {language === "es" ? "Tu Nombre" : "Your Name"}
+                </Label>
+                <Input
+                  id="contactName"
+                  value={formData.contactName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactName: e.target.value })
+                  }
+                  placeholder={
+                    language === "es" ? "Nombre completo" : "Full name"
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="contactEmail">
+                  {language === "es" ? "Tu Email" : "Your Email"}
+                  {!user && " *"}
+                </Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  required={!user}
+                  value={formData.contactEmail}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactEmail: e.target.value })
+                  }
+                  placeholder="tu@email.com"
+                />
+                {!user && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === "es"
+                      ? "Necesitamos tu email para contactarte sobre tu sugerencia"
+                      : "We need your email to contact you about your suggestion"}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3 justify-end">

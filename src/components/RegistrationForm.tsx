@@ -17,7 +17,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   CheckCircle,
   ExternalLink,
-  Mail,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -29,7 +28,6 @@ const COHERE_EVENT = "october2025"; // Current event identifier
 interface RegistrationFormData {
   fullName: string;
   email: string;
-  password: string;
   phoneNumber: string;
   organizations: string;
   canAttendInvocation: string;
@@ -42,12 +40,11 @@ interface RegistrationFormData {
 
 export function RegistrationForm() {
   const { toast } = useToast();
-  const { user, signUp } = useAuth();
+  const { user } = useAuth();
   const { tr } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [needsVerification, setNeedsVerification] = useState(false);
   const [existingProfile, setExistingProfile] = useState<{
     id: string;
     email: string;
@@ -71,7 +68,6 @@ export function RegistrationForm() {
   const [formData, setFormData] = useState<RegistrationFormData>({
     fullName: user?.user_metadata?.full_name || "",
     email: user?.email || "",
-    password: "",
     phoneNumber: "",
     organizations: "",
     canAttendInvocation: "",
@@ -145,7 +141,6 @@ export function RegistrationForm() {
           setFormData({
             fullName: profile.full_name || "",
             email: profile.email,
-            password: "",
             phoneNumber: profile.phone_number || "",
             organizations: profile.organizations || "",
             canAttendInvocation:
@@ -364,36 +359,7 @@ export function RegistrationForm() {
         throw new Error(tr("registration.errorMessages.fillRequired"));
       }
 
-      // Check for duplicate email for non-authenticated users
-      if (!user && emailExists && !formData.password) {
-        throw new Error(
-          tr("registration.errorMessages.emailRegisteredPassword"),
-        );
-      }
-
       const userId = user?.id;
-
-      // If user is not authenticated and wants to create account
-      if (!user && formData.password) {
-        const { error: authError } = await signUp(
-          formData.email,
-          formData.password,
-          formData.fullName,
-        );
-
-        if (authError) {
-          throw new Error(authError.message);
-        }
-
-        // Show verification message instead of completing registration
-        setNeedsVerification(true);
-        toast({
-          title: tr("registration.errorMessages.accountCreated"),
-          description: tr("registration.errorMessages.checkEmailVerify"),
-        });
-        setIsLoading(false);
-        return;
-      }
 
       await submitToSupabase(formData, userId);
       setSubmitted(true);
@@ -417,27 +383,6 @@ export function RegistrationForm() {
       setIsLoading(false);
     }
   };
-
-  if (needsVerification) {
-    return (
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <Mail className="h-16 w-16 text-blue-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-blue-700">
-              {tr("registration.checkYourEmail")}
-            </h2>
-            <p className="text-muted-foreground">
-              {tr("registration.verificationSent")}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {tr("registration.afterVerification")}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (submitted) {
     return (
@@ -575,43 +520,7 @@ export function RegistrationForm() {
               </div>
             </div>
 
-            {!user && !isEditMode && (
-              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold">
-                  {tr("registration.createAccount")}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {tr("registration.createAccountDescription")}
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="password">
-                    {tr("registration.password")}{" "}
-                    {emailExists
-                      ? tr("registration.passwordRequired")
-                      : tr("registration.passwordOptional")}
-                  </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder={
-                      emailExists
-                        ? tr("registration.createPasswordClaim")
-                        : tr("registration.choosePassword")
-                    }
-                    minLength={6}
-                    required={emailExists}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {emailExists
-                      ? tr("registration.createAccountWithPassword")
-                      : tr("registration.leaveBlankNoAccount")}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Account creation removed - registration now works without accounts */}
 
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">
@@ -837,9 +746,7 @@ export function RegistrationForm() {
             <Button
               type="submit"
               className="w-full"
-              disabled={
-                isLoading || (emailExists && !formData.password && !user)
-              }
+              disabled={isLoading}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode
