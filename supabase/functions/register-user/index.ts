@@ -68,6 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Email already exists
           return new Response(
             JSON.stringify({ 
+              success: false,
               error: "This email is already registered. Please sign in to update your registration." 
             }),
             {
@@ -145,6 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (insertError.code === "23505") {
           return new Response(
             JSON.stringify({ 
+              success: false,
               error: "You are already registered for this event." 
             }),
             {

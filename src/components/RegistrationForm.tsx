@@ -197,7 +197,7 @@ export function RegistrationForm() {
   ) => {
     try {
       // Call the backend edge function to handle the entire registration process
-      const { data: result, error } = await supabase.functions.invoke(
+      const response = await supabase.functions.invoke(
         "register-user",
         {
           body: {
@@ -219,13 +219,22 @@ export function RegistrationForm() {
         }
       );
 
-      if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(error.message || "Registration failed");
+      // Check if there's an error from the function call
+      if (response.error) {
+        console.error("Edge function error:", response.error);
+        
+        // For HTTP errors, the actual error message should be in the response data
+        if (response.data && response.data.error) {
+          throw new Error(response.data.error);
+        }
+        
+        throw new Error(response.error.message || "Registration failed");
       }
 
-      if (!result.success) {
-        throw new Error(result.error || "Registration failed");
+      // Check the response data
+      const result = response.data;
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Registration failed");
       }
 
       console.log("Registration successful:", result);
