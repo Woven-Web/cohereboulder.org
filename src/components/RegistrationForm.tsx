@@ -18,9 +18,8 @@ import {
   CheckCircle,
   ExternalLink,
   Loader2,
-  AlertCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const COHERE_EVENT = "october2025"; // Current event identifier
@@ -43,7 +42,6 @@ export function RegistrationForm() {
   const { user } = useAuth();
   const { tr } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [existingProfile, setExistingProfile] = useState<{
     id: string;
@@ -63,7 +61,6 @@ export function RegistrationForm() {
     additional_notes?: string | null;
   } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [emailExists, setEmailExists] = useState(false);
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     fullName: user?.user_metadata?.full_name || "",
@@ -86,15 +83,7 @@ export function RegistrationForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Check for duplicate email when email field changes (for non-authenticated users)
-  useEffect(() => {
-    if (!user && formData.email && formData.email.includes("@")) {
-      const debounceTimer = setTimeout(() => {
-        checkEmailExists(formData.email);
-      }, 500);
-      return () => clearTimeout(debounceTimer);
-    }
-  }, [formData.email, user]);
+  // No longer need live email checking for security reasons
 
   const checkExistingData = async (email: string) => {
     try {
@@ -182,25 +171,7 @@ export function RegistrationForm() {
     }
   };
 
-  const checkEmailExists = async (email: string) => {
-    setIsCheckingEmail(true);
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("email", email)
-        .single();
-
-      if (data && !error) {
-        setEmailExists(true);
-      } else {
-        setEmailExists(false);
-      }
-    } catch (error) {
-      setEmailExists(false);
-    }
-    setIsCheckingEmail(false);
-  };
+  // Removed checkEmailExists function for security - we now handle duplicates on submission
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -244,18 +215,8 @@ export function RegistrationForm() {
 
         if (profileError) {
           if (profileError.code === "23505") {
-            // Email already exists - get existing profile
-            const { data: existingProfile } = await supabase
-              .from("profiles")
-              .select("id")
-              .eq("email", data.email)
-              .maybeSingle();
-
-            if (existingProfile) {
-              profileId = existingProfile.id;
-            } else {
-              throw new Error("Email already registered but profile not found");
-            }
+            // Email already exists - this means someone is trying to register with an existing email
+            throw new Error(tr("registration.errorMessages.emailRegistered"));
           } else {
             console.error("Profile creation error:", profileError);
             throw profileError;
@@ -376,10 +337,7 @@ export function RegistrationForm() {
         throw new Error(tr("registration.errorMessages.fillRequired"));
       }
 
-      // Prevent submission if email exists and user is not authenticated
-      if (!user && emailExists) {
-        throw new Error(tr("registration.errorMessages.emailRegistered"));
-      }
+      // Email duplicate checking now happens on submission through database constraints
 
       const userId = user?.id;
 
@@ -526,22 +484,6 @@ export function RegistrationForm() {
                   <p className="text-sm text-muted-foreground">
                     {tr("registration.usingAccountEmail")}
                   </p>
-                )}
-                {!user && emailExists && !isCheckingEmail && (
-                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                    <div className="text-sm text-amber-800">
-                      <p className="font-medium mb-1">
-                        {tr("registration.emailAlreadyRegistered")}
-                      </p>
-                      <p>
-                        {tr("registration.signIn")} {tr("registration.toUpdateRegistration")} {" "}
-                        <Link to="/auth" className="font-medium underline text-amber-700 hover:text-amber-900">
-                          {tr("registration.signInHere")}
-                        </Link>
-                      </p>
-                    </div>
-                  </div>
                 )}
               </div>
             </div>
@@ -772,13 +714,12 @@ export function RegistrationForm() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || (!user && emailExists)}
+              disabled={isLoading}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {(!user && emailExists) ? tr("registration.pleaseSignInFirst") : 
-               (isEditMode
+              {isEditMode
                 ? tr("registration.updateRegistration")
-                : tr("registration.submitRegistration"))}
+                : tr("registration.submitRegistration")}
             </Button>
           </form>
         </CardContent>
