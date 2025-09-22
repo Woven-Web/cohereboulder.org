@@ -183,6 +183,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_anonymous_profile: {
+        Args: {
+          profile_email: string
+          profile_name: string
+          profile_orgs?: string
+          profile_phone?: string
+          profile_subscribed?: boolean
+        }
+        Returns: Json
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: string

@@ -225,32 +225,42 @@ export function RegistrationForm() {
     try {
       let profileId = existingProfile?.id;
 
-      // Step 1: Create or update profile
+      // Step 1: Create or update profile using secure function
       if (!profileId) {
-        // Create new profile
-        const { data: newProfile, error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            email: data.email,
-            full_name: data.fullName,
-            phone_number: data.phoneNumber,
-            organizations: data.organizations,
-            user_id: userId || null,
-            subscribed: data.subscribed,
-            source: "registration",
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          if (profileError.code === "23505") {
-            // Unique violation
-            throw new Error(tr("registration.errorMessages.emailRegistered"));
+        // Use secure public function instead of direct table insert
+        const { data: functionResult, error: functionError } = await supabase.rpc(
+          'create_anonymous_profile',
+          {
+            profile_email: data.email,
+            profile_name: data.fullName,
+            profile_phone: data.phoneNumber || '',
+            profile_orgs: data.organizations || '',
+            profile_subscribed: data.subscribed
           }
-          throw profileError;
-        }
+        );
 
-        profileId = newProfile.id;
+        if (functionError) {
+          if (functionError.message?.includes("duplicate key")) {
+            // User already exists - try to get their profile  
+            const { data: existingProfile } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", data.email)
+              .maybeSingle();
+
+            if (existingProfile) {
+              profileId = existingProfile.id;
+            } else {
+              throw new Error("Email already registered but profile not found");
+            }
+          } else {
+            console.error("Function error:", functionError);
+            throw functionError;
+          }
+        } else if (functionResult) {
+          // Success - extract profile from function result
+          profileId = (functionResult as any).id;
+        }
       } else {
         // Update existing profile
         const { error: updateError } = await supabase
@@ -265,6 +275,11 @@ export function RegistrationForm() {
           .eq("id", existingProfile!.id);
 
         if (updateError) throw updateError;
+      }
+
+      // Ensure we have a valid profileId before proceeding
+      if (!profileId) {
+        throw new Error("Failed to create or get profile ID");
       }
 
       // Step 2: Create or update registration for this event
