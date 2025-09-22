@@ -4,7 +4,8 @@ import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface RegistrationRequest {
@@ -34,14 +35,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Initialize Supabase client with service role key for bypassing RLS
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const COHERE_EVENT = "october2025";
 
     const data: RegistrationRequest = await req.json();
-    console.log("Registration request received:", { email: data.email, isEditMode: data.isEditMode });
+    console.log("Registration request received:", {
+      email: data.email,
+      isEditMode: data.isEditMode,
+    });
 
     let profileId = data.existingProfileId;
 
@@ -65,16 +69,18 @@ const handler = async (req: Request): Promise<Response> => {
       if (profileError) {
         console.error("Profile creation error:", profileError);
         if (profileError.code === "23505") {
-          // Email already exists
+          // Email already exists - return success: false with error message
+          // This allows the frontend to properly receive the error message
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               success: false,
-              error: "This email is already registered. Please sign in to update your registration." 
+              error:
+                "This email is already registered. Please sign in to update your registration.",
             }),
             {
-              status: 400,
+              status: 200, // Return 200 so the message gets through to the frontend
               headers: { "Content-Type": "application/json", ...corsHeaders },
-            }
+            },
           );
         }
         throw profileError;
@@ -134,7 +140,10 @@ const handler = async (req: Request): Promise<Response> => {
         console.error("Registration update error:", updateError);
         throw updateError;
       }
-      console.log("Updated existing registration:", data.existingRegistrationId);
+      console.log(
+        "Updated existing registration:",
+        data.existingRegistrationId,
+      );
     } else {
       // Insert new registration
       const { error: insertError } = await supabaseAdmin
@@ -144,15 +153,16 @@ const handler = async (req: Request): Promise<Response> => {
       if (insertError) {
         console.error("Registration insert error:", insertError);
         if (insertError.code === "23505") {
+          // Already registered for this event - return success: false with error message
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               success: false,
-              error: "You are already registered for this event." 
+              error: "You are already registered for this event.",
             }),
             {
-              status: 400,
+              status: 200, // Return 200 so the message gets through to the frontend
               headers: { "Content-Type": "application/json", ...corsHeaders },
-            }
+            },
           );
         }
         throw insertError;
@@ -171,21 +181,25 @@ const handler = async (req: Request): Promise<Response> => {
           .single();
 
         if (profileSelectError) {
-          console.error("Error fetching profile for email:", profileSelectError);
+          console.error(
+            "Error fetching profile for email:",
+            profileSelectError,
+          );
         } else {
           // Send confirmation email using the existing email function
-          const { error: emailSendError } = await supabaseAdmin.functions.invoke(
-            "send-registration-confirmation",
-            {
-              body: {
-                email: data.email,
-                fullName: data.fullName,
-                canAttendInvocation: data.canAttendInvocation === "yes",
-                canAttendIntegration: data.canAttendIntegration === "yes",
-                unsubscribeToken: profile?.unsubscribe_token,
+          const { error: emailSendError } =
+            await supabaseAdmin.functions.invoke(
+              "send-registration-confirmation",
+              {
+                body: {
+                  email: data.email,
+                  fullName: data.fullName,
+                  canAttendInvocation: data.canAttendInvocation === "yes",
+                  canAttendIntegration: data.canAttendIntegration === "yes",
+                  unsubscribeToken: profile?.unsubscribe_token,
+                },
               },
-            }
-          );
+            );
 
           if (emailSendError) {
             console.error("Error sending confirmation email:", emailSendError);
@@ -201,27 +215,28 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         profileId: profileId,
-        message: data.isEditMode ? "Registration updated successfully" : "Registration completed successfully"
+        message: data.isEditMode
+          ? "Registration updated successfully"
+          : "Registration completed successfully",
       }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
-
   } catch (error: any) {
     console.error("Error in register-user function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || "An unexpected error occurred" 
+      JSON.stringify({
+        error: error.message || "An unexpected error occurred",
       }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
   }
 };
