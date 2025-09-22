@@ -223,22 +223,37 @@ export function RegistrationForm() {
     userId?: string,
   ) => {
     try {
+      // Debug: Check current auth state
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Debug: Current session =", session);
+      console.log("Debug: Session user =", session?.user);
+      console.log("Debug: Passed userId =", userId);
+      
       let profileId = existingProfile?.id;
 
       // Step 1: Create or update profile
       if (!profileId) {
+        console.log("Debug: Creating new profile");
+        console.log("Debug: auth.uid() =", (await supabase.auth.getUser()).data.user?.id);
+        console.log("Debug: userId =", userId);
+        console.log("Debug: userId || null =", userId || null);
+        
         // Create new profile
+        const insertData = {
+          email: data.email,
+          full_name: data.fullName,
+          phone_number: data.phoneNumber,
+          organizations: data.organizations,
+          user_id: userId || null,
+          subscribed: data.subscribed,
+          source: "registration",
+        };
+        
+        console.log("Debug: Insert data =", insertData);
+        
         const { data: newProfile, error: profileError } = await supabase
           .from("profiles")
-          .insert({
-            email: data.email,
-            full_name: data.fullName,
-            phone_number: data.phoneNumber,
-            organizations: data.organizations,
-            user_id: userId || null,
-            subscribed: data.subscribed,
-            source: "registration",
-          })
+          .insert(insertData)
           .select()
           .single();
 
