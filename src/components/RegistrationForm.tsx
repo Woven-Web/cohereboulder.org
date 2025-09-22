@@ -225,23 +225,26 @@ export function RegistrationForm() {
     try {
       let profileId = existingProfile?.id;
 
-      // Step 1: Create or update profile using secure function
+      // Step 1: Create or update profile
       if (!profileId) {
-        // Use secure public function instead of direct table insert
-        const { data: functionResult, error: functionError } = await supabase.rpc(
-          'create_anonymous_profile',
-          {
-            profile_email: data.email,
-            profile_name: data.fullName,
-            profile_phone: data.phoneNumber || '',
-            profile_orgs: data.organizations || '',
-            profile_subscribed: data.subscribed
-          }
-        );
+        // Create new profile - simple direct insert
+        const { data: newProfile, error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            email: data.email,
+            full_name: data.fullName,
+            phone_number: data.phoneNumber,
+            organizations: data.organizations,
+            user_id: userId || null,
+            subscribed: data.subscribed,
+            source: "registration",
+          })
+          .select()
+          .single();
 
-        if (functionError) {
-          if (functionError.message?.includes("duplicate key")) {
-            // User already exists - try to get their profile  
+        if (profileError) {
+          if (profileError.code === "23505") {
+            // Email already exists - get existing profile
             const { data: existingProfile } = await supabase
               .from("profiles")
               .select("id")
@@ -254,12 +257,11 @@ export function RegistrationForm() {
               throw new Error("Email already registered but profile not found");
             }
           } else {
-            console.error("Function error:", functionError);
-            throw functionError;
+            console.error("Profile creation error:", profileError);
+            throw profileError;
           }
-        } else if (functionResult) {
-          // Success - extract profile from function result
-          profileId = (functionResult as any).id;
+        } else if (newProfile) {
+          profileId = newProfile.id;
         }
       } else {
         // Update existing profile
