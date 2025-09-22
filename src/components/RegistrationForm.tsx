@@ -251,6 +251,10 @@ export function RegistrationForm() {
         
         console.log("Debug: Insert data =", insertData);
         
+        console.log("Debug: About to insert into profiles table");
+        
+        // Let's try a different approach
+        console.log("Debug: Trying insert with anon client");
         const { data: newProfile, error: profileError } = await supabase
           .from("profiles")
           .insert(insertData)
