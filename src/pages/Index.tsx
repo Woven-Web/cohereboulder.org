@@ -231,15 +231,9 @@ const Index = () => {
                       <li>• {tr("rhythm.invocation.points.p4")}</li>
                     </ul>
                   </div>
-                  <a
-                    href="https://luma.com/u6ieh0rp"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-community-orange hover:text-community-orange/80 font-semibold text-sm"
-                  >
-                    {tr("rhythm.invocation.rsvp")}
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <p className="text-sm text-muted-foreground italic">
+                    {tr("rhythm.invocation.detailsComingSoon")}
+                  </p>
                 </CardContent>
               </Card>
 

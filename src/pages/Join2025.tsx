@@ -79,15 +79,9 @@ const Join2025 = () => {
                   "Ceremonia de apertura para lanzar el período de reunión comunitaria",
                 )}
               </p>
-              <a
-                href="https://luma.com/u6ieh0rp"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-earth hover:text-earth-dark transition-colors"
-              >
-                {t("RSVP for Invocation", "Reserva para la Invocación")}
-                <ArrowRight className="h-3 w-3" />
-              </a>
+              <p className="text-sm text-muted-foreground italic">
+                {t("Details coming soon!", "¡Detalles próximamente!")}
+              </p>
             </Card>
 
             <Card className="p-6 bg-gradient-to-br from-sage-light/30 to-transparent border-sage/30 border-2">

@@ -58,7 +58,7 @@ serve(async (req) => {
             <li>📅 <strong>Mark your calendar:</strong> October 16-25, 2025</li>
             <li>📱 <strong>Join our community:</strong> <a href="https://cohereboulder.org/telegram" style="color: #007bff;">Join our Telegram group</a> to connect with the community</li>
             <li>📆 <strong>Community Calendar:</strong> View all upcoming events at <a href="https://cohereboulder.org/calendar" style="color: #007bff;">cohereboulder.org/calendar</a></li>
-            <li>🎉 <strong>Invocation Gathering:</strong> ${canAttendInvocation ? `You're invited! <a href="https://luma.com/u6ieh0rp" style="color: #007bff;">RSVP for the Opening Gathering</a>` : "Details coming soon for those who can attend"}</li>
+            <li>🎉 <strong>Invocation Gathering:</strong> ${canAttendInvocation ? "You're invited! Details and RSVP information coming soon." : "Details coming soon for those who can attend"}</li>
             <li>🎟️ <strong>Event details:</strong> Specific event information and tickets will be shared as we get closer</li>
             <li>🤝 <strong>Get involved:</strong> If you expressed interest in co-creating, we'll be in touch about opportunities</li>
           </ul>

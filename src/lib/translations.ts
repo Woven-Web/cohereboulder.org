@@ -99,6 +99,10 @@ export const translations = {
           es: "Establecer intenciones colectivas",
         },
       },
+      detailsComingSoon: {
+        en: "Details coming soon!",
+        es: "¡Detalles próximamente!",
+      },
     },
     integration: {
       title: { en: "Integration", es: "Integración" },
