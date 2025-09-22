@@ -33,7 +33,7 @@ serve(async (req) => {
 
     const baseUrl = "https://pnvxrczcygrkbschkvkv.supabase.co";
     const unsubscribeUrl = unsubscribeToken
-      ? `${Deno.env.get("SITE_URL") || "https://0db2af12-4b3b-492c-b29e-c2dbee86d7b6.lovableproject.com"}/unsubscribe?token=${unsubscribeToken}`
+      ? `${Deno.env.get("PUBLIC_SITE_URL") || "https://cohereboulder.org"}/unsubscribe?token=${unsubscribeToken}`
       : null;
 
     const htmlContent = `
@@ -88,7 +88,7 @@ serve(async (req) => {
           <p>With gratitude and excitement for what we'll create together,<br>
           <strong>The COhere Boulder Team</strong></p>
 
-          ${unsubscribeUrl ? `<p style="margin-top: 20px;"><a href="${unsubscribeUrl}" style="color: #666;">Update your email preferences</a></p>` : ""}
+          ${unsubscribeUrl ? `<p style="margin-top: 20px;"><a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe from emails</a></p>` : ""}
         </div>
       </div>
     `;
