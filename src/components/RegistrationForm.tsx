@@ -24,6 +24,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const COHERE_EVENT = "october2025"; // Current event identifier
 
+// Security fix: removed live email checking to prevent data exposure
+
 interface RegistrationFormData {
   fullName: string;
   email: string;
