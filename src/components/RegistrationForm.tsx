@@ -196,135 +196,41 @@ export function RegistrationForm() {
     userId?: string,
   ) => {
     try {
-      let profileId = existingProfile?.id;
-
-      // Step 1: Create or update profile
-      if (!profileId) {
-        // Create new profile - simple direct insert
-        const { data: newProfile, error: profileError } = await supabase
-          .from("profiles")
-          .insert({
+      // Call the backend edge function to handle the entire registration process
+      const { data: result, error } = await supabase.functions.invoke(
+        "register-user",
+        {
+          body: {
+            fullName: data.fullName,
             email: data.email,
-            full_name: data.fullName,
-            phone_number: data.phoneNumber,
+            phoneNumber: data.phoneNumber,
             organizations: data.organizations,
-            user_id: userId || null,
+            canAttendInvocation: data.canAttendInvocation,
+            canAttendIntegration: data.canAttendIntegration,
+            coCreatingInterests: data.coCreatingInterests,
+            howDidYouHear: data.howDidYouHear,
+            additionalNotes: data.additionalNotes,
             subscribed: data.subscribed,
-            source: "registration",
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          if (profileError.code === "23505") {
-            // Email already exists - this means someone is trying to register with an existing email
-            throw new Error(tr("registration.errorMessages.emailRegistered"));
-          } else {
-            console.error("Profile creation error:", profileError);
-            throw profileError;
-          }
-        } else if (newProfile) {
-          profileId = newProfile.id;
+            userId: userId,
+            isEditMode: isEditMode,
+            existingProfileId: existingProfile?.id,
+            existingRegistrationId: existingRegistration?.id,
+          },
         }
-      } else {
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({
-            full_name: data.fullName,
-            phone_number: data.phoneNumber,
-            organizations: data.organizations,
-            subscribed: data.subscribed,
-            user_id: userId || existingProfile?.user_id,
-          })
-          .eq("id", existingProfile!.id);
+      );
 
-        if (updateError) throw updateError;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Registration failed");
       }
 
-      // Ensure we have a valid profileId before proceeding
-      if (!profileId) {
-        throw new Error("Failed to create or get profile ID");
+      if (!result.success) {
+        throw new Error(result.error || "Registration failed");
       }
 
-      // Step 2: Create or update registration for this event
-      const registrationData = {
-        profile_id: profileId,
-        cohere_event: COHERE_EVENT,
-        can_attend_invocation:
-          data.canAttendInvocation === "yes"
-            ? true
-            : data.canAttendInvocation === "no"
-              ? false
-              : null,
-        can_attend_integration:
-          data.canAttendIntegration === "yes"
-            ? true
-            : data.canAttendIntegration === "no"
-              ? false
-              : null,
-        co_creating_interests: data.coCreatingInterests,
-        how_did_you_hear: data.howDidYouHear,
-        additional_notes: data.additionalNotes,
-      };
-
-      if (isEditMode && existingRegistration) {
-        // Update existing registration
-        const { error: updateError } = await supabase
-          .from("registrations")
-          .update(registrationData)
-          .eq("id", existingRegistration.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert new registration
-        const { error: insertError } = await supabase
-          .from("registrations")
-          .insert(registrationData);
-
-        if (insertError) {
-          if (insertError.code === "23505") {
-            // Unique violation
-            throw new Error(
-              tr("registration.errorMessages.alreadyRegisteredEvent"),
-            );
-          }
-          throw insertError;
-        }
-      }
-
-      // Send registration confirmation email (only for new registrations)
-      if (!isEditMode) {
-        try {
-          // Get the unsubscribe token for the profile
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("unsubscribe_token")
-            .eq("id", profileId)
-            .single();
-
-          const { error: emailSendError } = await supabase.functions.invoke(
-            "send-registration-confirmation",
-            {
-              body: {
-                email: data.email,
-                fullName: data.fullName,
-                canAttendInvocation: data.canAttendInvocation === "yes",
-                canAttendIntegration: data.canAttendIntegration === "yes",
-                unsubscribeToken: profile?.unsubscribe_token,
-              },
-            },
-          );
-
-          if (emailSendError) {
-            console.error("Error sending confirmation email:", emailSendError);
-          }
-        } catch (emailSendError) {
-          console.error("Error calling email function:", emailSendError);
-        }
-      }
+      console.log("Registration successful:", result);
     } catch (error) {
-      console.error("Error submitting to Supabase:", error);
+      console.error("Error submitting registration:", error);
       throw error;
     }
   };
@@ -354,11 +260,23 @@ export function RegistrationForm() {
           ? tr("registration.errorMessages.registrationUpdatedDescription")
           : tr("registration.errorMessages.registrationSubmittedDescription"),
       });
-    } catch (error) {
+    } catch (error: any) {
+      let errorMessage = tr("registration.errorMessages.tryAgainLater");
+      
+      // Handle edge function errors
+      if (error?.message) {
+        if (error.message.includes("email is already registered")) {
+          errorMessage = tr("registration.errorMessages.emailRegistered");
+        } else if (error.message.includes("already registered for this event")) {
+          errorMessage = tr("registration.errorMessages.alreadyRegisteredEvent");
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
         title: tr("registration.errorMessages.errorSubmitting"),
-        description:
-          (error as Error)?.message || tr("registration.errorMessages.tryAgainLater"),
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
