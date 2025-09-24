@@ -109,32 +109,47 @@ export default function CalendarPage() {
       );
   };
 
-  const handleGoogleCalendar = async (eventId: string) => {
+  const handleGoogleCalendar = (eventId: string) => {
     if (!eventId) {
       toast.error("Please select an event to add to Google Calendar");
       return;
     }
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const url = `${supabaseUrl}/functions/v1/calendar-feed?format=google&event_id=${eventId}`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${anonKey}`,
-        },
-      });
-
-      if (response.status === 302 || response.status === 301) {
-        // Handle redirect for single event
-        const redirectUrl = response.headers.get("location") || response.url;
-        window.open(redirectUrl, "_blank");
-        toast.success("Opening Google Calendar");
-      } else {
-        toast.error("Failed to add to Google Calendar");
+      // Find the event
+      const event = events.find((e) => e.id === eventId);
+      if (!event) {
+        toast.error("Event not found");
+        return;
       }
+
+      // Format dates for Google Calendar
+      const startDate = new Date(event.start_date);
+      const endDate = new Date(event.end_date);
+
+      const formatGoogleDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, "").replace(".000Z", "Z");
+      };
+
+      // Build Google Calendar URL
+      const googleUrl = new URL("https://calendar.google.com/calendar/render");
+      googleUrl.searchParams.set("action", "TEMPLATE");
+      googleUrl.searchParams.set("text", event.title);
+      googleUrl.searchParams.set(
+        "dates",
+        `${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}`,
+      );
+
+      if (event.description) {
+        googleUrl.searchParams.set("details", event.description);
+      }
+      if (event.location) {
+        googleUrl.searchParams.set("location", event.location);
+      }
+
+      // Open Google Calendar in new tab
+      window.open(googleUrl.toString(), "_blank");
+      toast.success("Opening Google Calendar");
     } catch (error) {
       console.error("Google Calendar error:", error);
       toast.error("Failed to add to Google Calendar");

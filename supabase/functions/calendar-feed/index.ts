@@ -51,9 +51,9 @@ serve(async (req) => {
     }
 
     if (format === "google") {
-      // For Google Calendar, we need to handle multiple events differently
+      // For Google Calendar, return the URL as JSON to avoid CORS issues
       if (eventId && events.length === 1) {
-        // Single event - redirect to Google Calendar
+        // Single event - generate Google Calendar URL
         const event = events[0];
         const startDate = new Date(event.start_date);
         const endDate = new Date(event.end_date);
@@ -79,14 +79,22 @@ serve(async (req) => {
           googleUrl.searchParams.set("location", event.location);
         }
 
-        return Response.redirect(googleUrl.toString(), 302);
+        // Return the URL as JSON instead of redirecting
+        return new Response(JSON.stringify({ url: googleUrl.toString() }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       } else {
-        // Multiple events - generate a webcal link for Google Calendar to subscribe
-        const baseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-        const webcalUrl = `webcal://${baseUrl.replace("https://", "")}/functions/v1/calendar-feed`;
-
-        // Return a redirect to the webcal URL which Google Calendar can subscribe to
-        return Response.redirect(webcalUrl, 302);
+        // Multiple events not supported for individual event adding
+        return new Response(
+          JSON.stringify({
+            error: "Please select a specific event to add to Google Calendar",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
     }
 
