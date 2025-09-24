@@ -36,6 +36,7 @@ interface Event {
   location?: string | null;
   category: string | null;
   is_public: boolean | null;
+  registration_url?: string | null;
 }
 
 export default function CalendarPage() {
@@ -321,16 +322,7 @@ export default function CalendarPage() {
                                   {dayEvents.slice(0, 2).map((event, i) => (
                                     <div
                                       key={i}
-                                      className={cn(
-                                        "text-xs truncate px-1 rounded",
-                                        event.category === "cohere"
-                                          ? "bg-orange-100 text-orange-700"
-                                          : event.category === "workshop"
-                                            ? "bg-blue-100 text-blue-700"
-                                            : event.category === "community"
-                                              ? "bg-green-100 text-green-700"
-                                              : "bg-gray-100 text-gray-700",
-                                      )}
+                                      className="text-xs truncate px-1 rounded bg-primary/10 text-primary"
                                     >
                                       {event.title}
                                     </div>
@@ -370,25 +362,9 @@ export default function CalendarPage() {
                             key={event.id}
                             className="space-y-2 pb-4 border-b last:border-0"
                           >
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-semibold text-sm">
-                                {event.title}
-                              </h4>
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  "text-xs",
-                                  event.category === "cohere" &&
-                                    "bg-orange-100 text-orange-700",
-                                  event.category === "workshop" &&
-                                    "bg-blue-100 text-blue-700",
-                                  event.category === "community" &&
-                                    "bg-green-100 text-green-700",
-                                )}
-                              >
-                                {event.category}
-                              </Badge>
-                            </div>
+                            <h4 className="font-semibold text-sm">
+                              {event.title}
+                            </h4>
 
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
@@ -414,6 +390,22 @@ export default function CalendarPage() {
                             )}
 
                             <div className="flex gap-2 pt-2">
+                              {event.registration_url && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() =>
+                                    window.open(
+                                      event.registration_url,
+                                      "_blank",
+                                    )
+                                  }
+                                  className="flex-1"
+                                >
+                                  <ExternalLink className="mr-1 h-3 w-3" />
+                                  Register
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -476,20 +468,9 @@ export default function CalendarPage() {
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {format(new Date(event.start_date), "MMM d")}
+                                {event.registration_url && " • Register"}
                               </p>
                             </div>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "ml-2 text-xs",
-                                event.category === "cohere" &&
-                                  "border-orange-500 text-orange-700",
-                                event.category === "workshop" &&
-                                  "border-blue-500 text-blue-700",
-                              )}
-                            >
-                              {event.category}
-                            </Badge>
                           </div>
                         ))}
                     </div>
