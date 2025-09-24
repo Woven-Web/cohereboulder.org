@@ -24,6 +24,7 @@ import {
   Loader2,
   Shield,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { EventsManagement } from "@/components/EventsManagement";
 
 interface ProfileData {

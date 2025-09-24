@@ -98,7 +98,7 @@ export const EventsManagement = () => {
       const method = editingEvent ? 'PUT' : 'POST';
       const url = editingEvent ? `?id=${editingEvent.id}` : '';
 
-      const { data, error } = await supabase.functions.invoke(`manage-events${url}`, {
+      const { error } = await supabase.functions.invoke(`manage-events${url}`, {
         method,
         body: eventData,
       });
