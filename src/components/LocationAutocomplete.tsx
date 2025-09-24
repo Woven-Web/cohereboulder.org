@@ -21,7 +21,7 @@ declare global {
 export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   value,
   onChange,
-  placeholder = "Search for Boulder area locations...",
+  placeholder = "Search for a location...",
   label = "Location",
   required = false,
 }) => {
@@ -80,30 +80,31 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
 
     try {
-      // Create autocomplete instance with strict Boulder area restrictions
+      // Create autocomplete instance with Boulder bias
       const autocomplete = new window.google.maps.places.Autocomplete(
         inputRef.current,
         {
-          types: ["establishment", "geocode", "street_address"],
+          // Use only geocode to avoid the "cannot be mixed" error
+          types: ["geocode"],
           componentRestrictions: { country: "us" },
           fields: ["formatted_address", "geometry", "name"],
         },
       );
 
-      // Strongly restrict results to Boulder and immediate surrounding areas
+      // Bias results to Boulder, Colorado (but don't strictly restrict)
       const boulder = new window.google.maps.LatLng(40.015, -105.2705);
 
-      // Create a tight bounds around Boulder (roughly covers Boulder County)
+      // Create broader bounds around Boulder/Denver metro area
       const bounds = new window.google.maps.LatLngBounds(
-        new window.google.maps.LatLng(39.9142, -105.483), // Southwest corner
-        new window.google.maps.LatLng(40.2614, -105.0174), // Northeast corner
+        new window.google.maps.LatLng(39.5, -105.5), // Southwest corner (covers Denver)
+        new window.google.maps.LatLng(40.3, -104.9), // Northeast corner (covers Boulder/Longmont)
       );
 
-      // Use strictBounds to restrict results to this area only
+      // Use bounds to bias (not restrict) and set origin for ranking
       autocomplete.setBounds(bounds);
       autocomplete.setOptions({
-        strictBounds: true, // This is key - it restricts results to the bounds
-        origin: boulder, // Also set origin for ranking
+        strictBounds: false, // Allow results outside bounds if relevant
+        origin: boulder, // Rank results by distance from Boulder
       });
 
       // Handle place selection
