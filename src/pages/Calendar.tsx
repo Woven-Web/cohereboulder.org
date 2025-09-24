@@ -99,15 +99,27 @@ export default function CalendarPage() {
     });
   };
 
-  const handleGoogleCalendar = async (eventId?: string) => {
+  const getUpcomingEvents = () => {
+    const now = new Date();
+    return events
+      .filter((event) => new Date(event.start_date) > now)
+      .sort(
+        (a, b) =>
+          new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
+      );
+  };
+
+  const handleGoogleCalendar = async (eventId: string) => {
+    if (!eventId) {
+      toast.error("Please select an event to add to Google Calendar");
+      return;
+    }
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Fetch with authentication header
-      const url = eventId
-        ? `${supabaseUrl}/functions/v1/calendar-feed?format=google&event_id=${eventId}`
-        : `${supabaseUrl}/functions/v1/calendar-feed?format=google`;
+      const url = `${supabaseUrl}/functions/v1/calendar-feed?format=google&event_id=${eventId}`;
 
       const response = await fetch(url, {
         headers: {
@@ -116,15 +128,10 @@ export default function CalendarPage() {
       });
 
       if (response.status === 302 || response.status === 301) {
-        // Handle redirect for single events
+        // Handle redirect for single event
         const redirectUrl = response.headers.get("location") || response.url;
         window.open(redirectUrl, "_blank");
-      } else if (response.ok) {
-        // For multiple events, handle the webcal URL
-        const text = await response.text();
-        if (text.startsWith("webcal://")) {
-          window.location.href = text;
-        }
+        toast.success("Opening Google Calendar");
       } else {
         toast.error("Failed to add to Google Calendar");
       }
@@ -134,14 +141,17 @@ export default function CalendarPage() {
     }
   };
 
-  const handleDownloadICal = async (eventId?: string) => {
+  const handleDownloadICal = async (eventId: string) => {
+    if (!eventId) {
+      toast.error("Please select an event to download");
+      return;
+    }
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const url = eventId
-        ? `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`
-        : `${supabaseUrl}/functions/v1/calendar-feed`;
+      const url = `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`;
 
       // Fetch the iCal data with authentication
       const response = await fetch(url, {
@@ -157,9 +167,15 @@ export default function CalendarPage() {
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
 
+      // Find the event to use its title in the filename
+      const event = events.find((e) => e.id === eventId);
+      const filename = event
+        ? `${event.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.ics`
+        : `event-${eventId}.ics`;
+
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = `cohere-events${eventId ? `-${eventId}` : ""}.ics`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -167,10 +183,10 @@ export default function CalendarPage() {
       // Clean up the object URL
       window.URL.revokeObjectURL(downloadUrl);
 
-      toast.success("Calendar downloaded successfully");
+      toast.success("Event added to calendar");
     } catch (error) {
       console.error("Download error:", error);
-      toast.error("Failed to download calendar");
+      toast.error("Failed to download calendar event");
     }
   };
 
@@ -414,89 +430,61 @@ export default function CalendarPage() {
                 </Card>
               )}
 
-              {/* Calendar Sync */}
+              {/* Upcoming Events */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Sync Calendar
+                    Upcoming Events
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Add all COhere events to your calendar:
+                    Click on any event to add it to your calendar.
                   </p>
 
-                  <Button
-                    onClick={() => handleGoogleCalendar()}
-                    className="w-full justify-start"
-                    variant="outline"
-                    disabled={events.length === 0}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Add to Google Calendar
-                  </Button>
-
-                  <Button
-                    onClick={() => handleDownloadICal()}
-                    className="w-full justify-start"
-                    variant="outline"
-                    disabled={events.length === 0}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download iCal File
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Events */}
-              {events.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Upcoming Events</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {events
-                        .filter(
-                          (event) => new Date(event.start_date) >= new Date(),
-                        )
-                        .slice(0, 3)
+                  {getUpcomingEvents().length > 0 ? (
+                    <div className="space-y-2">
+                      {getUpcomingEvents()
+                        .slice(0, 5)
                         .map((event) => (
                           <div
                             key={event.id}
-                            className="flex items-start gap-3"
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                            onClick={() =>
+                              setSelectedDate(new Date(event.start_date))
+                            }
                           >
-                            <div className="text-xs text-muted-foreground pt-1">
-                              <div className="font-semibold">
-                                {format(new Date(event.start_date), "MMM")}
-                              </div>
-                              <div className="text-lg leading-none">
-                                {format(new Date(event.start_date), "d")}
-                              </div>
-                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">
                                 {event.title}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {format(new Date(event.start_date), "h:mm a")}
+                                {format(new Date(event.start_date), "MMM d")}
                               </p>
                             </div>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "ml-2 text-xs",
+                                event.category === "cohere" &&
+                                  "border-orange-500 text-orange-700",
+                                event.category === "workshop" &&
+                                  "border-blue-500 text-blue-700",
+                              )}
+                            >
+                              {event.category}
+                            </Badge>
                           </div>
                         ))}
-
-                      {events.filter(
-                        (e) => new Date(e.start_date) >= new Date(),
-                      ).length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          No upcoming events scheduled.
-                        </p>
-                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming events scheduled.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
