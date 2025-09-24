@@ -21,7 +21,7 @@ declare global {
 export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   value,
   onChange,
-  placeholder = "Start typing to search for a location...",
+  placeholder = "Search for Boulder area locations...",
   label = "Location",
   required = false,
 }) => {
@@ -38,9 +38,11 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       }
 
       // Check if script is already loading
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      const existingScript = document.querySelector(
+        'script[src*="maps.googleapis.com"]',
+      );
       if (existingScript) {
-        existingScript.addEventListener('load', () => setIsLoaded(true));
+        existingScript.addEventListener("load", () => setIsLoaded(true));
         return;
       }
 
@@ -48,7 +50,9 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
       if (!apiKey) {
-        console.warn("Google Maps API key not found. Location autocomplete will use fallback.");
+        console.warn(
+          "Google Maps API key not found. Location autocomplete will use fallback.",
+        );
         return;
       }
 
@@ -76,29 +80,41 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
 
     try {
-      // Create autocomplete instance
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ["establishment", "geocode"],
-        componentRestrictions: { country: "us" },
-        fields: ["formatted_address", "geometry", "name"],
-      });
+      // Create autocomplete instance with strict Boulder area restrictions
+      const autocomplete = new window.google.maps.places.Autocomplete(
+        inputRef.current,
+        {
+          types: ["establishment", "geocode", "street_address"],
+          componentRestrictions: { country: "us" },
+          fields: ["formatted_address", "geometry", "name"],
+        },
+      );
 
-      // Bias results to Boulder, Colorado
-      const boulder = new window.google.maps.LatLng(40.0150, -105.2705);
-      const circle = new window.google.maps.Circle({
-        center: boulder,
-        radius: 50000, // 50km radius around Boulder
+      // Strongly restrict results to Boulder and immediate surrounding areas
+      const boulder = new window.google.maps.LatLng(40.015, -105.2705);
+
+      // Create a tight bounds around Boulder (roughly covers Boulder County)
+      const bounds = new window.google.maps.LatLngBounds(
+        new window.google.maps.LatLng(39.9142, -105.483), // Southwest corner
+        new window.google.maps.LatLng(40.2614, -105.0174), // Northeast corner
+      );
+
+      // Use strictBounds to restrict results to this area only
+      autocomplete.setBounds(bounds);
+      autocomplete.setOptions({
+        strictBounds: true, // This is key - it restricts results to the bounds
+        origin: boulder, // Also set origin for ranking
       });
-      autocomplete.setBounds(circle.getBounds());
 
       // Handle place selection
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (place && place.formatted_address) {
           // Use name if available, otherwise formatted address
-          const locationString = place.name && !place.formatted_address.startsWith(place.name)
-            ? `${place.name}, ${place.formatted_address}`
-            : place.formatted_address;
+          const locationString =
+            place.name && !place.formatted_address.startsWith(place.name)
+              ? `${place.name}, ${place.formatted_address}`
+              : place.formatted_address;
           onChange(locationString);
         }
       });
@@ -110,13 +126,21 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   }, [isLoaded, onChange]);
 
   // Handle manual input changes
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  }, [onChange]);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange],
+  );
 
   return (
     <div className="space-y-2">
-      {label && <Label htmlFor="location">{label}{required && " *"}</Label>}
+      {label && (
+        <Label htmlFor="location">
+          {label}
+          {required && " *"}
+        </Label>
+      )}
       <Input
         ref={inputRef}
         id="location"
