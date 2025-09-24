@@ -57,14 +57,12 @@ export default function CalendarPage() {
         .order("start_date", { ascending: true });
 
       if (error) {
-        console.error("Error fetching events:", error);
         toast.error("Failed to load events");
         return;
       }
 
       setEvents(data || []);
     } catch (error) {
-      console.error("Error fetching events:", error);
       toast.error("Failed to load events");
     } finally {
       setLoading(false);
@@ -102,17 +100,19 @@ export default function CalendarPage() {
   };
 
   const handleGoogleCalendar = async (eventId?: string) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const url = eventId
       ? `/functions/v1/calendar-feed?format=google&event_id=${eventId}`
       : "/functions/v1/calendar-feed?format=google";
 
-    window.open(`https://pnvxrczcygrkbschkvkv.supabase.co${url}`, "_blank");
+    window.open(`${supabaseUrl}${url}`, "_blank");
   };
 
   const handleDownloadICal = async (eventId?: string) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const url = eventId
-      ? `https://pnvxrczcygrkbschkvkv.supabase.co/functions/v1/calendar-feed?event_id=${eventId}`
-      : "https://pnvxrczcygrkbschkvkv.supabase.co/functions/v1/calendar-feed";
+      ? `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`
+      : `${supabaseUrl}/functions/v1/calendar-feed`;
 
     const link = document.createElement("a");
     link.href = url;

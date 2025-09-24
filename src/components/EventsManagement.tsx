@@ -110,7 +110,6 @@ export const EventsManagement = () => {
 
       setEvents(data || []);
     } catch (error) {
-      console.error("Error fetching events:", error);
       toast.error("Failed to load events");
     } finally {
       setLoading(false);
@@ -179,7 +178,6 @@ export const EventsManagement = () => {
 
       resetForm();
     } catch (error) {
-      console.error("Error saving event:", error);
       toast.error("Failed to save event");
     }
   };
@@ -221,7 +219,6 @@ export const EventsManagement = () => {
       // Remove from state immediately for better UX
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
     } catch (error) {
-      console.error("Error deleting event:", error);
       toast.error("Failed to delete event");
     }
   };

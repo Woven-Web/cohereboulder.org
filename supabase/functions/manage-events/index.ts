@@ -22,6 +22,25 @@ interface RequestBody extends EventData {
   action?: string;
 }
 
+// Input validation helpers
+const isValidDate = (dateString: string): boolean => {
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date.getTime());
+};
+
+const isValidCategory = (category: string | undefined): boolean => {
+  if (!category) return true; // Optional field
+  return ["general", "cohere", "workshop", "community"].includes(category);
+};
+
+const sanitizeString = (
+  str: string | undefined,
+  maxLength: number = 255,
+): string | undefined => {
+  if (!str) return str;
+  return str.slice(0, maxLength).replace(/<[^>]*>/g, ""); // Remove HTML tags
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -74,7 +93,7 @@ serve(async (req) => {
 
     // Parse request body
     const requestBody: RequestBody = await req.json();
-    const eventIdFromUrlaction = requestBody.action || "GET";
+    const action = requestBody.action || "GET";
 
     switch (action) {
       case "GET": {
@@ -120,14 +139,57 @@ serve(async (req) => {
       case "POST": {
         // Remove action from the data
         const { action: _, ...eventData } = requestBody;
+
+        // Validate input
+        if (!eventData.title || eventData.title.trim() === "") {
+          return new Response(JSON.stringify({ error: "Title is required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (
+          !isValidDate(eventData.start_date) ||
+          !isValidDate(eventData.end_date)
+        ) {
+          return new Response(
+            JSON.stringify({ error: "Invalid date format" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (new Date(eventData.end_date) <= new Date(eventData.start_date)) {
+          return new Response(
+            JSON.stringify({ error: "End date must be after start date" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (!isValidCategory(eventData.category)) {
+          return new Response(JSON.stringify({ error: "Invalid category" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Sanitize input
+        const sanitizedData = {
+          ...eventData,
+          title: sanitizeString(eventData.title, 255)!,
+          description: sanitizeString(eventData.description, 1000),
+          location: sanitizeString(eventData.location, 255),
+          created_by: user.id,
+        };
+
         const { data: newEvent, error: insertError } = await supabase
           .from("events")
-          .insert([
-            {
-              ...eventData,
-              created_by: user.id,
-            },
-          ])
+          .insert([sanitizedData])
           .select()
           .single();
 
@@ -145,10 +207,6 @@ serve(async (req) => {
       }
 
       case "PUT": {
-        const requestData = await req.json();
-        const eventId = requestData.id || eventIdFromUrl;
-
- {
         const eventId = requestBody.id;
 
         if (!eventId) {
@@ -159,13 +217,71 @@ serve(async (req) => {
         }
 
         // Remove action and id from update data
-        const {{ action id, ...updateData }_, id: __, ...updateData } = requestDatarequestBody;
+        const { action: _, id: __, ...updateData } = requestBody;
 
+        // Validate dates if provided
+        if (updateData.start_date && !isValidDate(updateData.start_date)) {
+          return new Response(
+            JSON.stringify({ error: "Invalid start date format" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
 
+        if (updateData.end_date && !isValidDate(updateData.end_date)) {
+          return new Response(
+            JSON.stringify({ error: "Invalid end date format" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (
+          updateData.start_date &&
+          updateData.end_date &&
+          new Date(updateData.end_date) <= new Date(updateData.start_date)
+        ) {
+          return new Response(
+            JSON.stringify({ error: "End date must be after start date" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (updateData.category && !isValidCategory(updateData.category)) {
+          return new Response(JSON.stringify({ error: "Invalid category" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Sanitize input
+        const sanitizedUpdate = {
+          ...updateData,
+          title: updateData.title
+            ? sanitizeString(updateData.title, 255)
+            : undefined,
+          description: sanitizeString(updateData.description, 1000),
+          location: sanitizeString(updateData.location, 255),
+        };
+
+        // Remove undefined values
+        Object.keys(sanitizedUpdate).forEach(
+          (key) =>
+            sanitizedUpdate[key as keyof typeof sanitizedUpdate] ===
+              undefined &&
+            delete sanitizedUpdate[key as keyof typeof sanitizedUpdate],
+        );
 
         const { data: updatedEvent, error: updateError } = await supabase
           .from("events")
-          .update(updateData)
+          .update(sanitizedUpdate)
           .eq("id", eventId)
           .select()
           .single();
@@ -183,10 +299,6 @@ serve(async (req) => {
       }
 
       case "DELETE": {
-        const requestData = await req.json();
-        const eventId = requestData.id || eventIdFromUrl;
-
- {
         const eventId = requestBody.id;
 
         if (!eventId) {
@@ -220,7 +332,11 @@ serve(async (req) => {
         });
     }
   } catch (error) {
-    console.error("Error in manage-events function:", error);
+    // Log error securely without exposing details to client
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("Edge function error:", errorMessage);
+
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
