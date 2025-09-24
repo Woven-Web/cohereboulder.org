@@ -84,10 +84,10 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       const autocomplete = new window.google.maps.places.Autocomplete(
         inputRef.current,
         {
-          // Use only geocode to avoid the "cannot be mixed" error
-          types: ["geocode"],
+          // Don't specify types to get all results (businesses, addresses, etc.)
+          // This allows both establishment and geocode results
           componentRestrictions: { country: "us" },
-          fields: ["formatted_address", "geometry", "name"],
+          fields: ["formatted_address", "geometry", "name", "types"],
         },
       );
 
@@ -110,13 +110,63 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       // Handle place selection
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
-        if (place && place.formatted_address) {
-          // Use name if available, otherwise formatted address
-          const locationString =
-            place.name && !place.formatted_address.startsWith(place.name)
-              ? `${place.name}, ${place.formatted_address}`
-              : place.formatted_address;
-          onChange(locationString);
+        if (place) {
+          let locationString = "";
+
+          // Check if it's a business/establishment
+          const isEstablishment = place.types?.some((type) =>
+            [
+              "establishment",
+              "point_of_interest",
+              "store",
+              "restaurant",
+              "cafe",
+              "museum",
+              "park",
+              "stadium",
+              "university",
+              "school",
+              "bar",
+              "gym",
+              "library",
+              "church",
+              "hospital",
+              "shopping_mall",
+              "art_gallery",
+              "movie_theater",
+              "night_club",
+              "spa",
+              "lodging",
+            ].includes(type),
+          );
+
+          if (place.name && isEstablishment) {
+            // For businesses, prioritize the name
+            // Only add the full address if it provides useful context
+            const hasStreetAddress =
+              place.formatted_address && /\d/.test(place.formatted_address); // Check if address has numbers (street address)
+
+            if (
+              hasStreetAddress &&
+              !place.formatted_address.startsWith(place.name)
+            ) {
+              // Include address for specific street locations
+              locationString = `${place.name}, ${place.formatted_address}`;
+            } else {
+              // Just use the business name for well-known places
+              locationString = place.name;
+            }
+          } else if (place.formatted_address) {
+            // For regular addresses, use the formatted address
+            locationString = place.formatted_address;
+          } else if (place.name) {
+            // Fallback to just name if nothing else
+            locationString = place.name;
+          }
+
+          if (locationString) {
+            onChange(locationString);
+          }
         }
       });
 
