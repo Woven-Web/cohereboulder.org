@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      events: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_date: string
+          id: string
+          is_public: boolean | null
+          location: string | null
+          start_date: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          start_date: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          start_date?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       map_suggestions: {
         Row: {
           category: string | null
