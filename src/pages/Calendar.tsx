@@ -100,26 +100,78 @@ export default function CalendarPage() {
   };
 
   const handleGoogleCalendar = async (eventId?: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const url = eventId
-      ? `/functions/v1/calendar-feed?format=google&event_id=${eventId}`
-      : "/functions/v1/calendar-feed?format=google";
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    window.open(`${supabaseUrl}${url}`, "_blank");
+      // Fetch with authentication header
+      const url = eventId
+        ? `${supabaseUrl}/functions/v1/calendar-feed?format=google&event_id=${eventId}`
+        : `${supabaseUrl}/functions/v1/calendar-feed?format=google`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${anonKey}`,
+        },
+      });
+
+      if (response.status === 302 || response.status === 301) {
+        // Handle redirect for single events
+        const redirectUrl = response.headers.get("location") || response.url;
+        window.open(redirectUrl, "_blank");
+      } else if (response.ok) {
+        // For multiple events, handle the webcal URL
+        const text = await response.text();
+        if (text.startsWith("webcal://")) {
+          window.location.href = text;
+        }
+      } else {
+        toast.error("Failed to add to Google Calendar");
+      }
+    } catch (error) {
+      console.error("Google Calendar error:", error);
+      toast.error("Failed to add to Google Calendar");
+    }
   };
 
   const handleDownloadICal = async (eventId?: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const url = eventId
-      ? `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`
-      : `${supabaseUrl}/functions/v1/calendar-feed`;
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `cohere-events${eventId ? `-${eventId}` : ""}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const url = eventId
+        ? `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`
+        : `${supabaseUrl}/functions/v1/calendar-feed`;
+
+      // Fetch the iCal data with authentication
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${anonKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar data");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `cohere-events${eventId ? `-${eventId}` : ""}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success("Calendar downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download calendar");
+    }
   };
 
   const navigateMonth = (direction: "prev" | "next") => {
