@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 
 interface Event {
   id?: string;
@@ -41,6 +42,7 @@ interface Event {
   location?: string | null;
   category: string | null;
   is_public: boolean | null;
+  registration_url?: string | null;
   created_at?: string;
 }
 
@@ -55,46 +57,12 @@ export const EventsManagement = () => {
     location: "",
     category: "general",
     is_public: true,
+    registration_url: "",
   });
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-
-  // Common Boulder locations for autocomplete
-  const commonLocations = [
-    "Boulder Theater",
-    "Chautauqua Auditorium",
-    "Pearl Street Mall",
-    "Boulder Public Library - Main Branch",
-    "Boulder Creek Path",
-    "University of Colorado Boulder",
-    "Boulder Museum of Contemporary Art",
-    "Rayback Collective",
-    "The Riverside",
-    "eTown Hall",
-    "Boulder County Fairgrounds",
-    "East Boulder Community Center",
-    "North Boulder Recreation Center",
-    "South Boulder Recreation Center",
-    "Dairy Arts Center",
-    "Boulder Shambhala Center",
-    "Naropa University",
-    "Flatirons Park",
-    "Avalon Ballroom",
-    "Trident Booksellers & Cafe",
-    "St Julien Hotel & Spa",
-    "Hotel Boulderado",
-    "Boulder Farmers Market",
-    "Central Park",
-    "Scott Carpenter Park",
-    "Valmont Bike Park",
-    "NOAA David Skaggs Research Center",
-    "Fiske Planetarium",
-    "Colorado Chautauqua National Historic Landmark",
-  ];
 
   useEffect(() => {
     fetchEvents();
@@ -230,6 +198,7 @@ export const EventsManagement = () => {
       location: "",
       category: "general",
       is_public: true,
+      registration_url: "",
     });
     setStartDate(undefined);
     setEndDate(undefined);
@@ -237,7 +206,6 @@ export const EventsManagement = () => {
     setEndTime("17:00");
     setEditingEvent(null);
     setShowForm(false);
-    setShowLocationSuggestions(false);
   };
 
   // Handle start date change - auto-set end date
@@ -294,24 +262,9 @@ export const EventsManagement = () => {
     }
   };
 
-  // Handle location input with autocomplete
+  // Handle location change from Google Maps autocomplete
   const handleLocationChange = (value: string) => {
     setFormData((prev) => ({ ...prev, location: value }));
-
-    if (value.length > 0) {
-      const filtered = commonLocations.filter((loc) =>
-        loc.toLowerCase().includes(value.toLowerCase()),
-      );
-      setLocationSuggestions(filtered);
-      setShowLocationSuggestions(filtered.length > 0);
-    } else {
-      setShowLocationSuggestions(false);
-    }
-  };
-
-  const selectLocation = (location: string) => {
-    setFormData((prev) => ({ ...prev, location }));
-    setShowLocationSuggestions(false);
   };
 
   const exportEvents = () => {
@@ -386,42 +339,20 @@ export const EventsManagement = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    placeholder="Event title"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category || "general"}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, category: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General</SelectItem>
-                      <SelectItem value="cohere">COhere</SelectItem>
-                      <SelectItem value="workshop">Workshop</SelectItem>
-                      <SelectItem value="community">Community</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  placeholder="Event title"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -440,38 +371,29 @@ export const EventsManagement = () => {
                 />
               </div>
 
-              <div className="space-y-2 relative">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LocationAutocomplete
                   value={formData.location || ""}
-                  onChange={(e) => handleLocationChange(e.target.value)}
-                  onFocus={() => {
-                    if (formData.location && formData.location.length > 0) {
-                      handleLocationChange(formData.location);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Delay hiding to allow clicking on suggestions
-                    setTimeout(() => setShowLocationSuggestions(false), 200);
-                  }}
-                  placeholder="Event location (start typing for suggestions)"
+                  onChange={handleLocationChange}
+                  placeholder="Search for a location..."
+                  label="Location"
                 />
-                {showLocationSuggestions && locationSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                    {locationSuggestions.map((location, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 text-sm"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectLocation(location)}
-                      >
-                        {location}
-                      </button>
-                    ))}
-                  </div>
-                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="registration_url">Registration URL</Label>
+                  <Input
+                    id="registration_url"
+                    type="url"
+                    value={formData.registration_url || ""}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        registration_url: e.target.value,
+                      }))
+                    }
+                    placeholder="https://lu.ma/event-url"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -594,13 +516,6 @@ export const EventsManagement = () => {
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold">{event.title}</h4>
-                      <Badge
-                        variant={
-                          event.category === "cohere" ? "default" : "secondary"
-                        }
-                      >
-                        {event.category}
-                      </Badge>
                       {event.is_public && (
                         <Badge variant="outline">Public</Badge>
                       )}
@@ -615,6 +530,19 @@ export const EventsManagement = () => {
                     {event.location && (
                       <p className="text-sm text-muted-foreground">
                         📍 {event.location}
+                      </p>
+                    )}
+                    {event.registration_url && (
+                      <p className="text-sm text-muted-foreground">
+                        🔗{" "}
+                        <a
+                          href={event.registration_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Registration Link
+                        </a>
                       </p>
                     )}
                     {event.description && (

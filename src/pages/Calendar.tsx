@@ -36,6 +36,7 @@ interface Event {
   location?: string | null;
   category: string | null;
   is_public: boolean | null;
+  registration_url?: string | null;
 }
 
 export default function CalendarPage() {
@@ -99,27 +100,110 @@ export default function CalendarPage() {
     });
   };
 
-  const handleGoogleCalendar = async (eventId?: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const url = eventId
-      ? `/functions/v1/calendar-feed?format=google&event_id=${eventId}`
-      : "/functions/v1/calendar-feed?format=google";
-
-    window.open(`${supabaseUrl}${url}`, "_blank");
+  const getUpcomingEvents = () => {
+    const now = new Date();
+    return events
+      .filter((event) => new Date(event.start_date) > now)
+      .sort(
+        (a, b) =>
+          new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
+      );
   };
 
-  const handleDownloadICal = async (eventId?: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const url = eventId
-      ? `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`
-      : `${supabaseUrl}/functions/v1/calendar-feed`;
+  const handleGoogleCalendar = (eventId: string) => {
+    if (!eventId) {
+      toast.error("Please select an event to add to Google Calendar");
+      return;
+    }
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `cohere-events${eventId ? `-${eventId}` : ""}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Find the event
+      const event = events.find((e) => e.id === eventId);
+      if (!event) {
+        toast.error("Event not found");
+        return;
+      }
+
+      // Format dates for Google Calendar
+      const startDate = new Date(event.start_date);
+      const endDate = new Date(event.end_date);
+
+      const formatGoogleDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, "").replace(".000Z", "Z");
+      };
+
+      // Build Google Calendar URL
+      const googleUrl = new URL("https://calendar.google.com/calendar/render");
+      googleUrl.searchParams.set("action", "TEMPLATE");
+      googleUrl.searchParams.set("text", event.title);
+      googleUrl.searchParams.set(
+        "dates",
+        `${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}`,
+      );
+
+      if (event.description) {
+        googleUrl.searchParams.set("details", event.description);
+      }
+      if (event.location) {
+        googleUrl.searchParams.set("location", event.location);
+      }
+
+      // Open Google Calendar in new tab
+      window.open(googleUrl.toString(), "_blank");
+      toast.success("Opening Google Calendar");
+    } catch (error) {
+      console.error("Google Calendar error:", error);
+      toast.error("Failed to add to Google Calendar");
+    }
+  };
+
+  const handleDownloadICal = async (eventId: string) => {
+    if (!eventId) {
+      toast.error("Please select an event to download");
+      return;
+    }
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const url = `${supabaseUrl}/functions/v1/calendar-feed?event_id=${eventId}`;
+
+      // Fetch the iCal data with authentication
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${anonKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar data");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      // Find the event to use its title in the filename
+      const event = events.find((e) => e.id === eventId);
+      const filename = event
+        ? `${event.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.ics`
+        : `event-${eventId}.ics`;
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success("Event added to calendar");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download calendar event");
+    }
   };
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -238,16 +322,7 @@ export default function CalendarPage() {
                                   {dayEvents.slice(0, 2).map((event, i) => (
                                     <div
                                       key={i}
-                                      className={cn(
-                                        "text-xs truncate px-1 rounded",
-                                        event.category === "cohere"
-                                          ? "bg-orange-100 text-orange-700"
-                                          : event.category === "workshop"
-                                            ? "bg-blue-100 text-blue-700"
-                                            : event.category === "community"
-                                              ? "bg-green-100 text-green-700"
-                                              : "bg-gray-100 text-gray-700",
-                                      )}
+                                      className="text-xs truncate px-1 rounded bg-primary/10 text-primary"
                                     >
                                       {event.title}
                                     </div>
@@ -287,25 +362,9 @@ export default function CalendarPage() {
                             key={event.id}
                             className="space-y-2 pb-4 border-b last:border-0"
                           >
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-semibold text-sm">
-                                {event.title}
-                              </h4>
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  "text-xs",
-                                  event.category === "cohere" &&
-                                    "bg-orange-100 text-orange-700",
-                                  event.category === "workshop" &&
-                                    "bg-blue-100 text-blue-700",
-                                  event.category === "community" &&
-                                    "bg-green-100 text-green-700",
-                                )}
-                              >
-                                {event.category}
-                              </Badge>
-                            </div>
+                            <h4 className="font-semibold text-sm">
+                              {event.title}
+                            </h4>
 
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
@@ -331,6 +390,22 @@ export default function CalendarPage() {
                             )}
 
                             <div className="flex gap-2 pt-2">
+                              {event.registration_url && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() =>
+                                    window.open(
+                                      event.registration_url,
+                                      "_blank",
+                                    )
+                                  }
+                                  className="flex-1"
+                                >
+                                  <ExternalLink className="mr-1 h-3 w-3" />
+                                  Register
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -362,89 +437,50 @@ export default function CalendarPage() {
                 </Card>
               )}
 
-              {/* Calendar Sync */}
+              {/* Upcoming Events */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Sync Calendar
+                    Upcoming Events
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Add all COhere events to your calendar:
+                    Click on any event to add it to your calendar.
                   </p>
 
-                  <Button
-                    onClick={() => handleGoogleCalendar()}
-                    className="w-full justify-start"
-                    variant="outline"
-                    disabled={events.length === 0}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Add to Google Calendar
-                  </Button>
-
-                  <Button
-                    onClick={() => handleDownloadICal()}
-                    className="w-full justify-start"
-                    variant="outline"
-                    disabled={events.length === 0}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download iCal File
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Events */}
-              {events.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Upcoming Events</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {events
-                        .filter(
-                          (event) => new Date(event.start_date) >= new Date(),
-                        )
-                        .slice(0, 3)
+                  {getUpcomingEvents().length > 0 ? (
+                    <div className="space-y-2">
+                      {getUpcomingEvents()
+                        .slice(0, 5)
                         .map((event) => (
                           <div
                             key={event.id}
-                            className="flex items-start gap-3"
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                            onClick={() =>
+                              setSelectedDate(new Date(event.start_date))
+                            }
                           >
-                            <div className="text-xs text-muted-foreground pt-1">
-                              <div className="font-semibold">
-                                {format(new Date(event.start_date), "MMM")}
-                              </div>
-                              <div className="text-lg leading-none">
-                                {format(new Date(event.start_date), "d")}
-                              </div>
-                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">
                                 {event.title}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {format(new Date(event.start_date), "h:mm a")}
+                                {format(new Date(event.start_date), "MMM d")}
+                                {event.registration_url && " • Register"}
                               </p>
                             </div>
                           </div>
                         ))}
-
-                      {events.filter(
-                        (e) => new Date(e.start_date) >= new Date(),
-                      ).length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          No upcoming events scheduled.
-                        </p>
-                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming events scheduled.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

@@ -1,5 +1,8 @@
 project_id = "pnvxrczcygrkbschkvkv"
 
+[functions.calendar-feed]
+verify_jwt = false
+
 [functions.unsubscribe]
 verify_jwt = false
 
