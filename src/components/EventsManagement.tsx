@@ -4,13 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
@@ -174,7 +167,7 @@ export const EventsManagement = () => {
     if (!confirm("Are you sure you want to delete this event?")) return;
 
     try {
-      const { data, error } = await supabase.functions.invoke("manage-events", {
+      const { error } = await supabase.functions.invoke("manage-events", {
         body: {
           action: "DELETE",
           id: eventId,

@@ -114,7 +114,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           let locationString = "";
 
           // Check if it's a business/establishment
-          const isEstablishment = place.types?.some((type) =>
+          const isEstablishment = place.types?.some((type: string) =>
             [
               "establishment",
               "point_of_interest",
