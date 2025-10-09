@@ -231,9 +231,16 @@ const Index = () => {
                       <li>• {tr("rhythm.invocation.points.p4")}</li>
                     </ul>
                   </div>
-                  <p className="text-sm text-muted-foreground italic">
-                    {tr("rhythm.invocation.detailsComingSoon")}
-                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() =>
+                      window.open("https://luma.com/3ipiwu8j", "_blank")
+                    }
+                  >
+                    {tr("Learn More")}
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -266,6 +273,16 @@ const Index = () => {
                       <li>• {tr("rhythm.integration.points.p4")}</li>
                     </ul>
                   </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() =>
+                      window.open("https://luma.com/6fbdzjjq", "_blank")
+                    }
+                  >
+                    {tr("Learn More")}
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
                 </CardContent>
               </Card>
             </div>

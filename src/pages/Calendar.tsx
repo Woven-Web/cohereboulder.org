@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
 export default function CalendarPage() {
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -20,14 +19,9 @@ export default function CalendarPage() {
               Join us for events and gatherings throughout Boulder's
               regenerative journey.
             </p>
-            <Button
-              asChild
-              variant="community"
-              size="lg"
-              className="gap-2"
-            >
+            <Button asChild variant="community" size="lg" className="gap-2">
               <a
-                href="https://lu.ma/cohere-boulder"
+                href="https://luma.com/cohere-boulder"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -42,9 +36,9 @@ export default function CalendarPage() {
             <iframe
               src="https://luma.com/embed/calendar/cal-cMHRL58OxzwDCw7/events"
               className="w-full max-w-6xl rounded-lg border border-border"
-              style={{ 
-                minHeight: '600px',
-                height: 'calc(100vh - 300px)',
+              style={{
+                minHeight: "600px",
+                height: "calc(100vh - 300px)",
               }}
               frameBorder="0"
               allowFullScreen

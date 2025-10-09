@@ -79,9 +79,17 @@ const Join2025 = () => {
                   "Ceremonia de apertura para lanzar el período de reunión comunitaria",
                 )}
               </p>
-              <p className="text-sm text-muted-foreground italic">
-                {t("Details coming soon!", "¡Detalles próximamente!")}
-              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() =>
+                  window.open("https://luma.com/3ipiwu8j", "_blank")
+                }
+              >
+                {t("Learn More", "Más Información")}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </Card>
 
             <Card className="p-6 bg-gradient-to-br from-sage-light/30 to-transparent border-sage/30 border-2">
@@ -94,12 +102,23 @@ const Join2025 = () => {
               <p className="text-sm text-muted-foreground mb-2">
                 {t("October 16-26, 2025", "16-26 de Octubre, 2025")}
               </p>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-3">
                 {t(
                   "Ten days of community events, connections, and collaborative experiences",
                   "Diez días de eventos comunitarios, conexiones y experiencias colaborativas",
                 )}
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() =>
+                  window.open("https://luma.com/cohere-boulder", "_blank")
+                }
+              >
+                {t("View Events", "Ver Eventos")}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </Card>
 
             <Card className="p-6 bg-gradient-to-br from-sunset-light/30 to-transparent">
@@ -112,12 +131,23 @@ const Join2025 = () => {
               <p className="text-sm text-muted-foreground mb-2">
                 {t("October 26, 2025", "26 de Octubre, 2025")}
               </p>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-3">
                 {t(
                   "Reflection, harvest learnings, and commit to ongoing connections",
                   "Reflexión, cosecha de aprendizajes y compromiso con conexiones continuas",
                 )}
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() =>
+                  window.open("https://luma.com/6fbdzjjq", "_blank")
+                }
+              >
+                {t("Learn More", "Más Información")}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </Card>
           </div>
         </div>
