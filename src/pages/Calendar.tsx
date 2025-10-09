@@ -1,5 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 export default function CalendarPage() {
 
@@ -14,10 +16,25 @@ export default function CalendarPage() {
             <h1 className="text-4xl font-bold text-foreground mb-4">
               Community Calendar
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
               Join us for events and gatherings throughout Boulder's
               regenerative journey.
             </p>
+            <Button
+              asChild
+              variant="community"
+              size="lg"
+              className="gap-2"
+            >
+              <a
+                href="https://lu.ma/cohere-boulder"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Subscribe to Calendar
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
           </div>
 
           {/* Luma Calendar Embed */}
