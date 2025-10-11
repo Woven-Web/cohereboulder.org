@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Lock files (project uses package-lock.json)
+pnpm-lock.yaml
+bun.lockb
+
+# Supabase temp files
+supabase/.temp/
+
 # Environment variables
 .env
 .env.local

@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { EventsManagement } from "@/components/EventsManagement";
 import { EmailTemplateManagement } from "@/components/EmailTemplateManagement";
+import { EmailCampaignManagement } from "@/components/EmailCampaignManagement";
 
 interface ProfileData {
   id: string;
@@ -396,6 +397,7 @@ const AdminDashboard = () => {
                 </TabsTrigger>
                 <TabsTrigger value="events">Events</TabsTrigger>
                 <TabsTrigger value="emails">Email Templates</TabsTrigger>
+                <TabsTrigger value="campaigns">Email Campaigns</TabsTrigger>
                 <TabsTrigger value="unsubscribed">Unsubscribed</TabsTrigger>
               </TabsList>
 
@@ -473,6 +475,10 @@ const AdminDashboard = () => {
 
               <TabsContent value="emails">
                 <EmailTemplateManagement />
+              </TabsContent>
+
+              <TabsContent value="campaigns">
+                <EmailCampaignManagement />
               </TabsContent>
 
               <TabsContent value="unsubscribed">
@@ -623,7 +629,6 @@ const ProfilesList: React.FC<ProfilesListProps> = ({
                     </div>
                   ) : null}
 
-
                   {registration?.how_did_you_hear && (
                     <p className="text-sm mt-2">
                       <strong>How they heard:</strong>{" "}
@@ -693,10 +698,9 @@ const MapSuggestionsList: React.FC<MapSuggestionsListProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">
-                      {suggestion.created_at 
+                      {suggestion.created_at
                         ? new Date(suggestion.created_at).toLocaleDateString()
-                        : "N/A"
-                      }
+                        : "N/A"}
                     </div>
                   </div>
                 </div>
