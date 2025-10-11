@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Eye } from "lucide-react";
 
 interface EmailTemplate {
   id: string;
@@ -128,6 +129,12 @@ export const EmailTemplateManagement = () => {
     }
   };
 
+  const getPreviewHtml = () => {
+    return formData.html_content
+      .replace(/\{\{full_name\}\}/g, "John Doe")
+      .replace(/\{\{email\}\}/g, "john.doe@example.com");
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading templates...</div>;
   }
@@ -148,62 +155,101 @@ export const EmailTemplateManagement = () => {
               New Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? "Edit Email Template" : "Create Email Template"}
               </DialogTitle>
               <DialogDescription>
-                Available variables: {`{{full_name}}, {{email}}`}
+                Available variables: <code className="bg-muted px-1 rounded">{"{{full_name}}"}</code>, <code className="bg-muted px-1 rounded">{"{{email}}"}</code>
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Template Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  disabled={!!editingTemplate}
-                  placeholder="e.g., welcome_email"
-                />
-              </div>
-              <div>
-                <Label htmlFor="subject">Email Subject</Label>
-                <Input
-                  id="subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  placeholder="Welcome to COHERE!"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="When is this email sent?"
-                />
-              </div>
-              <div>
-                <Label htmlFor="html_content">HTML Content</Label>
-                <Textarea
-                  id="html_content"
-                  value={formData.html_content}
-                  onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
-                  rows={15}
-                  className="font-mono text-sm"
-                  placeholder="<html>...</html>"
-                />
-              </div>
+            
+            <div className="flex-1 overflow-hidden">
+              <Tabs defaultValue="edit" className="h-full flex flex-col">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="edit">Edit</TabsTrigger>
+                  <TabsTrigger value="preview">
+                    <Eye className="h-4 w-4 mr-2" />
+                    Preview
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="edit" className="flex-1 overflow-y-auto mt-4 space-y-4">
+                  <div>
+                    <Label htmlFor="name">Template Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      disabled={!!editingTemplate}
+                      placeholder="e.g., welcome_email"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Used to identify the template in code. Cannot be changed after creation.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="subject">Email Subject</Label>
+                    <Input
+                      id="subject"
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      placeholder="Welcome to COHERE!"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="When is this email sent?"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="html_content">Email Content (HTML)</Label>
+                    <Textarea
+                      id="html_content"
+                      value={formData.html_content}
+                      onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
+                      rows={20}
+                      className="font-mono text-sm"
+                      placeholder="<div>Your email HTML here...</div>"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      💡 Tip: Use inline styles for best email client compatibility
+                    </p>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="preview" className="flex-1 overflow-y-auto mt-4">
+                  <div className="border rounded-lg p-4 bg-white">
+                    <div className="mb-4 pb-4 border-b">
+                      <p className="text-sm text-muted-foreground">Subject:</p>
+                      <p className="font-semibold">{formData.subject || "(No subject)"}</p>
+                    </div>
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                      className="prose max-w-none"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Preview shows sample data: John Doe, john.doe@example.com
+                  </p>
+                </TabsContent>
+              </Tabs>
             </div>
-            <DialogFooter>
+            
+            <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={handleSave}>
-                {editingTemplate ? "Update" : "Create"}
+                {editingTemplate ? "Update Template" : "Create Template"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -215,9 +261,11 @@ export const EmailTemplateManagement = () => {
           <Card key={template.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{template.name}</CardTitle>
-                  <CardDescription>{template.description}</CardDescription>
+                <div className="flex-1">
+                  <CardTitle className="flex items-center gap-2">
+                    <code className="text-sm bg-muted px-2 py-1 rounded">{template.name}</code>
+                  </CardTitle>
+                  <CardDescription className="mt-2">{template.description}</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -225,7 +273,8 @@ export const EmailTemplateManagement = () => {
                     size="sm"
                     onClick={() => handleEdit(template)}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
                   </Button>
                   <Button
                     variant="outline"
@@ -240,15 +289,28 @@ export const EmailTemplateManagement = () => {
             <CardContent>
               <div className="space-y-2">
                 <div>
-                  <span className="font-semibold">Subject:</span> {template.subject}
+                  <span className="text-sm font-semibold">Subject:</span>{" "}
+                  <span className="text-sm">{template.subject}</span>
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Last updated: {new Date(template.updated_at).toLocaleString()}
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
+        
+        {templates.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground mb-4">No email templates yet</p>
+              <Button onClick={handleNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Template
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
