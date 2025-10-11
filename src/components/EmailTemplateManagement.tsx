@@ -17,7 +17,7 @@ interface EmailTemplate {
   name: string;
   subject: string;
   html_content: string;
-  markdown_content: string;
+  markdown_content: string | null;
   description: string | null;
   created_at: string;
   updated_at: string;
@@ -140,7 +140,7 @@ export const EmailTemplateManagement = () => {
     try {
       const { data, error } = await supabase
         .from("email_templates")
-        .select("*")
+        .select("id, name, subject, html_content, markdown_content, description, created_at, updated_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -158,7 +158,7 @@ export const EmailTemplateManagement = () => {
     setFormData({
       name: template.name,
       subject: template.subject,
-      markdown_content: template.markdown_content,
+      markdown_content: template.markdown_content || "",
       description: template.description || "",
     });
     setIsDialogOpen(true);
@@ -232,19 +232,6 @@ export const EmailTemplateManagement = () => {
     } catch (error) {
       console.error("Error deleting template:", error);
       toast.error("Failed to delete email template");
-    }
-  };
-
-  const getPreviewHtml = async () => {
-    try {
-      const markdown = formData.markdown_content
-        .replace(/\{\{full_name\}\}/g, "John Doe")
-        .replace(/\{\{email\}\}/g, "john.doe@example.com");
-      const htmlContent = await marked(markdown);
-      return getEmailWrapper(htmlContent);
-    } catch (error) {
-      console.error("Error rendering preview:", error);
-      return "<p>Error rendering preview</p>";
     }
   };
 
