@@ -9,16 +9,116 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, Eye } from "lucide-react";
+import { marked } from "marked";
+import { EmailPreview } from "./EmailPreview";
 
 interface EmailTemplate {
   id: string;
   name: string;
   subject: string;
   html_content: string;
+  markdown_content: string;
   description: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const getEmailWrapper = (content: string) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background-color: #faf9f7;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background-color: #ffffff; 
+    }
+    .header {
+      background: linear-gradient(135deg, hsl(28, 45%, 25%), hsl(175, 65%, 35%));
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      font-size: 36px;
+      margin: 0;
+      font-weight: 700;
+    }
+    .header .bracket {
+      color: #ffffff;
+    }
+    .header .here {
+      color: hsl(42, 85%, 75%);
+    }
+    .content {
+      padding: 40px 30px;
+      color: hsl(28, 25%, 15%);
+      line-height: 1.6;
+    }
+    .content h2 {
+      color: hsl(175, 65%, 35%);
+      margin-top: 0;
+    }
+    .content a {
+      color: hsl(175, 65%, 35%);
+      text-decoration: underline;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 32px;
+      background: hsl(175, 65%, 35%);
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .footer {
+      background-color: hsl(42, 45%, 92%);
+      padding: 30px;
+      text-align: center;
+      color: hsl(28, 15%, 45%);
+      font-size: 14px;
+    }
+    .footer p {
+      margin: 5px 0;
+    }
+    .divider {
+      height: 4px;
+      background: linear-gradient(90deg, hsl(175, 65%, 35%), hsl(42, 85%, 75%), hsl(22, 88%, 65%));
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><span class="bracket">[CO]</span><span class="here">here</span></h1>
+    </div>
+    <div class="divider"></div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="divider"></div>
+    <div class="footer">
+      <p><strong>COhere</strong> - Weaving Community Together</p>
+      <p>Boulder, Colorado</p>
+      <p style="margin-top: 15px;">
+        <a href="https://cohere.community" style="color: hsl(175, 65%, 35%); text-decoration: none;">cohere.community</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+`;
 
 export const EmailTemplateManagement = () => {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -28,7 +128,7 @@ export const EmailTemplateManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
-    html_content: "",
+    markdown_content: "",
     description: "",
   });
 
@@ -58,7 +158,7 @@ export const EmailTemplateManagement = () => {
     setFormData({
       name: template.name,
       subject: template.subject,
-      html_content: template.html_content,
+      markdown_content: template.markdown_content,
       description: template.description || "",
     });
     setIsDialogOpen(true);
@@ -69,7 +169,7 @@ export const EmailTemplateManagement = () => {
     setFormData({
       name: "",
       subject: "",
-      html_content: "",
+      markdown_content: "",
       description: "",
     });
     setIsDialogOpen(true);
@@ -77,12 +177,17 @@ export const EmailTemplateManagement = () => {
 
   const handleSave = async () => {
     try {
+      // Convert markdown to HTML
+      const htmlContent = await marked(formData.markdown_content);
+      const wrappedHtml = getEmailWrapper(htmlContent);
+
       if (editingTemplate) {
         const { error } = await supabase
           .from("email_templates")
           .update({
             subject: formData.subject,
-            html_content: formData.html_content,
+            markdown_content: formData.markdown_content,
+            html_content: wrappedHtml,
             description: formData.description,
           })
           .eq("id", editingTemplate.id);
@@ -95,7 +200,8 @@ export const EmailTemplateManagement = () => {
           .insert({
             name: formData.name,
             subject: formData.subject,
-            html_content: formData.html_content,
+            markdown_content: formData.markdown_content,
+            html_content: wrappedHtml,
             description: formData.description,
           });
 
@@ -129,10 +235,17 @@ export const EmailTemplateManagement = () => {
     }
   };
 
-  const getPreviewHtml = () => {
-    return formData.html_content
-      .replace(/\{\{full_name\}\}/g, "John Doe")
-      .replace(/\{\{email\}\}/g, "john.doe@example.com");
+  const getPreviewHtml = async () => {
+    try {
+      const markdown = formData.markdown_content
+        .replace(/\{\{full_name\}\}/g, "John Doe")
+        .replace(/\{\{email\}\}/g, "john.doe@example.com");
+      const htmlContent = await marked(markdown);
+      return getEmailWrapper(htmlContent);
+    } catch (error) {
+      console.error("Error rendering preview:", error);
+      return "<p>Error rendering preview</p>";
+    }
   };
 
   if (loading) {
@@ -161,7 +274,7 @@ export const EmailTemplateManagement = () => {
                 {editingTemplate ? "Edit Email Template" : "Create Email Template"}
               </DialogTitle>
               <DialogDescription>
-                Available variables: <code className="bg-muted px-1 rounded">{"{{full_name}}"}</code>, <code className="bg-muted px-1 rounded">{"{{email}}"}</code>
+                Write your email in Markdown. Available variables: <code className="bg-muted px-1 rounded">{"{{full_name}}"}</code>, <code className="bg-muted px-1 rounded">{"{{email}}"}</code>
               </DialogDescription>
             </DialogHeader>
             
@@ -211,31 +324,28 @@ export const EmailTemplateManagement = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="html_content">Email Content (HTML)</Label>
+                    <Label htmlFor="markdown_content">Email Content (Markdown)</Label>
                     <Textarea
-                      id="html_content"
-                      value={formData.html_content}
-                      onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
+                      id="markdown_content"
+                      value={formData.markdown_content}
+                      onChange={(e) => setFormData({ ...formData, markdown_content: e.target.value })}
                       rows={20}
                       className="font-mono text-sm"
-                      placeholder="<div>Your email HTML here...</div>"
+                      placeholder="# Welcome to COhere!&#10;&#10;Hello {{full_name}},&#10;&#10;We're excited to have you join us...&#10;&#10;[Learn More](https://cohere.community)"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      💡 Tip: Use inline styles for best email client compatibility
+                      💡 Tip: Use Markdown syntax. Your content will be automatically wrapped in COHERE branding.
                     </p>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="preview" className="flex-1 overflow-y-auto mt-4">
-                  <div className="border rounded-lg p-4 bg-white">
-                    <div className="mb-4 pb-4 border-b">
+                  <div className="border rounded-lg bg-white">
+                    <div className="p-4 border-b">
                       <p className="text-sm text-muted-foreground">Subject:</p>
                       <p className="font-semibold">{formData.subject || "(No subject)"}</p>
                     </div>
-                    <div 
-                      dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
-                      className="prose max-w-none"
-                    />
+                    <EmailPreview markdownContent={formData.markdown_content} />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Preview shows sample data: John Doe, john.doe@example.com
