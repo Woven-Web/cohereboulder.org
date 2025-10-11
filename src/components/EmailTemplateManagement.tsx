@@ -109,10 +109,10 @@ const getEmailWrapper = (content: string) => `
     </div>
     <div class="divider"></div>
     <div class="footer">
-      <p><strong>COhere</strong> - Weaving Community Together</p>
+      <p><strong>COhere</strong> - Weaving Our Resilience</p>
       <p>Boulder, Colorado</p>
       <p style="margin-top: 15px;">
-        <a href="https://cohere.community" style="color: hsl(175, 65%, 35%); text-decoration: none;">cohere.community</a>
+        <a href="https://cohereboulder.org" style="color: hsl(175, 65%, 35%); text-decoration: none;">cohereboulder.org</a>
       </p>
     </div>
   </div>
@@ -255,7 +255,7 @@ export const EmailTemplateManagement = () => {
               New Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-[90vw] h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? "Edit Email Template" : "Create Email Template"}
@@ -265,7 +265,7 @@ export const EmailTemplateManagement = () => {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden min-h-0">
               <Tabs defaultValue="edit" className="h-full flex flex-col">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="edit">Edit</TabsTrigger>
