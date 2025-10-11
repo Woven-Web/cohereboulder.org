@@ -14,6 +14,7 @@ import Join2025 from "./pages/Join2025";
 import Invitation2025 from "./pages/Invitation2025";
 import Archive from "./pages/Archive";
 import Archive2024 from "./pages/Archive2024";
+import PressKit from "./pages/PressKit";
 
 import Registration from "./pages/Registration";
 import Auth from "./pages/Auth";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/telegram" element={<Telegram />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/archive/2024" element={<Archive2024 />} />
+              <Route path="/presskit" element={<PressKit />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
