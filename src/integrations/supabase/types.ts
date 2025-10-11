@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          html_content: string
+          id: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          html_content: string
+          id?: string
+          name: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          html_content?: string
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           category: string | null
@@ -24,6 +54,7 @@ export type Database = {
           id: string
           is_public: boolean | null
           location: string | null
+          registration_url: string | null
           start_date: string
           title: string
           updated_at: string | null
@@ -37,6 +68,7 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           location?: string | null
+          registration_url?: string | null
           start_date: string
           title: string
           updated_at?: string | null
@@ -50,6 +82,7 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           location?: string | null
+          registration_url?: string | null
           start_date?: string
           title?: string
           updated_at?: string | null

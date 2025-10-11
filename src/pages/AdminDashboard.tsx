@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventsManagement } from "@/components/EventsManagement";
+import { EmailTemplateManagement } from "@/components/EmailTemplateManagement";
 
 interface ProfileData {
   id: string;
@@ -394,6 +395,7 @@ const AdminDashboard = () => {
                   Map Suggestions
                 </TabsTrigger>
                 <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="emails">Email Templates</TabsTrigger>
                 <TabsTrigger value="unsubscribed">Unsubscribed</TabsTrigger>
               </TabsList>
 
@@ -467,6 +469,10 @@ const AdminDashboard = () => {
 
               <TabsContent value="events">
                 <EventsManagement />
+              </TabsContent>
+
+              <TabsContent value="emails">
+                <EmailTemplateManagement />
               </TabsContent>
 
               <TabsContent value="unsubscribed">
