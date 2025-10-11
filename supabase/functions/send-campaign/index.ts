@@ -191,32 +191,61 @@ serve(async (req) => {
       throw campaignError;
     }
 
-    // Send emails
-    const emailPromises = filteredProfiles.map(async (profile) => {
-      const unsubscribeUrl = `${Deno.env.get("PUBLIC_SITE_URL") || "https://cohereboulder.org"}/unsubscribe?token=${profile.unsubscribe_token}`;
+    // Send emails with rate limiting (Resend limit: 2 req/sec)
+    // We'll send 2 emails per second to stay within limits
+    const results: PromiseSettledResult<any>[] = [];
+    const BATCH_SIZE = 2;
+    const DELAY_MS = 1000; // 1 second between batches
 
-      // Replace template variables
-      let htmlContent = template.html_content
-        .replace(/\{\{full_name\}\}/g, profile.full_name)
-        .replace(/\{\{email\}\}/g, profile.email);
+    for (let i = 0; i < filteredProfiles.length; i += BATCH_SIZE) {
+      const batch = filteredProfiles.slice(i, i + BATCH_SIZE);
 
-      // Add unsubscribe link
-      htmlContent = htmlContent.replace(
-        "</body>",
-        `<div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
-          <a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe from emails</a>
-        </div></body>`,
+      const batchPromises = batch.map(async (profile) => {
+        const unsubscribeUrl = `${Deno.env.get("PUBLIC_SITE_URL") || "https://cohereboulder.org"}/unsubscribe?token=${profile.unsubscribe_token}`;
+
+        // Replace template variables
+        let htmlContent = template.html_content
+          .replace(/\{\{full_name\}\}/g, profile.full_name)
+          .replace(/\{\{email\}\}/g, profile.email);
+
+        // Add unsubscribe link
+        htmlContent = htmlContent.replace(
+          "</body>",
+          `<div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
+            <a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe from emails</a>
+          </div></body>`,
+        );
+
+        return resend.emails.send({
+          from: "COhere Boulder <cohere@wovenweb.org>",
+          to: [profile.email],
+          subject: template.subject,
+          html: htmlContent,
+        });
+      });
+
+      const batchResults = await Promise.allSettled(batchPromises);
+      results.push(...batchResults);
+
+      // Update campaign progress
+      const sentSoFar = results.filter((r) => r.status === "fulfilled").length;
+      await supabase
+        .from("email_campaigns")
+        .update({
+          sent_count: sentSoFar,
+        })
+        .eq("id", campaign.id);
+
+      console.log(
+        `Batch ${Math.floor(i / BATCH_SIZE) + 1}: Sent ${sentSoFar} of ${filteredProfiles.length} emails`,
       );
 
-      return resend.emails.send({
-        from: "COhere Boulder <cohere@wovenweb.org>",
-        to: [profile.email],
-        subject: template.subject,
-        html: htmlContent,
-      });
-    });
+      // Wait before next batch (except for last batch)
+      if (i + BATCH_SIZE < filteredProfiles.length) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+      }
+    }
 
-    const results = await Promise.allSettled(emailPromises);
     const sentCount = results.filter((r) => r.status === "fulfilled").length;
     const failedCount = results.filter((r) => r.status === "rejected").length;
 
