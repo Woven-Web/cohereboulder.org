@@ -64,6 +64,7 @@ interface FilterCriteria {
   can_attend_invocation?: boolean | "maybe";
   can_attend_integration?: boolean | "maybe";
   co_creating_interests?: string[];
+  registered_before?: string; // ISO date string
 }
 
 interface RecipientProfile {
@@ -296,6 +297,10 @@ export const EmailCampaignManagement = () => {
       parts.push("Maybe attend Integration");
     if (criteria.co_creating_interests?.length > 0) {
       parts.push(`Interests: ${criteria.co_creating_interests.join(", ")}`);
+    }
+    if (criteria.registered_before) {
+      const date = new Date(criteria.registered_before).toLocaleDateString();
+      parts.push(`Registered before ${date}`);
     }
 
     return parts.length > 0 ? parts.join(" • ") : "No filters";
@@ -713,6 +718,57 @@ export const EmailCampaignManagement = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Registration Date Filter */}
+                  <div className="space-y-2">
+                    <Label htmlFor="registered-before">
+                      Registered Before Date
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only include people who registered before this date
+                    </p>
+                    <input
+                      id="registered-before"
+                      type="date"
+                      className="w-full px-3 py-2 border rounded-md"
+                      value={
+                        filters.registered_before
+                          ? filters.registered_before.split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => {
+                        // Convert date to ISO timestamp at end of day
+                        const dateValue = e.target.value;
+                        if (dateValue) {
+                          const endOfDay = new Date(dateValue);
+                          endOfDay.setHours(23, 59, 59, 999);
+                          setFilters((prev) => ({
+                            ...prev,
+                            registered_before: endOfDay.toISOString(),
+                          }));
+                        } else {
+                          setFilters((prev) => ({
+                            ...prev,
+                            registered_before: undefined,
+                          }));
+                        }
+                      }}
+                    />
+                    {filters.registered_before && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            registered_before: undefined,
+                          }))
+                        }
+                      >
+                        Clear date filter
+                      </Button>
+                    )}
                   </div>
                 </div>
 

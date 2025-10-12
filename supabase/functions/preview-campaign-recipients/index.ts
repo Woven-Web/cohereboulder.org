@@ -16,6 +16,7 @@ interface FilterCriteria {
   can_attend_invocation?: boolean | "maybe";
   can_attend_integration?: boolean | "maybe";
   co_creating_interests?: string[];
+  registered_before?: string; // ISO date string
 }
 
 serve(async (req) => {
@@ -46,7 +47,8 @@ serve(async (req) => {
         registrations!inner(
           can_attend_invocation,
           can_attend_integration,
-          co_creating_interests
+          co_creating_interests,
+          created_at
         )
       `,
         { count: "exact", head: false },
@@ -87,8 +89,9 @@ serve(async (req) => {
       throw error;
     }
 
-    // Post-filter for co_creating_interests (array contains logic)
+    // Post-filter for co_creating_interests (array contains logic) and registration date
     let filteredData = data || [];
+
     if (
       filters.co_creating_interests &&
       filters.co_creating_interests.length > 0
@@ -103,6 +106,23 @@ serve(async (req) => {
         // Check if ANY of the filter interests are in the user's interests
         return filters.co_creating_interests!.some((interest) =>
           registration.co_creating_interests.includes(interest),
+        );
+      });
+    }
+
+    // Filter by registration date (client-side since it's from joined table)
+    if (filters.registered_before) {
+      filteredData = filteredData.filter((profile) => {
+        const registration = Array.isArray(profile.registrations)
+          ? profile.registrations[0]
+          : profile.registrations;
+
+        if (!registration) return false;
+
+        // Compare timestamps - registration.created_at should be less than the filter date
+        return (
+          new Date(registration.created_at) <
+          new Date(filters.registered_before!)
         );
       });
     }
