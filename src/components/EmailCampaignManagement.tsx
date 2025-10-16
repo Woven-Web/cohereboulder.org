@@ -86,7 +86,6 @@ export const EmailCampaignManagement = () => {
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(
     new Set(),
   );
-  const [showRecipientList, setShowRecipientList] = useState(false);
 
   // Multi-step confirmation state
   const [confirmationStep, setConfirmationStep] = useState(0);
@@ -138,8 +137,8 @@ export const EmailCampaignManagement = () => {
 
   const loadCampaigns = async () => {
     const { data, error } = await supabase
-      .from("email_campaigns")
-      .select("*")
+      .from("email_campaigns" as any)
+      .select("id, subject, filter_criteria, recipients_count, sent_count, failed_count, status, sent_at, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -147,7 +146,7 @@ export const EmailCampaignManagement = () => {
       return;
     }
 
-    setCampaigns(data || []);
+    setCampaigns((data || []) as unknown as EmailCampaign[]);
   };
 
   const loadPreviewCount = async () => {
@@ -254,7 +253,6 @@ export const EmailCampaignManagement = () => {
       setFilters({ subscribed: true });
       setConfirmationStep(0);
       setFinalConfirmText("");
-      setShowRecipientList(false);
       setSelectedRecipients(new Set());
 
       loadCampaigns();
@@ -542,7 +540,6 @@ export const EmailCampaignManagement = () => {
             if (!open) {
               setConfirmationStep(0);
               setFinalConfirmText("");
-              setShowRecipientList(false);
             }
           }}
         >
