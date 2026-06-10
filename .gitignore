@@ -35,3 +35,4 @@ supabase/.temp/
 *.sln
 *.sw?
 .admin-key.local
+.wrangler/
