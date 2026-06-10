@@ -29,16 +29,20 @@ export const translations = {
       es: "Conectando la comunidad local para crear un futuro regenerativo y resiliente.",
     },
     mainEvent: {
-      en: "COhere Boulder 2025",
-      es: "COhere Boulder 2025",
+      en: "COhere Boulder 2026",
+      es: "COhere Boulder 2026",
     },
     dates: {
-      en: "October 16-26, 2025",
-      es: "16-26 de Octubre, 2025",
+      en: "October 15-25, 2026",
+      es: "15-25 de Octubre, 2026",
     },
     tenDayContainer: {
       en: "A 10-day immersive container for community connection and regeneration",
       es: "Un contenedor inmersivo de 10 días para la conexión y regeneración comunitaria",
+    },
+    openingWeekend: {
+      en: "We're opening this year with a deeper, more immersive gathering over the first weekend.",
+      es: "Este año comenzaremos con un encuentro más profundo e inmersivo durante el primer fin de semana.",
     },
     registerHere: {
       en: "Register Here",
@@ -58,8 +62,8 @@ export const translations = {
       es: "Esto no es solo otra conferencia o serie de talleres. Es un viaje cuidadosamente diseñado que ayuda a nuestra comunidad a descubrir sus propios patrones de resiliencia, fortalecer las conexiones existentes y crear nuevos caminos para la colaboración.",
     },
     p3: {
-      en: "Building on the success of COhere 2024, we're evolving into an annual rhythm that makes community participation memorable, meaningful, and accessible to all.",
-      es: "Basándonos en el éxito de COhere 2024, estamos evolucionando hacia un ritmo anual que hace que la participación comunitaria sea memorable, significativa y accesible para todos.",
+      en: "Building on the success of COhere 2024 and 2025, we're evolving into an annual rhythm that makes community participation memorable, meaningful, and accessible to all.",
+      es: "Basándonos en el éxito de COhere 2024 y 2025, estamos evolucionando hacia un ritmo anual que hace que la participación comunitaria sea memorable, significativa y accesible para todos.",
     },
   },
 
@@ -75,7 +79,7 @@ export const translations = {
     },
     invocation: {
       title: { en: "Invocation", es: "Invocación" },
-      date: { en: "October 16, 2025", es: "16 de Octubre, 2025" },
+      date: { en: "October 15, 2026", es: "15 de Octubre, 2026" },
       description: {
         en: "We come together as a whole community to speak, listen, dance, sing, celebrate, and envision.",
         es: "Nos reunimos como comunidad completa para hablar, escuchar, bailar, cantar, celebrar y visualizar.",
@@ -106,7 +110,7 @@ export const translations = {
     },
     integration: {
       title: { en: "Integration", es: "Integración" },
-      date: { en: "October 26, 2025", es: "26 de Octubre, 2025" },
+      date: { en: "October 25, 2026", es: "25 de Octubre, 2026" },
       description: {
         en: "We gather to reflect on what has unfolded, deepen our bonds, and commit to what comes next.",
         es: "Nos reunimos para reflexionar sobre lo que ha surgido, profundizar nuestros lazos y comprometernos con lo que viene.",
@@ -126,6 +130,10 @@ export const translations = {
           es: "Formar compromisos continuos",
         },
         p4: { en: "Celebrate and rest", es: "Celebrar y descansar" },
+      },
+      detailsComingSoon: {
+        en: "Details coming soon!",
+        es: "¡Detalles próximamente!",
       },
     },
     tenDays: {
@@ -257,6 +265,11 @@ export const translations = {
     registration2025: { en: "2025 Registration", es: "Registro 2025" },
     learnMore: { en: "Learn More", es: "Aprende Más" },
     dates2025: { en: "October 16-26, 2025", es: "16-26 de Octubre, 2025" },
+    dates2026: { en: "October 15-25, 2026", es: "15-25 de Octubre, 2026" },
+    stayInLoop: {
+      en: "Sign up to hear about COhere Boulder 2026 as plans take shape.",
+      es: "Regístrate para recibir noticias de COhere Boulder 2026 mientras los planes toman forma.",
+    },
     wovenWeb: {
       en: "A Woven Web Initiative",
       es: "Una Iniciativa de Red Tejida",
@@ -864,6 +877,41 @@ export const translations = {
     communityArt: {
       en: "Community cross-pollination artwork",
       es: "Arte de polinización cruzada comunitaria",
+    },
+  },
+
+  // Stay in the Loop signup
+  signup: {
+    title: { en: "Stay in the Loop", es: "Mantente al Tanto" },
+    description: {
+      en: "COhere Boulder returns October 15-25, 2026. Leave your email and we'll keep you posted as plans take shape.",
+      es: "COhere Boulder regresa del 15 al 25 de octubre de 2026. Déjanos tu correo y te mantendremos al tanto mientras los planes toman forma.",
+    },
+    placeholder: { en: "Your email address", es: "Tu correo electrónico" },
+    button: { en: "Keep Me Posted", es: "Mantenme Informado" },
+    submitting: { en: "Signing up…", es: "Registrando…" },
+    success: {
+      en: "You're on the list — we'll be in touch!",
+      es: "¡Estás en la lista — estaremos en contacto!",
+    },
+    error: {
+      en: "Something went wrong. Please try again.",
+      es: "Algo salió mal. Por favor, intenta de nuevo.",
+    },
+  },
+
+  // Videos section
+  videos: {
+    title: { en: "Experience COhere", es: "Experimenta COhere" },
+    description: {
+      en: "See and feel what COhere is all about — films from our first two years",
+      es: "Mira y siente de qué se trata COhere — películas de nuestros primeros dos años",
+    },
+    filmTitle: { en: "COhere Boulder", es: "COhere Boulder" },
+    recap2024Title: { en: "COhere 2024 Recap", es: "Resumen de COhere 2024" },
+    summary: {
+      en: "Two years of weaving: hundreds of community members and dozens of co-created events across Boulder, strengthening connections and planting seeds for our regenerative future.",
+      es: "Dos años de tejido: cientos de miembros de la comunidad y docenas de eventos co-creados en todo Boulder, fortaleciendo conexiones y plantando semillas para nuestro futuro regenerativo.",
     },
   },
 

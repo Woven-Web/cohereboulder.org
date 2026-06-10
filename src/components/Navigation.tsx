@@ -17,10 +17,6 @@ export const Navigation = () => {
       label: tr("nav.about"),
     },
     {
-      href: "/join-2025",
-      label: tr("nav.join2025"),
-    },
-    {
       href: "/co-create",
       label: tr("nav.participate"),
     },

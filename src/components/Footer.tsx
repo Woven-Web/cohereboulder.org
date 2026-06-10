@@ -7,6 +7,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
+import { EmailSignup } from "@/components/EmailSignup";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,26 +43,15 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Join */}
+          {/* Stay in the Loop */}
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">{tr("footer.joinUs")}</h3>
-            <div className="space-y-3">
-              <Button
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={() => window.open("/register", "_self")}
-              >
-                {tr("footer.registration2025")}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full border-earth-warm bg-white text-earth-warm hover:bg-earth-warm hover:text-white hover:border-earth-warm transition-colors"
-                onClick={() => window.open("/join-2025", "_self")}
-              >
-                {tr("footer.learnMore")}
-              </Button>
-            </div>
+            <h3 className="text-lg font-semibold">{tr("signup.title")}</h3>
             <p className="text-sm text-primary-foreground/80">
-              {tr("footer.dates2025")}
+              {tr("footer.stayInLoop")}
+            </p>
+            <EmailSignup source="footer" />
+            <p className="text-sm text-primary-foreground/80">
+              {tr("footer.dates2026")}
             </p>
           </div>
         </div>
@@ -70,7 +60,7 @@ export const Footer = () => {
         <div className="mt-12 pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-sm text-primary-foreground/60">
-              <span>© 2024 [CO]here Boulder</span>
+              <span>© 2026 [CO]here Boulder</span>
               <span className="mx-2">•</span>
               <span>{tr("footer.wovenWeb")}</span>
             </div>

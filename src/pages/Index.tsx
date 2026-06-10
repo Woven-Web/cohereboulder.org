@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
+import { EmailSignup } from "@/components/EmailSignup";
 
 const Index = () => {
   const { tr } = useLanguage();
@@ -43,15 +44,14 @@ const Index = () => {
                 <p className="text-3xl font-bold text-primary mb-2">
                   {tr("hero.dates")}
                 </p>
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground mb-2">
                   {tr("hero.tenDayContainer")}
                 </p>
-                <Link to="/register">
-                  <Button variant="community" size="lg">
-                    {tr("hero.registerHere")}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
+                <p className="text-muted-foreground mb-6">
+                  {tr("hero.openingWeekend")}
+                </p>
+                <p className="font-semibold mb-3">{tr("signup.title")}</p>
+                <EmailSignup source="hero" />
               </CardContent>
             </Card>
           </div>
@@ -74,31 +74,50 @@ const Index = () => {
           </div>
         </section>
 
-        {/* 2024 Recap Video */}
+        {/* COhere Videos */}
         <section className="py-20 bg-gradient-to-br from-earth-light/30 to-transparent">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl lg:text-4xl font-bold text-center mb-8">
-              {tr("recap2024.title")}
+              {tr("videos.title")}
             </h2>
             <p className="text-xl text-center text-muted-foreground mb-8">
-              {tr("recap2024.description")}
+              {tr("videos.description")}
             </p>
 
-            {/* YouTube Video Embed */}
-            <div className="max-w-3xl mx-auto">
-              <div className="aspect-video rounded-lg overflow-hidden shadow-warm">
-                <iframe
-                  src="https://www.youtube.com/embed/wMDpVsSGY5M"
-                  title={tr("recap2024.videoTitle")}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+            <div className="grid md:grid-cols-2 gap-8">
+              <div>
+                <div className="aspect-video rounded-lg overflow-hidden shadow-warm">
+                  <iframe
+                    src="https://www.youtube.com/embed/lgDT45Te-lE"
+                    title={tr("videos.filmTitle")}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <p className="text-center text-muted-foreground mt-4 font-medium">
+                  {tr("videos.filmTitle")}
+                </p>
+              </div>
+
+              <div>
+                <div className="aspect-video rounded-lg overflow-hidden shadow-warm">
+                  <iframe
+                    src="https://www.youtube.com/embed/wMDpVsSGY5M"
+                    title={tr("videos.recap2024Title")}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <p className="text-center text-muted-foreground mt-4 font-medium">
+                  {tr("videos.recap2024Title")}
+                </p>
               </div>
             </div>
 
-            <p className="text-center text-muted-foreground mt-6">
-              {tr("recap2024.summary")}
+            <p className="text-center text-muted-foreground mt-8 max-w-3xl mx-auto">
+              {tr("videos.summary")}
             </p>
           </div>
         </section>
@@ -231,16 +250,9 @@ const Index = () => {
                       <li>• {tr("rhythm.invocation.points.p4")}</li>
                     </ul>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() =>
-                      window.open("https://luma.com/3ipiwu8j", "_blank")
-                    }
-                  >
-                    {tr("Learn More")}
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+                  <p className="text-sm text-muted-foreground italic">
+                    {tr("rhythm.invocation.detailsComingSoon")}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -273,16 +285,9 @@ const Index = () => {
                       <li>• {tr("rhythm.integration.points.p4")}</li>
                     </ul>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() =>
-                      window.open("https://luma.com/6fbdzjjq", "_blank")
-                    }
-                  >
-                    {tr("Learn More")}
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+                  <p className="text-sm text-muted-foreground italic">
+                    {tr("rhythm.integration.detailsComingSoon")}
+                  </p>
                 </CardContent>
               </Card>
             </div>
