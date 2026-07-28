@@ -60,6 +60,7 @@ export default {
         nature: {
           teal: "hsl(var(--nature-teal))",
           green: "hsl(var(--nature-green))",
+          moss: "hsl(var(--nature-moss))",
         },
         community: {
           orange: "hsl(var(--community-orange))",
@@ -85,6 +86,7 @@ export default {
         "gradient-earth": "var(--gradient-earth)",
         "gradient-community": "var(--gradient-community)",
         "gradient-nature": "var(--gradient-nature)",
+        "gradient-canopy": "var(--gradient-canopy)",
       },
       boxShadow: {
         warm: "var(--shadow-warm)",

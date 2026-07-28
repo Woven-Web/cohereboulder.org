@@ -14,6 +14,13 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 import { EmailSignup } from "@/components/EmailSignup";
+// Stills from the two Woven Web films — real gatherings, not stock imagery.
+import gatheringPhoto from "@/assets/photos/gathering.webp";
+import altarPhoto from "@/assets/photos/altar.webp";
+import coCreatingPhoto from "@/assets/photos/co-creating.webp";
+import singingCirclePhoto from "@/assets/photos/singing-circle.webp";
+import sharedMealPhoto from "@/assets/photos/shared-meal.webp";
+import celebrationPhoto from "@/assets/photos/celebration.webp";
 
 const Index = () => {
   const { tr } = useLanguage();
@@ -22,32 +29,36 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main>
-        {/* Hero Section - Clear, Simple Vision */}
-        <section className="min-h-[600px] flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-earth-light via-background to-community-yellow/10">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-5xl lg:text-7xl font-bold text-foreground mb-6">
-              [CO]<span className="text-primary">here</span>
+        {/* Hero - a real gathering behind the invitation */}
+        <section className="relative min-h-[640px] flex items-center justify-center overflow-hidden">
+          <img
+            src={gatheringPhoto}
+            alt="Community members gathering during COhere Boulder"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/25" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-canopy" aria-hidden="true" />
+
+          <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+            <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 drop-shadow-sm">
+              [CO]<span className="text-community-yellow">here</span>
             </h1>
-            <p className="text-2xl lg:text-3xl text-foreground mb-6">
+            <p className="text-2xl lg:text-3xl text-white/95 mb-6">
               {tr("hero.tagline")}
             </p>
 
             {/* This year's theme */}
-            <div className="mb-8">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+            <div className="mb-10">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/70 mb-2">
                 {tr("hero.themeLabel")}
               </p>
-              <p className="text-3xl lg:text-4xl font-semibold text-primary">
+              <p className="text-3xl lg:text-4xl font-semibold text-community-yellow">
                 {tr("hero.theme")}
               </p>
             </div>
 
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-12">
-              {tr("hero.description")}
-            </p>
-
             {/* Main Event Container */}
-            <Card className="max-w-xl mx-auto shadow-warm bg-white/95">
+            <Card className="max-w-xl mx-auto shadow-warm bg-white/95 backdrop-blur-sm">
               <CardContent className="p-8">
                 <h2 className="text-xl font-semibold mb-4">
                   {tr("hero.mainEvent")}
@@ -65,6 +76,10 @@ const Index = () => {
                 <EmailSignup source="hero" />
               </CardContent>
             </Card>
+
+            <p className="text-lg text-white/90 max-w-2xl mx-auto mt-10">
+              {tr("hero.description")}
+            </p>
           </div>
         </section>
 
@@ -85,44 +100,84 @@ const Index = () => {
           </div>
         </section>
 
+        {/* This year's theme, stated over the land it comes from */}
+        <section className="relative">
+          <img
+            src={altarPhoto}
+            alt="An altar of feathers, fruit, stone and candlelight on a woven blanket"
+            className="h-[380px] w-full object-cover lg:h-[460px]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-earth-warm/90 via-earth-warm/60 to-transparent" />
+          <div className="absolute inset-0 flex items-center">
+            <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+              <div className="max-w-md">
+                <p className="text-xs uppercase tracking-[0.18em] text-community-yellow mb-3">
+                  {tr("hero.themeLabel")}
+                </p>
+                <p className="text-4xl lg:text-5xl font-bold text-white leading-tight">
+                  {tr("hero.theme")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* The Community Calendar - co-created, not programmed */}
         <section className="py-20 bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-3">
-              {tr("communityCalendar.title")}
-            </h2>
-            <p className="text-xl text-primary font-medium mb-8">
-              {tr("communityCalendar.subtitle")}
-            </p>
-            <div className="space-y-4 text-muted-foreground text-lg mb-10">
-              <p>{tr("communityCalendar.p1")}</p>
-              <p>{tr("communityCalendar.p2")}</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/calendar">
-                <Button size="lg" variant="community">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  {tr("communityCalendar.explore")}
-                </Button>
-              </Link>
-              <Link to="/co-create">
-                <Button size="lg" variant="outline">
-                  {tr("nav.participate")}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <img
+                src={coCreatingPhoto}
+                alt="People gathered around a table of printed event listings"
+                className="rounded-lg shadow-warm w-full object-cover"
+              />
+              <div>
+                <h2 className="text-3xl lg:text-4xl font-bold mb-3">
+                  {tr("communityCalendar.title")}
+                </h2>
+                <p className="text-xl text-primary font-medium mb-6">
+                  {tr("communityCalendar.subtitle")}
+                </p>
+                <div className="space-y-4 text-muted-foreground text-lg mb-8">
+                  <p>{tr("communityCalendar.p1")}</p>
+                  <p>{tr("communityCalendar.p2")}</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link to="/calendar">
+                    <Button size="lg" variant="community">
+                      <Calendar className="mr-2 h-5 w-5" />
+                      {tr("communityCalendar.explore")}
+                    </Button>
+                  </Link>
+                  <Link to="/co-create">
+                    <Button size="lg" variant="outline">
+                      {tr("nav.participate")}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Choose your own adventure */}
-        <section className="py-20 bg-gradient-to-br from-nature-teal/5 via-background to-community-yellow/10">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-              {tr("chooseAdventure.title")}
-            </h2>
-            <p className="text-xl text-foreground mb-4">{tr("chooseAdventure.p1")}</p>
-            <p className="text-lg text-muted-foreground">{tr("chooseAdventure.p2")}</p>
+        <section className="py-20 bg-gradient-to-br from-nature-moss/5 via-background to-community-yellow/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-3xl lg:text-4xl font-bold mb-6">
+                  {tr("chooseAdventure.title")}
+                </h2>
+                <p className="text-xl text-foreground mb-4">{tr("chooseAdventure.p1")}</p>
+                <p className="text-lg text-muted-foreground">{tr("chooseAdventure.p2")}</p>
+              </div>
+              <img
+                src={singingCirclePhoto}
+                alt="People standing arm in arm, singing together from song sheets"
+                className="rounded-lg shadow-warm w-full object-cover lg:order-last"
+              />
+            </div>
           </div>
         </section>
 
@@ -272,7 +327,12 @@ const Index = () => {
 
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {/* Invocation Card */}
-              <Card className="border-2 border-community-orange/30 hover:border-community-orange/60 transition-all shadow-warm">
+              <Card className="border-2 border-community-orange/30 hover:border-community-orange/60 transition-all shadow-warm overflow-hidden">
+                <img
+                  src={sharedMealPhoto}
+                  alt="Bowls of food laid out for a shared meal"
+                  className="h-44 w-full object-cover"
+                />
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-5xl font-bold text-community-orange">
@@ -309,7 +369,12 @@ const Index = () => {
               </Card>
 
               {/* Integration Card */}
-              <Card className="border-2 border-sunset/30 hover:border-sunset/60 transition-all shadow-warm">
+              <Card className="border-2 border-sunset/30 hover:border-sunset/60 transition-all shadow-warm overflow-hidden">
+                <img
+                  src={celebrationPhoto}
+                  alt="A singer performing on stage under string lights"
+                  className="h-44 w-full object-cover"
+                />
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-5xl font-bold text-sunset">⟲</div>

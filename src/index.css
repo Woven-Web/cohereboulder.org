@@ -40,9 +40,10 @@ All colors MUST be HSL.
 
     /* Community-focused design tokens */
     --earth-warm: 28 45% 25%;
-    --earth-light: 42 35% 85%;
+    --earth-light: 38 30% 86%;
     --nature-teal: 175 65% 35%;
-    --nature-green: 145 55% 45%;
+    --nature-green: 140 42% 38%;
+    --nature-moss: 132 26% 26%;
     --community-orange: 22 88% 65%;
     --community-yellow: 42 85% 75%;
     
@@ -50,6 +51,8 @@ All colors MUST be HSL.
     --gradient-earth: linear-gradient(135deg, hsl(var(--earth-warm)), hsl(var(--nature-teal)));
     --gradient-community: linear-gradient(135deg, hsl(var(--community-orange)), hsl(var(--community-yellow)));
     --gradient-nature: linear-gradient(135deg, hsl(var(--nature-teal)), hsl(var(--nature-green)));
+    /* Human gathering blended into the wild: warm ground rising into canopy */
+    --gradient-canopy: linear-gradient(165deg, hsl(var(--earth-warm) / 0.78), hsl(var(--nature-moss) / 0.55) 55%, hsl(var(--nature-teal) / 0.42));
     
     /* Shadows */
     --shadow-warm: 0 10px 30px -10px hsl(var(--earth-warm) / 0.2);
@@ -111,13 +114,15 @@ All colors MUST be HSL.
     --earth-warm: 28 55% 75%;
     --earth-light: 42 25% 20%;
     --nature-teal: 175 65% 55%;
-    --nature-green: 145 55% 65%;
+    --nature-green: 140 45% 58%;
+    --nature-moss: 132 24% 46%;
     --community-orange: 22 88% 75%;
     --community-yellow: 42 85% 85%;
     
     --gradient-earth: linear-gradient(135deg, hsl(var(--earth-warm) / 0.8), hsl(var(--nature-teal) / 0.8));
     --gradient-community: linear-gradient(135deg, hsl(var(--community-orange) / 0.8), hsl(var(--community-yellow) / 0.8));
     --gradient-nature: linear-gradient(135deg, hsl(var(--nature-teal) / 0.8), hsl(var(--nature-green) / 0.8));
+    --gradient-canopy: linear-gradient(165deg, hsl(var(--earth-warm) / 0.84), hsl(var(--nature-moss) / 0.62) 55%, hsl(var(--nature-teal) / 0.5));
   }
 }
 
