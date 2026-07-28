@@ -180,7 +180,7 @@ const Archive = () => {
                   <h3 className="font-semibold mb-2 text-muted-foreground">Future: Expanding Rhythms</h3>
                   <p className="text-muted-foreground/80">
                     COhere continues to adapt, potentially moving to quarterly or bi-yearly cycles,
-                    spreading the blueprint to other communities.
+                    sharing the rhythm with other communities.
                   </p>
                 </div>
               </div>

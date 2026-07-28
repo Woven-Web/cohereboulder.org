@@ -28,9 +28,20 @@ const Index = () => {
             <h1 className="text-5xl lg:text-7xl font-bold text-foreground mb-6">
               [CO]<span className="text-primary">here</span>
             </h1>
-            <p className="text-2xl lg:text-3xl text-foreground mb-8">
+            <p className="text-2xl lg:text-3xl text-foreground mb-6">
               {tr("hero.tagline")}
             </p>
+
+            {/* This year's theme */}
+            <div className="mb-8">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                {tr("hero.themeLabel")}
+              </p>
+              <p className="text-3xl lg:text-4xl font-semibold text-primary">
+                {tr("hero.theme")}
+              </p>
+            </div>
+
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-12">
               {tr("hero.description")}
             </p>
@@ -71,6 +82,47 @@ const Index = () => {
 
               <p>{tr("whatIs.p3")}</p>
             </div>
+          </div>
+        </section>
+
+        {/* The Community Calendar - co-created, not programmed */}
+        <section className="py-20 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-3">
+              {tr("communityCalendar.title")}
+            </h2>
+            <p className="text-xl text-primary font-medium mb-8">
+              {tr("communityCalendar.subtitle")}
+            </p>
+            <div className="space-y-4 text-muted-foreground text-lg mb-10">
+              <p>{tr("communityCalendar.p1")}</p>
+              <p>{tr("communityCalendar.p2")}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/calendar">
+                <Button size="lg" variant="community">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  {tr("communityCalendar.explore")}
+                </Button>
+              </Link>
+              <Link to="/co-create">
+                <Button size="lg" variant="outline">
+                  {tr("nav.participate")}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Choose your own adventure */}
+        <section className="py-20 bg-gradient-to-br from-nature-teal/5 via-background to-community-yellow/10">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-6">
+              {tr("chooseAdventure.title")}
+            </h2>
+            <p className="text-xl text-foreground mb-4">{tr("chooseAdventure.p1")}</p>
+            <p className="text-lg text-muted-foreground">{tr("chooseAdventure.p2")}</p>
           </div>
         </section>
 
@@ -409,21 +461,21 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Blueprint */}
+        {/* A rhythm other communities can grow */}
         <section className="py-20 bg-earth-light/20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
-              {tr("blueprint.title")}
+              {tr("rhythmForOthers.title")}
             </h2>
             <p className="text-lg text-muted-foreground mb-6">
-              {tr("blueprint.p1")}
+              {tr("rhythmForOthers.p1")}
             </p>
             <p className="text-lg text-muted-foreground mb-12">
-              {tr("blueprint.p2")}
+              {tr("rhythmForOthers.p2")}
             </p>
             <Link to="/about">
               <Button size="lg" variant="earth">
-                {tr("blueprint.learnMore")}
+                {tr("rhythmForOthers.learnMore")}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

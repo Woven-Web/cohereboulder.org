@@ -130,7 +130,7 @@ const Invitation2025 = () => {
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
                     {t(
-                      "COhere is evolving from a one-time event to an ongoing rhythm. Your contribution helps establish this as a repeatable blueprint for community resilience.",
+                      "COhere is evolving from a one-time event to an ongoing rhythm. Your contribution helps establish this as a living rhythm for community resilience.",
                       "COhere está evolucionando de un evento único a un ritmo continuo. Tu contribución ayuda a establecer esto como un modelo repetible para la resiliencia comunitaria.",
                     )}
                   </p>

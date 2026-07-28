@@ -48,7 +48,7 @@ const Join2025 = () => {
           <div className="prose prose-lg mx-auto mb-12">
             <p className="text-muted-foreground">
               {t(
-                "COhere Boulder is evolving from a one-time event into a living process. In 2025, we're launching our first full cycle of community weaving—a repeatable blueprint for building resilience that any community can adapt and implement.",
+                "COhere Boulder is evolving from a one-time event into a living process. In 2025, we're launching our first full cycle of community weaving—a living rhythm for building resilience that any community can adapt and grow.",
                 "COhere Boulder está evolucionando de un evento único a un proceso vivo. En 2025, estamos lanzando nuestro primer ciclo completo de tejido comunitario: un modelo repetible para construir resiliencia que cualquier comunidad puede adaptar e implementar.",
               )}
             </p>

@@ -28,7 +28,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return {
     "Access-Control-Allow-Origin":
       origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://cohereboulder.org",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     Vary: "Origin",
   };
@@ -317,6 +317,21 @@ export default {
 
     // ------------------------------------------------------------ public forms
 
+    // The questions for a form, so the site can render whatever the admin defines.
+    if (request.method === "GET" && path.startsWith("/api/form/")) {
+      const formSlug = decodeURIComponent(path.slice("/api/form/".length));
+      const form = await env.cohere
+        .prepare(`SELECT slug, title, event, fields, active FROM forms WHERE slug = ?1`)
+        .bind(formSlug)
+        .first<{ slug: string; title: string; event: string | null; fields: string; active: number }>();
+      if (!form) return json({ error: "unknown form" }, 404, cors);
+      return json(
+        { ...form, fields: JSON.parse(form.fields), active: Boolean(form.active) },
+        200,
+        { ...cors, "Cache-Control": "public, max-age=60" },
+      );
+    }
+
     // Generic submission: any form in the `forms` table.
     if (request.method === "POST" && path.startsWith("/api/submit/")) {
       const formSlug = decodeURIComponent(path.slice("/api/submit/".length));
@@ -352,6 +367,15 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
+
+      // A form may carry the email-list opt-in; honour it either way.
+      if (typeof body.subscribed === "boolean") {
+        await env.cohere
+          .prepare(`UPDATE people SET subscribed = ?2, updated_at = ?3 WHERE id = ?1`)
+          .bind(personId, body.subscribed ? 1 : 0, new Date().toISOString())
+          .run();
+      }
+
       return json({ ok: true }, 200, cors);
     }
 

@@ -24,6 +24,14 @@ export const translations = {
       en: "Weaving Our Resilience",
       es: "Tejiendo Nuestra Resiliencia",
     },
+    themeLabel: {
+      en: "This year's theme",
+      es: "El tema de este año",
+    },
+    theme: {
+      en: "We Are Our Ecology",
+      es: "Somos Nuestra Ecología",
+    },
     description: {
       en: "Connecting local community to create a regenerative, resilient future.",
       es: "Conectando la comunidad local para crear un futuro regenerativo y resiliente.",
@@ -47,6 +55,46 @@ export const translations = {
     registerHere: {
       en: "Register Here",
       es: "Regístrate Aquí",
+    },
+  },
+
+  // Community calendar (co-created by whoever shows up)
+  communityCalendar: {
+    title: {
+      en: "The Community Calendar",
+      es: "El Calendario Comunitario",
+    },
+    subtitle: {
+      en: "Co-created by everyone who shows up",
+      es: "Co-creado por todas las personas que participan",
+    },
+    p1: {
+      en: "COhere doesn't program the ten days from the top down. Every event on the calendar is offered by someone in this community — a dinner, a walk, a workshop, a song circle, a conversation that needed a room.",
+      es: "COhere no programa los diez días desde arriba. Cada evento del calendario es ofrecido por alguien de esta comunidad: una cena, una caminata, un taller, un círculo de canto, una conversación que necesitaba un espacio.",
+    },
+    p2: {
+      en: "Browse what's unfolding, and if you're holding something you'd like to share, there's room for it here.",
+      es: "Explora lo que se está desplegando y, si tienes algo que quieras compartir, aquí hay espacio para ello.",
+    },
+    explore: {
+      en: "Explore the Calendar",
+      es: "Explorar el Calendario",
+    },
+  },
+
+  // Choose your own adventure
+  chooseAdventure: {
+    title: {
+      en: "Choose Your Own Adventure",
+      es: "Elige Tu Propia Aventura",
+    },
+    p1: {
+      en: "There is no single way to do COhere. Ten days, a calendar the community builds together, and an open invitation to find your own thread through it.",
+      es: "No hay una sola manera de vivir COhere. Diez días, un calendario que la comunidad construye en conjunto y una invitación abierta a encontrar tu propio hilo.",
+    },
+    p2: {
+      en: "Come to one gathering or a dozen. Host something. Bring a friend. Meet the people already tending what you care about — and find your role in the web.",
+      es: "Ven a un encuentro o a doce. Organiza algo. Trae a alguien. Conoce a las personas que ya cuidan lo que te importa y encuentra tu lugar en la red.",
     },
   },
 
@@ -170,8 +218,8 @@ export const translations = {
       },
     },
     quote: {
-      en: '"The journey of weaving our resilience never begins and never ends. COhere is simply a blueprint to call deeper attention to this process in which we all engage."',
-      es: '"El viaje de tejer nuestra resiliencia nunca comienza ni termina. COhere es simplemente un modelo para prestar mayor atención a este proceso en el que todos participamos."',
+      en: '"The journey of weaving our resilience never begins and never ends. COhere is simply a rhythm that calls deeper attention to this process in which we all engage."',
+      es: '"El viaje de tejer nuestra resiliencia nunca comienza ni termina. COhere es simplemente un ritmo que llama a prestar mayor atención a este proceso en el que todos participamos."',
     },
   },
 
@@ -224,23 +272,23 @@ export const translations = {
     newsletter: { en: "Subscribe to Newsletter", es: "Suscríbete al Boletín" },
   },
 
-  // Blueprint Section
-  blueprint: {
+  // A rhythm other communities can grow
+  rhythmForOthers: {
     title: {
-      en: "A Blueprint for Communities",
-      es: "Un Modelo para Comunidades",
+      en: "A Rhythm Any Community Can Grow",
+      es: "Un Ritmo Que Cualquier Comunidad Puede Cultivar",
     },
     p1: {
-      en: "COhere is designed as a repeatable model for community weaving—one that can evolve with our needs and inspire other communities to create their own versions.",
-      es: "COhere está diseñado como un modelo repetible para el tejido comunitario, uno que puede evolucionar con nuestras necesidades e inspirar a otras comunidades a crear sus propias versiones.",
+      en: "COhere is a living rhythm of community weaving—one that grows with our needs and can take root in any community that wants to strengthen its own web.",
+      es: "COhere es un ritmo vivo de tejido comunitario, uno que crece con nuestras necesidades y puede echar raíces en cualquier comunidad que quiera fortalecer su propia red.",
     },
     p2: {
       en: "The three-phase rhythm (Invitation → Invocation → Integration) creates a natural cadence for deepening community connections and building collective resilience.",
       es: "El ritmo de tres fases (Invitación → Invocación → Integración) crea una cadencia natural para profundizar las conexiones comunitarias y construir resiliencia colectiva.",
     },
     learnMore: {
-      en: "Learn About the Blueprint",
-      es: "Aprende sobre el Modelo",
+      en: "Learn How the Rhythm Works",
+      es: "Descubre Cómo Funciona el Ritmo",
     },
   },
 
@@ -938,12 +986,12 @@ export const translations = {
   // About Page
   about: {
     title: {
-      en: "The COhere Blueprint",
-      es: "El Modelo COhere",
+      en: "The COhere Rhythm",
+      es: "El Ritmo COhere",
     },
     subtitle: {
-      en: "A repeatable model for weaving resilient communities through intentional gathering and connection",
-      es: "Un modelo repetible para tejer comunidades resilientes a través de encuentros y conexiones intencionales",
+      en: "A living rhythm for weaving resilient communities through intentional gathering and connection",
+      es: "Un ritmo vivo para tejer comunidades resilientes a través de encuentros y conexiones intencionales",
     },
     threePhaseRhythm: {
       en: "The Three-Phase Rhythm",
@@ -1040,13 +1088,13 @@ export const translations = {
       },
     },
     journeyQuote: {
-      en: "The journey of weaving our resilience never begins and never ends. COhere is simply a blueprint to call deeper attention to this process in which we all engage.",
-      es: "El viaje de tejer nuestra resiliencia nunca comienza ni termina. COhere es simplemente un modelo para prestar mayor atención a este proceso en el que todos participamos.",
+      en: "The journey of weaving our resilience never begins and never ends. COhere is simply a rhythm that calls deeper attention to this process in which we all engage.",
+      es: "El viaje de tejer nuestra resiliencia nunca comienza ni termina. COhere es simplemente un ritmo que llama a prestar mayor atención a este proceso en el que todos participamos.",
     },
     whyThisWorks: {
       title: {
-        en: "Why This Blueprint Works",
-        es: "Por Qué Funciona Este Modelo",
+        en: "Why This Rhythm Works",
+        es: "Por Qué Funciona Este Ritmo",
       },
       naturalRhythm: {
         title: { en: "Natural Rhythm", es: "Ritmo Natural" },
@@ -1082,8 +1130,8 @@ export const translations = {
           es: "Adaptable para Cualquier Comunidad",
         },
         description: {
-          en: "This blueprint can be adapted to any community's needs. The rhythm can be yearly, quarterly, or whatever serves your place. The key is creating regular cycles of connection, action, and integration.",
-          es: "Este modelo puede adaptarse a las necesidades de cualquier comunidad. El ritmo puede ser anual, trimestral o lo que sirva a tu lugar. La clave es crear ciclos regulares de conexión, acción e integración.",
+          en: "This rhythm can be adapted to any community's needs. The rhythm can be yearly, quarterly, or whatever serves your place. The key is creating regular cycles of connection, action, and integration.",
+          es: "Este ritmo puede adaptarse a las necesidades de cualquier comunidad. El ritmo puede ser anual, trimestral o lo que sirva a tu lugar. La clave es crear ciclos regulares de conexión, acción e integración.",
         },
       },
     },
