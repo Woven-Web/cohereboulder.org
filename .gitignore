@@ -36,3 +36,12 @@ supabase/.temp/
 *.sw?
 .admin-key.local
 .wrangler/
+
+# Local data exports (contains PII - never commit)
+exports/
+
+# Generated D1 seed — contains member PII
+workers/email-signup/seed.sql
+
+# Playwright MCP scratch output (page snapshots can contain member data)
+.playwright-mcp/

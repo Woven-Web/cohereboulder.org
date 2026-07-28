@@ -3,5 +3,12 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-06-09",
   "observability": { "enabled": true },
-  "kv_namespaces": [{ "binding": "SIGNUPS", "id": "e7cb04113ed14308bff4b85dbbe35ac7" }]
+  "kv_namespaces": [{ "binding": "SIGNUPS", "id": "e7cb04113ed14308bff4b85dbbe35ac7" }],
+  "d1_databases": [
+    {
+      "binding": "cohere",
+      "database_name": "cohere",
+      "database_id": "9eaac080-fe20-4124-8719-452091797866"
+    }
+  ]
 }

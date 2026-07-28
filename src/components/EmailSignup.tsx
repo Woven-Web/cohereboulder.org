@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const SIGNUP_ENDPOINT =
-  import.meta.env.VITE_SIGNUP_URL || "https://cohere-signup.ag-8f2.workers.dev/";
+  import.meta.env.VITE_SIGNUP_URL || "https://cohere-signup.unforced.workers.dev/";
 
 interface EmailSignupProps {
   source?: string;
