@@ -9,10 +9,22 @@
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
 import { ADMIN_PAGE } from "./admin-page";
+import {
+  clearedCookie,
+  consumeLinkToken,
+  currentSession,
+  endSession,
+  normalizeEmail,
+  requestLogin,
+  sessionCookie,
+  verifyCode,
+  type AuthEnv,
+} from "./auth";
 
-interface Env {
+interface Env extends AuthEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
+  COHERE_AUTH: KVNamespace;
   ADMIN_KEY?: string;
 }
 
@@ -49,10 +61,15 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function isAdmin(request: Request, env: Env): boolean {
+/**
+ * Two ways in: a signed-in session cookie (people), or the bearer admin key
+ * (scripts, and a way back in if email delivery ever breaks).
+ */
+async function isAdmin(request: Request, env: Env): Promise<boolean> {
   const header = request.headers.get("Authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return Boolean(env.ADMIN_KEY) && safeEqual(token, env.ADMIN_KEY!);
+  if (env.ADMIN_KEY && token && safeEqual(token, env.ADMIN_KEY)) return true;
+  return (await currentSession(env, request)) !== null;
 }
 
 function str(value: unknown, max: number): string | null {
@@ -146,10 +163,81 @@ export default {
       });
     }
 
+    // ------------------------------------------------------------------ auth
+
+    if (path.startsWith("/api/auth/")) {
+      const secure = url.protocol === "https:";
+      const baseUrl = env.PUBLIC_BASE_URL || url.origin;
+
+      if (request.method === "POST" && path === "/api/auth/request") {
+        let body: Record<string, unknown>;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "invalid JSON" }, 400);
+        }
+        const clientIp = request.headers.get("CF-Connecting-IP") ?? "unknown";
+        try {
+          const result = await requestLogin(env, body.email, clientIp, baseUrl);
+          if (!result.ok) return json({ error: result.error }, result.status);
+          return json({ ok: true }, 200);
+        } catch (error) {
+          // Delivery failed — say so plainly rather than a bare 500, since the
+          // fix is a configuration one an organizer can act on.
+          const detail = error instanceof Error ? error.message : "unknown error";
+          return json(
+            {
+              error:
+                detail === "no email transport configured"
+                  ? "Sign-in email isn't configured yet. Use the admin key below for now."
+                  : "We couldn't send the sign-in email. Try again, or use the admin key below.",
+            },
+            503,
+          );
+        }
+      }
+
+      if (request.method === "POST" && path === "/api/auth/verify") {
+        let body: Record<string, unknown>;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "invalid JSON" }, 400);
+        }
+        const result = await verifyCode(env, body.email, body.code);
+        if (!result.ok) return json({ error: result.error }, result.status);
+        return json({ ok: true }, 200, { "Set-Cookie": sessionCookie(result.token, secure) });
+      }
+
+      if (request.method === "GET" && path === "/api/auth/callback") {
+        const token = await consumeLinkToken(env, url.searchParams.get("token") ?? "");
+        if (!token) {
+          return Response.redirect(`${baseUrl}/admin?error=expired`, 302);
+        }
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `${baseUrl}/admin`, "Set-Cookie": sessionCookie(token, secure) },
+        });
+      }
+
+      if (request.method === "GET" && path === "/api/auth/me") {
+        const session = await currentSession(env, request);
+        if (!session) return json({ error: "unauthorized" }, 401);
+        return json({ email: session.email, name: session.name }, 200);
+      }
+
+      if (request.method === "POST" && path === "/api/auth/logout") {
+        await endSession(env, request);
+        return json({ ok: true }, 200, { "Set-Cookie": clearedCookie(secure) });
+      }
+
+      return json({ error: "not found" }, 404);
+    }
+
     // --------------------------------------------------------------- admin API
 
     if (path.startsWith("/api/admin/") || path === "/list") {
-      if (!isAdmin(request, env)) {
+      if (!(await isAdmin(request, env))) {
         return json({ error: "unauthorized" }, 401);
       }
 
@@ -176,6 +264,50 @@ export default {
           };
         });
         return json({ count: people.length, people }, 200);
+      }
+
+      // Who can sign in.
+      if (request.method === "GET" && path === "/api/admin/admins") {
+        const { results } = await env.cohere
+          .prepare(`SELECT email, name, added_by, created_at FROM admins ORDER BY created_at`)
+          .all();
+        return json({ admins: results }, 200);
+      }
+
+      if (request.method === "POST" && path === "/api/admin/admins") {
+        let body: Record<string, unknown>;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "invalid JSON" }, 400);
+        }
+        const email = normalizeEmail(body.email);
+        if (!email || !email.includes("@")) return json({ error: "invalid email" }, 400);
+        const session = await currentSession(env, request);
+        await env.cohere
+          .prepare(
+            `INSERT INTO admins (email, name, added_by, created_at) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(email) DO UPDATE SET name = COALESCE(excluded.name, admins.name)`,
+          )
+          .bind(email, str(body.name, 200), session?.email ?? "admin-key", new Date().toISOString())
+          .run();
+        return json({ ok: true }, 200);
+      }
+
+      if (request.method === "DELETE" && path.startsWith("/api/admin/admins/")) {
+        const email = normalizeEmail(decodeURIComponent(path.slice("/api/admin/admins/".length)));
+        const session = await currentSession(env, request);
+        if (session && session.email === email) {
+          return json({ error: "you can't remove your own access" }, 400);
+        }
+        const remaining = await env.cohere
+          .prepare(`SELECT COUNT(*) AS n FROM admins`)
+          .first<{ n: number }>();
+        if ((remaining?.n ?? 0) <= 1) {
+          return json({ error: "there has to be at least one admin" }, 400);
+        }
+        await env.cohere.prepare(`DELETE FROM admins WHERE email = ?1`).bind(email).run();
+        return json({ ok: true }, 200);
       }
 
       // Form definitions — the questions, as data.

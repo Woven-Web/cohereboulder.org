@@ -122,16 +122,34 @@ export const ADMIN_PAGE = `<!doctype html>
 
 <div id="login" class="login">
   <h1>COhere member portal</h1>
-  <p>Enter the admin key to continue.</p>
-  <input id="key" type="password" placeholder="Admin key" autocomplete="current-password">
-  <button class="btn primary" id="signin">Sign in</button>
+
+  <div id="step-email">
+    <p>Sign in with your email. We'll send a link and a one-time code.</p>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+    <button class="btn primary" id="sendlink" style="margin-top:0.7rem;width:100%">Email me a code</button>
+  </div>
+
+  <div id="step-code" class="hidden">
+    <p>We sent a code to <b id="sentto"></b>. Enter it below, or just click the link in the email.</p>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" maxlength="6">
+    <button class="btn primary" id="verify" style="margin-top:0.7rem;width:100%">Sign in</button>
+    <button class="btn" id="startover" style="margin-top:0.5rem;width:100%">Use a different email</button>
+  </div>
+
   <p id="loginerr" class="err"></p>
+
+  <details style="margin-top:0.5rem">
+    <summary class="muted" style="cursor:pointer;font-size:0.82rem">Trouble with email? Use the admin key</summary>
+    <input id="key" type="password" placeholder="Admin key" autocomplete="current-password" style="margin-top:0.6rem">
+    <button class="btn" id="signinkey" style="margin-top:0.5rem;width:100%">Sign in with key</button>
+  </details>
 </div>
 
 <div id="app" class="hidden">
   <header>
     <div class="brand"><h1>COhere member portal</h1><span id="dbnote">loading</span></div>
     <div class="row">
+      <span class="muted" id="whoami"></span>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="signout">Sign out</button>
     </div>
@@ -143,6 +161,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="people">People</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="admins">Who can sign in</button>
     </div>
 
     <section id="tab-people" style="display:flex;flex-direction:column;gap:1rem;">
@@ -176,6 +195,27 @@ export const ADMIN_PAGE = `<!doctype html>
       </p>
       <div id="forms"></div>
     </section>
+
+    <section id="tab-admins" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Anyone listed here can sign in with their email — no password, no account to create.
+        They get a one-time code and a magic link, both good for ten minutes.
+      </p>
+      <div class="toolbar">
+        <input type="email" id="newadmin" placeholder="their@email.com"
+               style="flex:1 1 14rem;padding:0.45rem 0.7rem;border:1px solid var(--hair-strong);border-radius:3px;background:var(--surface)">
+        <input type="text" id="newadminname" placeholder="Name (optional)"
+               style="flex:1 1 10rem;padding:0.45rem 0.7rem;border:1px solid var(--hair-strong);border-radius:3px;background:var(--surface)">
+        <button class="btn primary" id="addadmin">Add</button>
+        <span class="muted" id="adminmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Added by</th><th>Since</th><th></th></tr></thead>
+          <tbody id="adminrows"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -189,17 +229,22 @@ export const ADMIN_PAGE = `<!doctype html>
 
   function key() { return sessionStorage.getItem(KEY_STORE) || ""; }
   function el(id) { return document.getElementById(id); }
+  function show(id, visible) { el(id).classList.toggle("hidden", !visible); }
   function esc(s) {
     return String(s === null || s === undefined ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
   }
 
+  // The session lives in an HttpOnly cookie; the bearer key is only used when
+  // someone falls back to it, so it is attached only when present.
   function api(path, options) {
     options = options || {};
-    options.headers = Object.assign({ Authorization: "Bearer " + key() }, options.headers || {});
+    options.credentials = "same-origin";
+    options.headers = options.headers || {};
+    if (key()) options.headers.Authorization = "Bearer " + key();
     return fetch(path, options).then(function (r) {
-      if (r.status === 401) { signOut("That key was not accepted."); throw new Error("unauthorized"); }
+      if (r.status === 401) { signOut("Your session has ended. Please sign in again."); throw new Error("unauthorized"); }
       if (!r.ok) throw new Error("request failed: " + r.status);
       return r;
     });
@@ -209,10 +254,56 @@ export const ADMIN_PAGE = `<!doctype html>
     sessionStorage.removeItem(KEY_STORE);
     el("app").classList.add("hidden");
     el("login").classList.remove("hidden");
+    show("step-email", true);
+    show("step-code", false);
     el("loginerr").textContent = message || "";
   }
 
-  function signIn() {
+  function requestCode() {
+    var email = el("email").value.trim();
+    if (!email) return;
+    el("loginerr").textContent = "";
+    el("sendlink").disabled = true;
+    el("sendlink").textContent = "Sending…";
+    fetch("/api/auth/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      return r.json().then(function (body) {
+        if (!r.ok) throw new Error(body.error || "could not send");
+        el("sentto").textContent = email;
+        show("step-email", false);
+        show("step-code", true);
+        el("code").focus();
+      });
+    }).catch(function (e) {
+      el("loginerr").textContent = e.message;
+    }).then(function () {
+      el("sendlink").disabled = false;
+      el("sendlink").textContent = "Email me a code";
+    });
+  }
+
+  function verifyTypedCode() {
+    var email = el("email").value.trim();
+    var code = el("code").value.trim();
+    if (code.length < 6) return;
+    el("loginerr").textContent = "";
+    fetch("/api/auth/verify", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, code: code })
+    }).then(function (r) {
+      return r.json().then(function (body) {
+        if (!r.ok) throw new Error(body.error || "could not verify");
+        load();
+      });
+    }).catch(function (e) { el("loginerr").textContent = e.message; });
+  }
+
+  function signInWithKey() {
     var value = el("key").value.trim();
     if (!value) return;
     sessionStorage.setItem(KEY_STORE, value);
@@ -230,7 +321,14 @@ export const ADMIN_PAGE = `<!doctype html>
       el("login").classList.add("hidden");
       el("app").classList.remove("hidden");
       el("key").value = "";
+      el("code").value = "";
       renderStats(); renderForms(); render();
+      fetch("/api/auth/me", { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (me) {
+          if (me) el("whoami").textContent = "Signed in as " + (me.name || me.email);
+        })
+        .catch(function () { /* signed in with the key, no session to describe */ });
     }).catch(function (e) {
       if (e.message !== "unauthorized") el("loginerr").textContent = e.message;
     });
@@ -384,6 +482,29 @@ export const ADMIN_PAGE = `<!doctype html>
     el("drawerbg").classList.remove("open");
   }
 
+  function loadAdmins() {
+    return api("/api/admin/admins").then(function (r) { return r.json(); }).then(function (data) {
+      el("adminrows").innerHTML = data.admins.map(function (a) {
+        return "<tr>" +
+          "<td>" + esc(a.email) + "</td>" +
+          "<td>" + esc(a.name || "—") + "</td>" +
+          "<td>" + esc(a.added_by || "—") + "</td>" +
+          "<td>" + esc((a.created_at || "").slice(0, 10)) + "</td>" +
+          '<td><button class="btn" data-remove="' + esc(a.email) + '">Remove</button></td>' +
+          "</tr>";
+      }).join("");
+      Array.prototype.forEach.call(el("adminrows").querySelectorAll("[data-remove]"), function (btn) {
+        btn.addEventListener("click", function () {
+          var email = btn.getAttribute("data-remove");
+          if (!confirm("Remove " + email + "'s access to this portal?")) return;
+          api("/api/admin/admins/" + encodeURIComponent(email), { method: "DELETE" })
+            .then(loadAdmins)
+            .catch(function (e) { el("adminmsg").textContent = e.message; });
+        });
+      });
+    });
+  }
+
   function renderForms() {
     el("forms").innerHTML = forms.map(function (f, i) {
       return '<div class="form-card">' +
@@ -438,9 +559,20 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   }
 
-  el("signin").addEventListener("click", signIn);
-  el("key").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
-  el("signout").addEventListener("click", function () { signOut(""); });
+  el("sendlink").addEventListener("click", requestCode);
+  el("email").addEventListener("keydown", function (e) { if (e.key === "Enter") requestCode(); });
+  el("verify").addEventListener("click", verifyTypedCode);
+  el("code").addEventListener("keydown", function (e) { if (e.key === "Enter") verifyTypedCode(); });
+  el("startover").addEventListener("click", function () {
+    show("step-code", false); show("step-email", true); el("loginerr").textContent = "";
+  });
+  el("signinkey").addEventListener("click", signInWithKey);
+  el("key").addEventListener("keydown", function (e) { if (e.key === "Enter") signInWithKey(); });
+  el("signout").addEventListener("click", function () {
+    fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
+      .catch(function () {})
+      .then(function () { signOut(""); });
+  });
   el("refresh").addEventListener("click", load);
   el("drawerbg").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeDrawer(); });
@@ -463,13 +595,37 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      el("tab-people").style.display = name === "people" ? "flex" : "none";
-      el("tab-forms").classList.toggle("hidden", name !== "forms");
-      el("tab-forms").style.display = name === "forms" ? "flex" : "none";
+      ["people", "forms", "admins"].forEach(function (n) {
+        var section = el("tab-" + n);
+        section.classList.toggle("hidden", n !== name);
+        section.style.display = n === name ? "flex" : "none";
+      });
+      if (name === "admins") loadAdmins();
     });
   });
 
-  if (key()) load();
+  el("addadmin").addEventListener("click", function () {
+    var email = el("newadmin").value.trim();
+    if (!email) return;
+    el("adminmsg").textContent = "";
+    api("/api/admin/admins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, name: el("newadminname").value.trim() })
+    }).then(function () {
+      el("newadmin").value = ""; el("newadminname").value = "";
+      return loadAdmins();
+    }).catch(function (e) { el("adminmsg").textContent = e.message; });
+  });
+
+  // A magic-link callback lands here already carrying a session cookie.
+  if (new URLSearchParams(location.search).get("error") === "expired") {
+    el("loginerr").textContent = "That sign-in link has expired. Request a new one.";
+  }
+  fetch("/api/auth/me", { credentials: "same-origin" }).then(function (r) {
+    if (r.ok) load();
+    else if (key()) load();
+  }).catch(function () { if (key()) load(); });
 })();
 </script>
 </body>

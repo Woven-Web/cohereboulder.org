@@ -49,3 +49,12 @@ CREATE TABLE IF NOT EXISTS submissions (
 CREATE INDEX IF NOT EXISTS idx_submissions_person ON submissions(person_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_form   ON submissions(form_slug);
 CREATE INDEX IF NOT EXISTS idx_submissions_event  ON submissions(event);
+
+-- Who may sign in to the admin portal. Deliberately separate from `people`:
+-- being in the community list and being able to read it are different things.
+CREATE TABLE IF NOT EXISTS admins (
+  email       TEXT PRIMARY KEY,
+  name        TEXT,
+  added_by    TEXT,
+  created_at  TEXT NOT NULL
+);
