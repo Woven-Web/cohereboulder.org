@@ -60,9 +60,45 @@ GET  /list                    Bearer <ADMIN_KEY> → raw KV signups (legacy)
 
 ## Admin access
 
-The portal asks for the admin key and keeps it in `sessionStorage` for that tab
-only. The key lives in `.admin-key.local` (gitignored, repo root) and as the
-`ADMIN_KEY` Worker secret. Rotate with:
+Organizers sign in with their email — no password, no account to create. A
+request mints one challenge good for both a magic link and a typed 6-digit
+code, valid ten minutes. Sessions are opaque tokens in an HttpOnly cookie,
+good for 30 days, revoked on sign-out or when an address leaves `admins`.
+
+Only addresses in the `admins` table can sign in; manage them from the portal's
+"Who can sign in" tab. Requests for other addresses return the same response as
+real ones, so the portal can't be used to test who is an organizer.
+
+```
+POST /api/auth/request   {"email": "..."}          → emails a link and a code
+POST /api/auth/verify    {"email":"...","code":"123456"} → sets the session cookie
+GET  /api/auth/callback?token=...                  → magic link, single use
+GET  /api/auth/me                                  → who am I
+POST /api/auth/logout                              → ends the session
+```
+
+### Email delivery
+
+`sendMail` takes whichever transport is configured:
+
+1. **Resend** — set `RESEND_API_KEY` and it wins. Sends to anyone, which is
+   what member-facing email will need later.
+2. **Cloudflare `send_email` binding** — needs the zone on Cloudflare DNS, and
+   only delivers to addresses verified in Email Routing. Fine for a handful of
+   organizers, useless for the wider community.
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+```
+
+Until one is configured, sign-in returns a plain "not configured yet" message
+and the admin key still works.
+
+### Admin key fallback
+
+The shared key survives for scripts and for when email delivery breaks. It
+lives in `.admin-key.local` (gitignored, repo root) and as the `ADMIN_KEY`
+Worker secret. Rotate with:
 
 ```bash
 npx wrangler secret put ADMIN_KEY
