@@ -5,11 +5,13 @@
 // arrives first creates a session. Tokens are stored hashed, so a leak of the
 // KV store doesn't hand anyone a session.
 
+import { EmailMessage } from "cloudflare:email";
+
 export interface AuthEnv {
   COHERE_AUTH: KVNamespace;
   cohere: D1Database;
   RESEND_API_KEY?: string;
-  SEND_EMAIL?: { send(message: unknown): Promise<void> };
+  SEND_EMAIL?: { send(message: EmailMessage): Promise<void> };
   ADMIN_KEY?: string;
   MAIL_FROM?: string;
   PUBLIC_BASE_URL?: string;
@@ -102,18 +104,76 @@ function loginEmail(code: string, link: string): { subject: string; html: string
   return { subject, html, text };
 }
 
+/** Split "Name <addr@host>" into its parts; a bare address works too. */
+function parseFrom(value: string): { name: string; address: string } {
+  const match = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  return match ? { name: match[1], address: match[2] } : { name: "", address: value.trim() };
+}
+
+/** RFC 2047 encoded-word, so non-ASCII survives a Subject header. */
+function encodeHeader(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/^[\x00-\x7F]*$/.test(value)) return value;
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `=?UTF-8?B?${btoa(binary)}?=`;
+}
+
+function buildMime(
+  from: { name: string; address: string },
+  to: string,
+  message: { subject: string; html: string; text: string },
+): string {
+  const boundary = `b${crypto.randomUUID().replace(/-/g, "")}`;
+  const domain = from.address.split("@")[1] ?? "cohereboulder.org";
+  const fromHeader = from.name ? `${encodeHeader(from.name)} <${from.address}>` : from.address;
+
+  return [
+    `From: ${fromHeader}`,
+    `To: ${to}`,
+    `Subject: ${encodeHeader(message.subject)}`,
+    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
+    `Date: ${new Date().toUTCString()}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="utf-8"',
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    message.text,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/html; charset="utf-8"',
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    message.html,
+    "",
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+}
+
 /**
- * Two possible transports. Resend needs only an API key, and can mail anyone.
- * Cloudflare's send_email binding needs the zone on Cloudflare and only
- * delivers to addresses verified in Email Routing — fine for a short admin
- * list, useless for the wider community, so Resend wins when both exist.
+ * Two possible transports, Cloudflare first.
+ *
+ * Cloudflare's send_email binding delivers only to addresses verified as
+ * Email Routing destinations on the account — which covers the organizers who
+ * sign in here, but can never reach the wider member list. Resend stays as a
+ * fallback for that day.
  */
 async function sendMail(
   env: AuthEnv,
   to: string,
   message: { subject: string; html: string; text: string },
 ): Promise<void> {
-  const from = env.MAIL_FROM || "COhere Boulder <cohere@wovenweb.org>";
+  const from = parseFrom(env.MAIL_FROM || "COhere Boulder <cohere@wovenweb.org>");
+
+  if (env.SEND_EMAIL) {
+    await env.SEND_EMAIL.send(new EmailMessage(from.address, to, buildMime(from, to, message)));
+    return;
+  }
 
   if (env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
@@ -122,25 +182,17 @@ async function sendMail(
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from, to: [to], subject: message.subject, html: message.html, text: message.text }),
+      body: JSON.stringify({
+        from: env.MAIL_FROM,
+        to: [to],
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+      }),
     });
     if (!response.ok) {
       throw new Error(`resend failed: ${response.status} ${await response.text()}`);
     }
-    return;
-  }
-
-  if (env.SEND_EMAIL) {
-    const raw = [
-      `From: ${from}`,
-      `To: ${to}`,
-      `Subject: ${message.subject}`,
-      "MIME-Version: 1.0",
-      'Content-Type: text/plain; charset="utf-8"',
-      "",
-      message.text,
-    ].join("\r\n");
-    await env.SEND_EMAIL.send({ from, to, raw });
     return;
   }
 

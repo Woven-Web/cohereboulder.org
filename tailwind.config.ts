@@ -66,6 +66,16 @@ export default {
           orange: "hsl(var(--community-orange))",
           yellow: "hsl(var(--community-yellow))",
         },
+        // Was referenced by the Integration card but never defined, so every
+        // `text-sunset` / `border-sunset` class was a no-op until now.
+        sunset: "hsl(var(--sunset))",
+        brand: {
+          deep: "hsl(var(--brand-deep))",
+          water: "hsl(var(--brand-water))",
+          leaf: "hsl(var(--brand-leaf))",
+          sun: "hsl(var(--brand-sun))",
+          berry: "hsl(var(--brand-berry))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

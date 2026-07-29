@@ -185,6 +185,7 @@ export default {
           // Delivery failed — say so plainly rather than a bare 500, since the
           // fix is a configuration one an organizer can act on.
           const detail = error instanceof Error ? error.message : "unknown error";
+          console.error("sign-in email failed:", detail);
           return json(
             {
               error:

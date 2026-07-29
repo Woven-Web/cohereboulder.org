@@ -8,55 +8,65 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 35 15% 97%;
-    --foreground: 28 25% 15%;
+    /* Eileen's palette, the source of truth for everything below.
+       deep #36558F · water #489FB5 · leaf #BFEDC1 · sun #EDB458 · berry #A6216E */
+    --brand-deep:  219 45% 39%;
+    --brand-water: 192 43% 50%;
+    --brand-leaf:  123 56% 84%;
+    --brand-sun:    37 81% 64%;
+    --brand-berry: 325 67% 39%;
 
-    --card: 35 30% 98%;
-    --card-foreground: 28 25% 15%;
+    --background: 140 25% 98%;
+    --foreground: 219 35% 16%;
 
-    --popover: 35 30% 98%;
-    --popover-foreground: 28 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 219 35% 16%;
 
-    --primary: 175 65% 35%;
-    --primary-foreground: 35 30% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 219 35% 16%;
 
-    --secondary: 42 85% 75%;
-    --secondary-foreground: 28 25% 15%;
+    /* Deep carries the text and buttons: 8:1 against white, unlike water. */
+    --primary: var(--brand-deep);
+    --primary-foreground: 140 30% 98%;
 
-    --muted: 42 45% 92%;
-    --muted-foreground: 28 15% 45%;
+    --secondary: var(--brand-water);
+    --secondary-foreground: 219 40% 14%;
 
-    --accent: 22 88% 65%;
-    --accent-foreground: 35 30% 98%;
+    --muted: 130 30% 94%;
+    --muted-foreground: 219 14% 40%;
+
+    --accent: var(--brand-sun);
+    --accent-foreground: 30 45% 14%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 35 30% 98%;
+    --destructive-foreground: 140 30% 98%;
 
-    --border: 42 25% 88%;
-    --input: 42 25% 88%;
-    --ring: 175 65% 35%;
+    --border: 150 18% 88%;
+    --input: 150 18% 88%;
+    --ring: var(--brand-water);
 
     --radius: 0.75rem;
 
-    /* Community-focused design tokens */
-    --earth-warm: 28 45% 25%;
-    --earth-light: 38 30% 86%;
-    --nature-teal: 175 65% 35%;
-    --nature-green: 140 42% 38%;
-    --nature-moss: 132 26% 26%;
-    --community-orange: 22 88% 65%;
-    --community-yellow: 42 85% 75%;
+    /* Legacy names kept so existing classes keep working, remapped to the palette */
+    --earth-warm: 219 45% 26%;
+    --earth-light: var(--brand-leaf);
+    --nature-teal: var(--brand-water);
+    --nature-green: 140 40% 46%;
+    --nature-moss: 150 30% 28%;
+    --community-orange: 37 78% 56%;
+    --community-yellow: var(--brand-sun);
+    --sunset: var(--brand-berry);
     
     /* Gradients */
-    --gradient-earth: linear-gradient(135deg, hsl(var(--earth-warm)), hsl(var(--nature-teal)));
-    --gradient-community: linear-gradient(135deg, hsl(var(--community-orange)), hsl(var(--community-yellow)));
-    --gradient-nature: linear-gradient(135deg, hsl(var(--nature-teal)), hsl(var(--nature-green)));
-    /* Human gathering blended into the wild: warm ground rising into canopy */
-    --gradient-canopy: linear-gradient(165deg, hsl(var(--earth-warm) / 0.78), hsl(var(--nature-moss) / 0.55) 55%, hsl(var(--nature-teal) / 0.42));
+    --gradient-earth: linear-gradient(135deg, hsl(var(--brand-deep)), hsl(var(--brand-water)));
+    --gradient-community: linear-gradient(135deg, hsl(var(--brand-sun)), hsl(28 78% 56%));
+    --gradient-nature: linear-gradient(135deg, hsl(var(--brand-water)), hsl(var(--brand-leaf)));
+    /* Photo overlay: deep water rising through shallows into new growth */
+    --gradient-canopy: linear-gradient(165deg, hsl(var(--brand-deep) / 0.82), hsl(var(--brand-water) / 0.5) 58%, hsl(var(--brand-leaf) / 0.28));
     
     /* Shadows */
-    --shadow-warm: 0 10px 30px -10px hsl(var(--earth-warm) / 0.2);
-    --shadow-community: 0 8px 25px -8px hsl(var(--community-orange) / 0.3);
+    --shadow-warm: 0 10px 30px -10px hsl(var(--brand-deep) / 0.22);
+    --shadow-community: 0 8px 25px -8px hsl(var(--brand-sun) / 0.35);
     
     /* Animations */
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -82,6 +92,12 @@ All colors MUST be HSL.
   }
 
   .dark {
+    --brand-deep:  219 55% 62%;
+    --brand-water: 192 45% 58%;
+    --brand-leaf:  123 40% 62%;
+    --brand-sun:    37 82% 68%;
+    --brand-berry: 325 60% 58%;
+
     --background: 28 35% 8%;
     --foreground: 35 30% 95%;
 
@@ -91,38 +107,39 @@ All colors MUST be HSL.
     --popover: 28 35% 10%;
     --popover-foreground: 35 30% 95%;
 
-    --primary: 175 65% 55%;
-    --primary-foreground: 28 35% 8%;
+    --primary: 219 55% 62%;
+    --primary-foreground: 219 45% 10%;
 
-    --secondary: 42 45% 25%;
+    --secondary: 192 40% 34%;
     --secondary-foreground: 35 30% 95%;
 
     --muted: 28 25% 15%;
     --muted-foreground: 35 15% 65%;
 
-    --accent: 22 88% 75%;
-    --accent-foreground: 28 35% 8%;
+    --accent: 37 82% 68%;
+    --accent-foreground: 30 45% 10%;
 
     --destructive: 0 84% 70%;
     --destructive-foreground: 28 35% 8%;
 
     --border: 28 25% 15%;
     --input: 28 25% 15%;
-    --ring: 175 65% 55%;
+    --ring: 192 43% 58%;
 
     /* Dark mode community tokens */
-    --earth-warm: 28 55% 75%;
-    --earth-light: 42 25% 20%;
-    --nature-teal: 175 65% 55%;
-    --nature-green: 140 45% 58%;
-    --nature-moss: 132 24% 46%;
-    --community-orange: 22 88% 75%;
-    --community-yellow: 42 85% 85%;
+    --earth-warm: 219 45% 20%;
+    --earth-light: 150 22% 18%;
+    --nature-teal: 192 45% 58%;
+    --nature-green: 140 40% 55%;
+    --nature-moss: 150 26% 42%;
+    --community-orange: 37 78% 66%;
+    --community-yellow: 37 81% 72%;
+    --sunset: 325 60% 58%;
     
     --gradient-earth: linear-gradient(135deg, hsl(var(--earth-warm) / 0.8), hsl(var(--nature-teal) / 0.8));
-    --gradient-community: linear-gradient(135deg, hsl(var(--community-orange) / 0.8), hsl(var(--community-yellow) / 0.8));
+    --gradient-community: linear-gradient(135deg, hsl(var(--brand-sun) / 0.85), hsl(28 78% 60% / 0.85));
     --gradient-nature: linear-gradient(135deg, hsl(var(--nature-teal) / 0.8), hsl(var(--nature-green) / 0.8));
-    --gradient-canopy: linear-gradient(165deg, hsl(var(--earth-warm) / 0.84), hsl(var(--nature-moss) / 0.62) 55%, hsl(var(--nature-teal) / 0.5));
+    --gradient-canopy: linear-gradient(165deg, hsl(219 45% 22% / 0.86), hsl(192 43% 40% / 0.55) 58%, hsl(123 40% 60% / 0.3));
   }
 }
 

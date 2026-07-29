@@ -19,7 +19,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         community: "bg-gradient-community text-foreground hover:shadow-community hover:scale-105 font-semibold",
-        nature: "bg-gradient-nature text-primary-foreground hover:shadow-warm hover:scale-105 font-semibold",
+        nature: "bg-gradient-nature text-foreground hover:shadow-warm hover:scale-105 font-semibold",
         earth: "bg-earth-warm text-primary-foreground hover:bg-earth-warm/90 shadow-warm hover:shadow-lg hover:scale-105",
       },
       size: {

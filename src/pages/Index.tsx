@@ -178,6 +178,26 @@ const Index = () => {
                 className="rounded-lg shadow-warm w-full object-cover lg:order-last"
               />
             </div>
+
+            {/* Three depths of involvement — pick the one that fits this year */}
+            <div className="grid md:grid-cols-3 gap-6 mt-16">
+              {[
+                { key: "participate", accent: "border-t-nature-teal" },
+                { key: "contribute", accent: "border-t-community-orange" },
+                { key: "lead", accent: "border-t-sunset" },
+              ].map(({ key, accent }) => (
+                <Card key={key} className={`border-t-4 ${accent} shadow-warm bg-card`}>
+                  <CardContent className="pt-6">
+                    <h3 className="text-xl font-semibold mb-3">
+                      {tr(`chooseAdventure.${key}.title`)}
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {tr(`chooseAdventure.${key}.description`)}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
 

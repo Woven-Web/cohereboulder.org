@@ -96,6 +96,27 @@ export const translations = {
       en: "Come to one gathering or a dozen. Host something. Bring a friend. Meet the people already tending what you care about — and find your role in the web.",
       es: "Ven a un encuentro o a doce. Organiza algo. Trae a alguien. Conoce a las personas que ya cuidan lo que te importa y encuentra tu lugar en la red.",
     },
+    participate: {
+      title: { en: "Participate", es: "Participa" },
+      description: {
+        en: "We hope all participants build new relationships, learn meaningful things about Boulder, and find their role in the web.",
+        es: "Esperamos que todas las personas participantes creen nuevas relaciones, aprendan cosas significativas sobre Boulder y encuentren su lugar en la red.",
+      },
+    },
+    contribute: {
+      title: { en: "Contribute", es: "Contribuye" },
+      description: {
+        en: "Share a story, host an event, volunteer, make art.",
+        es: "Comparte una historia, organiza un evento, ofrece tu tiempo, crea arte.",
+      },
+    },
+    lead: {
+      title: { en: "Lead", es: "Lidera" },
+      description: {
+        en: "Get involved in the organizing team, or anchor an element of COhere that brings a dimension of community to life.",
+        es: "Súmate al equipo organizador o ancla un elemento de COhere que dé vida a una dimensión de la comunidad.",
+      },
+    },
   },
 
   // What is COhere Section

@@ -7,6 +7,7 @@
     { "binding": "SIGNUPS", "id": "e7cb04113ed14308bff4b85dbbe35ac7" },
     { "binding": "COHERE_AUTH", "id": "2fbaac0edc1f494ea87a7cb752be7ce1" }
   ],
+  "send_email": [{ "name": "SEND_EMAIL" }],
   "vars": {
     "PUBLIC_BASE_URL": "https://cohere-signup.unforced.workers.dev",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>"
