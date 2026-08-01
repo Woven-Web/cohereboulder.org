@@ -8,14 +8,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { fetchForm, submitForm, type FormField, type FormDefinition } from "@/lib/api";
 
 // The questions live in the database, not in this file. An organizer can
 // reword a label or add a question from the admin portal and it appears here
 // on the next page load — see workers/email-signup/README.md.
-
-const API_BASE = (
-  import.meta.env.VITE_SIGNUP_URL || "https://cohere-signup.unforced.workers.dev/"
-).replace(/\/$/, "");
 
 /** Fields that map onto columns of `people` rather than into the answers blob. */
 const PERSON_FIELDS: Record<string, "name" | "email" | "phone" | "orgs"> = {
@@ -24,27 +21,6 @@ const PERSON_FIELDS: Record<string, "name" | "email" | "phone" | "orgs"> = {
   phone: "phone",
   orgs: "orgs",
 };
-
-export interface FormField {
-  key: string;
-  label: string;
-  label_es?: string;
-  help?: string;
-  help_es?: string;
-  type: "text" | "email" | "tel" | "textarea" | "radio" | "checkbox" | "checkboxes";
-  options?: string[];
-  options_es?: string[];
-  required?: boolean;
-  default?: boolean;
-}
-
-interface FormDefinition {
-  slug: string;
-  title: string;
-  event: string | null;
-  fields: FormField[];
-  active: boolean;
-}
 
 type Value = string | boolean | string[];
 
@@ -69,11 +45,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE}/api/form/${encodeURIComponent(slug)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        return res.json();
-      })
+    fetchForm(slug)
       .then((data: FormDefinition) => {
         if (cancelled) return;
         setDefinition(data);
@@ -140,15 +112,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/submit/${encodeURIComponent(slug)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...person, website, answers, subscribed }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || String(response.status));
-      }
+      await submitForm(slug, { ...person, email: person.email, website, answers, subscribed });
       setStatus("success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {

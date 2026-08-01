@@ -3,9 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-const SIGNUP_ENDPOINT =
-  import.meta.env.VITE_SIGNUP_URL || "https://cohere-signup.unforced.workers.dev/";
+import { subscribeEmail } from "@/lib/api";
 
 interface EmailSignupProps {
   source?: string;
@@ -25,12 +23,7 @@ export const EmailSignup = ({ source = "homepage", className }: EmailSignupProps
     if (status === "submitting") return;
     setStatus("submitting");
     try {
-      const res = await fetch(SIGNUP_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, website, source, language }),
-      });
-      if (!res.ok) throw new Error(`signup failed: ${res.status}`);
+      await subscribeEmail({ email, website, source, language });
       setStatus("success");
     } catch {
       setStatus("error");

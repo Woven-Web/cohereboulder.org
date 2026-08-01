@@ -1,6 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Heart,
@@ -287,7 +288,7 @@ const CoCreate = () => {
                       the 10 days
                     </p>
                     <Button variant="outline" size="sm" asChild>
-                      <a href="/calendar">View Calendar</a>
+                      <Link to="/calendar">View Calendar</Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -300,7 +301,7 @@ const CoCreate = () => {
                       Help with setup, facilitation, or support during events
                     </p>
                     <Button variant="outline" size="sm" asChild>
-                      <a href="/register">Sign Up to Volunteer</a>
+                      <Link to="/register">Sign Up to Volunteer</Link>
                     </Button>
                   </CardContent>
                 </Card>

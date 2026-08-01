@@ -1,183 +1,117 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository.
 
-## Project Overview
+## What this is
 
-COhere Boulder is a community-building web application for Boulder's regenerative ecosystem, migrated from Lovable to local development. It showcases community events, values, and resources through a modern React application.
+The website and member database for **COhere Boulder** — a ten-day community
+container in Boulder, Colorado. **COhere Boulder 2026 runs October 15–25.**
 
-## Development Commands
+The immediate goal is simple: let people **find the site, register their
+interest, and get on the list**, and let the three organizers read and manage
+who has signed up.
+
+## Architecture in one paragraph
+
+A React SPA and a single Cloudflare Worker. The Worker serves the built site as
+static assets, exposes the public form API, renders the unsubscribe page, and
+hosts the admin portal at `/admin`. Member data lives in Cloudflare D1. **There
+is no other backend.** Supabase was the 2025 stack and has been fully removed
+from the frontend — see "History" below.
+
+```
+Browser ─→ Worker (cohere-signup)
+             ├── /                 → static assets (dist/, SPA fallback)
+             ├── /api/form/:slug   → a form's questions (public)
+             ├── /api/submit/:slug → a form submission (public)
+             ├── /  (POST)         → legacy email-only capture
+             ├── /unsubscribe      → opt-out page
+             ├── /api/auth/*       → magic link + one-time code sign-in
+             ├── /api/admin/*      → admin JSON, session cookie or bearer key
+             └── /admin            → the admin portal (self-contained HTML)
+                    ↓
+              D1 `cohere` + KV (COHERE_AUTH sessions, SIGNUPS legacy mirror)
+```
+
+## Commands
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server on port 8080
-npm run dev
-
-# Build for production
-npm run build
-
-# Build for development mode
-npm run build:dev
-
-# Run linting
+npm run dev          # Vite dev server on :8080 (site only)
+npm run worker:dev   # wrangler dev — the Worker plus the built site
+npm run build        # build the SPA into dist/
+npm run deploy       # build, then deploy the Worker AND the site together
 npm run lint
-
-# Preview production build
-npm run preview
+npx tsc --noEmit     # type check
 ```
 
-## Architecture
+`npm run deploy` needs `CLOUDFLARE_ACCOUNT_ID=8f2a7eb9d5e21ffa902a76cf62975c82`
+in the environment and `wrangler login` done once.
 
-### Tech Stack
+## The data model — read this before changing any form
 
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS with custom theme extensions
-- **UI Components**: shadcn/ui (Radix UI primitives)
-- **Routing**: React Router v6
-- **State Management**: React Query (TanStack Query)
-- **Forms**: React Hook Form with Zod validation
+Three tables (`worker/schema.sql`), designed so **the questions are data, not
+code**:
 
-### Project Structure
+| Table | Holds |
+| --- | --- |
+| `people` | Identity that persists across years — email (unique), name, phone, orgs, subscribe state, tags, internal notes |
+| `forms` | Each form's questions, as a JSON array of field definitions |
+| `submissions` | One row per person per form; answers as a JSON object |
+| `admins` | Who may sign in to the portal |
 
-```
-src/
-├── pages/          # Route components (Index, About, CoCreate, Calendar)
-├── components/     # Reusable components
-│   ├── ui/        # shadcn/ui components (auto-generated)
-│   └── [custom]   # App-specific components
-├── assets/        # Images and static files
-├── hooks/         # Custom React hooks
-└── lib/           # Utilities (utils.ts)
-```
+**Changing a question is a database edit, not a deploy.** Use the admin portal's
+Forms tab, or `PUT /api/admin/forms/:slug`. The React form
+(`src/components/DynamicForm.tsx`) renders whatever the API returns, in English
+or Spanish. Do not hard-code form fields in the frontend.
 
-### Key Components
+Current forms: `register-2026` (the main one), `signup-2026` (email-only
+capture), `map-suggestion` (ecosystem map additions), `register-2025`
+(archived, closed).
 
-- **Navigation**: Responsive navigation with mobile menu (src/components/Navigation.tsx:119)
-- **HeroSection**: Landing page hero with gradient animations (src/components/HeroSection.tsx:85)
-- **EcosystemMap**: Community ecosystem visualization (src/components/EcosystemMap.tsx:72)
-- **Footer**: Site footer with newsletter signup (src/components/Footer.tsx:110)
+## Conventions
 
-### Routing Structure
+- **Bilingual.** Every user-facing string goes in `src/lib/translations.ts`
+  with `en` and `es`. Form field definitions carry `label_es`, `help_es`,
+  `options_es`. Answers are stored in English so exports stay consistent.
+- **Design tokens.** Colours come from Eileen's palette, defined once in
+  `src/index.css` as `--brand-deep` (#36558F), `--brand-water` (#489FB5),
+  `--brand-leaf` (#BFEDC1), `--brand-sun` (#EDB458), `--brand-berry`. The older
+  `earth-*` / `nature-*` / `community-*` names are remapped onto these, so both
+  vocabularies work. **Never hard-code a hex in a component.**
+  Watch contrast: water and leaf are too light to carry white text.
+- **Photography.** `src/assets/photos/` holds stills pulled from the two Woven
+  Web films. Eileen explicitly does not want AI-generated or stock imagery.
+- **Internal links use `<Link>`,** never `<a href="/...">` — a raw anchor does a
+  full page reload.
+- No `console.log` in shipped code; TypeScript strict mode is on.
 
-- `/` - Landing page with ecosystem map and event info
-- `/about` - "Tell Me More" - detailed event structure
-- `/co-create` - Co-creation opportunities and participation
-- `/calendar` - Community events calendar
-- `*` - 404 Not Found page
+## Secrets and where they live
 
-### Design System
+| Secret | Where |
+| --- | --- |
+| `ADMIN_KEY` | Worker secret + `.admin-key.local` (gitignored). Fallback sign-in. |
+| `RESEND_API_KEY` | Optional Worker secret. Unset — Cloudflare email is used. |
+| Cloudflare auth | `wrangler login`, per machine. |
 
-#### Custom Tailwind Extensions
+Nothing in `.env` is required for the site to build or run. `exports/` and
+`worker/seed.sql` are gitignored because they contain member contact details.
 
-- **Colors**: earth, sage, sunset, sky themes with light/DEFAULT/dark variants
-- **Animations**: float, glow, sway for interactive elements
-- **Gradients**: gradient-earth, gradient-sky, gradient-sunset, gradient-community
+## Deploying
 
-#### Component Variants
+`npm run deploy` publishes the Worker and the site together to
+`https://cohere-signup.unforced.workers.dev`.
 
-- Button variants: default, nature, community, earth
-- Custom CSS variables for theming in globals.css
+`cohereboulder.org` is **still on GitHub Pages** (`.github/workflows/deploy.yml`,
+triggered by pushes to `main`) while the DNS move is pending. See
+`DEPLOYMENT.md` for the migration runbook. Until that flip, a push to `main`
+updates the public site and `npm run deploy` updates the Worker — do both.
 
-## Important Context
+## History
 
-### Migration from Lovable
-
-This project was initially created on Lovable.dev (Project ID: 0db2af12-4b3b-492c-b29e-c2dbee86d7b6) and has been migrated for local development. The original cohereboulder.org website content has been recreated in this React application.
-
-### Content Focus
-
-The application centers around COhere Boulder 2024, a 10-day immersive community experience focused on regenerative practices and community building in Boulder, Colorado. Key themes include:
-
-- Community web strengthening
-- Regenerative ecosystem mapping
-- Collaborative events and co-creation
-- Values-driven community building
-
-### Assets
-
-Static images are stored in src/assets/ including:
-
-- ecosystem-map.jpg - Main community map visualization
-- hero-community.jpg - Hero section background
-- Various supporting images for content sections
-
-## Development Notes
-
-- The application uses server-side compatible rendering setup with Vite
-- Port 8080 is configured as the default development port
-- Component tagger is enabled in development mode for Lovable compatibility
-- Path aliases configured: `@/` maps to `./src/`
-
-## Environment Variables
-
-Create a `.env` file in the project root with the following variables:
-
-```bash
-# Supabase Configuration
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-Reference `.env.example` for a template. The `.env` file is gitignored to prevent accidental commits of sensitive data.
-
-## Code Standards
-
-### TypeScript Configuration
-
-- **Strict mode enabled**: The project uses TypeScript strict mode for better type safety
-- All components must have proper TypeScript interfaces
-- Avoid using `any` type - use proper type definitions or generics
-- Enable all strict checks in `tsconfig.json`
-
-### Code Quality
-
-- No console.log statements in production code (use proper logging service if needed)
-- Follow existing code patterns and conventions in the codebase
-- Use semantic HTML for better accessibility
-- Implement proper error boundaries for production resilience
-
-### Security Best Practices
-
-- Never commit secrets or API keys to the repository
-- All sensitive configuration must use environment variables
-- Use `.env` files for local development only
-- Validate all user inputs on both client and server
-- Sanitize any user-generated content before rendering
-
-## Error Handling
-
-The application includes:
-
-- **Global Error Boundary**: Catches React component errors and displays user-friendly fallback UI
-- **React.StrictMode**: Enabled in development for detecting potential problems
-- **Environment Variable Validation**: Throws clear errors if required env vars are missing
-
-## Testing Commands
-
-```bash
-# Type checking
-npx tsc --noEmit
-
-# Linting
-npm run lint
-
-# Build validation
-npm run build
-```
-
-## GitHub Pages Deployment
-
-The project is configured for automatic deployment to GitHub Pages:
-
-1. **Automatic Deployment**: Pushes to `main` branch trigger deployment via GitHub Actions
-2. **Required Setup**: Configure GitHub Secrets for `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-3. **Deployment Guide**: See `DEPLOYMENT.md` for detailed setup instructions
-
-The deployment workflow (`.github/workflows/deploy.yml`) handles:
-
-- Building with environment variables from GitHub Secrets
-- Uploading artifacts to GitHub Pages
-- Automatic deployment on main branch updates
+The 2025 stack was Supabase (auth, Postgres, edge functions) with the site on
+GitHub Pages. That project became unreachable; the data was recovered and
+migrated to D1 in July 2026, and the frontend's Supabase dependency was removed
+entirely. `supabase/` is kept as an **archive only** — nothing there is
+deployed or maintained. The project originated on Lovable.dev, which explains
+the `src/components/ui/` shadcn scaffolding and some legacy naming.

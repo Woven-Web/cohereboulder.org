@@ -1,23 +1,13 @@
 import { Button } from "@/components/ui/button";
 import {
   MapPin,
-  User,
-  LogOut,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { EmailSignup } from "@/components/EmailSignup";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export const Footer = () => {
   const { tr, language, setLanguage } = useLanguage();
-  const { user, signOut } = useAuth();
 
   return (
     <footer className="bg-earth-warm text-primary-foreground">
@@ -65,37 +55,6 @@ export const Footer = () => {
               <span>{tr("footer.wovenWeb")}</span>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Auth Section */}
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary-foreground/80 hover:text-primary-foreground"
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      {user.user_metadata?.full_name || user.email}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => signOut()}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary-foreground/80 hover:text-primary-foreground"
-                >
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-              )}
-
               {/* Language Toggle */}
               <div className="flex space-x-2 text-sm">
                 <button

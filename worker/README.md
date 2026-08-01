@@ -108,7 +108,7 @@ npx wrangler secret put ADMIN_KEY
 
 ```bash
 curl -s "https://cohere-signup.unforced.workers.dev/api/admin/export.csv?form=register-2025" \
-  -H "Authorization: Bearer $(cat ../../.admin-key.local)" -o cohere-2025.csv
+  -H "Authorization: Bearer $(cat .admin-key.local)" -o cohere-2025.csv
 ```
 
 ## Seeding from the 2025 Supabase export
@@ -118,13 +118,15 @@ Supabase dump) and writes `seed.sql` — both are gitignored because they contai
 names, emails, and phone numbers.
 
 ```bash
-python3 seed-from-supabase.py
-npx wrangler d1 execute cohere --remote --file=seed.sql
+cd worker && python3 seed-from-supabase.py
+npx wrangler d1 execute cohere --remote --file=worker/seed.sql
 ```
 
 ## Deploying
 
+From the repo root (the wrangler config lives there and builds the site too):
+
 ```bash
 export CLOUDFLARE_ACCOUNT_ID=8f2a7eb9d5e21ffa902a76cf62975c82
-npx wrangler deploy
+npm run deploy
 ```

@@ -1,121 +1,100 @@
-# GitHub Pages Deployment Guide
+# Deployment
 
-## Prerequisites
+Two things ship, and right now they ship to two different places.
 
-Before deploying to GitHub Pages, you need to configure GitHub Secrets for the Supabase environment variables.
+| What | Where it runs today | How to deploy |
+| --- | --- | --- |
+| The Worker: API, admin portal, unsubscribe, **and a full copy of the site** | `cohere-signup.unforced.workers.dev` | `npm run deploy` |
+| The public site | `cohereboulder.org` (GitHub Pages) | push to `main` |
 
-## Setting up GitHub Secrets
+Both are live and both work. The Worker copy is the destination architecture —
+site and API on one origin — waiting only on DNS.
 
-**IMPORTANT**: Use **Repository secrets**, NOT Environment secrets!
-
-1. Navigate to your GitHub repository
-2. Go to **Settings** → **Secrets and variables** → **Actions**
-3. Make sure you're on the **Secrets** tab (NOT Variables or Environments)
-4. Click **"New repository secret"** button
-5. Add each secret one by one:
-
-### Required Secrets
-
-| Secret Name              | Description                        | Example Value                      |
-| ------------------------ | ---------------------------------- | ---------------------------------- |
-| `VITE_SUPABASE_URL`      | Your Supabase project URL          | `https://your-project.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key | `eyJhbGciOiJIUzI1NiIsInR5cCI...`   |
-
-### How to Get Your Supabase Credentials
-
-1. Log in to your [Supabase Dashboard](https://app.supabase.com)
-2. Select your project
-3. Go to **Settings** → **API**
-4. Copy:
-   - **Project URL** → Use as `VITE_SUPABASE_URL`
-   - **Anon/Public Key** → Use as `VITE_SUPABASE_ANON_KEY`
-
-## Deployment Process
-
-The deployment to GitHub Pages is automated via GitHub Actions:
-
-1. **Automatic Deployment**: Every push to the `main` branch triggers deployment
-2. **Manual Deployment**: Go to Actions → Deploy to GitHub Pages → Run workflow
-
-### Deployment Workflow
-
-The `.github/workflows/deploy.yml` workflow:
-
-1. Checks out the code
-2. Sets up Node.js 20
-3. Installs dependencies
-4. Builds the project with environment variables from GitHub Secrets
-5. Deploys to GitHub Pages
-
-## Local Testing
-
-To test the production build locally:
+## Deploying the Worker
 
 ```bash
-# Make sure your .env file exists with the required variables
-npm run build
-npm run preview
+export CLOUDFLARE_ACCOUNT_ID=8f2a7eb9d5e21ffa902a76cf62975c82
+npm run deploy          # builds the SPA into dist/, then deploys everything
 ```
 
-## Important Notes
+One-time per machine: `npx wrangler login`.
 
-- **Security**: The Supabase anon key is a public key designed to be exposed in client-side applications
-- **RLS Policies**: Ensure your Supabase database has proper Row Level Security policies configured
-- **Environment Variables**: The build process injects environment variables at build time, not runtime
-- **GitHub Pages URL**: Your site will be available at `https://[username].github.io/[repository-name]/`
+## Deploying the site (current)
 
-## Troubleshooting
+Push to `main`. `.github/workflows/deploy.yml` builds and publishes to GitHub
+Pages. No secrets are required — the Supabase and Google Maps keys it used to
+need are gone.
 
-### Build Fails with Missing Environment Variables
+---
 
-**Error**: `Missing Supabase environment variables. Please check your .env file.`
+# Migrating cohereboulder.org to Cloudflare
 
-**Common Causes & Solutions**:
+The payoff: one origin for site and API. No CORS, cookies work for `/admin` on
+the real domain, deep links stop returning HTTP 404, and one command deploys
+everything.
 
-1. **Wrong Secret Type**: Make sure you added **Repository secrets**, not Environment secrets
-   - Go to Settings → Secrets and variables → Actions
-   - Click on the **Secrets** tab (not Environments)
-   - You should see your secrets listed under "Repository secrets"
+The cost: **the nameservers move from Bluehost to Cloudflare, which moves all
+DNS including mail.** Do it deliberately.
 
-2. **Secrets Not Set**: Ensure both secrets are added:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+## Current DNS inventory
 
-3. **Typos in Secret Names**: Secret names are case-sensitive
-   - Must match exactly: `VITE_SUPABASE_URL` not `VITE_SUPABASE_url`
+Captured 2026-08-01 by direct lookup. **Re-verify before migrating** — export
+the full zone file from Bluehost rather than trusting this table.
 
-4. **Workflow Not Re-run**: After adding secrets, you need to re-run the deployment
-   - Go to Actions tab → Re-run the failed workflow
-   - Or push a new commit to trigger deployment
+| Record | Value | Purpose |
+| --- | --- | --- |
+| `NS` | `ns1.bluehost.com`, `ns2.bluehost.com` | current authority |
+| `A` (apex) | `185.199.108.153`, `.109.153`, `.110.153`, `.111.153` | GitHub Pages |
+| `www` | same GitHub Pages IPs | GitHub Pages |
+| `MX` | `0 mail.cohereboulder.org` | **email — do not break** |
+| `mail` | `50.6.153.0` | Bluehost mail host |
+| `TXT` | `v=spf1 ip4:50.6.152.221 a mx include:websitewelcome.com ~all` | SPF |
+| `TXT` | `google-site-verification=sitEfb9HOkNdK4OcMo14hbPMI5eP0sXcyFFBIlO5FiY` | Search Console |
 
-### Site Shows 404 After Deployment
+There may be DKIM, `_dmarc`, or other subdomain records not visible from
+outside. The Bluehost zone export is the source of truth.
 
-**Solution**:
+## Runbook
 
-1. Check that GitHub Pages is enabled in Settings → Pages
-2. Ensure the source is set to "GitHub Actions"
-3. Wait a few minutes for deployment to complete
+1. **Export the zone from Bluehost.** Every record, not just the ones above.
+2. **Add `cohereboulder.org` to Cloudflare** (Websites → Add a site). Cloudflare
+   scans and imports what it can find; it will miss anything not publicly
+   resolvable.
+3. **Reconcile.** Compare the imported records against the Bluehost export line
+   by line. Pay closest attention to `MX`, `mail`, SPF, and any DKIM records.
+   Set `mail` to **DNS-only** (grey cloud) — proxying breaks mail delivery.
+4. **Do not change the nameservers yet.** Verify the Cloudflare zone is complete
+   first. This step is reversible; the next one is disruptive.
+5. **Update the nameservers at Bluehost** to the pair Cloudflare provides.
+   Propagation is usually under an hour but allow 24.
+6. **Confirm mail still flows** — send a message to an address at the domain and
+   confirm receipt. Do this before touching the website records.
+7. **Point the site at the Worker.** In Cloudflare: Workers & Pages →
+   `cohere-signup` → Domains & Routes → add `cohereboulder.org` and
+   `www.cohereboulder.org`. This replaces the GitHub Pages `A` records.
+8. **Switch the frontend to same-origin.** In `src/lib/api.ts` the API base
+   defaults to the absolute workers.dev URL. Once the site is served by the
+   Worker, build with `VITE_SIGNUP_URL=""` so requests become relative. Also set
+   `PUBLIC_BASE_URL` in `wrangler.jsonc` to `https://cohereboulder.org` so
+   sign-in links point at the real domain.
+9. **Retire the GitHub Pages workflow** once the Worker is serving the domain —
+   delete `.github/workflows/deploy.yml` and `public/CNAME`, so there is only
+   one way to deploy.
 
-### Local Build Works but GitHub Pages Deployment Fails
+## Rollback
 
-**Solution**:
+Before step 5, nothing has changed for visitors. After step 5, rolling back
+means pointing the nameservers back at Bluehost. After step 7, rolling back
+means removing the Worker route and restoring the GitHub Pages `A` records.
+Keep the Pages deployment working until you are confident.
 
-1. Verify GitHub Secrets are set correctly (no extra spaces or quotes)
-2. Check the Actions tab for detailed error logs
-3. Ensure the secrets match exactly what's in your local `.env` file
+## Email
 
-## Monitoring Deployments
+`cohere@wovenweb.org` sends the admin sign-in mail through Cloudflare Email
+Routing (wovenweb.org is already a Cloudflare zone; its Google Workspace `MX`
+records are untouched and must stay that way).
 
-Track deployment status:
-
-1. Go to the **Actions** tab in your repository
-2. Click on the latest "Deploy to GitHub Pages" workflow
-3. View detailed logs for each step
-
-## Rolling Back
-
-If you need to rollback to a previous version:
-
-1. Go to the **Actions** tab
-2. Find a previous successful deployment
-3. Click "Re-run all jobs" to redeploy that version
+Cloudflare only delivers to addresses verified as Email Routing destinations,
+which is fine for a handful of organizers but **cannot mail the member list**.
+Sending to all 145+ members needs a real provider; `worker/src/auth.ts` already
+has a Resend path behind `RESEND_API_KEY` for that day.

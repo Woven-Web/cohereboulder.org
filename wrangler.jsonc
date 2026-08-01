@@ -1,0 +1,36 @@
+{
+  // One Worker serves the whole site: the built SPA as static assets, the
+  // public form API, the unsubscribe page, and the admin portal at /admin.
+  // Deploy with `npm run deploy` (which builds the site first).
+  "name": "cohere-signup",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-06-09",
+  "observability": { "enabled": true },
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // React Router owns the URL space, so unknown paths get index.html.
+    "not_found_handling": "single-page-application",
+    // The Worker routes first and falls through to assets, so /api/*, /admin
+    // and /unsubscribe are never shadowed by a similarly named file.
+    "run_worker_first": true
+  },
+
+  "kv_namespaces": [
+    { "binding": "SIGNUPS", "id": "e7cb04113ed14308bff4b85dbbe35ac7" },
+    { "binding": "COHERE_AUTH", "id": "2fbaac0edc1f494ea87a7cb752be7ce1" }
+  ],
+  "send_email": [{ "name": "SEND_EMAIL" }],
+  "vars": {
+    "PUBLIC_BASE_URL": "https://cohere-signup.unforced.workers.dev",
+    "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>"
+  },
+  "d1_databases": [
+    {
+      "binding": "cohere",
+      "database_name": "cohere",
+      "database_id": "9eaac080-fe20-4124-8719-452091797866"
+    }
+  ]
+}

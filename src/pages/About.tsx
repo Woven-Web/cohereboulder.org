@@ -328,7 +328,7 @@ const About = () => {
             </div>
 
             <div className="mt-12 text-center">
-              <Link to="/join-2025">
+              <Link to="/register">
                 <Button variant="community" size="lg">
                   {tr("about.joinNextCycle")}
                   <ArrowRight className="ml-2 h-5 w-5" />

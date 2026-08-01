@@ -72,7 +72,12 @@ const Index = () => {
                 <p className="text-muted-foreground mb-6">
                   {tr("hero.openingWeekend")}
                 </p>
-                <p className="font-semibold mb-3">{tr("signup.title")}</p>
+                <Button asChild size="lg" variant="community" className="w-full mb-5">
+                  <Link to="/register">{tr("hero.registerHere")}</Link>
+                </Button>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {tr("signup.orJustEmail")}
+                </p>
                 <EmailSignup source="hero" />
               </CardContent>
             </Card>

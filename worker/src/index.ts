@@ -26,6 +26,8 @@ interface Env extends AuthEnv {
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
   ADMIN_KEY?: string;
+  /** The built SPA. The Worker routes first, then falls through to here. */
+  ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
 const ALLOWED_ORIGINS = new Set([
@@ -129,6 +131,55 @@ async function recordSubmission(
     )
     .bind(crypto.randomUUID(), personId, formSlug, event, JSON.stringify(data), now)
     .run();
+}
+
+/** Plain, self-contained page for the opt-out flow — no site assets involved. */
+function unsubscribePage(state: "confirm" | "done" | "unknown", email: string, token = ""): string {
+  const body =
+    state === "done"
+      ? `<h1>You're unsubscribed</h1>
+         <p>We won't send any more COhere updates to <b>${escapeHtml(email)}</b>.
+         If this was a mistake, just register again and you'll be back on the list.</p>`
+      : state === "confirm"
+        ? `<h1>Unsubscribe from COhere updates?</h1>
+           <p>This stops COhere emails to <b>${escapeHtml(email)}</b>. You can always sign up again later.</p>
+           <form method="POST" action="/unsubscribe?token=${encodeURIComponent(token)}">
+             <button type="submit">Yes, unsubscribe me</button>
+           </form>`
+        : `<h1>That link isn't valid</h1>
+           <p>It may have already been used, or the address may have been removed.
+           Email us and we'll sort it out.</p>`;
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,"><title>COhere Boulder — email preferences</title>
+<style>
+  body { margin:0; background:#f4f7f4; color:#1b2430;
+         font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; line-height:1.6; }
+  main { max-width:32rem; margin:0 auto; padding:4rem 1.5rem; }
+  h1 { font-size:1.5rem; line-height:1.25; margin:0 0 1rem; letter-spacing:-0.02em; }
+  p { color:#4a5560; }
+  button { font:inherit; cursor:pointer; background:#36558F; color:#fff; border:0;
+           border-radius:4px; padding:0.7rem 1.2rem; margin-top:0.5rem; }
+  button:hover { opacity:0.92; }
+  a { color:#36558F; }
+  .brand { font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+           color:#489FB5; margin-bottom:0.5rem; }
+</style></head>
+<body><main>
+  <p class="brand">COhere Boulder</p>
+  ${body}
+  <p style="margin-top:2rem"><a href="https://cohereboulder.org">Back to cohereboulder.org</a></p>
+</main></body></html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function csvCell(value: unknown): string {
@@ -448,6 +499,35 @@ export default {
       return json({ error: "not found" }, 404);
     }
 
+    // ----------------------------------------------------------- unsubscribe
+
+    // Every email we send has to carry a working opt-out. The token is the
+    // one stored on the person's row, so no sign-in is involved.
+    if (path === "/unsubscribe") {
+      const token = url.searchParams.get("token") ?? "";
+      const person = token
+        ? await env.cohere
+            .prepare(`SELECT id, email FROM people WHERE unsubscribe_token = ?1`)
+            .bind(token)
+            .first<{ id: string; email: string }>()
+        : null;
+
+      if (person && request.method === "POST") {
+        await env.cohere
+          .prepare(`UPDATE people SET subscribed = 0, updated_at = ?2 WHERE id = ?1`)
+          .bind(person.id, new Date().toISOString())
+          .run();
+        return new Response(unsubscribePage("done", person.email), {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+
+      return new Response(unsubscribePage(person ? "confirm" : "unknown", person?.email ?? "", token), {
+        status: person ? 200 : 404,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
     // ------------------------------------------------------------ public forms
 
     // The questions for a form, so the site can render whatever the admin defines.
@@ -558,6 +638,10 @@ export default {
       return json({ ok: true }, 200, cors);
     }
 
-    return json({ error: "not found" }, 404, cors);
+    // Anything the Worker doesn't claim is a request for the site itself.
+    if (path.startsWith("/api/") || path === "/list") {
+      return json({ error: "not found" }, 404, cors);
+    }
+    return env.ASSETS.fetch(request);
   },
 };

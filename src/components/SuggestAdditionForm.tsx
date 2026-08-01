@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,14 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { submitForm } from "@/lib/api";
 
 export function SuggestAdditionForm() {
   const { language } = useLanguage();
   const tr = (key: string) => getTranslation(key, language);
   const { toast } = useToast();
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,17 +29,6 @@ export function SuggestAdditionForm() {
     contactName: "",
     contactEmail: "",
   });
-
-  // Auto-fill form when user is logged in
-  useEffect(() => {
-    if (user && open) {
-      setFormData(prev => ({
-        ...prev,
-        contactName: user.user_metadata?.full_name || "",
-        contactEmail: user.email || "",
-      }));
-    }
-  }, [user, open]);
 
   const handleFormOpen = () => {
     setOpen(true);
@@ -57,20 +44,20 @@ export function SuggestAdditionForm() {
         throw new Error("Please fill in all required fields");
       }
 
-      if (!formData.contactEmail && !user?.email) {
+      if (!formData.contactEmail) {
         throw new Error("Please provide a contact email");
       }
 
-      const { error } = await supabase.from("map_suggestions").insert({
-        user_id: user?.id || null,
-        name: formData.organizationName,
-        description: formData.description,
-        category: "community",
-        website: formData.website || null,
-        contact_email: formData.contactEmail || user?.email || "",
-      } as any);
-
-      if (error) throw error;
+      await submitForm("map-suggestion", {
+        email: formData.contactEmail,
+        name: formData.contactName,
+        orgs: formData.organizationName,
+        answers: {
+          organization_name: formData.organizationName,
+          website: formData.website,
+          description: formData.description,
+        },
+      });
 
       toast({
         title: language === "es" ? "¡Gracias!" : "Thank you!",

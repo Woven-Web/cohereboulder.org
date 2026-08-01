@@ -41,7 +41,7 @@ supabase/.temp/
 exports/
 
 # Generated D1 seed — contains member PII
-workers/email-signup/seed.sql
+worker/seed.sql
 
 # Playwright MCP scratch output (page snapshots can contain member data)
 .playwright-mcp/

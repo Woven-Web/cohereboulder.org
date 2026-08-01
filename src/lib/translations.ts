@@ -53,8 +53,8 @@ export const translations = {
       es: "Este año comenzaremos con un encuentro más profundo e inmersivo durante el primer fin de semana.",
     },
     registerHere: {
-      en: "Register Here",
-      es: "Regístrate Aquí",
+      en: "Register for COhere 2026",
+      es: "Regístrate para COhere 2026",
     },
   },
 
@@ -952,6 +952,10 @@ export const translations = {
   // Stay in the Loop signup
   signup: {
     title: { en: "Stay in the Loop", es: "Mantente al Tanto" },
+    orJustEmail: {
+      en: "Not ready to register? Just leave your email.",
+      es: "¿Aún no quieres registrarte? Déjanos tu correo.",
+    },
     description: {
       en: "COhere Boulder returns October 15-25, 2026. Leave your email and we'll keep you posted as plans take shape.",
       es: "COhere Boulder regresa del 15 al 25 de octubre de 2026. Déjanos tu correo y te mantendremos al tanto mientras los planes toman forma.",
