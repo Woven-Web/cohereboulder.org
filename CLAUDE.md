@@ -42,11 +42,18 @@ npm run worker:dev   # wrangler dev — the Worker plus the built site
 npm run build        # build the SPA into dist/
 npm run deploy       # build, then deploy the Worker AND the site together
 npm run lint
-npx tsc --noEmit     # type check
+npm run typecheck    # tsc against tsconfig.app.json — see the warning below
 ```
 
 `npm run deploy` needs `CLOUDFLARE_ACCOUNT_ID=8f2a7eb9d5e21ffa902a76cf62975c82`
 in the environment and `wrangler login` done once.
+
+> **Never verify with bare `npx tsc --noEmit`.** The root `tsconfig.json` is a
+> solution-style config (`"files": []` plus project references), so that command
+> reads no source files and exits 0 on broken code. Vite only transpiles, so it
+> won't catch type errors either. On 2026-08-01 that combination shipped a
+> `ReferenceError` that replaced the whole site with the error boundary for two
+> days. Use `npm run typecheck`, which CI also runs.
 
 ## The data model — read this before changing any form
 

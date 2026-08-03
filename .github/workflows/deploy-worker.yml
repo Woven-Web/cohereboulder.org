@@ -1,0 +1,78 @@
+name: Deploy Cloudflare Worker
+
+# The Worker is the API, the admin portal, the unsubscribe page, and a full
+# copy of the site. Without this workflow it can only be deployed by someone
+# with `wrangler login` on their own machine — meaning a collaborator could
+# push a Worker change, watch CI go green, and never have it reach production.
+#
+# Requires two repository secrets:
+#   CLOUDFLARE_API_TOKEN   — Cloudflare dashboard → My Profile → API Tokens →
+#                            "Edit Cloudflare Workers" template, scoped to the
+#                            Unforced Development account. Needs Workers
+#                            Scripts: Edit, Workers KV: Edit, D1: Edit.
+#   CLOUDFLARE_ACCOUNT_ID  — 8f2a7eb9d5e21ffa902a76cf62975c82
+#
+# Until those exist the job is skipped rather than failing every push.
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: "worker"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for Cloudflare credentials
+        id: creds
+        run: |
+          if [ -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN is not set — skipping the Worker deploy. Add it in Settings → Secrets to enable automatic deploys."
+          fi
+
+      - name: Setup Node.js
+        if: steps.creds.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        if: steps.creds.outputs.present == 'true'
+        run: npm ci
+
+      - name: Type check
+        if: steps.creds.outputs.present == 'true'
+        run: npm run typecheck
+
+      - name: Build the site
+        if: steps.creds.outputs.present == 'true'
+        run: npm run build
+
+      - name: Deploy
+        if: steps.creds.outputs.present == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Smoke test the Worker
+        if: steps.creds.outputs.present == 'true'
+        run: |
+          sleep 15
+          base="https://cohere-signup.unforced.workers.dev"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$base/api/form/register-2026")
+          [ "$code" = "200" ] || { echo "::error::Form API returned $code"; exit 1; }
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$base/admin")
+          [ "$code" = "200" ] || { echo "::error::Admin portal returned $code"; exit 1; }
+          echo "Worker smoke test passed."

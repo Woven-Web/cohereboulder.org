@@ -56,7 +56,7 @@ supabase/                archive of the retired 2025 stack — not deployed
 | `npm run build` | Build the SPA into `dist/` |
 | `npm run deploy` | Build, then deploy Worker + site to Cloudflare |
 | `npm run lint` | ESLint |
-| `npx tsc --noEmit` | Type check |
+| `npm run typecheck` | Type check (CI runs this too) |
 
 ## The admin portal
 
@@ -75,6 +75,14 @@ notes, export CSV — and **edit the questions on any form without a deploy**.
 The questions live in the database, not in the code. Edit them in the portal's
 Forms tab (or `PUT /api/admin/forms/:slug`) and the site picks them up on the
 next page load. `worker/README.md` documents the field definition format.
+
+## Who can deploy what
+
+| Change | Needs | Ships via |
+| --- | --- | --- |
+| Site copy, design, pages | GitHub push access | push to `main` → Pages |
+| Worker, API, admin portal, auth | GitHub push access **once `CLOUDFLARE_API_TOKEN` is set**; otherwise Cloudflare account access | push to `main` → `deploy-worker.yml`, or `npm run deploy` locally |
+| Form questions, member records | Admin portal sign-in only | the portal — no repo involved |
 
 ## Documentation
 
