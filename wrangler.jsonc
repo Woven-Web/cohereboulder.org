@@ -17,13 +17,26 @@
     "run_worker_first": true
   },
 
+  // Keep the workers.dev URL alive; the site posts to it until the custom
+  // domains are in place.
+  "workers_dev": true,
+
+  // Custom domains make Cloudflare manage the DNS records and the certificate
+  // for both hostnames, which is also what fixes www. Cloudflare refuses to
+  // create them while the old GitHub Pages A records still exist, so this stays
+  // commented out until those are deleted — see DEPLOYMENT.md.
+  // "routes": [
+  //   { "pattern": "cohereboulder.org", "custom_domain": true },
+  //   { "pattern": "www.cohereboulder.org", "custom_domain": true }
+  // ],
+
   "kv_namespaces": [
     { "binding": "SIGNUPS", "id": "e7cb04113ed14308bff4b85dbbe35ac7" },
     { "binding": "COHERE_AUTH", "id": "2fbaac0edc1f494ea87a7cb752be7ce1" }
   ],
   "send_email": [{ "name": "SEND_EMAIL" }],
   "vars": {
-    "PUBLIC_BASE_URL": "https://cohere-signup.unforced.workers.dev",
+    "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>"
   },
   "d1_databases": [

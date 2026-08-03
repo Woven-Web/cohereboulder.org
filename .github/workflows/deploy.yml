@@ -35,7 +35,13 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      # The site defaults to same-origin, which is right once the Worker serves
+      # the domain. While GitHub Pages still serves it, the API lives elsewhere
+      # and has to be addressed absolutely. Delete this env block (and this
+      # whole workflow) after the Cloudflare cutover.
       - name: Build
+        env:
+          VITE_SIGNUP_URL: https://cohere-signup.unforced.workers.dev
         run: npm run build
 
       - name: Setup Pages

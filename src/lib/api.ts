@@ -1,9 +1,8 @@
-// The site's only backend is the COhere Worker (workers/email-signup).
-//
-// Once the site is served by that same Worker, VITE_SIGNUP_URL can be dropped
-// and these become same-origin relative paths.
+// The site's only backend is the COhere Worker (worker/src).
 
-const RAW_BASE = import.meta.env.VITE_SIGNUP_URL || "https://cohere-signup.unforced.workers.dev/";
+// Same origin by default: the Worker serves this site and the API together.
+// Set VITE_SIGNUP_URL to point a locally-served site at a deployed Worker.
+const RAW_BASE = import.meta.env.VITE_SIGNUP_URL ?? "";
 
 /** No trailing slash, so path joining stays predictable. */
 export const API_BASE = RAW_BASE.replace(/\/$/, "");
