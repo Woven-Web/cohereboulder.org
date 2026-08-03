@@ -57,25 +57,25 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # A green build is not proof the site renders. Catch a crashed app
-      # before anyone else does.
+      # A green build is not proof the site renders. The app mounts
+      # client-side, so the served HTML is identical whether it works or
+      # throws — only a real browser can tell the difference.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Smoke test the live site
         run: |
           sleep 20
-          for attempt in 1 2 3; do
-            body=$(curl -sS --max-time 30 "https://cohereboulder.org/?ci=${GITHUB_SHA}" || true)
-            if printf '%s' "$body" | grep -q "<div id=\"root\">"; then
-              echo "Homepage served."
-              break
-            fi
-            echo "Attempt $attempt: homepage not ready, retrying…"
-            sleep 15
-          done
-
-          # The app renders client-side, so assert on what the served HTML must
-          # contain rather than on rendered text.
-          printf '%s' "$body" | grep -q "<div id=\"root\">" \
-            || { echo "::error::Homepage did not serve the app shell"; exit 1; }
-          printf '%s' "$body" | grep -qi "Something went wrong" \
-            && { echo "::error::Error boundary is being served — the app crashed on mount"; exit 1; }
-          echo "Smoke test passed."
+          npm run smoke -- https://cohereboulder.org

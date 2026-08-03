@@ -66,13 +66,18 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Install Chromium
+        if: steps.creds.outputs.present == 'true'
+        run: npx playwright install --with-deps chromium
+
       - name: Smoke test the Worker
         if: steps.creds.outputs.present == 'true'
         run: |
           sleep 15
           base="https://cohere-signup.unforced.workers.dev"
-          code=$(curl -sS -o /dev/null -w "%{http_code}" "$base/api/form/register-2026")
-          [ "$code" = "200" ] || { echo "::error::Form API returned $code"; exit 1; }
-          code=$(curl -sS -o /dev/null -w "%{http_code}" "$base/admin")
-          [ "$code" = "200" ] || { echo "::error::Admin portal returned $code"; exit 1; }
-          echo "Worker smoke test passed."
+          for path in /api/form/register-2026 /admin; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$base$path")
+            [ "$code" = "200" ] || { echo "::error::$path returned $code"; exit 1; }
+          done
+          # The Worker serves the site too, so check that it renders.
+          npm run smoke -- "$base"

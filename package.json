@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "worker:dev": "wrangler dev",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "smoke": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -81,6 +82,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "lovable-tagger": "^1.1.9",
+    "playwright": "^1.62.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
