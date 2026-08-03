@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { language, toggleLanguage, t, tr } = useLanguage();
+  const { language, toggleLanguage, tr } = useLanguage();
   const location = useLocation();
 
   const navItems = [

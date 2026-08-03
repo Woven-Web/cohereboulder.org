@@ -1,9 +1,7 @@
-import { Button } from "@/components/ui/button";
 import {
   MapPin,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Link } from "react-router-dom";
 import { EmailSignup } from "@/components/EmailSignup";
 
 export const Footer = () => {

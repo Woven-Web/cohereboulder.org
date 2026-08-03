@@ -199,25 +199,23 @@ export function SuggestAdditionForm() {
               <div>
                 <Label htmlFor="contactEmail">
                   {language === "es" ? "Tu Email" : "Your Email"}
-                  {!user && " *"}
+                  {" *"}
                 </Label>
                 <Input
                   id="contactEmail"
                   type="email"
-                  required={!user}
+                  required
                   value={formData.contactEmail}
                   onChange={(e) =>
                     setFormData({ ...formData, contactEmail: e.target.value })
                   }
                   placeholder="tu@email.com"
                 />
-                {!user && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {language === "es"
-                      ? "Necesitamos tu email para contactarte sobre tu sugerencia"
-                      : "We need your email to contact you about your suggestion"}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === "es"
+                    ? "Necesitamos tu email para contactarte sobre tu sugerencia"
+                    : "We need your email to contact you about your suggestion"}
+                </p>
               </div>
             </div>
 
