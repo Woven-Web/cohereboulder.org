@@ -14,6 +14,30 @@ One-time per machine: `npx wrangler login`.
 `cohere-signup.unforced.workers.dev` (kept so a deploy can be checked before
 looking at the real domain).
 
+## What the CI token can reach — accepted risk
+
+`CLOUDFLARE_API_TOKEN` is stored in this repository's secrets. Cloudflare
+splits token permissions in two, and only one half can be narrowed:
+
+- **Zone-level** (DNS, Workers Routes, Email Routing) — pinned to
+  `cohereboulder.org`.
+- **Account-level** (Workers Scripts, Workers KV, D1) — can be limited to the
+  Unforced Development account, but **not to a single Worker or database**.
+  There is no per-script scoping in Cloudflare's token model.
+
+So this token can modify every Worker, D1 database, and KV namespace in that
+account — including `parachute-identity`, `parachute-cloud-identity`,
+`atlasinstitute-db`, `OAUTH_KV`, and `AUTH_KV`, which belong to unrelated
+projects. Anyone who can trigger a workflow here, or read the secret, reaches
+all of it.
+
+This was accepted deliberately on 2026-08-04 in exchange for push-to-deploy.
+If the project ever needs to be handed off more widely, the containing fix is
+to move this Worker, its D1 database, and its KV namespaces into their own
+Cloudflare account — cheap here, since the only durable state is the `cohere`
+database (`wrangler d1 export`); the KV namespaces hold disposable sessions and
+a legacy mirror.
+
 ## Automatic deploys
 
 `.github/workflows/deploy-worker.yml` deploys on every push to `main`, but only

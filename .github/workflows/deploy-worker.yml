@@ -65,6 +65,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # The action bundles wrangler 3.x, which cannot read wrangler.jsonc
+          # and fails with "Missing entry-point". Keep this matching the
+          # devDependency in package.json.
+          wranglerVersion: "4.118.0"
 
       - name: Install Chromium
         if: steps.creds.outputs.present == 'true'
