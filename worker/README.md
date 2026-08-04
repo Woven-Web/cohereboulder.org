@@ -50,12 +50,15 @@ POST /api/submit/:formSlug   {"email": "...", "name?", "phone?", "orgs?",
   and accept a hidden "website" honeypot field.
 
 GET  /admin                                     Portal UI
-GET  /api/admin/people        Bearer <ADMIN_KEY> → everyone, with submissions attached
-GET  /api/admin/forms         Bearer <ADMIN_KEY> → form definitions + response counts
-PUT  /api/admin/forms/:slug   Bearer <ADMIN_KEY>   replace a form's questions
-PUT  /api/admin/people/:id    Bearer <ADMIN_KEY>   set tags, internal notes, subscribe state
+GET  /api/admin/people        session cookie → everyone, with submissions attached
+GET  /api/admin/forms         session cookie → form definitions + response counts
+GET  /api/admin/admins        session cookie → who can sign in
+POST /api/admin/admins        session cookie   add an admin
+PUT  /api/admin/forms/:slug   session cookie   replace a form's questions, and its
+                                               confirmation email copy
+PUT  /api/admin/people/:id    session cookie   set tags, internal notes, subscribe state
 GET  /api/admin/export.csv?form=<slug>            flat CSV, one column per question
-GET  /list                    Bearer <ADMIN_KEY> → raw KV signups (legacy)
+GET  /list                    session cookie → raw KV signups (legacy)
 ```
 
 ## Admin access
@@ -91,25 +94,23 @@ POST /api/auth/logout                              → ends the session
 npx wrangler secret put RESEND_API_KEY
 ```
 
-Until one is configured, sign-in returns a plain "not configured yet" message
-and the admin key still works.
+### If you are ever locked out
 
-### Admin key fallback
-
-The shared key survives for scripts and for when email delivery breaks. It
-lives in `.admin-key.local` (gitignored, repo root) and as the `ADMIN_KEY`
-Worker secret. Rotate with:
+There is no shared password — an emailed session is the only way in. If mail
+delivery breaks, add or confirm an address directly:
 
 ```bash
-npx wrangler secret put ADMIN_KEY
+npx wrangler d1 execute cohere --remote \
+  --command "INSERT OR IGNORE INTO admins (email,name,added_by,created_at) \
+             VALUES ('you@example.com','You','manual','2026-01-01T00:00:00Z')"
 ```
+
+That still needs Cloudflare account access, which is the intended backstop.
 
 ## Exporting
 
-```bash
-curl -s "https://cohereboulder.org/api/admin/export.csv?form=register-2025" \
-  -H "Authorization: Bearer $(cat .admin-key.local)" -o cohere-2025.csv
-```
+Use the **Export CSV** buttons in the portal — the session cookie authenticates
+them, so no token juggling is required.
 
 ## Seeding from the 2025 Supabase export
 

@@ -138,11 +138,6 @@ export const ADMIN_PAGE = `<!doctype html>
 
   <p id="loginerr" class="err"></p>
 
-  <details style="margin-top:0.5rem">
-    <summary class="muted" style="cursor:pointer;font-size:0.82rem">Trouble with email? Use the admin key</summary>
-    <input id="key" type="password" placeholder="Admin key" autocomplete="current-password" style="margin-top:0.6rem">
-    <button class="btn" id="signinkey" style="margin-top:0.5rem;width:100%">Sign in with key</button>
-  </details>
 </div>
 
 <div id="app" class="hidden">
@@ -224,10 +219,8 @@ export const ADMIN_PAGE = `<!doctype html>
 
 <script>
 (function () {
-  var KEY_STORE = "cohere_admin_key";
   var people = [], forms = [], filter = "all", query = "";
 
-  function key() { return sessionStorage.getItem(KEY_STORE) || ""; }
   function el(id) { return document.getElementById(id); }
   function show(id, visible) { el(id).classList.toggle("hidden", !visible); }
   function esc(s) {
@@ -236,13 +229,11 @@ export const ADMIN_PAGE = `<!doctype html>
       .replace(/"/g, "&quot;");
   }
 
-  // The session lives in an HttpOnly cookie; the bearer key is only used when
-  // someone falls back to it, so it is attached only when present.
+  // Auth is the HttpOnly session cookie set by the emailed link or code.
   function api(path, options) {
     options = options || {};
     options.credentials = "same-origin";
     options.headers = options.headers || {};
-    if (key()) options.headers.Authorization = "Bearer " + key();
     return fetch(path, options).then(function (r) {
       if (r.status === 401) { signOut("Your session has ended. Please sign in again."); throw new Error("unauthorized"); }
       if (!r.ok) throw new Error("request failed: " + r.status);
@@ -251,7 +242,6 @@ export const ADMIN_PAGE = `<!doctype html>
   }
 
   function signOut(message) {
-    sessionStorage.removeItem(KEY_STORE);
     el("app").classList.add("hidden");
     el("login").classList.remove("hidden");
     show("step-email", true);
@@ -303,14 +293,6 @@ export const ADMIN_PAGE = `<!doctype html>
     }).catch(function (e) { el("loginerr").textContent = e.message; });
   }
 
-  function signInWithKey() {
-    var value = el("key").value.trim();
-    if (!value) return;
-    sessionStorage.setItem(KEY_STORE, value);
-    el("loginerr").textContent = "";
-    load();
-  }
-
   function load() {
     return Promise.all([
       api("/api/admin/people").then(function (r) { return r.json(); }),
@@ -320,7 +302,6 @@ export const ADMIN_PAGE = `<!doctype html>
       forms = results[1].forms;
       el("login").classList.add("hidden");
       el("app").classList.remove("hidden");
-      el("key").value = "";
       el("code").value = "";
       renderStats(); renderForms(); render();
       fetch("/api/auth/me", { credentials: "same-origin" })
@@ -566,8 +547,6 @@ export const ADMIN_PAGE = `<!doctype html>
   el("startover").addEventListener("click", function () {
     show("step-code", false); show("step-email", true); el("loginerr").textContent = "";
   });
-  el("signinkey").addEventListener("click", signInWithKey);
-  el("key").addEventListener("keydown", function (e) { if (e.key === "Enter") signInWithKey(); });
   el("signout").addEventListener("click", function () {
     fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
       .catch(function () {})
@@ -624,8 +603,7 @@ export const ADMIN_PAGE = `<!doctype html>
   }
   fetch("/api/auth/me", { credentials: "same-origin" }).then(function (r) {
     if (r.ok) load();
-    else if (key()) load();
-  }).catch(function () { if (key()) load(); });
+  }).catch(function () { /* not signed in; the login form is already showing */ });
 })();
 </script>
 </body>

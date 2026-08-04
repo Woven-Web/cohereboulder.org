@@ -3,7 +3,7 @@
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
 //          POST /api/submit/:formSlug    generic form submission, answers stored as JSON
 // Admin:   GET  /admin                   portal UI (asks for the admin key, keeps it in sessionStorage)
-//          GET  /api/admin/*             JSON behind `Authorization: Bearer <ADMIN_KEY>`
+//          GET  /api/admin/*             JSON behind the admin session cookie
 //
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
@@ -27,7 +27,6 @@ interface Env extends AuthEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
-  ADMIN_KEY?: string;
   /** The built SPA. The Worker routes first, then falls through to here. */
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
@@ -57,22 +56,8 @@ function json(data: unknown, status: number, extra: Record<string, string> = {})
   });
 }
 
-// Constant-time compare so the admin key can't be guessed a byte at a time.
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-/**
- * Two ways in: a signed-in session cookie (people), or the bearer admin key
- * (scripts, and a way back in if email delivery ever breaks).
- */
+/** The only way in is a signed-in session from an emailed link or code. */
 async function isAdmin(request: Request, env: Env): Promise<boolean> {
-  const header = request.headers.get("Authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (env.ADMIN_KEY && token && safeEqual(token, env.ADMIN_KEY)) return true;
   return (await currentSession(env, request)) !== null;
 }
 
@@ -343,7 +328,7 @@ export default {
             `INSERT INTO admins (email, name, added_by, created_at) VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(email) DO UPDATE SET name = COALESCE(excluded.name, admins.name)`,
           )
-          .bind(email, str(body.name, 200), session?.email ?? "admin-key", new Date().toISOString())
+          .bind(email, str(body.name, 200), session?.email ?? "unknown", new Date().toISOString())
           .run();
         return json({ ok: true }, 200);
       }

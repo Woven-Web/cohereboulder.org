@@ -63,8 +63,8 @@ supabase/                archive of the retired 2025 stack — not deployed
 **https://cohereboulder.org/admin**
 
 Organizers sign in with their email — a magic link and a one-time code, no
-password. Aaron, Benya, and Eileen are set up; add others from the portal's
-"Who can sign in" tab.
+password and no shared key. Aaron, Benya, and Eileen are set up; add others
+from the portal's "Who can sign in" tab.
 
 From there you can search everyone who has ever registered, filter by year or
 by who offered to host, read each person's answers, add organizer tags and

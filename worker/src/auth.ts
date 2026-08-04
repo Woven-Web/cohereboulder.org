@@ -12,7 +12,6 @@ export interface AuthEnv {
   cohere: D1Database;
   RESEND_API_KEY?: string;
   SEND_EMAIL?: { send(message: EmailMessage): Promise<void> };
-  ADMIN_KEY?: string;
   MAIL_FROM?: string;
   PUBLIC_BASE_URL?: string;
 }
