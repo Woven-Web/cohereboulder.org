@@ -104,6 +104,20 @@ function loginEmail(code: string, link: string): { subject: string; html: string
   return { subject, html, text };
 }
 
+/** Wraps body copy in the same shell the sign-in mail uses. */
+export function mailShell(heading: string, bodyHtml: string, footerHtml = ""): string {
+  return `<!doctype html>
+<html><body style="margin:0;background:#f4f4f1;font-family:ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;color:#1c2723">
+  <div style="max-width:520px;margin:0 auto;padding:40px 24px">
+    <p style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#36558F;margin:0 0 8px">COhere Boulder</p>
+    <h1 style="font-size:22px;line-height:1.3;margin:0 0 20px">${heading}</h1>
+    ${bodyHtml}
+    ${footerHtml ? `<hr style="border:0;border-top:1px solid #dcdcd4;margin:28px 0 14px">
+    <p style="font-size:12px;color:#78847f;margin:0">${footerHtml}</p>` : ""}
+  </div>
+</body></html>`;
+}
+
 /** Split "Name <addr@host>" into its parts; a bare address works too. */
 function parseFrom(value: string): { name: string; address: string } {
   const match = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
@@ -163,7 +177,7 @@ function buildMime(
  * sign in here, but can never reach the wider member list. Resend stays as a
  * fallback for that day.
  */
-async function sendMail(
+export async function sendMail(
   env: AuthEnv,
   to: string,
   message: { subject: string; html: string; text: string },

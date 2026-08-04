@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS forms (
   event       TEXT,
   fields      TEXT NOT NULL,            -- JSON array of field definitions
   active      INTEGER NOT NULL DEFAULT 1,
+  -- Optional confirmation email sent on submission; copy lives here so it can
+  -- be edited from the admin portal without a deploy.
+  confirm_subject TEXT,
+  confirm_body    TEXT,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
 );

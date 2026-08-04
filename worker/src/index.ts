@@ -14,8 +14,10 @@ import {
   consumeLinkToken,
   currentSession,
   endSession,
+  mailShell,
   normalizeEmail,
   requestLogin,
+  sendMail,
   sessionCookie,
   verifyCode,
   type AuthEnv,
@@ -397,11 +399,12 @@ export default {
         const now = new Date().toISOString();
         await env.cohere
           .prepare(
-            `INSERT INTO forms (slug, title, event, fields, active, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+            `INSERT INTO forms (slug, title, event, fields, active, confirm_subject, confirm_body, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?8, ?6, ?6)
              ON CONFLICT(slug) DO UPDATE SET
                title = excluded.title, event = excluded.event, fields = excluded.fields,
-               active = excluded.active, updated_at = excluded.updated_at`,
+               active = excluded.active, confirm_subject = excluded.confirm_subject,
+               confirm_body = excluded.confirm_body, updated_at = excluded.updated_at`,
           )
           .bind(
             slug,
@@ -410,6 +413,8 @@ export default {
             JSON.stringify(body.fields),
             body.active === false ? 0 : 1,
             now,
+            str(body.confirm_subject, 200),
+            str(body.confirm_body, 4000),
           )
           .run();
         return json({ ok: true }, 200);
@@ -560,9 +565,15 @@ export default {
       }
 
       const form = await env.cohere
-        .prepare(`SELECT slug, event, active FROM forms WHERE slug = ?1`)
+        .prepare(`SELECT slug, event, active, confirm_subject, confirm_body FROM forms WHERE slug = ?1`)
         .bind(formSlug)
-        .first<{ slug: string; event: string | null; active: number }>();
+        .first<{
+          slug: string;
+          event: string | null;
+          active: number;
+          confirm_subject: string | null;
+          confirm_body: string | null;
+        }>();
       if (!form) return json({ error: "unknown form" }, 404, cors);
       if (!form.active) return json({ error: "this form is closed" }, 410, cors);
 
@@ -580,6 +591,37 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
+
+      // Confirmation mail, if this form defines one. Copy lives in the
+      // database alongside the questions, so it is editable without a deploy.
+      // Failing to send must not fail the registration itself.
+      if (form.confirm_subject) {
+        try {
+          const person = await env.cohere
+            .prepare(`SELECT name, unsubscribe_token FROM people WHERE id = ?1`)
+            .bind(personId)
+            .first<{ name: string | null; unsubscribe_token: string }>();
+          const firstName = (person?.name ?? "").trim().split(/\s+/)[0];
+          const paragraphs = (form.confirm_body ?? "")
+            .split(/\n{2,}/)
+            .map((p) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(p.trim())}</p>`)
+            .join("");
+          const base = env.PUBLIC_BASE_URL || url.origin;
+          const unsubscribe = `${base}/unsubscribe?token=${person?.unsubscribe_token ?? ""}`;
+          await sendMail(env, email, {
+            subject: form.confirm_subject,
+            html: mailShell(
+              firstName ? `Thanks, ${escapeHtml(firstName)}.` : "Thanks for registering.",
+              paragraphs,
+              `You're receiving this because you registered at cohereboulder.org. ` +
+                `<a href="${unsubscribe}" style="color:#36558F">Unsubscribe</a>.`,
+            ),
+            text: `${form.confirm_body ?? ""}\n\nUnsubscribe: ${unsubscribe}`,
+          });
+        } catch (error) {
+          console.error("confirmation email failed:", error instanceof Error ? error.message : error);
+        }
+      }
 
       // A form may carry the email-list opt-in; honour it either way.
       if (typeof body.subscribed === "boolean") {
