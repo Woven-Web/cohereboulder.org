@@ -10,7 +10,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run typecheck && npm run build && wrangler deploy",
     "worker:dev": "wrangler dev",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "smoke": "node scripts/smoke-test.mjs"

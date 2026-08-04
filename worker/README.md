@@ -4,8 +4,8 @@ The member database and admin portal for cohereboulder.org. No Supabase involved
 people and their form answers live in Cloudflare D1, and the "stay in the loop"
 signups are also mirrored into KV.
 
-- **Live endpoint:** `https://cohere-signup.unforced.workers.dev/`
-- **Admin portal:** `https://cohere-signup.unforced.workers.dev/admin`
+- **Live:** `https://cohereboulder.org` — the Worker serves the site too
+- **Admin portal:** `https://cohereboulder.org/admin`
 - **D1 database:** `cohere` (`9eaac080-fe20-4124-8719-452091797866`)
 - **KV namespace:** `SIGNUPS` (`e7cb04113ed14308bff4b85dbbe35ac7`) — legacy signup mirror
 - The frontend (`src/components/EmailSignup.tsx`) posts here; override with
@@ -107,7 +107,7 @@ npx wrangler secret put ADMIN_KEY
 ## Exporting
 
 ```bash
-curl -s "https://cohere-signup.unforced.workers.dev/api/admin/export.csv?form=register-2025" \
+curl -s "https://cohereboulder.org/api/admin/export.csv?form=register-2025" \
   -H "Authorization: Bearer $(cat .admin-key.local)" -o cohere-2025.csv
 ```
 

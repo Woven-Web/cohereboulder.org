@@ -60,7 +60,7 @@ supabase/                archive of the retired 2025 stack — not deployed
 
 ## The admin portal
 
-**https://cohere-signup.unforced.workers.dev/admin**
+**https://cohereboulder.org/admin**
 
 Organizers sign in with their email — a magic link and a one-time code, no
 password. Aaron, Benya, and Eileen are set up; add others from the portal's
@@ -80,8 +80,7 @@ next page load. `worker/README.md` documents the field definition format.
 
 | Change | Needs | Ships via |
 | --- | --- | --- |
-| Site copy, design, pages | GitHub push access | push to `main` → Pages |
-| Worker, API, admin portal, auth | GitHub push access **once `CLOUDFLARE_API_TOKEN` is set**; otherwise Cloudflare account access | push to `main` → `deploy-worker.yml`, or `npm run deploy` locally |
+| Anything in the site or the Worker | GitHub push access **once `CLOUDFLARE_API_TOKEN` is set**; otherwise Cloudflare account access | push to `main` → `deploy-worker.yml`, or `npm run deploy` locally |
 | Form questions, member records | Admin portal sign-in only | the portal — no repo involved |
 
 ## Documentation

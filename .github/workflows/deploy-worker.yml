@@ -1,9 +1,9 @@
 name: Deploy Cloudflare Worker
 
-# The Worker is the API, the admin portal, the unsubscribe page, and a full
-# copy of the site. Without this workflow it can only be deployed by someone
-# with `wrangler login` on their own machine — meaning a collaborator could
-# push a Worker change, watch CI go green, and never have it reach production.
+# This is the only deploy path. The Worker serves cohereboulder.org itself —
+# the site, the API, the admin portal, and unsubscribe — so without this
+# workflow nothing reaches production except from a machine with
+# `wrangler login`.
 #
 # Requires two repository secrets:
 #   CLOUDFLARE_API_TOKEN   — Cloudflare dashboard → My Profile → API Tokens →
@@ -74,10 +74,11 @@ jobs:
         if: steps.creds.outputs.present == 'true'
         run: |
           sleep 15
-          base="https://cohere-signup.unforced.workers.dev"
+          base="https://cohereboulder.org"
           for path in /api/form/register-2026 /admin; do
             code=$(curl -sS -o /dev/null -w "%{http_code}" "$base$path")
             [ "$code" = "200" ] || { echo "::error::$path returned $code"; exit 1; }
           done
           # The Worker serves the site too, so check that it renders.
           npm run smoke -- "$base"
+          npm run smoke -- https://www.cohereboulder.org

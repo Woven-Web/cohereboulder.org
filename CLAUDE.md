@@ -22,6 +22,7 @@ from the frontend — see "History" below.
 ```
 Browser ─→ Worker (cohere-signup)
              ├── /                 → static assets (dist/, SPA fallback)
+             │                       serving cohereboulder.org directly
              ├── /api/form/:slug   → a form's questions (public)
              ├── /api/submit/:slug → a form submission (public)
              ├── /  (POST)         → legacy email-only capture
@@ -109,10 +110,13 @@ Nothing in `.env` is required for the site to build or run. `exports/` and
 `npm run deploy` publishes the Worker and the site together to
 `https://cohere-signup.unforced.workers.dev`.
 
-`cohereboulder.org` is **still on GitHub Pages** (`.github/workflows/deploy.yml`,
-triggered by pushes to `main`) while the DNS move is pending. See
-`DEPLOYMENT.md` for the migration runbook. Until that flip, a push to `main`
-updates the public site and `npm run deploy` updates the Worker — do both.
+`npm run deploy` publishes the Worker and the site together to
+`cohereboulder.org`, `www.cohereboulder.org`, and the workers.dev URL.
+
+GitHub Pages is retired — the Worker serves the domain directly, so deep links
+return 200 and the API is same-origin (`src/lib/api.ts` uses relative paths).
+Pushing to `main` only deploys once `CLOUDFLARE_API_TOKEN` is set as a repo
+secret; see `DEPLOYMENT.md`.
 
 ## History
 
