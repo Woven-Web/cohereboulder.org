@@ -37,10 +37,10 @@
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",
     // The community calendar reads from regenOS (worker/src/events.ts).
-    // REGENOS_COLLECTIVE_DID stays UNSET until the COhere scene exists on
-    // scenius.social — until then /api/events answers `unconfigured` and the
-    // site keeps the Luma embed. To smoke-test locally against a real scene:
-    //   npx wrangler dev --var REGENOS_COLLECTIVE_DID:did:plc:…
+    // The COhere Boulder scene, minted 2026-08-30:
+    //   https://scenius.social/scenes/did:plc:w54s52ycbw5lreyhlzexredb
+    // If it is ever unreachable or empty the site falls back to the Luma embed.
+    "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",
     "REGENOS_WEB_URL": "https://scenius.social"
   },

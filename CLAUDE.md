@@ -204,10 +204,9 @@ return 200 and the API is same-origin.
   no CORS upstream so the browser can't go direct). The Luma embed is kept as
   the automatic fallback whenever regenOS is unconfigured, unreachable, or
   simply empty (`src/lib/events.ts` decides), so the page can only get better.
-  **`REGENOS_COLLECTIVE_DID` is deliberately unset** until the COhere scene
-  exists on scenius.social — creating it and setting that var is what turns the
-  real calendar on. Smoke-test locally with
-  `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<some live scene did>`.
+  `REGENOS_COLLECTIVE_DID` points at the COhere Boulder scene
+  (`did:plc:w54s52ycbw5lreyhlzexredb`, minted 2026-08-30). Smoke-test locally
+  with `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<scene did>`.
 - `mail.cohereboulder.org` is proxied in Cloudflare DNS, with a `_dc-mx`
   placeholder preserving delivery. Harmless today because that domain has no
   mail, but mail records should be DNS-only if it ever does.
