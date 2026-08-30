@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS forms (
   -- be edited from the admin portal without a deploy.
   confirm_subject TEXT,
   confirm_body    TEXT,
+  -- Optional post-submit "thank you" screen as JSON: { title, title_es, body,
+  -- body_es, link, link_label, link_label_es }. Same idea as the confirmation
+  -- email — copy lives with the questions, editable without a deploy.
+  -- (Added 2026-08-30; on an existing database run:
+  --   ALTER TABLE forms ADD COLUMN completion TEXT;)
+  completion      TEXT,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
 );

@@ -24,6 +24,52 @@ const PERSON_FIELDS: Record<string, "name" | "email" | "phone" | "orgs"> = {
 
 type Value = string | boolean | string[];
 
+/** Sentinel for a radio's appended "Other" choice, so localisation stays trivial. */
+const OTHER = "__other__";
+
+// The completion link comes from the database, and React will happily render a
+// javascript: href. The Worker rejects bad schemes on write; this is the same
+// allowlist again (matching worker/src/events.ts) so a row written before that
+// check still can't put a script-running href on the page.
+const SAFE_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+const isSafeLink = (link: string): boolean => {
+  try {
+    return SAFE_LINK_SCHEMES.has(new URL(link).protocol);
+  } catch {
+    return false;
+  }
+};
+
+/** Turn bare URLs in database copy into real links. */
+const linkify = (text: string): React.ReactNode[] =>
+  text.split(/(https?:\/\/[^\s)]+)/g).map((part, index) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={index}
+        href={part}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline underline-offset-2 break-all"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+
+/** Blank lines in database copy separate paragraphs. */
+const paragraphs = (text: string, className: string) =>
+  text
+    .split(/\n{2,}/)
+    .filter((paragraph) => paragraph.trim())
+    .map((paragraph, index) => (
+      <p key={index} className={className}>
+        {linkify(paragraph.trim())}
+      </p>
+    ));
+
 interface DynamicFormProps {
   slug: string;
   /** Shown above the questions once the definition loads. */
@@ -39,6 +85,8 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   const [definition, setDefinition] = useState<FormDefinition | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, Value>>({});
+  /** Free-text companions to radios with `allow_other`. */
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
   const [website, setWebsite] = useState(""); // honeypot
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -72,6 +120,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   }, [slug, spanish]);
 
   const labelFor = (field: FormField) => (spanish && field.label_es ? field.label_es : field.label);
+  const introFor = (field: FormField) => (spanish && field.intro_es ? field.intro_es : field.intro);
   const helpFor = (field: FormField) => (spanish && field.help_es ? field.help_es : field.help);
   const optionsFor = (field: FormField) =>
     (spanish && field.options_es ? field.options_es : field.options) ?? [];
@@ -106,7 +155,10 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
         person[personKey] = String(value ?? "");
         continue;
       }
-      if (Array.isArray(value)) answers[field.key] = value.map((v) => canonicalOption(field, v));
+      if (field.allow_other && value === OTHER) {
+        const text = (otherTexts[field.key] ?? "").trim();
+        answers[field.key] = text ? `Other: ${text}` : "Other";
+      } else if (Array.isArray(value)) answers[field.key] = value.map((v) => canonicalOption(field, v));
       else if (typeof value === "string" && field.options) answers[field.key] = canonicalOption(field, value);
       else answers[field.key] = value;
     }
@@ -138,19 +190,41 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   }
 
   if (status === "success") {
+    // The completion screen lives in the database next to the questions
+    // (`forms.completion`); the props are only the fallback for forms without one.
+    const completion = definition.completion;
+    const completionTitle =
+      completion && (spanish && completion.title_es ? completion.title_es : completion.title);
+    const completionBody =
+      completion && (spanish && completion.body_es ? completion.body_es : completion.body);
+    const completionLinkLabel =
+      completion && (spanish && completion.link_label_es ? completion.link_label_es : completion.link_label);
     return (
       <Card className="max-w-2xl mx-auto shadow-warm">
         <CardContent className="pt-10 pb-10 text-center space-y-4">
           <CheckCircle2 className="h-12 w-12 mx-auto text-nature-green" />
           <h2 className="text-2xl font-bold">
-            {successTitle ?? (spanish ? "¡Estás dentro!" : "You're in!")}
+            {completionTitle ?? successTitle ?? (spanish ? "¡Estás dentro!" : "You're in!")}
           </h2>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            {successMessage ??
-              (spanish
-                ? "Gracias por registrarte. Te escribiremos a medida que COhere tome forma."
-                : "Thanks for registering. We'll be in touch as COhere takes shape.")}
-          </p>
+          {completionBody ? (
+            <div className="text-muted-foreground max-w-md mx-auto space-y-3">
+              {paragraphs(completionBody, "")}
+            </div>
+          ) : (
+            <p className="text-muted-foreground max-w-md mx-auto">
+              {successMessage ??
+                (spanish
+                  ? "Gracias por registrarte. Te escribiremos a medida que COhere tome forma."
+                  : "Thanks for registering. We'll be in touch as COhere takes shape.")}
+            </p>
+          )}
+          {completion?.link && isSafeLink(completion.link) && (
+            <Button asChild size="lg" variant="community" className="mt-2">
+              <a href={completion.link} target="_blank" rel="noreferrer">
+                {completionLinkLabel ?? completion.link}
+              </a>
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -174,6 +248,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
         <form onSubmit={handleSubmit} className="space-y-7">
           {definition.fields.map((field) => {
             const id = `field-${field.key}`;
+            const fieldIntro = introFor(field);
             const help = helpFor(field);
             const value = values[field.key];
 
@@ -197,11 +272,16 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
             return (
               <div key={field.key} className="space-y-2">
+                {fieldIntro && (
+                  <div className="space-y-2 pb-1">
+                    {paragraphs(fieldIntro, "text-sm leading-relaxed text-foreground/90")}
+                  </div>
+                )}
                 <Label htmlFor={id} className="leading-snug">
                   {labelFor(field)}
                   {field.required && <span className="text-destructive"> *</span>}
                 </Label>
-                {help && <p className="text-sm text-muted-foreground">{help}</p>}
+                {help && <div className="space-y-1">{paragraphs(help, "text-sm text-muted-foreground")}</div>}
 
                 {field.type === "textarea" && (
                   <Textarea
@@ -224,20 +304,41 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
                 )}
 
                 {field.type === "radio" && (
-                  <RadioGroup
-                    value={String(value ?? "")}
-                    onValueChange={(next) => setValue(field.key, next)}
-                    className="flex flex-wrap gap-x-6 gap-y-2 pt-1"
-                  >
-                    {optionsFor(field).map((option) => (
-                      <div key={option} className="flex items-center gap-2">
-                        <RadioGroupItem value={option} id={`${id}-${option}`} />
-                        <Label htmlFor={`${id}-${option}`} className="font-normal">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <>
+                    <RadioGroup
+                      value={String(value ?? "")}
+                      onValueChange={(next) => setValue(field.key, next)}
+                      className="flex flex-wrap gap-x-6 gap-y-2 pt-1"
+                    >
+                      {optionsFor(field).map((option) => (
+                        <div key={option} className="flex items-center gap-2">
+                          <RadioGroupItem value={option} id={`${id}-${option}`} />
+                          <Label htmlFor={`${id}-${option}`} className="font-normal">
+                            {option}
+                          </Label>
+                        </div>
+                      ))}
+                      {field.allow_other && (
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value={OTHER} id={`${id}-other`} />
+                          <Label htmlFor={`${id}-other`} className="font-normal">
+                            {spanish ? "Otro" : "Other"}
+                          </Label>
+                        </div>
+                      )}
+                    </RadioGroup>
+                    {field.allow_other && value === OTHER && (
+                      <Input
+                        aria-label={spanish ? "Otro — especifica" : "Other — please specify"}
+                        placeholder={spanish ? "Especifica…" : "Please specify…"}
+                        className="max-w-xs"
+                        value={otherTexts[field.key] ?? ""}
+                        onChange={(e) =>
+                          setOtherTexts((previous) => ({ ...previous, [field.key]: e.target.value }))
+                        }
+                      />
+                    )}
+                  </>
                 )}
 
                 {field.type === "checkboxes" && (

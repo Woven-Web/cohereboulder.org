@@ -66,6 +66,56 @@ function str(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
 }
 
+// A form's completion screen is admin-authored JSON rendered on the public
+// site, so it is validated on the way in: known string keys only, and the
+// link on the same scheme allowlist as the calendar (see events.ts) — a
+// javascript: href on the success screen would run script on our origin.
+const COMPLETION_KEYS = new Set([
+  "title",
+  "title_es",
+  "body",
+  "body_es",
+  "link",
+  "link_label",
+  "link_label_es",
+]);
+
+const SAFE_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+/** Why a completion object can't be stored, or null if it can. */
+function completionProblem(completion: Record<string, unknown>): string | null {
+  for (const [key, value] of Object.entries(completion)) {
+    if (!COMPLETION_KEYS.has(key)) return `completion has an unknown key: ${key}`;
+    if (typeof value !== "string") return `completion.${key} must be a string`;
+  }
+  if (typeof completion.link === "string") {
+    let scheme: string | null = null;
+    try {
+      scheme = new URL(completion.link).protocol;
+    } catch {
+      // unparseable — falls through to the rejection below
+    }
+    if (!scheme || !SAFE_LINK_SCHEMES.has(scheme)) {
+      return "completion.link must be an http, https, or mailto URL";
+    }
+  }
+  return null;
+}
+
+/**
+ * A malformed completion row must degrade to "no completion screen", never
+ * throw — an unguarded JSON.parse here would 500 the registration form for
+ * everyone over one bad row.
+ */
+function parseCompletion(raw: unknown): unknown {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 /** Insert the person if they're new, otherwise fill in any blanks we just learned. */
 async function upsertPerson(
   env: Env,
@@ -364,6 +414,7 @@ export default {
           return {
             ...form,
             fields: JSON.parse(form.fields as string),
+            completion: parseCompletion(form.completion),
             submission_count: hit ? hit.n : 0,
           };
         });
@@ -382,15 +433,43 @@ export default {
         if (!Array.isArray(body.fields)) {
           return json({ error: "fields must be an array" }, 400);
         }
+        if (
+          "completion" in body &&
+          body.completion !== null &&
+          (typeof body.completion !== "object" || Array.isArray(body.completion))
+        ) {
+          return json({ error: "completion must be an object or null" }, 400);
+        }
+        let completionJson: string | null = null;
+        if (body.completion) {
+          const problem = completionProblem(body.completion as Record<string, unknown>);
+          if (problem) return json({ error: problem }, 400);
+          // Truncating serialized JSON stores an unparseable blob that would
+          // break every read of the form, so an over-long screen is refused.
+          completionJson = JSON.stringify(body.completion);
+          if (completionJson.length > 4000) {
+            return json({ error: "completion is too large (4000 characters serialized)" }, 400);
+          }
+        }
+        // The admin page's "Save questions" only sends the fields, so copy that
+        // lives on the same row (confirmation email, completion screen) must
+        // survive a PUT that omits it. Absent key = keep; explicit null = clear.
+        const existing = await env.cohere
+          .prepare(`SELECT confirm_subject, confirm_body, completion FROM forms WHERE slug = ?1`)
+          .bind(slug)
+          .first<{ confirm_subject: string | null; confirm_body: string | null; completion: string | null }>();
+        const keep = <T>(key: string, sent: T | null, kept: T | null): T | null =>
+          key in body ? sent : kept;
         const now = new Date().toISOString();
         await env.cohere
           .prepare(
-            `INSERT INTO forms (slug, title, event, fields, active, confirm_subject, confirm_body, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?8, ?6, ?6)
+            `INSERT INTO forms (slug, title, event, fields, active, confirm_subject, confirm_body, completion, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?8, ?9, ?6, ?6)
              ON CONFLICT(slug) DO UPDATE SET
                title = excluded.title, event = excluded.event, fields = excluded.fields,
                active = excluded.active, confirm_subject = excluded.confirm_subject,
-               confirm_body = excluded.confirm_body, updated_at = excluded.updated_at`,
+               confirm_body = excluded.confirm_body, completion = excluded.completion,
+               updated_at = excluded.updated_at`,
           )
           .bind(
             slug,
@@ -399,8 +478,9 @@ export default {
             JSON.stringify(body.fields),
             body.active === false ? 0 : 1,
             now,
-            str(body.confirm_subject, 200),
-            str(body.confirm_body, 4000),
+            keep("confirm_subject", str(body.confirm_subject, 200), existing?.confirm_subject ?? null),
+            keep("confirm_body", str(body.confirm_body, 4000), existing?.confirm_body ?? null),
+            keep("completion", completionJson, existing?.completion ?? null),
           )
           .run();
         return json({ ok: true }, 200);
@@ -550,12 +630,24 @@ export default {
     if (request.method === "GET" && path.startsWith("/api/form/")) {
       const formSlug = decodeURIComponent(path.slice("/api/form/".length));
       const form = await env.cohere
-        .prepare(`SELECT slug, title, event, fields, active FROM forms WHERE slug = ?1`)
+        .prepare(`SELECT slug, title, event, fields, active, completion FROM forms WHERE slug = ?1`)
         .bind(formSlug)
-        .first<{ slug: string; title: string; event: string | null; fields: string; active: number }>();
+        .first<{
+          slug: string;
+          title: string;
+          event: string | null;
+          fields: string;
+          active: number;
+          completion: string | null;
+        }>();
       if (!form) return json({ error: "unknown form" }, 404, cors);
       return json(
-        { ...form, fields: JSON.parse(form.fields), active: Boolean(form.active) },
+        {
+          ...form,
+          fields: JSON.parse(form.fields),
+          active: Boolean(form.active),
+          completion: parseCompletion(form.completion),
+        },
         200,
         { ...cors, "Cache-Control": "public, max-age=60" },
       );

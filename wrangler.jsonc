@@ -48,7 +48,10 @@
     {
       "binding": "cohere",
       "database_name": "cohere",
-      "database_id": "9eaac080-fe20-4124-8719-452091797866"
+      "database_id": "9eaac080-fe20-4124-8719-452091797866",
+      // Schema changes ship as numbered files here; the deploy workflow runs
+      // `wrangler d1 migrations apply cohere --remote` before every deploy.
+      "migrations_dir": "worker/migrations"
     }
   ]
 }

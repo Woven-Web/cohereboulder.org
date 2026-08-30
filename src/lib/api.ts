@@ -11,13 +11,31 @@ export interface FormField {
   key: string;
   label: string;
   label_es?: string;
+  /** Framing copy shown above the label. Blank lines separate paragraphs. */
+  intro?: string;
+  intro_es?: string;
   help?: string;
   help_es?: string;
   type: "text" | "email" | "tel" | "textarea" | "radio" | "checkbox" | "checkboxes";
   options?: string[];
   options_es?: string[];
+  /** Radio only: append an "Other" choice that opens a free-text write-in. */
+  allow_other?: boolean;
   required?: boolean;
   default?: boolean;
+}
+
+/** Post-submit "thank you" screen; like the questions, it lives in the database. */
+export interface FormCompletion {
+  title?: string;
+  title_es?: string;
+  /** Blank lines separate paragraphs; URLs render as links. */
+  body?: string;
+  body_es?: string;
+  /** Rendered as a prominent button under the body. */
+  link?: string;
+  link_label?: string;
+  link_label_es?: string;
 }
 
 export interface FormDefinition {
@@ -26,6 +44,7 @@ export interface FormDefinition {
   event: string | null;
   fields: FormField[];
   active: boolean;
+  completion?: FormCompletion | null;
 }
 
 export interface SubmitPayload {
