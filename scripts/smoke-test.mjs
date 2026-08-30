@@ -19,6 +19,9 @@ if (!target) {
 const PAGES = [
   { path: "/", expect: "Weaving Our Resilience" },
   { path: "/register", expect: "Register" },
+  // Renders whichever calendar source is live (regenOS cards or the Luma
+  // fallback); the header proves the page itself mounted either way.
+  { path: "/calendar", expect: "Community Calendar" },
 ];
 
 const browser = await chromium.launch();

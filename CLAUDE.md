@@ -28,6 +28,7 @@ no other backend.**
 cohereboulder.org ─→ Worker "cohere-signup"
         ├── /                    static assets (dist/, SPA fallback)
         ├── /api/form/:slug      a form's questions            (public)
+        ├── /api/events[/…]      community calendar, proxied from regenOS (public)
         ├── /api/submit/:slug    a submission + confirmation   (public)
         ├── /  (POST)            legacy email-only capture     (public)
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
@@ -198,8 +199,15 @@ return 200 and the API is same-origin.
   the site promises a community-built calendar. In 2025, 48 of 144 registrants
   used that question to offer to host. Restoring it is a Forms-tab edit.
 - The **berry** hex is an estimate (`#A6216E`) pending Eileen's exact value.
-- The community calendar currently embeds Luma, hardcoded in
-  `src/pages/Calendar.tsx`; it may move to another system.
+- The community calendar reads the regenOS commons (scenius.social) through the
+  Worker: `/api/events` + `/api/events/:did/:rkey` (`worker/src/events.ts`,
+  no CORS upstream so the browser can't go direct). The Luma embed is kept as
+  the automatic fallback whenever regenOS is unconfigured, unreachable, or
+  simply empty (`src/lib/events.ts` decides), so the page can only get better.
+  **`REGENOS_COLLECTIVE_DID` is deliberately unset** until the COhere scene
+  exists on scenius.social — creating it and setting that var is what turns the
+  real calendar on. Smoke-test locally with
+  `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<some live scene did>`.
 - `mail.cohereboulder.org` is proxied in Cloudflare DNS, with a `_dc-mx`
   placeholder preserving delivery. Harmless today because that domain has no
   mail, but mail records should be DNS-only if it ever does.
