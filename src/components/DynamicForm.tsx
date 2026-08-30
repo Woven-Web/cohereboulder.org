@@ -27,6 +27,20 @@ type Value = string | boolean | string[];
 /** Sentinel for a radio's appended "Other" choice, so localisation stays trivial. */
 const OTHER = "__other__";
 
+// The completion link comes from the database, and React will happily render a
+// javascript: href. The Worker rejects bad schemes on write; this is the same
+// allowlist again (matching worker/src/events.ts) so a row written before that
+// check still can't put a script-running href on the page.
+const SAFE_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+const isSafeLink = (link: string): boolean => {
+  try {
+    return SAFE_LINK_SCHEMES.has(new URL(link).protocol);
+  } catch {
+    return false;
+  }
+};
+
 /** Turn bare URLs in database copy into real links. */
 const linkify = (text: string): React.ReactNode[] =>
   text.split(/(https?:\/\/[^\s)]+)/g).map((part, index) =>
@@ -204,7 +218,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
                   : "Thanks for registering. We'll be in touch as COhere takes shape.")}
             </p>
           )}
-          {completion?.link && (
+          {completion?.link && isSafeLink(completion.link) && (
             <Button asChild size="lg" variant="community" className="mt-2">
               <a href={completion.link} target="_blank" rel="noreferrer">
                 {completionLinkLabel ?? completion.link}

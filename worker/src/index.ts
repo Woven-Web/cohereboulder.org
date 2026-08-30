@@ -66,6 +66,56 @@ function str(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
 }
 
+// A form's completion screen is admin-authored JSON rendered on the public
+// site, so it is validated on the way in: known string keys only, and the
+// link on the same scheme allowlist as the calendar (see events.ts) — a
+// javascript: href on the success screen would run script on our origin.
+const COMPLETION_KEYS = new Set([
+  "title",
+  "title_es",
+  "body",
+  "body_es",
+  "link",
+  "link_label",
+  "link_label_es",
+]);
+
+const SAFE_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+/** Why a completion object can't be stored, or null if it can. */
+function completionProblem(completion: Record<string, unknown>): string | null {
+  for (const [key, value] of Object.entries(completion)) {
+    if (!COMPLETION_KEYS.has(key)) return `completion has an unknown key: ${key}`;
+    if (typeof value !== "string") return `completion.${key} must be a string`;
+  }
+  if (typeof completion.link === "string") {
+    let scheme: string | null = null;
+    try {
+      scheme = new URL(completion.link).protocol;
+    } catch {
+      // unparseable — falls through to the rejection below
+    }
+    if (!scheme || !SAFE_LINK_SCHEMES.has(scheme)) {
+      return "completion.link must be an http, https, or mailto URL";
+    }
+  }
+  return null;
+}
+
+/**
+ * A malformed completion row must degrade to "no completion screen", never
+ * throw — an unguarded JSON.parse here would 500 the registration form for
+ * everyone over one bad row.
+ */
+function parseCompletion(raw: unknown): unknown {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 /** Insert the person if they're new, otherwise fill in any blanks we just learned. */
 async function upsertPerson(
   env: Env,
@@ -364,7 +414,7 @@ export default {
           return {
             ...form,
             fields: JSON.parse(form.fields as string),
-            completion: form.completion ? JSON.parse(form.completion as string) : null,
+            completion: parseCompletion(form.completion),
             submission_count: hit ? hit.n : 0,
           };
         });
@@ -389,6 +439,17 @@ export default {
           (typeof body.completion !== "object" || Array.isArray(body.completion))
         ) {
           return json({ error: "completion must be an object or null" }, 400);
+        }
+        let completionJson: string | null = null;
+        if (body.completion) {
+          const problem = completionProblem(body.completion as Record<string, unknown>);
+          if (problem) return json({ error: problem }, 400);
+          // Truncating serialized JSON stores an unparseable blob that would
+          // break every read of the form, so an over-long screen is refused.
+          completionJson = JSON.stringify(body.completion);
+          if (completionJson.length > 4000) {
+            return json({ error: "completion is too large (4000 characters serialized)" }, 400);
+          }
         }
         // The admin page's "Save questions" only sends the fields, so copy that
         // lives on the same row (confirmation email, completion screen) must
@@ -419,11 +480,7 @@ export default {
             now,
             keep("confirm_subject", str(body.confirm_subject, 200), existing?.confirm_subject ?? null),
             keep("confirm_body", str(body.confirm_body, 4000), existing?.confirm_body ?? null),
-            keep(
-              "completion",
-              body.completion ? JSON.stringify(body.completion).slice(0, 4000) : null,
-              existing?.completion ?? null,
-            ),
+            keep("completion", completionJson, existing?.completion ?? null),
           )
           .run();
         return json({ ok: true }, 200);
@@ -589,7 +646,7 @@ export default {
           ...form,
           fields: JSON.parse(form.fields),
           active: Boolean(form.active),
-          completion: form.completion ? JSON.parse(form.completion) : null,
+          completion: parseCompletion(form.completion),
         },
         200,
         { ...cors, "Cache-Control": "public, max-age=60" },
