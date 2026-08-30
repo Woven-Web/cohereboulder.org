@@ -364,6 +364,7 @@ export default {
           return {
             ...form,
             fields: JSON.parse(form.fields as string),
+            completion: form.completion ? JSON.parse(form.completion as string) : null,
             submission_count: hit ? hit.n : 0,
           };
         });
@@ -382,15 +383,32 @@ export default {
         if (!Array.isArray(body.fields)) {
           return json({ error: "fields must be an array" }, 400);
         }
+        if (
+          "completion" in body &&
+          body.completion !== null &&
+          (typeof body.completion !== "object" || Array.isArray(body.completion))
+        ) {
+          return json({ error: "completion must be an object or null" }, 400);
+        }
+        // The admin page's "Save questions" only sends the fields, so copy that
+        // lives on the same row (confirmation email, completion screen) must
+        // survive a PUT that omits it. Absent key = keep; explicit null = clear.
+        const existing = await env.cohere
+          .prepare(`SELECT confirm_subject, confirm_body, completion FROM forms WHERE slug = ?1`)
+          .bind(slug)
+          .first<{ confirm_subject: string | null; confirm_body: string | null; completion: string | null }>();
+        const keep = <T>(key: string, sent: T | null, kept: T | null): T | null =>
+          key in body ? sent : kept;
         const now = new Date().toISOString();
         await env.cohere
           .prepare(
-            `INSERT INTO forms (slug, title, event, fields, active, confirm_subject, confirm_body, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?8, ?6, ?6)
+            `INSERT INTO forms (slug, title, event, fields, active, confirm_subject, confirm_body, completion, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?8, ?9, ?6, ?6)
              ON CONFLICT(slug) DO UPDATE SET
                title = excluded.title, event = excluded.event, fields = excluded.fields,
                active = excluded.active, confirm_subject = excluded.confirm_subject,
-               confirm_body = excluded.confirm_body, updated_at = excluded.updated_at`,
+               confirm_body = excluded.confirm_body, completion = excluded.completion,
+               updated_at = excluded.updated_at`,
           )
           .bind(
             slug,
@@ -399,8 +417,13 @@ export default {
             JSON.stringify(body.fields),
             body.active === false ? 0 : 1,
             now,
-            str(body.confirm_subject, 200),
-            str(body.confirm_body, 4000),
+            keep("confirm_subject", str(body.confirm_subject, 200), existing?.confirm_subject ?? null),
+            keep("confirm_body", str(body.confirm_body, 4000), existing?.confirm_body ?? null),
+            keep(
+              "completion",
+              body.completion ? JSON.stringify(body.completion).slice(0, 4000) : null,
+              existing?.completion ?? null,
+            ),
           )
           .run();
         return json({ ok: true }, 200);
@@ -550,12 +573,24 @@ export default {
     if (request.method === "GET" && path.startsWith("/api/form/")) {
       const formSlug = decodeURIComponent(path.slice("/api/form/".length));
       const form = await env.cohere
-        .prepare(`SELECT slug, title, event, fields, active FROM forms WHERE slug = ?1`)
+        .prepare(`SELECT slug, title, event, fields, active, completion FROM forms WHERE slug = ?1`)
         .bind(formSlug)
-        .first<{ slug: string; title: string; event: string | null; fields: string; active: number }>();
+        .first<{
+          slug: string;
+          title: string;
+          event: string | null;
+          fields: string;
+          active: number;
+          completion: string | null;
+        }>();
       if (!form) return json({ error: "unknown form" }, 404, cors);
       return json(
-        { ...form, fields: JSON.parse(form.fields), active: Boolean(form.active) },
+        {
+          ...form,
+          fields: JSON.parse(form.fields),
+          active: Boolean(form.active),
+          completion: form.completion ? JSON.parse(form.completion) : null,
+        },
         200,
         { ...cors, "Cache-Control": "public, max-age=60" },
       );
