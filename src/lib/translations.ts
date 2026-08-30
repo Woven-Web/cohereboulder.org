@@ -629,6 +629,18 @@ export const translations = {
         en: "This event may have been removed or made private, or the link may be incorrect.",
         es: "Es posible que este evento haya sido eliminado o hecho privado, o que el enlace sea incorrecto.",
       },
+      unavailableTitle: {
+        en: "We couldn't load this event right now",
+        es: "No pudimos cargar este evento en este momento",
+      },
+      unavailableBody: {
+        en: "The community calendar isn't responding at the moment. Please try again in a little while.",
+        es: "El calendario comunitario no responde en este momento. Por favor, inténtalo de nuevo en un rato.",
+      },
+      lumaTitle: {
+        en: "COhere Boulder community calendar",
+        es: "Calendario comunitario de COhere Boulder",
+      },
       status: {
         cancelled: {
           en: "Cancelled",

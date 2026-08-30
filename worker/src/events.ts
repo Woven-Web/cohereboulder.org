@@ -56,7 +56,9 @@ function calendarIcsUrl(env: EventsEnv): string | null {
   const webBase = env.REGENOS_WEB_URL?.trim().replace(/\/+$/, "");
   const scene = collectiveDid(env);
   if (!webBase || !scene) return null;
-  return `${webBase}/scenes/${encodeURIComponent(scene)}/calendar.ics`;
+  // scenius serves /scenes/<did>/calendar.ics with the DID's colons raw,
+  // not percent-encoded — verified against the live app.
+  return `${webBase}/scenes/${scene}/calendar.ics`;
 }
 
 // ---------------------------------------------------------------- wire shapes
@@ -75,6 +77,7 @@ interface LocationValue {
 interface CalendarEventValue {
   name?: string;
   description?: string;
+  createdAt?: string;
   startsAt?: string;
   endsAt?: string;
   /** e.g. "community.lexicon.calendar.event#cancelled" — we keep the fragment. */
@@ -168,6 +171,22 @@ function toCommunityEvent(row: GetEventsRow): CommunityEvent | null {
   };
 }
 
+/**
+ * Event records are community-authored remote content, and the detail page
+ * renders `uris[].uri` as `<a href>` on the same origin as the admin portal —
+ * so only schemes that cannot run script may pass. Anything unparseable or on
+ * another scheme (javascript:, data:, …) is dropped here, server-side.
+ */
+const SAFE_URI_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+function isSafeUri(uri: string): boolean {
+  try {
+    return SAFE_URI_SCHEMES.has(new URL(uri).protocol);
+  } catch {
+    return false;
+  }
+}
+
 function json(data: unknown, status: number, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -177,6 +196,17 @@ function json(data: unknown, status: number, extra: Record<string, string> = {})
 
 /** Failure answers must not be cached anywhere — recovery should be immediate. */
 const NO_STORE = { "Cache-Control": "no-store" };
+
+/**
+ * The edge cache holds ONE copy per URL and ignores `Vary`, so a cached
+ * listing must stay CORS-neutral — the allowed origin is decided per request,
+ * on the way out.
+ */
+function withCors(response: Response, cors: Record<string, string>): Response {
+  const out = new Response(response.body, response);
+  for (const [name, value] of Object.entries(cors)) out.headers.set(name, value);
+  return out;
+}
 
 /** The Cache API's default namespace; workers-types aren't wired in this repo. */
 const edgeCache = (caches as unknown as { default: Cache }).default;
@@ -188,11 +218,15 @@ const edgeCache = (caches as unknown as { default: Cache }).default;
  *   upstream failure of any kind → { events: [], degraded: true }
  *   otherwise                    → { events, icsUrl }
  */
-export async function handleEventsList(request: Request, env: EventsEnv): Promise<Response> {
+export async function handleEventsList(
+  request: Request,
+  env: EventsEnv,
+  cors: Record<string, string>,
+): Promise<Response> {
   const base = baseUrl(env);
   const scene = collectiveDid(env);
   if (!base || !scene) {
-    return json({ events: [], unconfigured: true }, 200, NO_STORE);
+    return json({ events: [], unconfigured: true }, 200, { ...cors, ...NO_STORE });
   }
 
   // The listing is viewer-independent by design, so one edge-cached copy per
@@ -200,7 +234,7 @@ export async function handleEventsList(request: Request, env: EventsEnv): Promis
   // engages on the real domain.)
   const cacheKey = new Request(new URL("/api/events", request.url).toString());
   const cached = await edgeCache.match(cacheKey);
-  if (cached) return cached;
+  if (cached) return withCors(cached, cors);
 
   const upstream = new URL(`${base}/xrpc/social.scenius.getEvents`);
   upstream.searchParams.set("scene", scene);
@@ -213,38 +247,44 @@ export async function handleEventsList(request: Request, env: EventsEnv): Promis
     });
     if (!res.ok) {
       console.warn(`regenOS getEvents returned ${res.status} — degrading`);
-      return json({ events: [], degraded: true }, 200, NO_STORE);
+      return json({ events: [], degraded: true }, 200, { ...cors, ...NO_STORE });
     }
 
     const data = (await res.json()) as { events?: GetEventsRow[] };
     const now = Date.now();
-    const dated: CommunityEvent[] = [];
+    const dated: { event: CommunityEvent; startMs: number }[] = [];
     const undated: CommunityEvent[] = [];
     for (const row of data.events ?? []) {
       const event = toCommunityEvent(row);
       if (!event) continue;
       const startMs = event.startsAt ? Date.parse(event.startsAt) : NaN;
       if (Number.isNaN(startMs)) {
-        // No start time (both are optional in the lexicon) — keep it, last.
-        undated.push(event);
+        // No start time (both are optional in the lexicon) — keep it, last,
+        // but only while its createdAt is under 60 days old, so it can't linger forever.
+        const createdMs = Date.parse(row.value?.createdAt ?? "");
+        if (now - createdMs <= 60 * 24 * 60 * 60 * 1000) undated.push(event);
         continue;
       }
       const endMs = event.endsAt ? Date.parse(event.endsAt) : NaN;
       // "Upcoming" includes in-progress: an event ends when it ends, not when
       // it starts. Rows come back in index order, NOT start order — sort here.
       if ((Number.isNaN(endMs) ? startMs : endMs) < now) continue;
-      dated.push(event);
+      dated.push({ event, startMs });
     }
-    dated.sort((a, b) => (a.startsAt as string).localeCompare(b.startsAt as string));
+    // Sort on the parsed instant, not the string — ISO strings with mixed UTC
+    // offsets don't sort lexicographically.
+    dated.sort((a, b) => a.startMs - b.startMs);
 
-    const response = json({ events: [...dated, ...undated], icsUrl: calendarIcsUrl(env) }, 200, {
-      "Cache-Control": `public, max-age=${CACHE_SECONDS}`,
-    });
+    const response = json(
+      { events: [...dated.map((d) => d.event), ...undated], icsUrl: calendarIcsUrl(env) },
+      200,
+      { "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
+    );
     await edgeCache.put(cacheKey, response.clone());
-    return response;
+    return withCors(response, cors);
   } catch (err) {
     console.warn("regenOS getEvents failed — degrading:", err instanceof Error ? err.message : err);
-    return json({ events: [], degraded: true }, 200, NO_STORE);
+    return json({ events: [], degraded: true }, 200, { ...cors, ...NO_STORE });
   }
 }
 
@@ -255,12 +295,19 @@ export async function handleEventsList(request: Request, env: EventsEnv): Promis
  * PRIVATE one 401s an anonymous caller without leaking that it exists. So an
  * upstream 401 and 404 are the same answer — not a public event — and we say
  * one honest 404 for both (and, defensively, for any non-"public" visibility
- * that does come back). Never throws.
+ * that does come back). An upstream failure is NOT "not found": that answers
+ * 503 `{ degraded: true }` so the page can say "try again" instead of
+ * "removed". Never throws.
  */
-export async function handleEventDetail(env: EventsEnv, did: string, rkey: string): Promise<Response> {
+export async function handleEventDetail(
+  env: EventsEnv,
+  did: string,
+  rkey: string,
+  cors: Record<string, string>,
+): Promise<Response> {
   const base = baseUrl(env);
   if (!base || !did.startsWith("did:") || !rkey) {
-    return json({ error: "not found" }, 404, NO_STORE);
+    return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
   }
 
   const atUri = `at://${did}/${EVENT_COLLECTION}/${rkey}`;
@@ -273,10 +320,11 @@ export async function handleEventDetail(env: EventsEnv, did: string, rkey: strin
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     if (!res.ok) {
-      if (res.status !== 404 && res.status !== 401) {
-        console.warn(`regenOS getEvent returned ${res.status} — treating as not found`);
+      if (res.status === 404 || res.status === 401) {
+        return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
       }
-      return json({ error: "not found" }, 404, NO_STORE);
+      console.warn(`regenOS getEvent returned ${res.status} — degraded`);
+      return json({ degraded: true }, 503, { ...cors, ...NO_STORE });
     }
 
     const data = (await res.json()) as {
@@ -286,21 +334,22 @@ export async function handleEventDetail(env: EventsEnv, did: string, rkey: strin
       hostName?: string;
     };
     const v = data.value;
-    if (!v?.name) return json({ error: "not found" }, 404, NO_STORE);
+    if (!v?.name) return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
     if (data.visibility !== undefined && data.visibility !== "public") {
-      return json({ error: "not found" }, 404, NO_STORE);
+      return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
     }
 
     const core = toCommunityEvent({ uri: data.uri ?? atUri, value: v });
-    if (!core) return json({ error: "not found" }, 404, NO_STORE);
+    if (!core) return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
 
-    // `uris` has carried both bare strings and { uri, name } objects; take either.
+    // `uris` has carried both bare strings and { uri, name } objects; take
+    // either, but only on a safe scheme — see SAFE_URI_SCHEMES.
     const uris: { uri: string; name?: string }[] = [];
     for (const entry of v.uris ?? []) {
-      if (typeof entry === "string" && entry) uris.push({ uri: entry });
-      else if (entry && typeof entry === "object" && typeof entry.uri === "string" && entry.uri) {
-        uris.push({ uri: entry.uri, name: typeof entry.name === "string" ? entry.name : undefined });
-      }
+      const link: { uri?: unknown; name?: unknown } =
+        typeof entry === "string" ? { uri: entry } : (entry ?? {});
+      if (typeof link.uri !== "string" || !isSafeUri(link.uri)) continue;
+      uris.push({ uri: link.uri, name: typeof link.name === "string" ? link.name : undefined });
     }
 
     return json(
@@ -309,10 +358,10 @@ export async function handleEventDetail(env: EventsEnv, did: string, rkey: strin
         icsUrl: calendarIcsUrl(env),
       },
       200,
-      { "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
+      { ...cors, "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
     );
   } catch (err) {
-    console.warn("regenOS getEvent failed — treating as not found:", err instanceof Error ? err.message : err);
-    return json({ error: "not found" }, 404, NO_STORE);
+    console.warn("regenOS getEvent failed — degraded:", err instanceof Error ? err.message : err);
+    return json({ degraded: true }, 503, { ...cors, ...NO_STORE });
   }
 }

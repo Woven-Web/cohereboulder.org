@@ -19,6 +19,9 @@ import {
 /** The statuses worth a badge; anything else renders as a plain event. */
 const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
 
+/** The modes we have words for; an unknown upstream fragment renders no badge. */
+const KNOWN_MODES = new Set(["inperson", "virtual", "hybrid"]);
+
 /**
  * One community event, at /events/:did/:rkey — the same route shape
  * scenius.social uses, so a link works on either origin.
@@ -28,7 +31,7 @@ export default function EventDetail() {
   const { language } = useLanguage();
   const tr = (key: string) => getTranslation(key, language);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["community-event", did, rkey],
     queryFn: () => fetchCommunityEvent(did, rkey),
     enabled: Boolean(did && rkey),
@@ -60,6 +63,19 @@ export default function EventDetail() {
             <p className="text-center text-muted-foreground py-16">
               {tr("calendar.events.loading")}
             </p>
+          ) : isError ? (
+            // Transient failure (the Worker's 503, a network blip) — say "try
+            // again", not "removed"; the event may be perfectly fine.
+            <Card>
+              <CardContent className="p-8 text-center">
+                <h1 className="text-2xl font-bold text-foreground mb-3">
+                  {tr("calendar.events.unavailableTitle")}
+                </h1>
+                <p className="text-muted-foreground">
+                  {tr("calendar.events.unavailableBody")}
+                </p>
+              </CardContent>
+            </Card>
           ) : !event ? (
             <Card>
               <CardContent className="p-8 text-center">
@@ -88,7 +104,7 @@ export default function EventDetail() {
                       {tr(`calendar.events.status.${event.status}`)}
                     </Badge>
                   )}
-                  {event.mode && (
+                  {event.mode && KNOWN_MODES.has(event.mode) && (
                     <Badge variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
                   )}
                 </div>

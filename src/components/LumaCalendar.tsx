@@ -30,7 +30,7 @@ export function LumaCalendar() {
       <div className="w-full flex justify-center">
         <iframe
           src="https://luma.com/embed/calendar/cal-cMHRL58OxzwDCw7/events"
-          title="COhere Boulder community calendar"
+          title={tr("calendar.events.lumaTitle")}
           className="w-full max-w-6xl rounded-lg border border-border"
           style={{
             minHeight: "600px",

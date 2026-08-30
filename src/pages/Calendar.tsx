@@ -21,6 +21,9 @@ import {
 /** The statuses worth a badge; anything else renders as a plain event. */
 const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
 
+/** The modes we have words for; an unknown upstream fragment renders no badge. */
+const KNOWN_MODES = new Set(["inperson", "virtual", "hybrid"]);
+
 function EventCard({ event }: { event: CommunityEvent }) {
   const { language } = useLanguage();
   const tr = (key: string) => getTranslation(key, language);
@@ -49,7 +52,7 @@ function EventCard({ event }: { event: CommunityEvent }) {
                 {tr(`calendar.events.status.${event.status}`)}
               </Badge>
             )}
-            {event.mode && event.mode !== "inperson" && (
+            {event.mode && event.mode !== "inperson" && KNOWN_MODES.has(event.mode) && (
               <Badge variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
             )}
           </div>

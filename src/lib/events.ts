@@ -1,12 +1,17 @@
 // The community-calendar seam: ONE shape the calendar page renders, TWO
 // possible sources, chosen by what the Worker answers.
 //
-//   /api/events healthy with events  → real event cards from regenOS.
-//   unconfigured / degraded / empty  → the Luma embed, exactly as before.
+//   /api/events healthy with events      → real event cards from regenOS.
+//   unconfigured, or healthy but empty   → the Luma embed, exactly as before.
+//   degraded / network failure           → THROW, so react-query retries and
+//                                          keeps previously fetched events.
 //
-// The Worker (worker/src/events.ts) already never throws and never 500s; this
-// module keeps the same contract on the client so the live site can only get
-// better, never worse, from regenOS existing.
+// Throwing on the transient cases matters: with react-query's defaults a
+// window refocus refetches, and a fetcher that "successfully" returned the
+// Luma fallback during a blip would hot-swap real rendered cards for the
+// iframe. An error keeps the last good data; only when there has never been
+// good data does the page fall back to Luma (Calendar.tsx renders Luma
+// whenever it has no regenOS data, so /calendar always shows something).
 
 import { API_BASE } from "./api";
 
@@ -50,29 +55,29 @@ export interface CommunityCalendar {
 const LUMA_FALLBACK: CommunityCalendar = { source: "luma", events: [], icsUrl: null };
 
 /**
- * The upcoming community calendar, soonest first. Never throws: any failure,
- * misconfiguration, or plain quiet calendar means the Luma fallback.
+ * The upcoming community calendar, soonest first. Resolves to the Luma
+ * fallback only on the definite answers — unconfigured (no scene yet) or a
+ * healthy-but-empty calendar. Throws on anything transient (degraded upstream,
+ * bad status, network failure) so react-query retries and keeps prior data.
  */
 export async function fetchCommunityCalendar(): Promise<CommunityCalendar> {
-  try {
-    const res = await fetch(`${API_BASE}/api/events`);
-    if (!res.ok) return LUMA_FALLBACK;
-    const data = (await res.json()) as {
-      events?: CommunityEvent[];
-      icsUrl?: string | null;
-      degraded?: boolean;
-      unconfigured?: boolean;
-    };
-    const events = Array.isArray(data.events) ? data.events.filter((e) => e && e.name) : [];
-    if (data.degraded || data.unconfigured || events.length === 0) return LUMA_FALLBACK;
-    return {
-      source: "regenos",
-      events,
-      icsUrl: typeof data.icsUrl === "string" ? data.icsUrl : null,
-    };
-  } catch {
-    return LUMA_FALLBACK;
-  }
+  const res = await fetch(`${API_BASE}/api/events`);
+  if (!res.ok) throw new Error(`/api/events answered ${res.status}`);
+  const data = (await res.json()) as {
+    events?: CommunityEvent[];
+    icsUrl?: string | null;
+    degraded?: boolean;
+    unconfigured?: boolean;
+  };
+  if (data.unconfigured) return LUMA_FALLBACK;
+  if (data.degraded) throw new Error("/api/events is degraded");
+  const events = Array.isArray(data.events) ? data.events.filter((e) => e && e.name) : [];
+  if (events.length === 0) return LUMA_FALLBACK;
+  return {
+    source: "regenos",
+    events,
+    icsUrl: typeof data.icsUrl === "string" ? data.icsUrl : null,
+  };
 }
 
 export interface CommunityEventPage {
@@ -80,19 +85,21 @@ export interface CommunityEventPage {
   icsUrl: string | null;
 }
 
-/** One public event, or null for anything that isn't one. Never throws. */
+/**
+ * One public event, or null when it definitely isn't one (removed, private,
+ * bad link → the Worker's 404). Throws on anything transient (the Worker's
+ * 503 `degraded`, network failure) so react-query retries and the page can
+ * say "try again" instead of "removed".
+ */
 export async function fetchCommunityEvent(did: string, rkey: string): Promise<CommunityEventPage | null> {
-  try {
-    const res = await fetch(
-      `${API_BASE}/api/events/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { event?: CommunityEventDetail; icsUrl?: string | null };
-    if (!data.event?.name) return null;
-    return { event: data.event, icsUrl: typeof data.icsUrl === "string" ? data.icsUrl : null };
-  } catch {
-    return null;
-  }
+  const res = await fetch(
+    `${API_BASE}/api/events/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`/api/events/:did/:rkey answered ${res.status}`);
+  const data = (await res.json()) as { event?: CommunityEventDetail; icsUrl?: string | null };
+  if (!data.event?.name) return null;
+  return { event: data.event, icsUrl: typeof data.icsUrl === "string" ? data.icsUrl : null };
 }
 
 /** In-site event page, mirroring scenius.social's route shape so links stay portable. */

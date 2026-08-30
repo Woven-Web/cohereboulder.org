@@ -525,12 +525,21 @@ export default {
     // AppView has no CORS, so the browser can't reach it directly. Same-origin
     // GETs only; no credentials are forwarded either way.
     if (request.method === "GET" && path === "/api/events") {
-      return handleEventsList(request, env);
+      return handleEventsList(request, env, cors);
     }
     if (request.method === "GET" && path.startsWith("/api/events/")) {
       const parts = path.slice("/api/events/".length).split("/");
       if (parts.length === 2 && parts[0] && parts[1]) {
-        return handleEventDetail(env, decodeURIComponent(parts[0]), decodeURIComponent(parts[1]));
+        try {
+          return await handleEventDetail(
+            env,
+            decodeURIComponent(parts[0]),
+            decodeURIComponent(parts[1]),
+            cors,
+          );
+        } catch {
+          // Malformed percent-encoding (e.g. /api/events/%ff/x) is just a bad path.
+        }
       }
       return json({ error: "not found" }, 404, cors);
     }
