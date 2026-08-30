@@ -583,6 +583,93 @@ export const translations = {
 
   // Calendar Page
   calendar: {
+    // The live community calendar (regenOS-backed, Luma as fallback)
+    events: {
+      title: {
+        en: "Community Calendar",
+        es: "Calendario Comunitario",
+      },
+      subtitle: {
+        en: "Join us for events and gatherings throughout Boulder's regenerative journey.",
+        es: "Acompáñanos en eventos y encuentros a lo largo del camino regenerativo de Boulder.",
+      },
+      subscribe: {
+        en: "Subscribe to Calendar",
+        es: "Suscríbete al Calendario",
+      },
+      loading: {
+        en: "Loading events…",
+        es: "Cargando eventos…",
+      },
+      undated: {
+        en: "Date to be announced",
+        es: "Fecha por anunciar",
+      },
+      until: {
+        en: "Until",
+        es: "Hasta",
+      },
+      hostedBy: {
+        en: "Hosted by",
+        es: "Organizado por",
+      },
+      links: {
+        en: "Links",
+        es: "Enlaces",
+      },
+      backToCalendar: {
+        en: "Back to the calendar",
+        es: "Volver al calendario",
+      },
+      notFoundTitle: {
+        en: "Event not found",
+        es: "Evento no encontrado",
+      },
+      notFoundBody: {
+        en: "This event may have been removed or made private, or the link may be incorrect.",
+        es: "Es posible que este evento haya sido eliminado o hecho privado, o que el enlace sea incorrecto.",
+      },
+      unavailableTitle: {
+        en: "We couldn't load this event right now",
+        es: "No pudimos cargar este evento en este momento",
+      },
+      unavailableBody: {
+        en: "The community calendar isn't responding at the moment. Please try again in a little while.",
+        es: "El calendario comunitario no responde en este momento. Por favor, inténtalo de nuevo en un rato.",
+      },
+      lumaTitle: {
+        en: "COhere Boulder community calendar",
+        es: "Calendario comunitario de COhere Boulder",
+      },
+      status: {
+        cancelled: {
+          en: "Cancelled",
+          es: "Cancelado",
+        },
+        postponed: {
+          en: "Postponed",
+          es: "Pospuesto",
+        },
+        rescheduled: {
+          en: "Rescheduled",
+          es: "Reprogramado",
+        },
+      },
+      mode: {
+        inperson: {
+          en: "In person",
+          es: "Presencial",
+        },
+        virtual: {
+          en: "Virtual",
+          es: "Virtual",
+        },
+        hybrid: {
+          en: "Hybrid",
+          es: "Híbrido",
+        },
+      },
+    },
     title: {
       en: "[CO]here Calendar of Events",
       es: "Calendario de Eventos [CO]here",

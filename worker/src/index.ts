@@ -9,6 +9,7 @@
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
 import { ADMIN_PAGE } from "./admin-page";
+import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import {
   clearedCookie,
   consumeLinkToken,
@@ -23,7 +24,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv {
+interface Env extends AuthEnv, EventsEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -516,6 +517,31 @@ export default {
         status: person ? 200 : 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
+    }
+
+    // ------------------------------------------------------ community calendar
+
+    // Read-only proxy to the regenOS commons calendar (see events.ts) — the
+    // AppView has no CORS, so the browser can't reach it directly. Same-origin
+    // GETs only; no credentials are forwarded either way.
+    if (request.method === "GET" && path === "/api/events") {
+      return handleEventsList(request, env, cors);
+    }
+    if (request.method === "GET" && path.startsWith("/api/events/")) {
+      const parts = path.slice("/api/events/".length).split("/");
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        try {
+          return await handleEventDetail(
+            env,
+            decodeURIComponent(parts[0]),
+            decodeURIComponent(parts[1]),
+            cors,
+          );
+        } catch {
+          // Malformed percent-encoding (e.g. /api/events/%ff/x) is just a bad path.
+        }
+      }
+      return json({ error: "not found" }, 404, cors);
     }
 
     // ------------------------------------------------------------ public forms

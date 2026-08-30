@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import About from "./pages/About";
 import CoCreate from "./pages/CoCreate";
 import Calendar from "./pages/Calendar";
+import EventDetail from "./pages/EventDetail";
 import Registration from "./pages/Registration";
 import Join2025 from "./pages/Join2025";
 import Invitation2025 from "./pages/Invitation2025";
@@ -37,6 +38,8 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />
             <Route path="/calendar" element={<Calendar />} />
+            {/* Portable link shape — the same path scenius.social uses */}
+            <Route path="/events/:did/:rkey" element={<EventDetail />} />
             <Route path="/register" element={<Registration />} />
             <Route path="/telegram" element={<Telegram />} />
             <Route path="/archive" element={<Archive />} />
