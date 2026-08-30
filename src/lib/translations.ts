@@ -670,6 +670,166 @@ export const translations = {
         },
       },
     },
+    // Hosting events with a COhere (regenOS) account — the whole block only
+    // renders when the Worker's REGENOS_LOGIN_ENABLED flag is on.
+    host: {
+      signInPrompt: {
+        en: "Hosting something during COhere? Sign in to put it on the calendar.",
+        es: "¿Organizas algo durante COhere? Inicia sesión para ponerlo en el calendario.",
+      },
+      signInButton: {
+        en: "Sign in to host events",
+        es: "Inicia sesión para organizar eventos",
+      },
+      panelTitle: {
+        en: "Sign in with your COhere account",
+        es: "Inicia sesión con tu cuenta COhere",
+      },
+      emailLabel: {
+        en: "Email",
+        es: "Correo electrónico",
+      },
+      emailHelp: {
+        en: "We'll email you a sign-in link — no password needed.",
+        es: "Te enviaremos un enlace de acceso por correo — sin contraseña.",
+      },
+      continue: {
+        en: "Continue",
+        es: "Continuar",
+      },
+      checking: {
+        en: "Checking…",
+        es: "Comprobando…",
+      },
+      checkEmailTitle: {
+        en: "Check your email",
+        es: "Revisa tu correo",
+      },
+      checkEmailBodyNew: {
+        en: "We sent a link to finish creating your account. Open it on this device to continue.",
+        es: "Te enviamos un enlace para terminar de crear tu cuenta. Ábrelo en este dispositivo para continuar.",
+      },
+      checkEmailBodyReturning: {
+        en: "Welcome back! We sent you a sign-in link. Open it on this device and you'll be signed in.",
+        es: "¡Bienvenido/a de nuevo! Te enviamos un enlace de acceso. Ábrelo en este dispositivo y quedarás conectado/a.",
+      },
+      checkEmailDone: {
+        en: "I've clicked the link",
+        es: "Ya hice clic en el enlace",
+      },
+      tryAnotherEmail: {
+        en: "Try a different email",
+        es: "Probar otro correo",
+      },
+      signedInAs: {
+        en: "Signed in as",
+        es: "Sesión iniciada como",
+      },
+      signOut: {
+        en: "Sign out",
+        es: "Cerrar sesión",
+      },
+      addEvent: {
+        en: "Add an event",
+        es: "Añadir un evento",
+      },
+      newEventTitle: {
+        en: "New event",
+        es: "Nuevo evento",
+      },
+      editEventTitle: {
+        en: "Edit event",
+        es: "Editar evento",
+      },
+      nameLabel: {
+        en: "Event name",
+        es: "Nombre del evento",
+      },
+      descriptionLabel: {
+        en: "Description",
+        es: "Descripción",
+      },
+      descriptionHelp: {
+        en: "What it is, who it's for, and any link people should have — links go here for now.",
+        es: "Qué es, para quién es y cualquier enlace que la gente deba tener — por ahora los enlaces van aquí.",
+      },
+      startsLabel: {
+        en: "Starts",
+        es: "Comienza",
+      },
+      endsLabel: {
+        en: "Ends",
+        es: "Termina",
+      },
+      modeLabel: {
+        en: "How people attend",
+        es: "Cómo participa la gente",
+      },
+      placeLabel: {
+        en: "Place name",
+        es: "Nombre del lugar",
+      },
+      streetLabel: {
+        en: "Street address",
+        es: "Dirección",
+      },
+      localityLabel: {
+        en: "City",
+        es: "Ciudad",
+      },
+      regionLabel: {
+        en: "State",
+        es: "Estado",
+      },
+      postalLabel: {
+        en: "ZIP code",
+        es: "Código postal",
+      },
+      addressNote: {
+        en: "The address is published with the event — only share one you'd put on a poster.",
+        es: "La dirección se publica con el evento — comparte solo una que pondrías en un cartel.",
+      },
+      createButton: {
+        en: "Create event",
+        es: "Crear evento",
+      },
+      saveButton: {
+        en: "Save changes",
+        es: "Guardar cambios",
+      },
+      cancelButton: {
+        en: "Cancel",
+        es: "Cancelar",
+      },
+      saving: {
+        en: "Saving…",
+        es: "Guardando…",
+      },
+      editButton: {
+        en: "Edit",
+        es: "Editar",
+      },
+      deleteButton: {
+        en: "Cancel event",
+        es: "Cancelar evento",
+      },
+      confirmDelete: {
+        en: "Cancel this event? It will come off the calendar for everyone.",
+        es: "¿Cancelar este evento? Desaparecerá del calendario para todos.",
+      },
+      notAllowed: {
+        en: "Your account doesn't have permission to manage events on the COhere calendar yet. Reach out to the organizers and they can add you.",
+        es: "Tu cuenta aún no tiene permiso para gestionar eventos en el calendario de COhere. Contacta a los organizadores y ellos pueden añadirte.",
+      },
+      genericError: {
+        en: "Something went wrong. Please try again.",
+        es: "Algo salió mal. Por favor, inténtalo de nuevo.",
+      },
+      unreachable: {
+        en: "We can't reach the community calendar service right now. Try again in a moment.",
+        es: "No podemos conectar con el servicio del calendario comunitario en este momento. Inténtalo de nuevo en un momento.",
+      },
+    },
     title: {
       en: "[CO]here Calendar of Events",
       es: "Calendario de Eventos [CO]here",
@@ -1637,6 +1797,55 @@ export const translations = {
         en: "Thank you for registering for COhere Boulder 2025. We'll be in touch soon with more details.",
         es: "Gracias por registrarte para COhere Boulder 2025. Estaremos en contacto pronto con más detalles.",
       },
+    },
+  },
+
+  // The /login page — where a NEW user's emailed magic link lands, and the
+  // short wizard (confirm link → pick a handle → account minted) that follows.
+  login: {
+    verifying: {
+      en: "Confirming your sign-in link…",
+      es: "Confirmando tu enlace de acceso…",
+    },
+    invalidTitle: {
+      en: "That link didn't work",
+      es: "Ese enlace no funcionó",
+    },
+    invalidBody: {
+      en: "It may have expired, already been used, or been opened in a different browser than the one you started in. Head back to the calendar and request a new one.",
+      es: "Puede que haya expirado, que ya se haya usado o que se haya abierto en un navegador distinto al que usaste al inicio. Vuelve al calendario y solicita uno nuevo.",
+    },
+    chooseHandleTitle: {
+      en: "Choose your handle",
+      es: "Elige tu nombre de usuario",
+    },
+    chooseHandleBody: {
+      en: "This becomes your address in the community network — lowercase letters and numbers, like a username.",
+      es: "Este será tu dirección en la red comunitaria — letras minúsculas y números, como un nombre de usuario.",
+    },
+    handleLabel: {
+      en: "Handle",
+      es: "Nombre de usuario",
+    },
+    finishButton: {
+      en: "Create my account",
+      es: "Crear mi cuenta",
+    },
+    creating: {
+      en: "Creating your account…",
+      es: "Creando tu cuenta…",
+    },
+    welcomeTitle: {
+      en: "You're signed in!",
+      es: "¡Has iniciado sesión!",
+    },
+    welcomeBody: {
+      en: "Your account is ready. You can now add events to the community calendar.",
+      es: "Tu cuenta está lista. Ahora puedes añadir eventos al calendario comunitario.",
+    },
+    goToCalendar: {
+      en: "Go to the calendar",
+      es: "Ir al calendario",
     },
   },
 };

@@ -29,6 +29,9 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /                    static assets (dist/, SPA fallback)
         ├── /api/form/:slug      a form's questions            (public)
         ├── /api/events[/…]      community calendar, proxied from regenOS (public)
+        ├── /api/config          what the SPA needs to know (regenOS flag + DID)
+        ├── /xrpc/:nsid          regenOS sign-in/event-write proxy — 404s unless
+        │                        REGENOS_LOGIN_ENABLED="true" (default: off)
         ├── /api/submit/:slug    a submission + confirmation   (public)
         ├── /  (POST)            legacy email-only capture     (public)
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
@@ -207,6 +210,21 @@ return 200 and the API is same-origin.
   `REGENOS_COLLECTIVE_DID` points at the COhere Boulder scene
   (`did:plc:w54s52ycbw5lreyhlzexredb`, minted 2026-08-30). Smoke-test locally
   with `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<scene did>`.
+- **Phase 2 (sign-in + on-site event hosting) is built but INERT.** The whole
+  lane — the `/xrpc` proxy (`worker/src/regenos-auth.ts`), the calendar page's
+  sign-in panel and event form, and `/login` — is dead until
+  `REGENOS_LOGIN_ENABLED` is set to `"true"` in `wrangler.jsonc` vars. Do not
+  flip it before regenOS's `ALLOWED_APP_ORIGINS` includes
+  `https://cohereboulder.org`: until then beginSignup's magic links would point
+  at scenius.social and set their cookie there, stranding people mid-sign-in.
+  The proxy exists because regenOS's `__Host-rs_session` cookie can only land
+  on the origin that emitted the response; it forwards Cookie / Origin /
+  Sec-Fetch-Site verbatim, relays every Set-Cookie via `getSetCookie()`, and
+  passes 3xx through (`redirect: "manual"`) so a returning user's verifyEmail
+  `302 /` reaches the browser with its cookie. Exercise it locally against
+  `scripts/regenos-mock.mjs` and prove it with `scripts/regenos-e2e.mjs` (usage
+  in each file's header) — never run `beginSignup` against prod with a real
+  email; it sends real mail and mints real state.
 - `mail.cohereboulder.org` is proxied in Cloudflare DNS, with a `_dc-mx`
   placeholder preserving delivery. Harmless today because that domain has no
   mail, but mail records should be DNS-only if it ever does.

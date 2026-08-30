@@ -61,7 +61,12 @@ const LUMA_FALLBACK: CommunityCalendar = { source: "luma", events: [], icsUrl: n
  * bad status, network failure) so react-query retries and keeps prior data.
  */
 export async function fetchCommunityCalendar(): Promise<CommunityCalendar> {
-  const res = await fetch(`${API_BASE}/api/events`);
+  // `no-cache` = revalidate with the Worker instead of trusting the browser's
+  // copy (the response carries max-age=300). Shared caching still happens at
+  // the edge — but the edge copy is PURGED when an event write lands through
+  // the /xrpc proxy (worker/src/regenos-auth.ts), and a browser-cached copy
+  // would quietly resurrect the pre-write listing for up to five minutes.
+  const res = await fetch(`${API_BASE}/api/events`, { cache: "no-cache" });
   if (!res.ok) throw new Error(`/api/events answered ${res.status}`);
   const data = (await res.json()) as {
     events?: CommunityEvent[];
@@ -92,8 +97,11 @@ export interface CommunityEventPage {
  * say "try again" instead of "removed".
  */
 export async function fetchCommunityEvent(did: string, rkey: string): Promise<CommunityEventPage | null> {
+  // Same revalidation posture as the list — an edit must not leave a
+  // five-minute-stale detail page behind.
   const res = await fetch(
     `${API_BASE}/api/events/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+    { cache: "no-cache" },
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`/api/events/:did/:rkey answered ${res.status}`);

@@ -10,6 +10,7 @@
 
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
+import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
 import {
   clearedCookie,
   consumeLinkToken,
@@ -24,7 +25,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -235,6 +236,13 @@ export default {
     const cors = corsHeaders(request.headers.get("Origin"));
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // The regenOS door is checked before everything, including the OPTIONS
+    // handler — "inert when off" means every method on /xrpc/* is a 404, with
+    // nothing (not even a preflight 204) hinting the surface exists.
+    if (path === "/xrpc" || path.startsWith("/xrpc/")) {
+      return handleXrpcProxy(request, env, url);
+    }
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
@@ -627,6 +635,22 @@ export default {
         status: person ? 200 : 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
+    }
+
+    // -------------------------------------------------------------- site config
+
+    // What the SPA needs to know about this deployment: whether the regenOS
+    // sign-in lane is on, and which collective new events belong to. Both are
+    // public facts; no-store so flipping the flag propagates immediately.
+    if (request.method === "GET" && path === "/api/config") {
+      return json(
+        {
+          regenosLoginEnabled: isRegenosLoginEnabled(env),
+          collectiveDid: env.REGENOS_COLLECTIVE_DID?.trim() || null,
+        },
+        200,
+        { ...cors, "Cache-Control": "no-store" },
+      );
     }
 
     // ------------------------------------------------------ community calendar
