@@ -1,35 +1,9 @@
 -- Refresh the register-2026 form to the authoritative 2026 registration doc
 -- (adds the donation question and the post-submit completion screen).
 --
--- The questions are DATA (see schema.sql): running this is the "deploy" for
--- copy changes. On a database that predates the completion column, follow
--- this exact order in production — it leaves no window in which anything can
--- be lost:
---
---   1. Add the column (harmless to the running old Worker, which never
---      names it):
---
---        npx wrangler d1 execute cohere --remote --command "ALTER TABLE forms ADD COLUMN completion TEXT"
---
---      (SQLite has no ADD COLUMN IF NOT EXISTS; if the column already exists
---      this fails with "duplicate column name", which means it is already
---      applied.)
---
---   2. Deploy the new Worker (`npm run deploy`). The new Worker reads and
---      writes the completion column, so the ALTER must land first. It must
---      also go out BEFORE this file: the old Worker's PUT /api/admin/forms
---      overwrote confirm_subject/confirm_body with whatever the request
---      carried, so an admin "Save questions" between step 3 and the deploy
---      would revert the refreshed questions and wipe the confirmation email.
---      The new Worker's PUT preserves columns the request omits, which closes
---      that window entirely.
---
---   3. Run this file:
---
---        npx wrangler d1 execute cohere --remote --file worker/register-2026-refresh.sql
---
--- The upsert leaves title, event, active and the confirmation email untouched
--- on an existing row, so it is safe to re-run.
+-- The questions are DATA (see schema.sql): this upsert is the "deploy" for
+-- copy changes. It leaves title, event, active and the confirmation email
+-- untouched on an existing row, so it is safe to re-run by hand if needed.
 
 INSERT INTO forms (slug, title, event, fields, active, completion, created_at, updated_at)
 VALUES (
