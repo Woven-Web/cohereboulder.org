@@ -240,6 +240,36 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
+    // ------------------------------------------------------- regenOS OAuth client
+
+    // Static discovery document identifying this site as an atproto OAuth
+    // client of regenOS's AppView, needed before "Continue with regenOS"
+    // handle sign-in can work. Must be served ahead of the SPA fallback —
+    // the catch-all otherwise answers this path with index.html (200,
+    // wrong content type), which a strict OAuth client can't parse.
+    // client_id must equal this exact URL; jwks_uri points at the AppView's
+    // key, not ours — the AppView is the confidential client and holds the
+    // one private key, per regenos-appview/src/xrpc/onboarding.rs.
+    if (request.method === "GET" && path === "/oauth-client-metadata.json") {
+      return new Response(
+        JSON.stringify({
+          client_id: "https://cohereboulder.org/oauth-client-metadata.json",
+          client_name: "[CO]here Boulder",
+          client_uri: "https://cohereboulder.org",
+          redirect_uris: ["https://cohereboulder.org/oauth/callback"],
+          scope: "atproto transition:generic",
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          application_type: "web",
+          token_endpoint_auth_method: "private_key_jwt",
+          token_endpoint_auth_signing_alg: "ES256",
+          dpop_bound_access_tokens: true,
+          jwks_uri: "https://scenius.social/oauth/jwks.json",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     // ---------------------------------------------------------------- admin UI
 
     if (request.method === "GET" && (path === "/admin" || path === "/admin/")) {
