@@ -20,11 +20,18 @@
 // is the right hole.
 //
 // The relay contract (each piece is load-bearing — see the research notes):
-//   * Cookie, Origin and Sec-Fetch-Site are forwarded VERBATIM — the AppView's
-//     CSRF guard reads them, and its magic links are built against the calling
+//   * Origin and Sec-Fetch-Site are forwarded VERBATIM — the AppView's CSRF
+//     guard reads them, and its magic links are built against the calling
 //     app's Origin (ALLOWED_APP_ORIGINS upstream).
-//   * EVERY Set-Cookie comes back via getSetCookie() — a flat header copy
-//     would coalesce multiple cookies into one broken value.
+//   * Cookies cross in BOTH directions, but only regenOS's own `__Host-rs_`
+//     ones. This origin also carries the admin portal's `cohere_session`
+//     (Path=/, so the browser attaches it here too); forwarding that to a
+//     third party would hand an organizer's live session to a system this
+//     repo does not control, and accepting arbitrary Set-Cookie back would
+//     let upstream overwrite it. The filter is the whole point of the
+//     allowlist — the `__Host-rs_` pair is all the AppView ever needs.
+//   * Each surviving Set-Cookie is re-emitted from getSetCookie() — a flat
+//     header copy would coalesce multiple cookies into one broken value.
 //   * redirect: "manual", and 3xx passes through untouched — a returning
 //     user's verifyEmail link answers `302 Location: /` WITH the session
 //     cookie, and both must reach the browser or sign-in silently fails.
@@ -78,13 +85,15 @@ const EVENT_WRITE_NSIDS = new Set([
 ]);
 
 // Request headers we must NOT blindly forward (hop-by-hop / host-rewriting /
-// Cloudflare's own annotations). Cookie, Origin and Sec-Fetch-* deliberately
-// survive this filter — forwarding them verbatim is the whole point.
+// Cloudflare's own annotations). Origin and Sec-Fetch-* deliberately survive
+// this filter — forwarding them verbatim is the whole point. Cookie is
+// rebuilt rather than copied (see relayableCookies).
 const STRIP_REQUEST = new Set([
   "host",
   "connection",
   "content-length",
   "accept-encoding",
+  "cookie",
   "cf-connecting-ip",
   "cf-ipcountry",
   "cf-ray",
@@ -95,7 +104,7 @@ const STRIP_REQUEST = new Set([
 ]);
 
 // Response headers we must NOT copy back (the runtime re-computes encoding
-// and length; set-cookie is re-emitted via getSetCookie below).
+// and length; set-cookie is filtered and re-emitted via getSetCookie below).
 const STRIP_RESPONSE = new Set([
   "content-encoding",
   "content-length",
@@ -103,6 +112,35 @@ const STRIP_RESPONSE = new Set([
   "connection",
   "set-cookie",
 ]);
+
+// ...and the whole access-control-* family, which the AppView answers for its
+// OWN frontends. Re-publishing upstream's CORS grant under cohereboulder.org
+// would let a third origin make credentialed calls against session-bearing
+// endpoints on this domain. Same-origin is the entire design here; the
+// browser never needs a preflight to reach its own site.
+const STRIP_RESPONSE_PREFIX = "access-control-";
+
+/**
+ * regenOS's own cookies, and nothing else. `__Host-rs_session` is the session
+ * and `__Host-rs_pending` is the signup wizard's state; the admin portal's
+ * `cohere_session` shares this origin and must never leave it.
+ */
+const RELAY_COOKIE_PREFIX = "__Host-rs_";
+
+/** The subset of the browser's Cookie header the AppView is allowed to see. */
+function relayableCookies(header: string | null): string | null {
+  if (!header) return null;
+  const kept = header
+    .split(";")
+    .map((pair) => pair.trim())
+    .filter((pair) => pair.startsWith(RELAY_COOKIE_PREFIX));
+  return kept.length ? kept.join("; ") : null;
+}
+
+/** A Set-Cookie line is relayed only if it names one of regenOS's own cookies. */
+function isRelayableSetCookie(line: string): boolean {
+  return line.trimStart().startsWith(RELAY_COOKIE_PREFIX);
+}
 
 function json(data: unknown, status: number): Response {
   return new Response(JSON.stringify(data), {
@@ -145,6 +183,8 @@ export async function handleXrpcProxy(
   request.headers.forEach((value, key) => {
     if (!STRIP_REQUEST.has(key.toLowerCase())) headers.set(key, value);
   });
+  const cookie = relayableCookies(request.headers.get("Cookie"));
+  if (cookie) headers.set("Cookie", cookie);
 
   const init: RequestInit = {
     method: request.method,
@@ -176,14 +216,19 @@ export async function handleXrpcProxy(
 
   const out = new Response(upstream.body, { status: upstream.status });
   upstream.headers.forEach((value, key) => {
-    if (!STRIP_RESPONSE.has(key.toLowerCase())) out.headers.set(key, value);
+    const lower = key.toLowerCase();
+    if (STRIP_RESPONSE.has(lower) || lower.startsWith(STRIP_RESPONSE_PREFIX)) return;
+    out.headers.set(key, value);
   });
   // Auth responses must never be cached by anything between here and the tab.
   out.headers.set("Cache-Control", "no-store");
   // getSetCookie() preserves multiple Set-Cookie headers where a flat copy
-  // would coalesce them — relay each verbatim so the AppView's own `__Host-`
-  // cookies land on cohereboulder.org.
+  // would coalesce them — relay each of the AppView's OWN `__Host-rs_`
+  // cookies onto cohereboulder.org, and drop anything else it tries to set
+  // on this origin.
   const setCookies = upstream.headers.getSetCookie?.() ?? [];
-  for (const cookie of setCookies) out.headers.append("Set-Cookie", cookie);
+  for (const line of setCookies) {
+    if (isRelayableSetCookie(line)) out.headers.append("Set-Cookie", line);
+  }
   return out;
 }

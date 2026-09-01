@@ -218,9 +218,12 @@ return 200 and the API is same-origin.
   `https://cohereboulder.org`: until then beginSignup's magic links would point
   at scenius.social and set their cookie there, stranding people mid-sign-in.
   The proxy exists because regenOS's `__Host-rs_session` cookie can only land
-  on the origin that emitted the response; it forwards Cookie / Origin /
-  Sec-Fetch-Site verbatim, relays every Set-Cookie via `getSetCookie()`, and
-  passes 3xx through (`redirect: "manual"`) so a returning user's verifyEmail
+  on the origin that emitted the response; it forwards Origin / Sec-Fetch-Site
+  verbatim, relays cookies **both ways but only the `__Host-rs_` ones** (this
+  origin also carries the admin portal's `cohere_session` at `Path=/`, which
+  must never reach a third party — nor may upstream overwrite it), re-emits
+  each surviving Set-Cookie via `getSetCookie()`, and passes 3xx through
+  (`redirect: "manual"`) so a returning user's verifyEmail
   `302 /` reaches the browser with its cookie. Exercise it locally against
   `scripts/regenos-mock.mjs` and prove it with `scripts/regenos-e2e.mjs` (usage
   in each file's header) — never run `beginSignup` against prod with a real

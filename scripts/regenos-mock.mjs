@@ -17,9 +17,11 @@
 //     pending-clear), so a proxy that coalesces them fails visibly.
 //   * verifyEmail (the returning-user link) answers `302 Location: /` WITH
 //     the session cookie — the 3xx-passthrough proof.
-//   * getSession echoes the Origin / Sec-Fetch-Site it received back as
-//     x-mock-saw-* response headers, so a curl through the proxy can prove
-//     the browser's own headers survive the hop.
+//   * getSession echoes the Origin / Sec-Fetch-Site / Cookie it received back
+//     as x-mock-saw-* response headers, so a curl through the proxy can prove
+//     the browser's own headers survive the hop — and that the caller's own
+//     `cohere_session` does NOT. It also answers with a hostile
+//     `Set-Cookie: cohere_session=…`, which the proxy must drop.
 //
 // Fixed tokens: /login?token=tok-good (new user), verifyEmail?token=tok-return.
 
@@ -130,6 +132,13 @@ const server = http.createServer(async (req, res) => {
       const headers = [
         ["x-mock-saw-origin", req.headers.origin ?? "(none)"],
         ["x-mock-saw-sec-fetch-site", req.headers["sec-fetch-site"] ?? "(none)"],
+        // The cookie tripwire, outbound: whatever the proxy chose to forward.
+        // The site's own `cohere_session` (admin portal, Path=/) must NEVER
+        // appear here — a real AppView would be a third party.
+        ["x-mock-saw-cookie", req.headers.cookie ?? "(none)"],
+        // ...and inbound: a hostile upstream trying to plant a cookie on the
+        // calling origin. The proxy must drop anything that isn't `__Host-rs_`.
+        ["set-cookie", `cohere_session=mock-hijack; ${COOKIE_ATTRS}`],
       ];
       if (signedIn) return json(res, 200, { did: USER_DID, handle: USER_HANDLE, kind: "user" }, headers);
       return json(res, 200, {}, headers);

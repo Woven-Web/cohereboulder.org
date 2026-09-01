@@ -1,6 +1,7 @@
 // End-to-end proof of the regenOS hosting lane, in a real browser against the
 // mock AppView (scripts/regenos-mock.mjs) — sign-in panel, the magic-link
-// wizard, event create/edit/delete, and the Spanish toggle.
+// wizard, the proxy's cookie isolation, event create/edit/delete, and the
+// Spanish toggle.
 //
 // The load-bearing assertion is invisible: every step past the wizard only
 // works if the browser actually STORED the `__Host-rs_session` cookie our
@@ -66,6 +67,41 @@ try {
   await page.getByText("Signed in as").waitFor({ timeout: 10_000 });
   await page.getByText("tester.mock.test").waitFor();
   ok("browser stored the relayed __Host-rs_session cookie; getSession sees the account");
+
+  // ── 3b. The cookie filter, both directions ───────────────────────────────
+  // The proxy shares an origin with the admin portal, whose `cohere_session`
+  // is Path=/ and therefore rides every /xrpc call. It must not cross to the
+  // AppView, and the AppView must not be able to set it coming back.
+  step = "cookie isolation";
+  await context.addCookies([
+    { name: "cohere_session", value: "decoy-admin-session", url: target },
+  ]);
+  // The probe runs INSIDE the page, not through context.request — only the
+  // browser sends `__Host-` cookies, and same-origin fetch exposes every
+  // response header, so the echo is readable.
+  const sawCookie = await page.evaluate(async () => {
+    const res = await fetch("/xrpc/social.scenius.getSession", { cache: "no-store" });
+    return res.headers.get("x-mock-saw-cookie") ?? "(missing)";
+  });
+  if (!sawCookie.includes("__Host-rs_session")) {
+    fail(`upstream never saw the regenOS session cookie (saw: ${sawCookie})`);
+  } else if (sawCookie.includes("cohere_session")) {
+    fail(`the site's own admin session leaked upstream (saw: ${sawCookie})`);
+  } else {
+    ok("upstream saw only regenOS's own cookies, not the site's admin session");
+  }
+  const jar = await context.cookies(target);
+  const planted = jar.find((c) => c.name === "cohere_session");
+  if (planted?.value !== "decoy-admin-session") {
+    fail(
+      `upstream tampered with the site's own cohere_session through the proxy (now: ${
+        planted ? planted.value : "gone"
+      })`,
+    );
+  } else {
+    ok("upstream's hostile Set-Cookie was dropped; the site's own cookie survives");
+  }
+  await context.clearCookies({ name: "cohere_session" });
 
   // ── 4. Create an event ────────────────────────────────────────────────────
   step = "create event";
