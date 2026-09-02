@@ -237,10 +237,11 @@ interface EventValues {
    * only way to see them at all. So the page sends them back only when it
    * managed to read them first; when that read failed, they are omitted rather
    * than guessed, because a guessed `attendance: "open"` on an approval-only
-   * event would quietly open the door. (regenhub's port of this form reads
-   * event.rs:469-471 as updateEvent IGNORING both fields; the brief for this
-   * PR says it honours them. Omitting is safe under either reading; guessing
-   * is only safe under one.)
+   * event would quietly open the door. (The two readings of upstream disagree:
+   * regenhub's port of this form cites event.rs:469-471 for updateEvent
+   * IGNORING both fields, while the probe that led to this PR had it honouring
+   * them. Omitting is safe under either reading; guessing is only safe under
+   * one.)
    */
   attendance: string | null;
   maxAttendees: number | null;
