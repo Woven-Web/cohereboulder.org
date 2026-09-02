@@ -67,11 +67,8 @@ const Index = () => {
                 <p className="text-3xl font-bold text-primary mb-2">
                   {tr("hero.dates")}
                 </p>
-                <p className="text-muted-foreground mb-2">
-                  {tr("hero.tenDayContainer")}
-                </p>
                 <p className="text-muted-foreground mb-6">
-                  {tr("hero.openingWeekend")}
+                  {tr("hero.tenDayContainer")}
                 </p>
                 <Button asChild size="lg" variant="community" className="w-full mb-5">
                   <Link to="/register">{tr("hero.registerHere")}</Link>
@@ -257,93 +254,6 @@ const Index = () => {
             </p>
           </div>
         </section>
-
-        {/* COhere Themes */}
-        <section className="py-20 bg-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-4">
-              {tr("themes.title")}
-            </h2>
-            <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
-              {tr("themes.subtitle")}
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🌱</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.ecology.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.ecology.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🎨</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.arts.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.arts.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">💚</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.wellness.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.wellness.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">💡</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.technology.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.technology.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🏛️</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.economy.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.economy.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🏘️</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.community.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.community.description")}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
         {/* The Rhythm - Focus on Invocation and Integration */}
         <section className="py-20 bg-gradient-to-br from-earth-light/30 to-transparent">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

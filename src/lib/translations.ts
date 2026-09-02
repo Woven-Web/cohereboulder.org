@@ -46,8 +46,8 @@ export const translations = {
       es: "15-25 de Octubre, 2026",
     },
     tenDayContainer: {
-      en: "A 10-day immersive container for community connection and regeneration",
-      es: "Un contenedor inmersivo de 10 días para la conexión y regeneración comunitaria",
+      en: "A 10-day event series for community connection that supports our collective wellbeing and belonging to place.",
+      es: "Una serie de eventos de 10 días para la conexión comunitaria que apoya nuestro bienestar colectivo y nuestro sentido de pertenencia al lugar.",
     },
     openingWeekend: {
       en: "We're opening this year with a deeper, more immersive gathering over the first weekend.",

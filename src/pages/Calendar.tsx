@@ -7,21 +7,17 @@ import { CommunityEventForm } from "@/components/CommunityEventForm";
 import { EventCard } from "@/components/EventCard";
 import { CalendarMonthView } from "@/components/CalendarMonthView";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CalendarPlus, Clock, Loader2, LogOut, Mail, MapPin, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { CalendarPlus, Loader2, LogOut, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { describeWriteError, signOut, xrpcPost } from "@/lib/regenos";
 import { buildDeleteEventInput } from "@/lib/eventForm";
 import { fetchCommunityCalendar, type CommunityEvent } from "@/lib/events";
-
-/** mailto target for "Propose an event", until the signed-in propose flow ships. */
-const PROPOSE_EVENT_MAILTO =
-  "mailto:cohere@wovenweb.org?subject=" +
-  encodeURIComponent("Propose an event for the COhere community calendar");
 
 export default function CalendarPage() {
   const { language } = useLanguage();
@@ -100,16 +96,6 @@ export default function CalendarPage() {
             <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
               {tr("calendar.events.subtitle")}
             </p>
-            {/* TODO(propose-flow): point this at the signed-in "add an event"
-                form once regenOS sign-in (REGENOS_LOGIN_ENABLED) is on for
-                everyone, not just existing hosts. Until then, a real person
-                reads these emails and adds the event by hand. */}
-            <Button asChild variant="outline" className="gap-2">
-              <a href={PROPOSE_EVENT_MAILTO}>
-                <Mail className="h-4 w-4" />
-                {tr("calendar.events.propose")}
-              </a>
-            </Button>
           </div>
 
           {/* Propose an event — no account needed, lands in the organizers'
