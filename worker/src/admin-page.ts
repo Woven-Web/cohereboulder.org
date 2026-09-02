@@ -115,6 +115,19 @@ export const ADMIN_PAGE = `<!doctype html>
                         padding: 0.6rem; border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--ground); }
   .muted { color: var(--ink-3); font-size: 0.85rem; }
   .err { color: var(--clay); font-size: 0.85rem; }
+  /* event + access forms */
+  .field { display: flex; flex-direction: column; gap: 0.25rem; }
+  .field > label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em;
+                   text-transform: uppercase; color: var(--ink-3); }
+  .field input, .field select, .field textarea { width: 100%; padding: 0.4rem 0.55rem;
+            border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--ground); }
+  .field input:disabled, .field select:disabled { opacity: 0.55; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .toolbar select, .toolbar input[type="email"] { padding: 0.45rem 0.7rem;
+            border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--surface); }
+  .note { font-size: 0.8rem; color: var(--ink-3); border-left: 2px solid var(--hair-strong);
+          padding-left: 0.6rem; }
+  .guests { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -155,8 +168,10 @@ export const ADMIN_PAGE = `<!doctype html>
 
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="people">People</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="admins">Who can sign in</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
     </div>
 
     <section id="tab-people" style="display:flex;flex-direction:column;gap:1rem;">
@@ -181,6 +196,28 @@ export const ADMIN_PAGE = `<!doctype html>
       </div>
     </section>
 
+    <section id="tab-events" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        The COhere community calendar. It lives on the regenOS commons and is published by
+        <a href="/calendar" target="_blank" rel="noopener">the public calendar page</a> —
+        anything added here shows up there within a few minutes.
+      </p>
+      <div class="toolbar">
+        <button class="btn primary" id="newevent">New event</button>
+        <button class="chip" data-when="upcoming" aria-pressed="true">Upcoming</button>
+        <button class="chip" data-when="past" aria-pressed="false">Past</button>
+        <span class="muted" id="eventmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>When (Boulder)</th><th>Name</th><th>Where</th><th>RSVPs</th><th>Capacity</th>
+          </tr></thead>
+          <tbody id="eventrows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="tab-forms" class="hidden" style="flex-direction:column;gap:1rem;">
       <p class="muted">
         Questions live in the database, not in code. Edit the JSON below and save to change a form —
@@ -189,6 +226,30 @@ export const ADMIN_PAGE = `<!doctype html>
         and <code>options</code> for the choice types.
       </p>
       <div id="forms"></div>
+    </section>
+
+    <section id="tab-access" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Builders and up can add and edit events on the calendar; stewards can also manage access.
+        Invite someone by email and regenOS sends them a link to join — they appear here once they accept.
+      </p>
+      <div class="toolbar">
+        <input type="email" id="inviteemail" placeholder="their@email.com"
+               style="flex:1 1 14rem;padding:0.45rem 0.7rem;border:1px solid var(--hair-strong);border-radius:3px;background:var(--surface)">
+        <select id="inviterole">
+          <option value="builder">Builder — can add and edit events</option>
+          <option value="facilitator">Facilitator</option>
+          <option value="steward">Steward — can also manage access</option>
+        </select>
+        <button class="btn primary" id="sendinvite">Send invite</button>
+        <span class="muted" id="accessmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Who</th><th>Role</th><th></th></tr></thead>
+          <tbody id="accessrows"></tbody>
+        </table>
+      </div>
     </section>
 
     <section id="tab-admins" class="hidden" style="flex-direction:column;gap:1rem;">
@@ -220,6 +281,7 @@ export const ADMIN_PAGE = `<!doctype html>
 <script>
 (function () {
   var people = [], forms = [], filter = "all", query = "";
+  var events = [], eventWhen = "upcoming", rsvpCache = {}, accessMembers = [];
 
   function el(id) { return document.getElementById(id); }
   function show(id, visible) { el(id).classList.toggle("hidden", !visible); }
@@ -236,7 +298,16 @@ export const ADMIN_PAGE = `<!doctype html>
     options.headers = options.headers || {};
     return fetch(path, options).then(function (r) {
       if (r.status === 401) { signOut("Your session has ended. Please sign in again."); throw new Error("unauthorized"); }
-      if (!r.ok) throw new Error("request failed: " + r.status);
+      if (!r.ok) {
+        // The regenOS lane answers with a sentence an organizer can act on
+        // ("only a Builder of the collective may…"). Losing it to
+        // "request failed: 400" would make every upstream refusal look the same.
+        return r.json().then(function (body) {
+          throw new Error(body.message || body.error || "request failed: " + r.status);
+        }, function () {
+          throw new Error("request failed: " + r.status);
+        });
+      }
       return r;
     });
   }
@@ -463,6 +534,417 @@ export const ADMIN_PAGE = `<!doctype html>
     el("drawerbg").classList.remove("open");
   }
 
+  // ======================================================== the Events tab
+
+  // The organizers are in Boulder and this is a Boulder calendar, so the list
+  // reads in Denver time whatever the laptop's clock is set to.
+  var DENVER = { timeZone: "America/Denver", weekday: "short", month: "short",
+                 day: "numeric", hour: "numeric", minute: "2-digit" };
+
+  function whenText(iso) {
+    if (!iso) return "No date yet";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "No date yet";
+    try { return new Intl.DateTimeFormat("en-US", DENVER).format(d); }
+    catch (err) { return String(iso).slice(0, 16).replace("T", " "); }
+  }
+
+  function whereText(ev) {
+    var loc = ev.location || {};
+    var bits = [];
+    if (loc.name) bits.push(loc.name);
+    if (loc.locality) bits.push(loc.locality);
+    if (bits.length) return bits.join(", ");
+    if (ev.mode === "virtual") return "Online";
+    return "\u2014";
+  }
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  // datetime-local <-> ISO in the BROWSER's own zone, which is exactly what a
+  // datetime-local input means. The AppView 400s on a datetime with no offset.
+  function isoToLocalInput(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+      "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+
+  function localInputToIso(value) {
+    if (!value) return "";
+    var d = new Date(value);
+    return isNaN(d.getTime()) ? "" : d.toISOString();
+  }
+
+  function eventKey(ev) { return ev.did + "|" + ev.rkey; }
+
+  function loadEvents() {
+    el("eventmsg").textContent = "Loading\u2026";
+    return api("/api/admin/events").then(function (r) { return r.json(); }).then(function (data) {
+      events = data.events || [];
+      el("eventmsg").textContent = "";
+      renderEvents();
+      fillRsvpColumns();
+    }).catch(function (e) {
+      el("eventmsg").textContent = e.message;
+      el("eventrows").innerHTML =
+        '<tr><td colspan="5" class="muted">Could not load the calendar.</td></tr>';
+    });
+  }
+
+  function shownEvents() {
+    return events.filter(function (e) { return eventWhen === "past" ? e.isPast : !e.isPast; });
+  }
+
+  function renderEvents() {
+    var shown = shownEvents();
+    if (!shown.length) {
+      el("eventrows").innerHTML = '<tr><td colspan="5" class="muted">' +
+        (eventWhen === "past"
+          ? "Nothing has happened yet."
+          : "Nothing on the calendar yet \u2014 add the first event.") + "</td></tr>";
+      return;
+    }
+    el("eventrows").innerHTML = shown.map(function (e) {
+      var seats = rsvpCache[eventKey(e)];
+      var known = seats && !seats.unavailable;
+      var rsvps = known
+        ? esc(seats.confirmed + " confirmed" + (seats.attendance === "approval" ? " \u00b7 by approval" : ""))
+        : (seats ? "\u2014" : '<span class="muted">\u2026</span>');
+      var cap = known
+        ? esc(seats.maxAttendees ? String(seats.maxAttendees) : "no limit")
+        : (seats ? "\u2014" : '<span class="muted">\u2026</span>');
+      return '<tr data-ev="' + esc(eventKey(e)) + '">' +
+        "<td>" + esc(whenText(e.startsAt)) + "</td>" +
+        "<td>" + esc(e.name) + "</td>" +
+        '<td class="wrapcell">' + esc(whereText(e)) + "</td>" +
+        "<td>" + rsvps + "</td>" +
+        "<td>" + cap + "</td>" +
+        "</tr>";
+    }).join("");
+
+    Array.prototype.forEach.call(el("eventrows").querySelectorAll("tr[data-ev]"), function (tr) {
+      tr.addEventListener("click", function () {
+        var key = tr.getAttribute("data-ev");
+        var found = events.filter(function (e) { return eventKey(e) === key; })[0];
+        if (found) openEventDrawer(found);
+      });
+    });
+  }
+
+  function fetchRsvps(ev) {
+    return api("/api/admin/events/" + encodeURIComponent(ev.did) + "/" +
+               encodeURIComponent(ev.rkey) + "/attendance")
+      .then(function (r) { return r.json(); })
+      .then(function (seats) { rsvpCache[eventKey(ev)] = seats; return seats; });
+  }
+
+  // RSVP counts and the seat policy live in a sibling record the listing does
+  // not carry, so they arrive one call per row — five at a time, so a long
+  // calendar doesn't open fifty sockets at once.
+  function fillRsvpColumns() {
+    var queue = shownEvents().filter(function (e) { return !rsvpCache[eventKey(e)]; });
+    if (!queue.length) return;
+    var running = 0;
+    function next() {
+      if (!queue.length) { if (!running) renderEvents(); return; }
+      var ev = queue.shift();
+      running++;
+      fetchRsvps(ev).catch(function () {
+        rsvpCache[eventKey(ev)] = { unavailable: true };
+      }).then(function () { running--; next(); });
+    }
+    for (var i = 0; i < 5; i++) next();
+  }
+
+  function openEventDrawer(ev) {
+    var isNew = !ev;
+    var e = ev || { did: null, rkey: null, name: "", description: "", startsAt: "", endsAt: "",
+                    mode: "inperson", location: null, publicPath: null, hostName: null };
+    var loc = e.location || {};
+    // A create defines the seat policy; an edit may only touch it once the
+    // stored one has actually been read back (see the note on the panel).
+    var seatsKnown = isNew;
+
+    function opt(value, label, current) {
+      return '<option value="' + esc(value) + '"' + (value === current ? " selected" : "") +
+        ">" + esc(label) + "</option>";
+    }
+
+    el("drawer").innerHTML =
+      '<div class="row" style="justify-content:space-between">' +
+        "<h2>" + esc(isNew ? "New event" : e.name) + "</h2>" +
+        '<button class="btn" id="closedrawer">Close</button>' +
+      "</div>" +
+      (isNew ? "" :
+        '<dl class="kv">' +
+          "<dt>When</dt><dd>" + esc(whenText(e.startsAt)) +
+            (e.endsAt ? " \u2192 " + esc(whenText(e.endsAt)) : "") + "</dd>" +
+          "<dt>Where</dt><dd>" + esc(whereText(e)) + "</dd>" +
+          "<dt>Host</dt><dd>" + esc(e.hostName || "COhere Boulder") + "</dd>" +
+          '<dt>On the site</dt><dd><a href="' + esc(e.publicPath || "/calendar") +
+            '" target="_blank" rel="noopener">View the public page</a></dd>' +
+        "</dl>") +
+      (isNew ? "" :
+        '<div class="sub" id="rsvppanel">' +
+          '<div class="label">RSVPs</div>' +
+          '<div id="rsvpbody" class="muted">Loading\u2026</div>' +
+          '<div class="note">Confirmed guests only \u2014 requests and the waitlist ' +
+            "aren't visible here yet; the event's host sees them on regenOS.</div>" +
+          '<div class="row"><button class="btn" id="refreshrsvp">Refresh</button></div>' +
+        "</div>") +
+      '<div class="sub">' +
+        '<div class="label">' + (isNew ? "Details" : "Edit") + "</div>" +
+        '<div class="field"><label for="evname">Name</label>' +
+          '<input type="text" id="evname" value="' + esc(e.name) + '"></div>' +
+        '<div class="field"><label for="evdesc">Description</label>' +
+          '<textarea id="evdesc" rows="4">' + esc(e.description || "") + "</textarea></div>" +
+        '<div class="grid2">' +
+          '<div class="field"><label for="evstart">Starts</label>' +
+            '<input type="datetime-local" id="evstart" value="' + esc(isoToLocalInput(e.startsAt)) + '"></div>' +
+          '<div class="field"><label for="evend">Ends</label>' +
+            '<input type="datetime-local" id="evend" value="' + esc(isoToLocalInput(e.endsAt)) + '"></div>' +
+        "</div>" +
+        '<div class="field"><label for="evmode">Format</label><select id="evmode">' +
+          opt("inperson", "In person", e.mode || "inperson") +
+          opt("virtual", "Online", e.mode) +
+          opt("hybrid", "Hybrid", e.mode) +
+        "</select></div>" +
+        '<div class="field"><label for="evplace">Place name</label>' +
+          '<input type="text" id="evplace" value="' + esc(loc.name || "") + '"></div>' +
+        '<div class="field"><label for="evstreet">Street</label>' +
+          '<input type="text" id="evstreet" value="' + esc(loc.street || "") + '"></div>' +
+        '<div class="grid2">' +
+          '<div class="field"><label for="evcity">City</label>' +
+            '<input type="text" id="evcity" value="' + esc(isNew ? "Boulder" : (loc.locality || "")) + '"></div>' +
+          '<div class="field"><label for="evregion">State</label>' +
+            '<input type="text" id="evregion" value="' + esc(isNew ? "CO" : (loc.region || "")) + '"></div>' +
+        "</div>" +
+        '<div class="grid2">' +
+          '<div class="field"><label for="evpostal">Postal code</label>' +
+            '<input type="text" id="evpostal" value="' + esc(loc.postalCode || "") + '"></div>' +
+          '<div class="field"><label for="evcap">Capacity (0 = no limit)</label>' +
+            '<input type="number" id="evcap" min="0" max="10000" value="0"></div>' +
+        "</div>" +
+        '<div class="field"><label for="evrsvp">RSVPs</label><select id="evrsvp">' +
+          opt("open", "Open \u2014 anyone can RSVP", "open") +
+          opt("approval", "By approval", "") +
+        "</select></div>" +
+        '<div class="row">' +
+          '<button class="btn primary" id="evsave">' +
+            (isNew ? "Create event" : "Save changes") + "</button>" +
+          (isNew ? "" : '<button class="btn" id="evdelete">Delete</button>') +
+          '<span class="err" id="evmsg"></span>' +
+        "</div>" +
+      "</div>";
+
+    function renderSeats(seats) {
+      var body = el("rsvpbody");
+      if (!body) return;
+      if (!seats || seats.unavailable) {
+        body.className = "err";
+        body.textContent = "Couldn't read the RSVPs for this event.";
+        return;
+      }
+      body.className = "";
+      var guests = seats.guests && seats.guests.length
+        ? '<div class="guests">' + seats.guests.map(function (g) {
+            return '<span class="pill">' + esc(g.handle || g.did) + "</span>";
+          }).join("") + "</div>"
+        : '<div class="muted">No confirmed guests yet.</div>';
+      body.innerHTML =
+        '<div class="row" style="margin-bottom:0.4rem">' +
+          '<span class="pill on">' + esc(String(seats.confirmed)) + " confirmed</span>" +
+          '<span class="pill">' + esc(String(seats.requested)) + " requested</span>" +
+          '<span class="pill">' + esc(String(seats.waitlisted)) + " waitlisted</span>" +
+          '<span class="pill">' + esc(seats.maxAttendees ? seats.maxAttendees + " seats" : "no limit") + "</span>" +
+          '<span class="pill">' + esc(seats.attendance === "approval" ? "by approval" : "open") + "</span>" +
+        "</div>" + guests;
+    }
+
+    function applySeats(seats) {
+      var cap = el("evcap"), rsvp = el("evrsvp");
+      if (!cap || !rsvp) return;
+      if (seats && !seats.unavailable) {
+        cap.value = seats.maxAttendees ? String(seats.maxAttendees) : "0";
+        rsvp.value = seats.attendance === "approval" ? "approval" : "open";
+        cap.disabled = false; rsvp.disabled = false;
+        seatsKnown = true;
+      } else {
+        // Never guess these two: an invented "open" on an approval-only event
+        // would quietly open the door. Grey them out and leave them off the save.
+        cap.disabled = true; rsvp.disabled = true;
+        seatsKnown = false;
+      }
+    }
+
+    function loadSeats() {
+      var body = el("rsvpbody");
+      if (body) { body.className = "muted"; body.textContent = "Loading\u2026"; }
+      return fetchRsvps(e).then(function (seats) {
+        renderSeats(seats); applySeats(seats);
+      }).catch(function () {
+        rsvpCache[eventKey(e)] = { unavailable: true };
+        renderSeats(null); applySeats(null);
+      });
+    }
+
+    if (!isNew) {
+      var cached = rsvpCache[eventKey(e)];
+      if (cached) { renderSeats(cached); applySeats(cached); } else { loadSeats(); }
+      el("refreshrsvp").addEventListener("click", loadSeats);
+    }
+
+    el("closedrawer").addEventListener("click", closeDrawer);
+
+    el("evsave").addEventListener("click", function () {
+      var msg = el("evmsg");
+      msg.textContent = "";
+      var payload = {
+        name: el("evname").value.trim(),
+        description: el("evdesc").value.trim(),
+        startsAt: localInputToIso(el("evstart").value),
+        endsAt: localInputToIso(el("evend").value),
+        mode: el("evmode").value,
+        placeName: el("evplace").value.trim(),
+        street: el("evstreet").value.trim(),
+        locality: el("evcity").value.trim(),
+        region: el("evregion").value.trim(),
+        postalCode: el("evpostal").value.trim()
+      };
+      if (seatsKnown) {
+        payload.attendance = el("evrsvp").value;
+        payload.maxAttendees = Number(el("evcap").value || 0);
+      }
+      if (!payload.name) { msg.textContent = "An event needs a name."; return; }
+      if (!payload.startsAt) { msg.textContent = "An event needs a start date and time."; return; }
+      el("evsave").disabled = true;
+      var path = isNew
+        ? "/api/admin/events"
+        : "/api/admin/events/" + encodeURIComponent(e.did) + "/" + encodeURIComponent(e.rkey);
+      api(path, {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function () {
+        if (!isNew) delete rsvpCache[eventKey(e)];
+        closeDrawer();
+        return loadEvents().then(function () {
+          el("eventmsg").textContent = isNew ? "Event created." : "Saved.";
+        });
+      }).catch(function (err) {
+        msg.textContent = err.message;
+        var again = el("evsave");
+        if (again) again.disabled = false;
+      });
+    });
+
+    if (!isNew) {
+      el("evdelete").addEventListener("click", function () {
+        if (!confirm('Delete "' + e.name + '"? It comes off the public calendar too.')) return;
+        el("evmsg").textContent = "";
+        api("/api/admin/events/" + encodeURIComponent(e.did) + "/" + encodeURIComponent(e.rkey),
+            { method: "DELETE" }).then(function () {
+          delete rsvpCache[eventKey(e)];
+          closeDrawer();
+          return loadEvents().then(function () { el("eventmsg").textContent = "Event deleted."; });
+        }).catch(function (err) { el("evmsg").textContent = err.message; });
+      });
+    }
+
+    el("drawer").classList.add("open");
+    el("drawerbg").classList.add("open");
+  }
+
+  // ======================================================== the Access tab
+
+  var ROLES = [["member", "Member"], ["builder", "Builder"],
+               ["facilitator", "Facilitator"], ["steward", "Steward"]];
+
+  function loadAccess() {
+    return api("/api/admin/access").then(function (r) { return r.json(); }).then(function (data) {
+      accessMembers = data.members || [];
+      renderAccess();
+    }).catch(function (e) {
+      el("accessmsg").textContent = e.message;
+      el("accessrows").innerHTML =
+        '<tr><td colspan="3" class="muted">Could not load the roster.</td></tr>';
+    });
+  }
+
+  function renderAccess() {
+    if (!accessMembers.length) {
+      el("accessrows").innerHTML =
+        '<tr><td colspan="3" class="muted">Nobody on the roster yet.</td></tr>';
+      return;
+    }
+    el("accessrows").innerHTML = accessMembers.map(function (m) {
+      var who = esc(m.handle || m.did) +
+        (m.name ? ' <span class="muted">' + esc(m.name) + "</span>" : "");
+      if (m.protected) {
+        return "<tr>" +
+          "<td>" + who + ' <span class="muted">(' + esc(m.protectedLabel) + ")</span></td>" +
+          '<td><span class="pill">' + esc(m.role || "\u2014") + "</span></td>" +
+          '<td class="muted">managed outside this portal</td>' +
+          "</tr>";
+      }
+      var options = ROLES.map(function (r) {
+        return '<option value="' + r[0] + '"' + (r[0] === m.role ? " selected" : "") +
+          ">" + r[1] + "</option>";
+      }).join("");
+      return "<tr>" +
+        "<td>" + who + "</td>" +
+        '<td><select data-role="' + esc(m.did) + '">' + options + "</select></td>" +
+        '<td><button class="btn" data-revoke="' + esc(m.did) + '">Remove</button></td>' +
+        "</tr>";
+    }).join("");
+
+    Array.prototype.forEach.call(el("accessrows").querySelectorAll("[data-role]"), function (sel) {
+      sel.addEventListener("change", function () {
+        var did = sel.getAttribute("data-role");
+        var member = accessMembers.filter(function (m) { return m.did === did; })[0];
+        var was = member ? member.role : "";
+        var label = (member && member.handle) ? member.handle : did;
+        if (!confirm("Make " + label + " a " + sel.value + " of the COhere collective?")) {
+          sel.value = was;
+          return;
+        }
+        el("accessmsg").textContent = "";
+        api("/api/admin/access/role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ did: did, role: sel.value })
+        }).then(function () {
+          if (member) member.role = sel.value;
+          el("accessmsg").textContent = label + " is now a " + sel.value + ".";
+        }).catch(function (err) {
+          sel.value = was;
+          el("accessmsg").textContent = err.message;
+        });
+      });
+    });
+
+    Array.prototype.forEach.call(el("accessrows").querySelectorAll("[data-revoke]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var did = btn.getAttribute("data-revoke");
+        var member = accessMembers.filter(function (m) { return m.did === did; })[0];
+        var label = (member && member.handle) ? member.handle : did;
+        if (!confirm("Remove " + label + "? They lose the ability to add or edit events.")) return;
+        el("accessmsg").textContent = "";
+        api("/api/admin/access/revoke", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ did: did })
+        }).then(function () {
+          return loadAccess().then(function () {
+            el("accessmsg").textContent = label + " was removed.";
+          });
+        }).catch(function (err) { el("accessmsg").textContent = err.message; });
+      });
+    });
+  }
+
   function loadAdmins() {
     return api("/api/admin/admins").then(function (r) { return r.json(); }).then(function (data) {
       el("adminrows").innerHTML = data.admins.map(function (a) {
@@ -558,14 +1040,47 @@ export const ADMIN_PAGE = `<!doctype html>
   el("q").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); render(); });
   el("exportall").addEventListener("click", function () { downloadCsv("/api/admin/export.csv"); });
 
-  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (chip) {
+  // Scoped per tab: the Events tab has its own chips, and a bare ".chip"
+  // selector would have each set clearing the other's pressed state.
+  Array.prototype.forEach.call(document.querySelectorAll("#tab-people .chip"), function (chip) {
     chip.addEventListener("click", function () {
       filter = chip.getAttribute("data-filter");
-      Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (c) {
+      Array.prototype.forEach.call(document.querySelectorAll("#tab-people .chip"), function (c) {
         c.setAttribute("aria-pressed", String(c === chip));
       });
       render();
     });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll("#tab-events .chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      eventWhen = chip.getAttribute("data-when");
+      Array.prototype.forEach.call(document.querySelectorAll("#tab-events .chip"), function (c) {
+        c.setAttribute("aria-pressed", String(c === chip));
+      });
+      renderEvents();
+      fillRsvpColumns();
+    });
+  });
+
+  el("newevent").addEventListener("click", function () { openEventDrawer(null); });
+
+  el("sendinvite").addEventListener("click", function () {
+    var email = el("inviteemail").value.trim();
+    if (!email) return;
+    el("accessmsg").textContent = "";
+    el("sendinvite").disabled = true;
+    api("/api/admin/access/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, role: el("inviterole").value })
+    }).then(function () {
+      el("inviteemail").value = "";
+      el("accessmsg").textContent =
+        "Invite sent to " + email + ". They show up on the roster once they accept.";
+    }).catch(function (e) {
+      el("accessmsg").textContent = e.message;
+    }).then(function () { el("sendinvite").disabled = false; });
   });
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
@@ -574,12 +1089,14 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "forms", "admins"].forEach(function (n) {
+      ["people", "events", "forms", "access", "admins"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
       });
       if (name === "admins") loadAdmins();
+      if (name === "events") loadEvents();
+      if (name === "access") loadAccess();
     });
   });
 
