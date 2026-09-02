@@ -228,6 +228,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Node closes idle keep-alive sockets after 5s by default, and the Worker
+// runtime pools its outbound connections — a step of the wizard that lands a
+// few seconds after the previous one then races a socket the mock is closing
+// and surfaces as a spurious 502. Real AppViews sit behind far longer idle
+// timeouts; keep the mock from manufacturing a flake the code doesn't have.
+server.keepAliveTimeout = 120_000;
+server.headersTimeout = 125_000;
+
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`regenOS mock listening on http://127.0.0.1:${PORT} (scene ${SCENE_DID})`);
 });
