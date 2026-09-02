@@ -616,7 +616,13 @@ export default {
       if (path.startsWith("/api/admin/events")) {
         // "/api/admin/events" | "/api/admin/events/:did/:rkey[/attendance]"
         const rest = path.slice("/api/admin/events".length).replace(/^\//, "");
-        const parts = rest ? rest.split("/").map(decodeURIComponent) : [];
+        let parts: string[];
+        try {
+          // A lone "%" in the path throws here; that is a 404, not a 500.
+          parts = rest ? rest.split("/").map(decodeURIComponent) : [];
+        } catch {
+          return json({ error: "not found" }, 404);
+        }
 
         if (parts.length === 0) {
           if (request.method === "GET") return handleAdminEventsList(env);
