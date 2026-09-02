@@ -128,6 +128,8 @@ export const ADMIN_PAGE = `<!doctype html>
   .note { font-size: 0.8rem; color: var(--ink-3); border-left: 2px solid var(--hair-strong);
           padding-left: 0.6rem; }
   .guests { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  td select { padding: 0.3rem 0.5rem; border: 1px solid var(--hair-strong);
+              border-radius: 3px; background: var(--ground); font-size: 0.85rem; }
   .hidden { display: none !important; }
 </style>
 </head>
