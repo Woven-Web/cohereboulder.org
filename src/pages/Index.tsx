@@ -1,6 +1,6 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -14,13 +14,12 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 import { EmailSignup } from "@/components/EmailSignup";
+import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
 import altarPhoto from "@/assets/photos/altar.webp";
 import coCreatingPhoto from "@/assets/photos/co-creating.webp";
 import singingCirclePhoto from "@/assets/photos/singing-circle.webp";
-import sharedMealPhoto from "@/assets/photos/shared-meal.webp";
-import celebrationPhoto from "@/assets/photos/celebration.webp";
 
 const Index = () => {
   const { tr } = useLanguage();
@@ -66,11 +65,8 @@ const Index = () => {
                 <p className="text-3xl font-bold text-primary mb-2">
                   {tr("hero.dates")}
                 </p>
-                <p className="text-muted-foreground mb-2">
-                  {tr("hero.tenDayContainer")}
-                </p>
                 <p className="text-muted-foreground mb-6">
-                  {tr("hero.openingWeekend")}
+                  {tr("hero.tenDayContainer")}
                 </p>
                 <Button asChild size="lg" variant="community" className="w-full mb-5">
                   <Link to="/register">{tr("hero.registerHere")}</Link>
@@ -87,6 +83,9 @@ const Index = () => {
             </p>
           </div>
         </section>
+
+        {/* What's coming up - real events, hidden entirely when there are none */}
+        <UpcomingEventsHome />
 
         {/* What is COhere - Simple and Clear */}
         <section className="py-20">
@@ -253,199 +252,6 @@ const Index = () => {
             </p>
           </div>
         </section>
-
-        {/* COhere Themes */}
-        <section className="py-20 bg-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-4">
-              {tr("themes.title")}
-            </h2>
-            <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
-              {tr("themes.subtitle")}
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🌱</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.ecology.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.ecology.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🎨</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.arts.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.arts.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">💚</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.wellness.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.wellness.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">💡</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.technology.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.technology.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🏛️</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.economy.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.economy.description")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-warm transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="text-3xl mb-3">🏘️</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {tr("themes.community.title")}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tr("themes.community.description")}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* The Rhythm - Focus on Invocation and Integration */}
-        <section className="py-20 bg-gradient-to-br from-earth-light/30 to-transparent">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-4">
-              {tr("rhythm.title")}
-            </h2>
-            <p className="text-xl text-muted-foreground text-center mb-12 max-w-3xl mx-auto">
-              {tr("rhythm.subtitle")}
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {/* Invocation Card */}
-              <Card className="border-2 border-community-orange/30 hover:border-community-orange/60 transition-all shadow-warm overflow-hidden">
-                <img
-                  src={sharedMealPhoto}
-                  alt="Bowls of food laid out for a shared meal"
-                  className="h-44 w-full object-cover"
-                />
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-5xl font-bold text-community-orange">
-                      ↗
-                    </div>
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <CardTitle className="text-2xl">
-                    {tr("rhythm.invocation.title")}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground font-normal">
-                    {tr("rhythm.invocation.date")}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-muted-foreground">
-                    {tr("rhythm.invocation.description")}
-                  </p>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-sm">
-                      {tr("rhythm.invocation.whatHappens")}
-                    </p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• {tr("rhythm.invocation.points.p1")}</li>
-                      <li>• {tr("rhythm.invocation.points.p2")}</li>
-                      <li>• {tr("rhythm.invocation.points.p3")}</li>
-                      <li>• {tr("rhythm.invocation.points.p4")}</li>
-                    </ul>
-                  </div>
-                  <p className="text-sm text-muted-foreground italic">
-                    {tr("rhythm.invocation.detailsComingSoon")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Integration Card */}
-              <Card className="border-2 border-sunset/30 hover:border-sunset/60 transition-all shadow-warm overflow-hidden">
-                <img
-                  src={celebrationPhoto}
-                  alt="A singer performing on stage under string lights"
-                  className="h-44 w-full object-cover"
-                />
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-5xl font-bold text-sunset">⟲</div>
-                    <Heart className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <CardTitle className="text-2xl">
-                    {tr("rhythm.integration.title")}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground font-normal">
-                    {tr("rhythm.integration.date")}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-muted-foreground">
-                    {tr("rhythm.integration.description")}
-                  </p>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-sm">
-                      {tr("rhythm.integration.whatHappens")}
-                    </p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• {tr("rhythm.integration.points.p1")}</li>
-                      <li>• {tr("rhythm.integration.points.p2")}</li>
-                      <li>• {tr("rhythm.integration.points.p3")}</li>
-                      <li>• {tr("rhythm.integration.points.p4")}</li>
-                    </ul>
-                  </div>
-                  <p className="text-sm text-muted-foreground italic">
-                    {tr("rhythm.integration.detailsComingSoon")}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* The 10 Days */}
-            <div className="mt-12 text-center max-w-3xl mx-auto">
-              <h3 className="text-2xl font-bold mb-4">
-                {tr("rhythm.tenDays.title")}
-              </h3>
-              <p className="text-muted-foreground">
-                {tr("rhythm.tenDays.description")}
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* The Spirit of COhere */}
         <section className="py-20 bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -548,27 +354,6 @@ const Index = () => {
               <p className="text-muted-foreground">{tr("join.p1")}</p>
               <p className="text-muted-foreground">{tr("join.p2")}</p>
             </div>
-          </div>
-        </section>
-
-        {/* A rhythm other communities can grow */}
-        <section className="py-20 bg-earth-light/20">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">
-              {tr("rhythmForOthers.title")}
-            </h2>
-            <p className="text-lg text-muted-foreground mb-6">
-              {tr("rhythmForOthers.p1")}
-            </p>
-            <p className="text-lg text-muted-foreground mb-12">
-              {tr("rhythmForOthers.p2")}
-            </p>
-            <Link to="/about">
-              <Button size="lg" variant="earth">
-                {tr("rhythmForOthers.learnMore")}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
           </div>
         </section>
       </main>

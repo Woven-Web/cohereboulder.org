@@ -46,8 +46,8 @@ export const translations = {
       es: "15-25 de Octubre, 2026",
     },
     tenDayContainer: {
-      en: "A 10-day immersive container for community connection and regeneration",
-      es: "Un contenedor inmersivo de 10 días para la conexión y regeneración comunitaria",
+      en: "A 10-day event series for community connection that supports our collective wellbeing and belonging to place.",
+      es: "Una serie de eventos de 10 días para la conexión comunitaria que apoya nuestro bienestar colectivo y nuestro sentido de pertenencia al lugar.",
     },
     openingWeekend: {
       en: "We're opening this year with a deeper, more immersive gathering over the first weekend.",
@@ -597,6 +597,42 @@ export const translations = {
       subscribe: {
         en: "Subscribe to Calendar",
         es: "Suscríbete al Calendario",
+      },
+      subscribeCaption: {
+        en: "Get the whole community calendar in your own calendar app — new events included automatically.",
+        es: "Recibe todo el calendario comunitario en tu propia app de calendario — los nuevos eventos se incluyen automáticamente.",
+      },
+      addToCalendar: {
+        en: "Add to calendar",
+        es: "Añadir al calendario",
+      },
+      tabUpcoming: {
+        en: "Upcoming",
+        es: "Próximos",
+      },
+      tabMonth: {
+        en: "Month",
+        es: "Mes",
+      },
+      prevMonth: {
+        en: "Previous month",
+        es: "Mes anterior",
+      },
+      nextMonth: {
+        en: "Next month",
+        es: "Mes siguiente",
+      },
+      more: {
+        en: "more",
+        es: "más",
+      },
+      noEventsThisMonth: {
+        en: "No events on the calendar this month yet.",
+        es: "Todavía no hay eventos en el calendario este mes.",
+      },
+      propose: {
+        en: "Propose an event",
+        es: "Proponer un evento",
       },
       loading: {
         en: "Loading events…",
@@ -1962,6 +1998,25 @@ export const translations = {
     goToCalendar: {
       en: "Go to the calendar",
       es: "Ir al calendario",
+    },
+  },
+
+  // Homepage "What's coming up" teaser — real events from the community
+  // calendar, hidden entirely when there are none.
+  home: {
+    upcomingEvents: {
+      title: {
+        en: "What's Coming Up",
+        es: "Lo Que Viene",
+      },
+      subtitle: {
+        en: "A few gatherings from the community calendar — co-created, not programmed.",
+        es: "Algunos encuentros del calendario comunitario — co-creados, no programados.",
+      },
+      seeFullCalendar: {
+        en: "See the full calendar",
+        es: "Ver el calendario completo",
+      },
     },
   },
 };
