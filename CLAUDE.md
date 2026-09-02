@@ -13,9 +13,10 @@ The immediate goal is narrow: let people **find the site, register, and get on
 the list**, and let the organizers read and manage who signed up. When a change
 would help or hurt that, that is the tiebreaker.
 
-The organizers are **Aaron (ag@unforced.org)**, **Benya (benya@wovenweb.org)**,
-and **Eileen (emwalz@gmail.com)**. Eileen drives copy and visual direction;
-Benya has driven the registration form's questions.
+The organizers are **Aaron (ag@unforced.org)**, **Benya
+(benjamin@compassxd.com)**, and **Eileen (emwalz@gmail.com)**. Eileen drives
+copy and visual direction; Benya has driven the registration form's questions.
+All three are admins of the portal and stewards of the community calendar.
 
 ## Architecture
 
@@ -37,9 +38,12 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
         ├── /api/auth/*          magic link + one-time code sign-in
         ├── /api/admin/*         admin JSON, behind the session cookie
+        │     ├── …/events[/:did/:rkey[/attendance]]   the community calendar
+        │     └── …/access[/invite|role|revoke]        who may host on it
         └── /admin               the admin portal, one self-contained HTML page
                ↓
         D1 `cohere`  +  KV: COHERE_AUTH (sessions), SIGNUPS (legacy mirror)
+                     +  regenOS (scenius.social), the calendar's only store
 ```
 
 `www.cohereboulder.org` and `cohere-signup.unforced.workers.dev` serve the same
@@ -177,6 +181,7 @@ confirm so scanners cannot unsubscribe people by following links.
 | Cloudflare auth | `wrangler login`, per machine |
 | `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | GitHub repo secrets, for CI deploys |
 | `RESEND_API_KEY` | Optional Worker secret, currently unset |
+| `REGENOS_SERVICE_TOKEN` | GitHub repo secret → Worker secret, uploaded by the deploy workflow's `secrets:` input — see **Event management** |
 
 The CI token's permissions cannot be scoped below the Cloudflare account, so it
 reaches every Worker and database in Unforced Development. That was accepted
@@ -185,6 +190,82 @@ deliberately — see `DEPLOYMENT.md`.
 `exports/` and `worker/seed.sql` are gitignored: they hold member contact
 details. Never commit them, and never paste member data into an artifact or any
 external service.
+
+## Event management
+
+Organizers add, edit and delete community-calendar events from `/admin`'s
+**Events** tab, and hand out hosting access from **Access**. regenOS
+(scenius.social) is the backend; nothing about the calendar lives in D1.
+
+**The site holds its own identity on the commons.** The Worker calls regenOS as
+`cohere-site.scenius.social` — a steward of the COhere collective — using
+`REGENOS_SERVICE_TOKEN`: `Authorization: Bearer <token>`, no cookies, no
+Origin, server-side only. That is deliberate. The organizers sign in here with
+an email link and have no regenOS accounts, so requiring one before they can
+put an event on their own calendar is exactly the friction this removes. The
+token never reaches a browser, never appears in a log line, and never appears
+in a response body.
+
+**The scopes are asymmetric, and the code depends on it.** Verified against
+production 2026-09-01:
+
+| Works with the token | Refused: `NotAuthorized … (scope check)` |
+| --- | --- |
+| `createEvent`, `updateEvent`, `deleteEvent` | `getEvents` |
+| `getSceneMembers`, `setMembership`, `revokeMembership` | `getEvent` |
+| `proposeInvite` | `getEventAttendance` |
+
+> **Every read is anonymous, on purpose.** Adding the bearer to a read turns a
+> working call into a 403. `worker/src/regenos-service.ts` sends it only on
+> writes and on `getSceneMembers`, and `scripts/regenos-mock.mjs` enforces the
+> same rule, so a "helpful" tidy-up fails a test instead of production.
+
+Other things that have to stay true:
+
+- **`updateEvent` re-runs the whole create fan-out, so an omitted field is a
+  deleted field.** The edit form prefills from the stored event and resends
+  everything. `publicFace: "exact"` on every write — the default `rough` face
+  routes the address into a record this token cannot read back, so a rough
+  event would lose its street on the first edit.
+- **`attendance` and `maxAttendees` live in a sibling record no read returns.**
+  `getEventAttendance` is the only way to see them. The page sends them back
+  only when it managed to read them first; when that read fails the two
+  controls grey out and are left off the save, because a guessed `open` on an
+  approval-only event would quietly open the door.
+- **RSVP rosters are host-only upstream.** We get counts plus the *confirmed*
+  guests; requests and the waitlist are not visible. The panel says so rather
+  than implying nobody asked.
+- **After every successful write the Worker purges the edge-cached
+  `/api/events`,** or the public calendar lags by up to five minutes
+  (`events.ts` caches for 300s).
+- **`proposeInvite`'s response carries the raw invite token** — redemption
+  material. It is swallowed; the route answers `{ok:true}` and nothing else.
+- **Roles**: `member` (10) · `builder` (20) · `facilitator` (30) · `steward`
+  (40). Builder and up can add and edit events; stewards can also manage
+  access. `cohere-site.scenius.social` and `claudeji.scenius.social` are
+  refused for role changes and revokes server-side — revoking the first would
+  break the portal from inside the portal.
+
+**Rotating the token**: mint a new Lane-A agent token for `cohere-site` on
+regenOS carrying the seven scopes above, update the `REGENOS_SERVICE_TOKEN`
+repository secret, and re-run the deploy workflow — the wrangler-action
+`secrets:` input re-uploads it on every deploy, so there is no separate
+`wrangler secret put`. Then revoke the old one upstream.
+
+**Testing it locally**, without touching production:
+
+```bash
+PORT=9945 node scripts/regenos-mock.mjs          # start it FRESH each run
+npx wrangler dev --port 8795 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:9945 \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var REGENOS_SERVICE_TOKEN:mock-token
+node scripts/admin-events-e2e.mjs http://127.0.0.1:8795 <session-token>
+```
+
+`scripts/admin-events-e2e.mjs`'s header explains seeding a local `admins` row
+and a `COHERE_AUTH` session, so the browser is signed in without email.
+**Never point a write test at scenius.social** — anonymous reads only.
 
 ## Deploying
 

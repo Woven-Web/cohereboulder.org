@@ -13,6 +13,15 @@ name: Deploy Cloudflare Worker
 #   CLOUDFLARE_ACCOUNT_ID  — 8f2a7eb9d5e21ffa902a76cf62975c82
 #
 # Until those exist the job is skipped rather than failing every push.
+#
+# One more secret is UPLOADED rather than used here:
+#   REGENOS_SERVICE_TOKEN  — the regenOS agent token the Worker writes calendar
+#                            events with (worker/src/regenos-service.ts). The
+#                            wrangler-action `secrets:` input pushes it to the
+#                            Worker as a secret of the same name, so it is set
+#                            on every deploy and never lives in wrangler.jsonc.
+#                            Rotating it is a GitHub-secret edit plus a re-run;
+#                            see the Event management section in CLAUDE.md.
 
 on:
   push:
@@ -72,6 +81,11 @@ jobs:
       - name: Deploy
         if: steps.creds.outputs.present == 'true'
         uses: cloudflare/wrangler-action@v3
+        # `secrets:` names environment variables for the action to upload as
+        # Worker secrets, so the value has to be in the env — never inlined
+        # into a `run:` line, where it would land in the build log.
+        env:
+          REGENOS_SERVICE_TOKEN: ${{ secrets.REGENOS_SERVICE_TOKEN }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -79,6 +93,8 @@ jobs:
           # and fails with "Missing entry-point". Keep this matching the
           # devDependency in package.json.
           wranglerVersion: "4.118.0"
+          secrets: |
+            REGENOS_SERVICE_TOKEN
 
       - name: Install Chromium
         if: steps.creds.outputs.present == 'true'

@@ -88,14 +88,14 @@ interface CalendarEventValue {
   uris?: { uri?: string; name?: string }[] | string[];
 }
 
-interface GetEventsRow {
+export interface GetEventsRow {
   uri?: string;
   value?: CalendarEventValue;
 }
 
 // -------------------------------------------------------------- trimmed shape
 
-interface EventLocation {
+export interface EventLocation {
   name?: string;
   street?: string;
   locality?: string;
@@ -103,8 +103,12 @@ interface EventLocation {
   postalCode?: string;
 }
 
-/** What a calendar card needs — the list and detail routes share this core. */
-interface CommunityEvent {
+/**
+ * What a calendar card needs — the list and detail routes share this core,
+ * and so does the admin Events tab (worker/src/regenos-service.ts). Exported
+ * for that reason: one parse of regenOS's wire shape, not two.
+ */
+export interface CommunityEvent {
   did: string;
   rkey: string;
   name: string;
@@ -153,7 +157,7 @@ function publicAddress(value: CalendarEventValue): EventLocation | null {
   return Object.values(location).some((v) => typeof v === "string" && v.trim()) ? location : null;
 }
 
-function toCommunityEvent(row: GetEventsRow): CommunityEvent | null {
+export function toCommunityEvent(row: GetEventsRow): CommunityEvent | null {
   const v = row.value;
   if (!row.uri || !v?.name) return null;
   const parts = splitAtUri(row.uri);
