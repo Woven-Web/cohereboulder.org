@@ -165,6 +165,18 @@ function denverDay(d: Date): string {
 }
 
 /**
+ * "YYYY-MM-DD" for an event's start instant, as a calendar day IN
+ * America/Denver — the key the month view groups events by. Comparable
+ * directly (string equality) against grid day keys built from plain
+ * year/month/day integers, since both denote the same kind of thing: a
+ * calendar date, not an instant.
+ */
+export function denverDateKey(iso: string | null): string | null {
+  const d = parseDate(iso);
+  return d ? denverDay(d) : null;
+}
+
+/**
  * "6:00 PM – 8:00 PM MDT" when the event ends the same Denver day,
  * "6:00 PM MDT" otherwise (a multi-day end gets its own line — see
  * formatEventEnd), or null for an undated event.
