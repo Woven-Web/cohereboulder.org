@@ -68,3 +68,32 @@ CREATE TABLE IF NOT EXISTS admins (
   added_by    TEXT,
   created_at  TEXT NOT NULL
 );
+
+-- Accountless event proposals (worker/migrations/0003_event_proposals.sql).
+-- Anyone can submit one from /propose; an organizer approves or rejects it
+-- from /admin's Proposals tab. Approval publishes to regenOS the same way
+-- the Events tab does — nothing here touches the calendar until then.
+CREATE TABLE IF NOT EXISTS event_proposals (
+  id             TEXT PRIMARY KEY,
+  name           TEXT NOT NULL,
+  description    TEXT,
+  starts_at      TEXT NOT NULL,   -- RFC3339 UTC
+  ends_at        TEXT,
+  mode           TEXT NOT NULL DEFAULT 'inperson',
+  place_name     TEXT,
+  street         TEXT,
+  locality       TEXT,
+  region         TEXT,
+  postal_code    TEXT,
+  proposer_name  TEXT,
+  proposer_email TEXT,
+  status         TEXT NOT NULL DEFAULT 'pending',  -- pending | published | rejected
+  published_did  TEXT,
+  published_rkey TEXT,            -- set on approval
+  reviewed_by    TEXT,
+  review_note    TEXT,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_proposals_status ON event_proposals(status, created_at DESC);
