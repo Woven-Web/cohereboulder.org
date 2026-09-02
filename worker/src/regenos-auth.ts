@@ -99,8 +99,15 @@ const STRIP_REQUEST = new Set([
   "cf-ray",
   "cf-visitor",
   "cf-worker",
+  "cf-pseudo-ipv4",
   "x-forwarded-proto",
+  // Every way Cloudflare spells "the visitor's IP address". Handing a third
+  // party the caller's address is not something borrowing two flows should
+  // do, and stripping cf-connecting-ip while forwarding x-forwarded-for would
+  // just be the same leak under a different name.
   "x-real-ip",
+  "x-forwarded-for",
+  "true-client-ip",
 ]);
 
 // Response headers we must NOT copy back (the runtime re-computes encoding

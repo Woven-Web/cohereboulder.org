@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2, PartyPopper } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
+import { useInvalidateRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { createCustodialAccount, setSignupProfile, verifySignupToken } from "@/lib/regenos";
 
 type Stage = "verifying" | "chooseHandle" | "creating" | "done" | "invalid";
@@ -32,6 +32,7 @@ export default function Login() {
   const { tr } = useLanguage();
   const [params] = useSearchParams();
   const invalidateSession = useInvalidateRegenosSession();
+  const { data: config } = useSiteConfig();
 
   const token = params.get("token");
   // No token = the beta-mode entrance, where beginSignup already proved the
@@ -40,6 +41,14 @@ export default function Login() {
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const redeemed = useRef(false);
+
+  // With the lane off there is no wizard behind this page — every /xrpc call
+  // underneath 404s. The token path lands on "invalid" by itself, but a
+  // no-token visit would otherwise render a handle form that can only fail on
+  // submit; say so up front instead.
+  useEffect(() => {
+    if (config && !config.regenosLoginEnabled) setStage("invalid");
+  }, [config]);
 
   useEffect(() => {
     if (!token || redeemed.current) return;

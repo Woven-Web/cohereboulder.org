@@ -178,7 +178,10 @@ export default function CalendarPage() {
                         {session?.handle ?? session?.did}
                       </span>
                     </p>
-                    {panel !== "create" && !editing && (
+                    {/* No collective DID means nothing to create an event
+                        under — the form below would never render, so don't
+                        offer a button that does nothing. */}
+                    {panel !== "create" && !editing && config?.collectiveDid && (
                       <Button
                         variant="community"
                         size="sm"
