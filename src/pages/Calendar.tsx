@@ -4,88 +4,24 @@ import { Footer } from "@/components/Footer";
 import { LumaCalendar } from "@/components/LumaCalendar";
 import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { CommunityEventForm } from "@/components/CommunityEventForm";
-import { Badge } from "@/components/ui/badge";
+import { EventCard } from "@/components/EventCard";
+import { CalendarMonthView } from "@/components/CalendarMonthView";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CalendarPlus, Clock, Loader2, LogOut, MapPin, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { CalendarPlus, Clock, Loader2, LogOut, Mail, MapPin, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { describeWriteError, signOut, xrpcPost } from "@/lib/regenos";
 import { buildDeleteEventInput } from "@/lib/eventForm";
-import {
-  eventPath,
-  fetchCommunityCalendar,
-  formatEventDate,
-  formatEventTimeRange,
-  locationLine,
-  type CommunityEvent,
-} from "@/lib/events";
+import { fetchCommunityCalendar, type CommunityEvent } from "@/lib/events";
 
-/** The statuses worth a badge; anything else renders as a plain event. */
-const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
-
-/** The modes we have words for; an unknown upstream fragment renders no badge. */
-const KNOWN_MODES = new Set(["inperson", "virtual", "hybrid"]);
-
-function EventCard({ event }: { event: CommunityEvent }) {
-  const { language } = useLanguage();
-  const tr = (key: string) => getTranslation(key, language);
-
-  const date = formatEventDate(event.startsAt, language);
-  const time = formatEventTimeRange(event.startsAt, event.endsAt, language);
-  const where = locationLine(event.location);
-  const badged = event.status && BADGED_STATUSES.has(event.status);
-  const cancelled = event.status === "cancelled";
-
-  return (
-    <Link to={eventPath(event)} className="block group">
-      <Card className="hover:shadow-warm transition-shadow">
-        <CardHeader className="pb-3">
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-            {date ?? tr("calendar.events.undated")}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle
-              className={`text-xl group-hover:underline ${cancelled ? "line-through opacity-70" : ""}`}
-            >
-              {event.name}
-            </CardTitle>
-            {badged && (
-              <Badge variant={cancelled ? "destructive" : "secondary"}>
-                {tr(`calendar.events.status.${event.status}`)}
-              </Badge>
-            )}
-            {event.mode && event.mode !== "inperson" && KNOWN_MODES.has(event.mode) && (
-              <Badge variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {time && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Clock className="h-4 w-4 shrink-0" />
-              {time}
-            </p>
-          )}
-          {where && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <MapPin className="h-4 w-4 shrink-0" />
-              {where}
-            </p>
-          )}
-          {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">
-              {event.description}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
+/** mailto target for "Propose an event", until the signed-in propose flow ships. */
+const PROPOSE_EVENT_MAILTO =
+  "mailto:cohere@wovenweb.org?subject=" +
+  encodeURIComponent("Propose an event for the COhere community calendar");
 
 export default function CalendarPage() {
   const { language } = useLanguage();
@@ -161,9 +97,19 @@ export default function CalendarPage() {
             <h1 className="text-4xl font-bold text-foreground mb-4">
               {tr("calendar.events.title")}
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
               {tr("calendar.events.subtitle")}
             </p>
+            {/* TODO(propose-flow): point this at the signed-in "add an event"
+                form once regenOS sign-in (REGENOS_LOGIN_ENABLED) is on for
+                everyone, not just existing hosts. Until then, a real person
+                reads these emails and adds the event by hand. */}
+            <Button asChild variant="outline" className="gap-2">
+              <a href={PROPOSE_EVENT_MAILTO}>
+                <Mail className="h-4 w-4" />
+                {tr("calendar.events.propose")}
+              </a>
+            </Button>
           </div>
 
           {/* Propose an event — no account needed, lands in the organizers'
@@ -255,53 +201,70 @@ export default function CalendarPage() {
           ) : data?.source === "regenos" ? (
             <>
               {data.icsUrl && (
-                <div className="text-center mb-8">
+                <div className="text-center mb-8 space-y-2">
                   <Button asChild variant="community" size="lg" className="gap-2">
                     <a href={data.icsUrl}>
                       <CalendarPlus className="h-4 w-4" />
                       {tr("calendar.events.subscribe")}
                     </a>
                   </Button>
+                  <p className="text-sm text-muted-foreground">
+                    {tr("calendar.events.subscribeCaption")}
+                  </p>
                 </div>
               )}
-              <div className="max-w-3xl mx-auto space-y-6">
-                {data.events.map((event) => (
-                  <div key={`${event.did}/${event.rkey}`}>
-                    <EventCard event={event} />
-                    {canManage(event) && (
-                      <div className="flex justify-end gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => {
-                            setPanel("none");
-                            setEditing(event);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          {tr("calendar.host.editButton")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2 text-destructive"
-                          disabled={deletingRkey === event.rkey}
-                          onClick={() => handleDelete(event)}
-                        >
-                          {deletingRkey === event.rkey ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                          {tr("calendar.host.deleteButton")}
-                        </Button>
+
+              <Tabs defaultValue="upcoming" className="max-w-3xl mx-auto">
+                <TabsList className="mx-auto mb-6 grid w-full max-w-xs grid-cols-2">
+                  <TabsTrigger value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
+                  <TabsTrigger value="month">{tr("calendar.events.tabMonth")}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="upcoming">
+                  <div className="space-y-6">
+                    {data.events.map((event) => (
+                      <div key={`${event.did}/${event.rkey}`}>
+                        <EventCard event={event} />
+                        {canManage(event) && (
+                          <div className="flex justify-end gap-2 mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => {
+                                setPanel("none");
+                                setEditing(event);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              {tr("calendar.host.editButton")}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 text-destructive"
+                              disabled={deletingRkey === event.rkey}
+                              onClick={() => handleDelete(event)}
+                            >
+                              {deletingRkey === event.rkey ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                              {tr("calendar.host.deleteButton")}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
+                </TabsContent>
+
+                <TabsContent value="month">
+                  <CalendarMonthView events={data.events} />
+                </TabsContent>
+              </Tabs>
             </>
           ) : (
             <LumaCalendar />
