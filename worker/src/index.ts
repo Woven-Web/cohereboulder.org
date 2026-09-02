@@ -27,6 +27,15 @@ import {
   type RegenosServiceEnv,
 } from "./regenos-service";
 // --- end admin event + access management ---
+// --- event proposals: accountless propose + admin approval queue (feat/event-proposals) ---
+import {
+  handleAdminProposalApprove,
+  handleAdminProposalReject,
+  handleAdminProposalsList,
+  handleProposeEvent,
+  type ProposalsEnv,
+} from "./proposals";
+// --- end event proposals ---
 import {
   clearedCookie,
   consumeLinkToken,
@@ -41,7 +50,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -653,6 +662,34 @@ export default {
       }
       // ============ end admin event + access management ============
 
+      // ============ event proposal moderation queue (feat/event-proposals) ============
+      // Anyone can propose an event from /propose with no account at all —
+      // see worker/src/proposals.ts for the public route. Everything here is
+      // already past the isAdmin gate above.
+      if (path.startsWith("/api/admin/proposals")) {
+        const rest = path.slice("/api/admin/proposals".length).replace(/^\//, "");
+        let parts: string[];
+        try {
+          parts = rest ? rest.split("/").map(decodeURIComponent) : [];
+        } catch {
+          return json({ error: "not found" }, 404);
+        }
+
+        if (parts.length === 0 && request.method === "GET") {
+          return handleAdminProposalsList(env, url.searchParams.get("status"));
+        }
+        if (parts.length === 2 && parts[1] === "approve" && request.method === "POST") {
+          const session = await currentSession(env, request);
+          return handleAdminProposalApprove(env, url, parts[0], session?.email ?? null);
+        }
+        if (parts.length === 2 && parts[1] === "reject" && request.method === "POST") {
+          const session = await currentSession(env, request);
+          return handleAdminProposalReject(request, env, parts[0], session?.email ?? null);
+        }
+        return json({ error: "not found" }, 404);
+      }
+      // ============ end event proposal moderation queue ============
+
       // Legacy: the raw KV signups, kept until we're confident D1 has everything.
       if (request.method === "GET" && path === "/list") {
         const signups: unknown[] = [];
@@ -740,6 +777,15 @@ export default {
       }
       return json({ error: "not found" }, 404, cors);
     }
+
+    // ============ propose an event, no account needed (feat/event-proposals) ============
+    // Anyone can suggest an event for the calendar; it lands as a `pending`
+    // row and an organizer approves or rejects it from /admin's Proposals
+    // tab (worker/src/proposals.ts). Never publishes to regenOS by itself.
+    if (request.method === "POST" && path === "/api/events/propose") {
+      return handleProposeEvent(request, env, url);
+    }
+    // ============ end propose an event ============
 
     // ------------------------------------------------------------ public forms
 

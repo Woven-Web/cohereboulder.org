@@ -94,3 +94,37 @@ export async function subscribeEmail(input: {
   });
   if (!response.ok) throw new Error(await readError(response));
 }
+
+/**
+ * Propose an event for the community calendar — no regenOS account, no admin
+ * session. It lands as a pending row an organizer approves from /admin's
+ * Proposals tab; this call never publishes anything itself. Field names line
+ * up with the Worker's shared event validator (worker/src/regenos-service.ts
+ * readEventValues) on purpose.
+ */
+export interface ProposeEventPayload {
+  name: string;
+  description?: string;
+  /** ISO 8601 (send `new Date(v).toISOString()` from a datetime-local input). */
+  startsAt: string;
+  endsAt?: string;
+  mode?: "inperson" | "virtual" | "hybrid";
+  placeName?: string;
+  street?: string;
+  locality?: string;
+  region?: string;
+  postalCode?: string;
+  proposerName?: string;
+  proposerEmail?: string;
+  /** Hidden honeypot; bots fill it, people never see it. */
+  website?: string;
+}
+
+export async function proposeEvent(payload: ProposeEventPayload): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/events/propose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+}

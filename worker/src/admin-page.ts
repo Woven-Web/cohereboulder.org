@@ -171,6 +171,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="people">People</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
@@ -216,6 +217,28 @@ export const ADMIN_PAGE = `<!doctype html>
             <th>When (Boulder)</th><th>Name</th><th>Where</th><th>RSVPs</th><th>Capacity</th>
           </tr></thead>
           <tbody id="eventrows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-proposals" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Anyone can propose an event from <a href="/propose" target="_blank" rel="noopener">the public form</a> —
+        no account needed. Approving publishes it to the calendar the same way "New event" on the
+        Events tab does.
+      </p>
+      <div class="toolbar">
+        <button class="chip" data-pstatus="pending" aria-pressed="true">Pending</button>
+        <button class="chip" data-pstatus="published" aria-pressed="false">Published</button>
+        <button class="chip" data-pstatus="rejected" aria-pressed="false">Rejected</button>
+        <span class="muted" id="proposalmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>When (Boulder)</th><th>Name</th><th>Proposed by</th><th>Where</th><th></th>
+          </tr></thead>
+          <tbody id="proposalrows"></tbody>
         </table>
       </div>
     </section>
@@ -284,6 +307,7 @@ export const ADMIN_PAGE = `<!doctype html>
 (function () {
   var people = [], forms = [], filter = "all", query = "";
   var events = [], eventWhen = "upcoming", rsvpCache = {}, accessMembers = [];
+  var proposals = [], proposalStatus = "pending";
 
   function el(id) { return document.getElementById(id); }
   function show(id, visible) { el(id).classList.toggle("hidden", !visible); }
@@ -377,6 +401,7 @@ export const ADMIN_PAGE = `<!doctype html>
       el("app").classList.remove("hidden");
       el("code").value = "";
       renderStats(); renderForms(); render();
+      loadPendingProposalCount();
       fetch("/api/auth/me", { credentials: "same-origin" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (me) {
@@ -859,6 +884,136 @@ export const ADMIN_PAGE = `<!doctype html>
     el("drawerbg").classList.add("open");
   }
 
+  // ====================================================== the Proposals tab
+
+  function whereTextProposal(p) {
+    var bits = [];
+    if (p.place_name) bits.push(p.place_name);
+    if (p.locality) bits.push(p.locality);
+    if (bits.length) return bits.join(", ");
+    if (p.mode === "virtual") return "Online";
+    return "—";
+  }
+
+  function proposerText(p) {
+    var who = p.proposer_name || (p.proposer_email ? "" : "Anonymous");
+    var bits = [];
+    if (who) bits.push(esc(who));
+    if (p.proposer_email) bits.push('<span class="muted">' + esc(p.proposer_email) + "</span>");
+    return bits.length ? bits.join(" ") : '<span class="muted">—</span>';
+  }
+
+  function renderProposalBadge() {
+    var badge = el("proposalbadge");
+    if (!badge) return;
+    var pending = proposalStatus === "pending" ? proposals.length : null;
+    if (pending === null) return; // only the pending count drives the badge
+    badge.textContent = pending ? String(pending) : "";
+    badge.className = pending ? "pill on" : "pill";
+  }
+
+  // Loaded once on sign-in (and after every approve/reject) so the badge is
+  // right even before anyone opens the tab.
+  function loadPendingProposalCount() {
+    return api("/api/admin/proposals?status=pending").then(function (r) { return r.json(); }).then(function (data) {
+      var badge = el("proposalbadge");
+      if (!badge) return;
+      var n = (data.proposals || []).length;
+      badge.textContent = n ? String(n) : "";
+      badge.className = n ? "pill on" : "pill";
+      if (proposalStatus === "pending") { proposals = data.proposals || []; renderProposals(); }
+    }).catch(function () { /* the badge just stays blank */ });
+  }
+
+  function loadProposals() {
+    el("proposalmsg").textContent = "Loading…";
+    return api("/api/admin/proposals?status=" + encodeURIComponent(proposalStatus))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        proposals = data.proposals || [];
+        el("proposalmsg").textContent = "";
+        renderProposals();
+      }).catch(function (e) {
+        el("proposalmsg").textContent = e.message;
+        el("proposalrows").innerHTML = '<tr><td colspan="5" class="muted">Could not load proposals.</td></tr>';
+      });
+  }
+
+  function renderProposals() {
+    renderProposalBadge();
+    if (!proposals.length) {
+      el("proposalrows").innerHTML = '<tr><td colspan="5" class="muted">' +
+        (proposalStatus === "pending" ? "Nothing waiting for review." : "Nothing here yet.") + "</td></tr>";
+      return;
+    }
+    el("proposalrows").innerHTML = proposals.map(function (p) {
+      var actions = p.status === "pending"
+        ? '<div class="row">' +
+            '<button class="btn primary" data-approve="' + esc(p.id) + '">Approve</button>' +
+            '<button class="btn" data-reject="' + esc(p.id) + '">Reject</button>' +
+          "</div>"
+        : p.status === "published"
+          ? '<span class="pill on">published</span>'
+          : '<span class="pill off">rejected' + (p.review_note ? ": " + esc(p.review_note) : "") + "</span>";
+      return "<tr>" +
+        "<td>" + esc(whenText(p.starts_at)) + "</td>" +
+        '<td class="wrapcell">' + esc(p.name) + "</td>" +
+        '<td class="wrapcell">' + proposerText(p) + "</td>" +
+        '<td class="wrapcell">' + esc(whereTextProposal(p)) + "</td>" +
+        "<td>" + actions + "</td>" +
+        "</tr>";
+    }).join("");
+
+    Array.prototype.forEach.call(el("proposalrows").querySelectorAll("[data-approve]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-approve");
+        btn.disabled = true;
+        el("proposalmsg").textContent = "";
+        api("/api/admin/proposals/" + encodeURIComponent(id) + "/approve", { method: "POST" })
+          .then(function () {
+            return loadProposals().then(loadPendingProposalCount).then(function () {
+              el("proposalmsg").textContent = "Approved and published to the calendar.";
+            });
+          }).catch(function (err) {
+            el("proposalmsg").textContent = err.message;
+            btn.disabled = false;
+          });
+      });
+    });
+
+    Array.prototype.forEach.call(el("proposalrows").querySelectorAll("[data-reject]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-reject");
+        var note = window.prompt("Reason (optional — shared with the proposer if they left an email):", "");
+        if (note === null) return; // cancelled
+        btn.disabled = true;
+        el("proposalmsg").textContent = "";
+        api("/api/admin/proposals/" + encodeURIComponent(id) + "/reject", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: note })
+        }).then(function () {
+          return loadProposals().then(loadPendingProposalCount).then(function () {
+            el("proposalmsg").textContent = "Rejected.";
+          });
+        }).catch(function (err) {
+          el("proposalmsg").textContent = err.message;
+          btn.disabled = false;
+        });
+      });
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#tab-proposals .chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      Array.prototype.forEach.call(document.querySelectorAll("#tab-proposals .chip"), function (c) {
+        c.setAttribute("aria-pressed", String(c === chip));
+      });
+      proposalStatus = chip.getAttribute("data-pstatus");
+      loadProposals();
+    });
+  });
+
   // ======================================================== the Access tab
 
   var ROLES = [["member", "Member"], ["builder", "Builder"],
@@ -1091,13 +1246,14 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "forms", "access", "admins"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "access", "admins"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
       });
       if (name === "admins") loadAdmins();
       if (name === "events") loadEvents();
+      if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
     });
   });

@@ -219,7 +219,7 @@ async function purgeEventsCache(url: URL): Promise<void> {
 
 // --------------------------------------------------------------- validation
 
-interface EventValues {
+export interface EventValues {
   name: string;
   description: string;
   startsAt: string;
@@ -264,8 +264,15 @@ function isoOrNull(value: unknown): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-/** Reject on the way in, so a bad field is one clear sentence and not an upstream 400. */
-function readEventValues(body: Record<string, unknown>): { values: EventValues } | { error: string } {
+/**
+ * Reject on the way in, so a bad field is one clear sentence and not an
+ * upstream 400. Exported so the accountless proposal form (worker/src/
+ * proposals.ts, POST /api/events/propose) validates with the exact same
+ * rules the admin Events tab does — the field names line up on purpose
+ * (name, description, startsAt, endsAt, mode, placeName, street, locality,
+ * region, postalCode).
+ */
+export function readEventValues(body: Record<string, unknown>): { values: EventValues } | { error: string } {
   const name = text(body.name, 200);
   if (!name) return { error: "An event needs a name." };
 
@@ -504,42 +511,68 @@ async function readJsonBody(request: Request): Promise<Record<string, unknown> |
   }
 }
 
-export async function handleAdminEventCreate(
-  request: Request,
+export interface CreateEventResult {
+  did: string;
+  rkey: string;
+  eventUri: string;
+  publicPath: string;
+}
+
+/**
+ * The one place a new event actually lands on the collective's calendar —
+ * `createEvent` with the service token, always under the COhere collective
+ * DID, always `publicFace: "exact"`, always followed by an edge-cache purge.
+ * Both the admin "New event" button (handleAdminEventCreate below) and an
+ * approved proposal (worker/src/proposals.ts) call this SAME function, so
+ * there is exactly one path onto the calendar and one place that can get the
+ * write wrong.
+ */
+export async function createEventFromValues(
   env: RegenosServiceEnv,
   url: URL,
-): Promise<Response> {
+  values: EventValues,
+): Promise<{ ok: true; result: CreateEventResult } | { ok: false; response: Response }> {
   const base = baseUrl(env);
   const scene = collectiveDid(env);
   const token = serviceToken(env);
-  if (!base || !scene || !token) return json({ error: UNCONFIGURED }, 503);
-
-  const body = await readJsonBody(request);
-  if (!body) return json({ error: "invalid JSON" }, 400);
-  const parsed = readEventValues(body);
-  if ("error" in parsed) return json({ error: parsed.error }, 400);
+  if (!base || !scene || !token) return { ok: false, response: json({ error: UNCONFIGURED }, 503) };
 
   const rkey = mintRkey();
   const upstream = await writeXrpc<EventWriteResponse>(
     base,
     token,
     "social.scenius.createEvent",
-    eventInput(parsed.values, { authority: scene, rkey }, true),
+    eventInput(values, { authority: scene, rkey }, true),
     "createEvent",
   );
-  if (!upstream.ok) return upstream.response;
+  if (!upstream.ok) return { ok: false, response: upstream.response };
 
   await purgeEventsCache(url);
-  return json(
-    {
-      ok: true,
+  return {
+    ok: true,
+    result: {
       did: scene,
       rkey,
       eventUri: upstream.data.eventUri ?? `at://${scene}/${EVENT_COLLECTION}/${rkey}`,
       publicPath: `/events/${scene}/${rkey}`,
     },
-    200,
-  );
+  };
+}
+
+export async function handleAdminEventCreate(
+  request: Request,
+  env: RegenosServiceEnv,
+  url: URL,
+): Promise<Response> {
+  const body = await readJsonBody(request);
+  if (!body) return json({ error: "invalid JSON" }, 400);
+  const parsed = readEventValues(body);
+  if ("error" in parsed) return json({ error: parsed.error }, 400);
+
+  const created = await createEventFromValues(env, url, parsed.values);
+  if (!created.ok) return created.response;
+
+  return json({ ok: true, ...created.result }, 200);
 }
 
 export async function handleAdminEventUpdate(
