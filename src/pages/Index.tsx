@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 import { EmailSignup } from "@/components/EmailSignup";
+import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
 import altarPhoto from "@/assets/photos/altar.webp";
@@ -87,6 +88,9 @@ const Index = () => {
             </p>
           </div>
         </section>
+
+        {/* What's coming up - real events, hidden entirely when there are none */}
+        <UpcomingEventsHome />
 
         {/* What is COhere - Simple and Clear */}
         <section className="py-20">
