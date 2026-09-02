@@ -9,6 +9,7 @@ export const translations = {
     join2025: { en: "Join 2025", es: "Únete 2025" },
     participate: { en: "Co-Create", es: "Co-Crear" },
     calendar: { en: "Calendar", es: "Calendario" },
+    proposeEvent: { en: "Propose an Event", es: "Proponer un Evento" },
     archive: { en: "Archive", es: "Archivo" },
     donateNow: { en: "Donate Now", es: "Donar Ahora" },
     supportCohere: { en: "Support COhere", es: "Apoyar COhere" },
@@ -955,6 +956,121 @@ export const translations = {
         en: "We'll be adding a lot more resources in the coming weeks. Check back 🙂",
         es: "Estaremos añadiendo muchos más recursos en las próximas semanas. Vuelve a revisar 🙂",
       },
+    },
+    // A small entry point on /calendar pointing at /propose — deliberately in
+    // the header area, not the subscribe/CTA button block another change is
+    // touching at the same time.
+    proposeCallout: {
+      text: {
+        en: "Hosting something during COhere? You don't need an account to put it on this calendar.",
+        es: "¿Vas a organizar algo durante COhere? No necesitas una cuenta para ponerlo en este calendario.",
+      },
+      button: {
+        en: "Propose an event",
+        es: "Proponer un evento",
+      },
+    },
+  },
+
+  // Propose an event — accountless: anyone can suggest something for the
+  // community calendar from /propose, and an organizer approves it from
+  // /admin. See worker/src/proposals.ts and src/pages/ProposeEvent.tsx.
+  proposeEvent: {
+    title: {
+      en: "Propose an event",
+      es: "Proponer un evento",
+    },
+    subtitle: {
+      en: "Hosting a dinner, a walk, a workshop, a song circle? Tell us about it — no account needed. An organizer reviews every proposal before it goes on the public calendar.",
+      es: "¿Vas a organizar una cena, una caminata, un taller, un círculo de canto? Cuéntanos — no necesitas cuenta. Un organizador revisa cada propuesta antes de publicarla en el calendario.",
+    },
+    nameLabel: {
+      en: "Event name",
+      es: "Nombre del evento",
+    },
+    descriptionLabel: {
+      en: "Description",
+      es: "Descripción",
+    },
+    descriptionHelp: {
+      en: "What it is, who it's for, and any link people should have.",
+      es: "Qué es, para quién es y cualquier enlace que la gente deba tener.",
+    },
+    startsLabel: {
+      en: "Starts",
+      es: "Comienza",
+    },
+    endsLabel: {
+      en: "Ends",
+      es: "Termina",
+    },
+    modeLabel: {
+      en: "How people attend",
+      es: "Cómo participa la gente",
+    },
+    placeLabel: {
+      en: "Place name",
+      es: "Nombre del lugar",
+    },
+    streetLabel: {
+      en: "Street address",
+      es: "Dirección",
+    },
+    localityLabel: {
+      en: "City",
+      es: "Ciudad",
+    },
+    regionLabel: {
+      en: "State",
+      es: "Estado",
+    },
+    postalLabel: {
+      en: "ZIP code",
+      es: "Código postal",
+    },
+    addressNote: {
+      en: "If it's approved, the address is published with the event — only share one you'd put on a poster.",
+      es: "Si se aprueba, la dirección se publica con el evento — comparte solo una que pondrías en un cartel.",
+    },
+    proposerNameLabel: {
+      en: "Your name",
+      es: "Tu nombre",
+    },
+    proposerEmailLabel: {
+      en: "Your email",
+      es: "Tu correo electrónico",
+    },
+    proposerEmailHelp: {
+      en: "Optional, but the only way we can tell you whether it was approved.",
+      es: "Opcional, pero es la única forma de avisarte si fue aprobado.",
+    },
+    submitButton: {
+      en: "Submit for review",
+      es: "Enviar para revisión",
+    },
+    submitting: {
+      en: "Submitting…",
+      es: "Enviando…",
+    },
+    genericError: {
+      en: "Something went wrong. Please try again.",
+      es: "Algo salió mal. Por favor, inténtalo de nuevo.",
+    },
+    successTitle: {
+      en: "Thanks — we've got it!",
+      es: "¡Gracias, lo recibimos!",
+    },
+    successBody: {
+      en: "An organizer will take a look. If it's approved, it'll show up on the community calendar — and if you left your email, we'll let you know either way.",
+      es: "Un organizador lo revisará. Si se aprueba, aparecerá en el calendario comunitario — y si dejaste tu correo, te avisaremos.",
+    },
+    backToCalendar: {
+      en: "Back to the calendar",
+      es: "Volver al calendario",
+    },
+    proposeAnother: {
+      en: "Propose another event",
+      es: "Proponer otro evento",
     },
   },
 

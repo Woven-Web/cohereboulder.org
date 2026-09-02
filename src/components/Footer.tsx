@@ -1,6 +1,7 @@
 import {
   MapPin,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { EmailSignup } from "@/components/EmailSignup";
 
@@ -51,6 +52,10 @@ export const Footer = () => {
               <span>© 2026 [CO]here Boulder</span>
               <span className="mx-2">•</span>
               <span>{tr("footer.wovenWeb")}</span>
+              <span className="mx-2">•</span>
+              <Link to="/propose" className="hover:text-primary-foreground transition-colors">
+                {tr("nav.proposeEvent")}
+              </Link>
             </div>
             <div className="flex items-center space-x-4">
               {/* Language Toggle */}

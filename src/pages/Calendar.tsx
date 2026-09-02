@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CalendarPlus, Clock, Loader2, LogOut, MapPin, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, Clock, Loader2, LogOut, MapPin, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
@@ -165,6 +165,19 @@ export default function CalendarPage() {
               {tr("calendar.events.subtitle")}
             </p>
           </div>
+
+          {/* Propose an event — no account needed, lands in the organizers'
+              approval queue. Kept in the header area, separate from the
+              subscribe/hosting controls below. */}
+          <Card className="max-w-2xl mx-auto mb-10 border-dashed">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Hosting — only exists when the regenOS lane is enabled. */}
           {hostingOn && (
