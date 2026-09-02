@@ -62,8 +62,13 @@ export async function isAllowedAdmin(env: AuthEnv, email: string): Promise<{ ema
   return row ?? null;
 }
 
-/** Simple fixed-window limiter, keyed by whatever the caller considers a subject. */
-async function rateLimited(env: AuthEnv, subject: string): Promise<boolean> {
+/**
+ * Simple fixed-window limiter, keyed by whatever the caller considers a
+ * subject. Exported so the accountless event-proposal form (worker/src/
+ * proposals.ts) throttles by IP with the exact same KV-backed window this
+ * file uses for sign-in requests, rather than growing a second one.
+ */
+export async function rateLimited(env: AuthEnv, subject: string): Promise<boolean> {
   const key = `rate:${await sha256(subject)}`;
   const current = Number((await env.COHERE_AUTH.get(key)) ?? "0");
   if (current >= MAX_REQUESTS_PER_WINDOW) return true;
