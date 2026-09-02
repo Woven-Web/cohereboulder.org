@@ -4,6 +4,8 @@
 //          POST /api/submit/:formSlug    generic form submission, answers stored as JSON
 // Admin:   GET  /admin                   portal UI (asks for the admin key, keeps it in sessionStorage)
 //          GET  /api/admin/*             JSON behind the admin session cookie
+//          /api/admin/events*            the community calendar, written as the site's regenOS identity
+//          /api/admin/access*            who may add and edit events on it
 //
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
@@ -11,6 +13,20 @@
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
+// --- admin event + access management (feat/admin-events-access) ---
+import {
+  handleAdminAccessInvite,
+  handleAdminAccessList,
+  handleAdminAccessRevoke,
+  handleAdminAccessRole,
+  handleAdminEventAttendance,
+  handleAdminEventCreate,
+  handleAdminEventDelete,
+  handleAdminEventUpdate,
+  handleAdminEventsList,
+  type RegenosServiceEnv,
+} from "./regenos-service";
+// --- end admin event + access management ---
 import {
   clearedCookie,
   consumeLinkToken,
@@ -25,7 +41,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -589,6 +605,47 @@ export default {
           },
         });
       }
+
+      // ============ admin event + access management (feat/admin-events-access) ============
+      // The COhere community calendar, managed from here. The Worker makes
+      // every regenOS call itself with the site's own service token — see
+      // worker/src/regenos-service.ts for why, and for the scope asymmetry
+      // that makes the reads anonymous and the writes bearer-authenticated.
+      // Everything below is already past the isAdmin gate above.
+
+      if (path.startsWith("/api/admin/events")) {
+        // "/api/admin/events" | "/api/admin/events/:did/:rkey[/attendance]"
+        const rest = path.slice("/api/admin/events".length).replace(/^\//, "");
+        const parts = rest ? rest.split("/").map(decodeURIComponent) : [];
+
+        if (parts.length === 0) {
+          if (request.method === "GET") return handleAdminEventsList(env);
+          if (request.method === "POST") return handleAdminEventCreate(request, env, url);
+        }
+        if (parts.length === 2) {
+          const [did, rkey] = parts;
+          if (request.method === "PUT") return handleAdminEventUpdate(request, env, url, did, rkey);
+          if (request.method === "DELETE") return handleAdminEventDelete(env, url, did, rkey);
+        }
+        if (parts.length === 3 && parts[2] === "attendance" && request.method === "GET") {
+          return handleAdminEventAttendance(env, parts[0], parts[1]);
+        }
+        return json({ error: "not found" }, 404);
+      }
+
+      if (request.method === "GET" && path === "/api/admin/access") {
+        return handleAdminAccessList(env);
+      }
+      if (request.method === "POST" && path === "/api/admin/access/invite") {
+        return handleAdminAccessInvite(request, env);
+      }
+      if (request.method === "POST" && path === "/api/admin/access/role") {
+        return handleAdminAccessRole(request, env);
+      }
+      if (request.method === "POST" && path === "/api/admin/access/revoke") {
+        return handleAdminAccessRevoke(request, env);
+      }
+      // ============ end admin event + access management ============
 
       // Legacy: the raw KV signups, kept until we're confident D1 has everything.
       if (request.method === "GET" && path === "/list") {
