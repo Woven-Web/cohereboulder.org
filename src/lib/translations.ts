@@ -602,6 +602,10 @@ export const translations = {
         en: "Get the whole community calendar in your own calendar app — new events included automatically.",
         es: "Recibe todo el calendario comunitario en tu propia app de calendario — los nuevos eventos se incluyen automáticamente.",
       },
+      share: { en: "Share event", es: "Compartir evento" },
+      linkCopied: { en: "Link copied", es: "Enlace copiado" },
+      copyLinkManually: { en: "Copy this link to share the event:", es: "Copia este enlace para compartir el evento:" },
+      eventLink: { en: "Event link", es: "Enlace del evento" },
       addToCalendar: {
         en: "Add to calendar",
         es: "Añadir al calendario",
