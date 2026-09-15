@@ -12,6 +12,7 @@ import Calendar from "./pages/Calendar";
 import EventDetail from "./pages/EventDetail";
 import ProposeEvent from "./pages/ProposeEvent";
 import Login from "./pages/Login";
+import Join from "./pages/Join";
 import Registration from "./pages/Registration";
 import Join2025 from "./pages/Join2025";
 import Invitation2025 from "./pages/Invitation2025";
@@ -48,6 +49,8 @@ const App = () => (
             {/* Where regenOS's signup magic link lands (inert until the
                 Worker's REGENOS_LOGIN_ENABLED flag is on) */}
             <Route path="/login" element={<Login />} />
+            {/* A regenOS hosting-invite link — see src/pages/Join.tsx */}
+            <Route path="/join/:token" element={<Join />} />
             <Route path="/register" element={<Registration />} />
             <Route path="/telegram" element={<Telegram />} />
             <Route path="/archive" element={<Archive />} />
