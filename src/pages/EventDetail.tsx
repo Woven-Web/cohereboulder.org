@@ -1,3 +1,4 @@
+import { ShareEvent } from "@/components/ShareEvent";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -206,24 +207,23 @@ export default function EventDetail() {
                 </div>
               )}
 
-              {(event.startsAt || data?.icsUrl) && (
-                <div className="border-t pt-6 flex flex-wrap gap-3">
-                  {event.startsAt && !cancelled && (
-                    <Button variant="community" className="gap-2" onClick={handleAddToCalendar}>
-                      <Download className="h-4 w-4" />
-                      {tr("calendar.events.addToCalendar")}
-                    </Button>
-                  )}
-                  {data?.icsUrl && (
-                    <Button asChild variant="outline" className="gap-2">
-                      <a href={data.icsUrl}>
-                        <CalendarPlus className="h-4 w-4" />
-                        {tr("calendar.events.subscribe")}
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="border-t pt-6 flex flex-wrap gap-3">
+                <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
+                {event.startsAt && !cancelled && (
+                  <Button variant="community" className="gap-2" onClick={handleAddToCalendar}>
+                    <Download className="h-4 w-4" />
+                    {tr("calendar.events.addToCalendar")}
+                  </Button>
+                )}
+                {data?.icsUrl && (
+                  <Button asChild variant="outline" className="gap-2">
+                    <a href={data.icsUrl}>
+                      <CalendarPlus className="h-4 w-4" />
+                      {tr("calendar.events.subscribe")}
+                    </a>
+                  </Button>
+                )}
+              </div>
             </article>
           )}
         </div>
