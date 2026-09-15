@@ -25,13 +25,10 @@ const PAGES = [
   // Accountless propose flow — always reachable, no session needed.
   { path: "/propose", expect: "Propose an event" },
   // The magic-link landing page. REGENOS_LOGIN_ENABLED is off in production
-  // today (see CLAUDE.md), so a no-token visit never reaches the wizard.
-  // What it does instead is a runtime behavior, not tied to one commit — it
-  // changed mid-development of this very PR (main's PR #25, "Give a
-  // no-token /login visit somewhere to go", redirects to /admin instead of
-  // the older standalone "invalid link" card). Either is real content
-  // proving the page mounted rather than crashed, so accept both.
-  { path: "/login", expect: ["That link didn't work", "Sign in with your email"] },
+  // today (see CLAUDE.md), so a no-token visit has nothing to do here and
+  // (since PR #25) is sent to the organizer sign-in. Prove the redirect
+  // actually happened, not just that the sign-in card's text showed up.
+  { path: "/login", expect: "Sign in with your email", finalPath: "/admin" },
   // The admin portal is a self-contained HTML page the Worker serves
   // directly (worker/src/admin-page.ts) — not part of the React SPA, so a
   // 200 here is closer to proof than elsewhere, but still worth checking the
@@ -56,10 +53,20 @@ function hasExpectedContent(body, expect) {
  */
 async function waitForRenderedBody(page, expect, timeoutMs = 8_000) {
   const deadline = Date.now() + timeoutMs;
-  let body = await page.textContent("body");
+  // A page mid-navigation (e.g. /login replacing itself with /admin) has no
+  // execution context for a moment; reading the body then throws. Treat that
+  // read as "nothing yet" and keep polling instead of failing the page.
+  const readBody = async () => {
+    try {
+      return await page.textContent("body");
+    } catch {
+      return null;
+    }
+  };
+  let body = await readBody();
   while (Date.now() < deadline && !body?.includes("Something went wrong") && !hasExpectedContent(body, expect)) {
     await page.waitForTimeout(250);
-    body = await page.textContent("body");
+    body = await readBody();
   }
   return body;
 }
@@ -87,7 +94,7 @@ try {
   console.log(`skip  event detail page — couldn't fetch /api/events (${error.message})`);
 }
 
-for (const { path, expect } of PAGES) {
+for (const { path, expect, finalPath } of PAGES) {
   const url = new URL(path, target).toString();
   const page = await browser.newPage();
   const consoleErrors = [];
@@ -101,6 +108,8 @@ for (const { path, expect } of PAGES) {
       failures.push(`${path}: error boundary rendered — the app crashed on mount`);
     } else if (!hasExpectedContent(body, expect)) {
       failures.push(`${path}: expected to find ${JSON.stringify(expect)} but the page did not render it`);
+    } else if (finalPath && new URL(page.url()).pathname !== finalPath) {
+      failures.push(`${path}: expected to end up at ${finalPath} but the browser is at ${new URL(page.url()).pathname}`);
     } else {
       console.log(`ok  ${path} (${response?.status()}) rendered`);
     }
