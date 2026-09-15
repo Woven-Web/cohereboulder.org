@@ -98,10 +98,31 @@ export default function CalendarPage() {
             </p>
           </div>
 
+          {/* Mobile: a compact row instead of the full callout + subscribe
+              blocks below, so the toggle and first event stay above the
+              fold. Desktop keeps the full versions further down. */}
+          <div className="flex md:hidden items-center justify-center gap-3 mb-6">
+            <Button asChild variant="outline" size="sm" className="flex-1 gap-2">
+              <Link to="/propose">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                {tr("calendar.proposeCallout.button")}
+              </Link>
+            </Button>
+            {data?.source === "regenos" && data.icsUrl && (
+              <Button asChild variant="community" size="sm" className="flex-1 gap-2">
+                <a href={data.icsUrl}>
+                  <CalendarPlus className="h-4 w-4" aria-hidden="true" />
+                  {tr("calendar.events.subscribe")}
+                </a>
+              </Button>
+            )}
+          </div>
+
           {/* Propose an event — no account needed, lands in the organizers'
               approval queue. Kept in the header area, separate from the
-              subscribe/hosting controls below. */}
-          <Card className="max-w-2xl mx-auto mb-10 border-dashed">
+              subscribe/hosting controls below. Desktop only; see the compact
+              mobile row above. */}
+          <Card className="hidden md:block max-w-2xl mx-auto mb-10 border-dashed">
             <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
               <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
               <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
@@ -187,7 +208,7 @@ export default function CalendarPage() {
           ) : data?.source === "regenos" ? (
             <>
               {data.icsUrl && (
-                <div className="text-center mb-8 space-y-2">
+                <div className="hidden md:block text-center mb-8 space-y-2">
                   <Button asChild variant="community" size="lg" className="gap-2">
                     <a href={data.icsUrl}>
                       <CalendarPlus className="h-4 w-4" />

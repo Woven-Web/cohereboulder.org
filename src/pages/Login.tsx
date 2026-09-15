@@ -15,6 +15,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+// /admin is the Worker's own self-contained HTML page, outside the SPA's
+// routes entirely (see CLAUDE.md's architecture diagram) — a client-side
+// <Link>/navigate to it would just render this app's own 404 instead of
+// reaching the real admin portal, so it needs a genuine page load.
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -35,20 +39,31 @@ export default function Login() {
   const { data: config } = useSiteConfig();
 
   const token = params.get("token");
-  // No token = the beta-mode entrance, where beginSignup already proved the
-  // email and sent the browser here to pick a handle directly.
-  const [stage, setStage] = useState<Stage>(token ? "verifying" : "chooseHandle");
+  // Start neutral until /api/config answers: a no-token visit is either the
+  // beta-mode entrance (beginSignup already proved the email and sent the
+  // browser here to pick a handle) or, with the lane off, nothing at all.
+  // Rendering the handle form before we know which would flash a dead form.
+  const [stage, setStage] = useState<Stage>("verifying");
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const redeemed = useRef(false);
 
   // With the lane off there is no wizard behind this page — every /xrpc call
-  // underneath 404s. The token path lands on "invalid" by itself, but a
-  // no-token visit would otherwise render a handle form that can only fail on
-  // submit; say so up front instead.
+  // underneath 404s. A token still lands on "invalid" (say so plainly), but a
+  // no-token visit — someone just typing /login — has nothing to do here at
+  // all, so send them to the organizer sign-in instead of a dead handle form.
   useEffect(() => {
-    if (config && !config.regenosLoginEnabled) setStage("invalid");
-  }, [config]);
+    if (!config) return;
+    if (config.regenosLoginEnabled) {
+      if (!token) setStage("chooseHandle");
+      return;
+    }
+    if (!token) {
+      window.location.replace("/admin");
+      return;
+    }
+    setStage("invalid");
+  }, [config, token]);
 
   useEffect(() => {
     if (!token || redeemed.current) return;
@@ -99,6 +114,11 @@ export default function Login() {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
+                <p className="text-sm text-muted-foreground">
+                  <a href="/admin" className="underline hover:text-foreground">
+                    {tr("login.adminLink")}
+                  </a>
+                </p>
               </CardContent>
             </Card>
           ) : stage === "done" ? (

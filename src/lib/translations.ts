@@ -650,6 +650,10 @@ export const translations = {
         en: "Hosted by",
         es: "Organizado por",
       },
+      bannerAlt: {
+        en: "Photo from a past COhere gathering",
+        es: "Foto de un encuentro anterior de COhere",
+      },
       links: {
         en: "Links",
         es: "Enlaces",
@@ -1998,6 +2002,64 @@ export const translations = {
     goToCalendar: {
       en: "Go to the calendar",
       es: "Ir al calendario",
+    },
+    adminLink: {
+      en: "Organizer? Sign in at /admin",
+      es: "¿Eres organizador/a? Inicia sesión en /admin",
+    },
+  },
+
+  // Branded 404 — src/pages/NotFound.tsx
+  notFound: {
+    title: {
+      en: "Page not found",
+      es: "Página no encontrada",
+    },
+    body: {
+      en: "The page you're looking for doesn't exist, or may have moved.",
+      es: "La página que buscas no existe, o puede haberse movido.",
+    },
+    home: {
+      en: "Go home",
+      es: "Ir al inicio",
+    },
+    calendar: {
+      en: "See the calendar",
+      es: "Ver el calendario",
+    },
+  },
+
+  // /join/:token — a regenOS invite link to host on the community calendar.
+  // See src/pages/Join.tsx. Named joinInvite: "join" above is the homepage's
+  // "Join the Weaving" newsletter section, a different string family.
+  joinInvite: {
+    title: {
+      en: "You're invited to host",
+      es: "Estás invitado/a a organizar",
+    },
+    subtitle: {
+      en: "This link is an invitation to host events on the COhere community calendar.",
+      es: "Este enlace es una invitación para organizar eventos en el calendario comunitario de COhere.",
+    },
+    loginOffBody: {
+      en: "Sign-in on the site isn't switched on yet, so we can't complete this automatically. In the meantime, you can propose an event directly, or email the organizers and we'll get you set up.",
+      es: "El inicio de sesión en el sitio aún no está activado, así que no podemos completar esto automáticamente. Mientras tanto, puedes proponer un evento directamente, o escribir a los organizadores y te ayudaremos.",
+    },
+    loginOnBody: {
+      en: "If you're ready, sign in to accept the invitation.",
+      es: "Si estás listo/a, inicia sesión para aceptar la invitación.",
+    },
+    proposeButton: {
+      en: "Propose an event",
+      es: "Proponer un evento",
+    },
+    emailButton: {
+      en: "Email the organizers",
+      es: "Escribir a los organizadores",
+    },
+    signInButton: {
+      en: "Sign in to accept",
+      es: "Iniciar sesión para aceptar",
     },
   },
 

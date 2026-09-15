@@ -34,7 +34,11 @@ export const Footer = () => {
 
           {/* Stay in the Loop */}
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">{tr("signup.title")}</h3>
+            {/* An H2, not H3: several pages (Register, Calendar, Login) have
+                no H2 of their own before this footer renders, which left the
+                heading order skipping from H1 straight to H3. Fixed here so
+                every page that uses this shared footer gets it at once. */}
+            <h2 className="text-lg font-semibold">{tr("signup.title")}</h2>
             <p className="text-sm text-primary-foreground/80">
               {tr("footer.stayInLoop")}
             </p>
