@@ -36,6 +36,7 @@ supabase/.temp/
 *.sw?
 .admin-key.local
 .wrangler/
+.wrangler-ci-e2e-state/
 
 # Local data exports (contains PII - never commit)
 exports/

@@ -60,13 +60,36 @@ jobs:
         if: steps.creds.outputs.present == 'true'
         run: npm ci
 
+      - name: Lint
+        if: steps.creds.outputs.present == 'true'
+        run: npm run lint
+
       - name: Type check
         if: steps.creds.outputs.present == 'true'
         run: npm run typecheck
 
+      - name: Unit tests
+        if: steps.creds.outputs.present == 'true'
+        run: npm test
+
+      # Needed by both the hermetic e2e scripts below and the post-deploy
+      # smoke test — installed once here and reused for the rest of the job.
+      - name: Install Chromium
+        if: steps.creds.outputs.present == 'true'
+        run: npx playwright install --with-deps chromium
+
       - name: Build the site
         if: steps.creds.outputs.present == 'true'
         run: npm run build
+
+      # The three regenOS-hosting e2e scripts, run hermetically against
+      # scripts/regenos-mock.mjs — never scenius.social. Each spins up its own
+      # `wrangler dev` (serving the dist/ just built) plus the mock, the same
+      # way described in CLAUDE.md's "Testing it locally" section, and gates
+      # everything below: a real bug here must never reach a deploy.
+      - name: Hermetic e2e tests (regenOS mock)
+        if: steps.creds.outputs.present == 'true'
+        run: bash scripts/ci-e2e.sh
 
       # Migrate before deploying, so the new Worker never runs against the old
       # schema. Wrangler tracks applied migrations in a d1_migrations table it
@@ -95,10 +118,6 @@ jobs:
           wranglerVersion: "4.118.0"
           secrets: |
             REGENOS_SERVICE_TOKEN
-
-      - name: Install Chromium
-        if: steps.creds.outputs.present == 'true'
-        run: npx playwright install --with-deps chromium
 
       - name: Smoke test the Worker
         if: steps.creds.outputs.present == 'true'
