@@ -40,6 +40,13 @@ page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 
 try {
+  const metadata = await context.request.get(new URL("/oauth-client-metadata.json", target).href);
+  if (metadata.status() !== 404) throw new Error("Unimplemented OAuth metadata must return 404");
+  for (const nsid of ["beginOAuth", "oauthCallback", "rsvp"]) {
+    const response = await context.request.get(new URL(`/xrpc/social.scenius.${nsid}`, target).href);
+    if (response.status() !== 404) throw new Error(`Unused ${nsid} must return 404`);
+  }
+  ok("unfinished OAuth and RSVP endpoints are not advertised or proxied");
   // ── 1. Anonymous calendar: the sign-in affordance renders ─────────────────
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
@@ -150,6 +157,13 @@ try {
     timeout: 10_000,
   });
   ok("logout cleared the session; the panel is back");
+
+  step = "returning-user redirect";
+  await page.goto(new URL("/xrpc/social.scenius.verifyEmail?token=tok-return", target).href);
+  if (page.url() !== new URL("/", target).href) throw new Error("Returning user did not land on this origin");
+  await page.goto(new URL("/calendar", target).href, { waitUntil: "networkidle" });
+  await page.getByText("Signed in as").waitFor({ timeout: 10_000 });
+  ok("returning-user redirect stays local and installs the session cookie");
 } catch (error) {
   fail(error.message.split("\n")[0]);
 } finally {

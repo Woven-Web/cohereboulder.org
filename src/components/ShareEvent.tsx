@@ -37,12 +37,12 @@ export function ShareEvent({ event }: { event: CommunityEvent }) {
   }
 
   return (
-    <div className="space-y-2 max-w-full">
+    <div className={status === "manual" ? "space-y-2 w-full min-w-0" : "max-w-full"}>
       <Button variant="outline" className="gap-2" onClick={share} disabled={busy}>
         <Share2 className="h-4 w-4" aria-hidden="true" />
         {tr("calendar.events.share")}
       </Button>
-      <p role="status" className="text-sm text-muted-foreground">
+      <p role="status" className={status === "idle" ? "sr-only" : "mt-2 text-sm text-muted-foreground"}>
         {status === "copied" && tr("calendar.events.linkCopied")}
         {status === "manual" && tr("calendar.events.copyLinkManually")}
       </p>
@@ -51,6 +51,9 @@ export function ShareEvent({ event }: { event: CommunityEvent }) {
           aria-label={tr("calendar.events.eventLink")}
           value={url}
           readOnly
+          autoFocus
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => e.currentTarget.select()}
           onFocus={(e) => e.currentTarget.select()}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
