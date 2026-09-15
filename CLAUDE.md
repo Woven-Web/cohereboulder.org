@@ -50,6 +50,13 @@ cohereboulder.org ─→ Worker "cohere-signup"
 Worker; the workers.dev URL is handy for checking a deploy before the real
 domain.
 
+## Consumer integration
+
+See [the regenOS consumer quickstart](docs/REGENOS_CONSUMER_QUICKSTART.md) for
+the local mock walkthrough, auth boundaries, configuration, and rollout checks.
+Atproto OAuth and public RSVP are not implemented; their proxy methods and
+OAuth discovery metadata remain unavailable until the full flows exist.
+
 ## Commands
 
 ```bash

@@ -4,7 +4,7 @@
 # scenius.social. Used by .github/workflows/deploy-worker.yml as a gate
 # before deploy, and safe to run the same way on a laptop.
 #
-# What it deliberately does NOT cover: the "wrong/missing service token"
+# Additional coverage: the "wrong/missing service token"
 # checks each script's usage header describes as optional
 # (E2E_BAD_TOKEN_URL / E2E_NO_TOKEN_URL / the 4th proposals-e2e arg) are all
 # exercised here too, since they need nothing but a second wrangler dev
@@ -89,6 +89,9 @@ start_worker 28789 28229 /tmp/ci-e2e-worker-1.log \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:28944 \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/share-e2e.mjs http://127.0.0.1:28789; then
+  fail=1
+fi
 if ! node scripts/regenos-e2e.mjs http://127.0.0.1:28789; then
   fail=1
 fi

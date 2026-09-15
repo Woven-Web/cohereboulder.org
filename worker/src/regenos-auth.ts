@@ -32,7 +32,7 @@
 //     allowlist — the `__Host-rs_` pair is all the AppView ever needs.
 //   * Each surviving Set-Cookie is re-emitted from getSetCookie() — a flat
 //     header copy would coalesce multiple cookies into one broken value.
-//   * redirect: "manual", and 3xx passes through untouched — a returning
+//   * redirect: "manual", and same-origin 3xx passes through — a returning
 //     user's verifyEmail link answers `302 Location: /` WITH the session
 //     cookie, and both must reach the browser or sign-in silently fails.
 //   * Never cached, in either direction.
@@ -48,17 +48,15 @@ export interface RegenosAuthEnv {
 const UPSTREAM_TIMEOUT_MS = 8_000;
 
 /**
- * The login flow's method surface, the event writes, and rsvp — nothing else.
+ * The login flow and event writes — nothing else.
  *  - beginSignup / verifySignup / setSignupProfile / createCustodialAccount —
  *    the custodial signup wizard (src/pages/Login.tsx walks it)
  *  - verifyEmail — a RETURNING user's magic-link redemption; upstream answers
  *    `302 /` with the session cookie, which is why 3xx must pass through
- *  - beginOAuth / oauthCallback — the real atproto OAuth lane, allowlisted now
- *    so flipping it on later is an upstream OAUTH_CLIENTS entry, not a deploy
  *  - getSession / logout — whoami + sign-out
- *  - createEvent / updateEvent / deleteEvent / rsvp — the only writes; each is
+ *  - createEvent / updateEvent / deleteEvent — the only event writes; each is
  *    re-gated server-side by the AppView (Builder+ of the event's authority
- *    for the event writes, a signed-in user for rsvp), so the proxy widens
+ *    for the event writes), so the proxy widens
  *    reach, never authority.
  */
 const ALLOWED_NSIDS = new Set([
@@ -67,14 +65,11 @@ const ALLOWED_NSIDS = new Set([
   "social.scenius.setSignupProfile",
   "social.scenius.createCustodialAccount",
   "social.scenius.verifyEmail",
-  "social.scenius.beginOAuth",
-  "social.scenius.oauthCallback",
   "social.scenius.getSession",
   "social.scenius.logout",
   "social.scenius.createEvent",
   "social.scenius.updateEvent",
   "social.scenius.deleteEvent",
-  "social.scenius.rsvp",
 ]);
 
 /** A successful one of these stales the edge-cached /api/events listing. */
@@ -214,6 +209,22 @@ export async function handleXrpcProxy(
     return json({ error: "UpstreamUnavailable", message: "Can't reach regenOS right now." }, 502);
   }
 
+  // Returning-user redirects belong on this origin. Never relay an external
+  // Location (or its cookies) from an upstream response into the browser.
+  const location = upstream.headers.get("Location");
+  let redirect: URL | undefined;
+  if (location !== null) {
+    try {
+      redirect = new URL(location, url);
+      if (redirect.origin !== url.origin || redirect.username || redirect.password) {
+        throw new Error("External redirect");
+      }
+    } catch {
+      await upstream.body?.cancel().catch(() => {});
+      return json({ error: "InvalidUpstreamRedirect", message: "Invalid sign-in redirect." }, 502);
+    }
+  }
+
   // A landed event write makes the edge-cached /api/events listing stale;
   // drop it here, where the write flows through, so the calendar page's next
   // refetch shows the change (worker/src/events.ts caches for 300s).
@@ -227,6 +238,7 @@ export async function handleXrpcProxy(
     if (STRIP_RESPONSE.has(lower) || lower.startsWith(STRIP_RESPONSE_PREFIX)) return;
     out.headers.set(key, value);
   });
+  if (redirect) out.headers.set("Location", redirect.href);
   // Auth responses must never be cached by anything between here and the tab.
   out.headers.set("Cache-Control", "no-store");
   // getSetCookie() preserves multiple Set-Cookie headers where a flat copy
