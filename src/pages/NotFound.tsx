@@ -1,8 +1,14 @@
-import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Compass } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const NotFound = () => {
   const location = useLocation();
+  const { tr } = useLanguage();
 
   useEffect(() => {
     console.error(
@@ -12,14 +18,31 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <Link to="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </Link>
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Navigation />
+
+      <main className="flex-1 flex items-center py-20">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <Compass className="h-12 w-12 mx-auto text-primary" aria-hidden="true" />
+          <h1 className="text-4xl lg:text-5xl font-bold text-foreground">
+            {tr("notFound.title")}
+          </h1>
+          <p className="text-lg text-muted-foreground">{tr("notFound.body")}</p>
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <Button asChild variant="community" className="gap-2">
+              <Link to="/">
+                {tr("notFound.home")}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/calendar">{tr("notFound.calendar")}</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
