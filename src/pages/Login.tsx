@@ -39,9 +39,11 @@ export default function Login() {
   const { data: config } = useSiteConfig();
 
   const token = params.get("token");
-  // No token = the beta-mode entrance, where beginSignup already proved the
-  // email and sent the browser here to pick a handle directly.
-  const [stage, setStage] = useState<Stage>(token ? "verifying" : "chooseHandle");
+  // Start neutral until /api/config answers: a no-token visit is either the
+  // beta-mode entrance (beginSignup already proved the email and sent the
+  // browser here to pick a handle) or, with the lane off, nothing at all.
+  // Rendering the handle form before we know which would flash a dead form.
+  const [stage, setStage] = useState<Stage>("verifying");
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const redeemed = useRef(false);
@@ -51,7 +53,11 @@ export default function Login() {
   // no-token visit — someone just typing /login — has nothing to do here at
   // all, so send them to the organizer sign-in instead of a dead handle form.
   useEffect(() => {
-    if (!config || config.regenosLoginEnabled) return;
+    if (!config) return;
+    if (config.regenosLoginEnabled) {
+      if (!token) setStage("chooseHandle");
+      return;
+    }
     if (!token) {
       window.location.replace("/admin");
       return;
