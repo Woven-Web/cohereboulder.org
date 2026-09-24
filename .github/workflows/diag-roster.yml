@@ -1,0 +1,28 @@
+name: diag roster (temporary, read-only)
+on:
+  push:
+    branches: ["diag/roster"]
+jobs:
+  roster:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read COhere collective roster as the site service account
+        env:
+          TOKEN: ${{ secrets.REGENOS_SERVICE_TOKEN }}
+        run: |
+          SCENE=did:plc:w54s52ycbw5lreyhlzexredb
+          echo "token length: ${#TOKEN}"
+          curl -s -o roster.json -w "getSceneMembers HTTP %{http_code}\n" \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://scenius.social/xrpc/social.scenius.getSceneMembers?scene=$SCENE"
+          python3 - <<'EOF'
+          import json
+          d = json.load(open("roster.json"))
+          print("keys:", list(d.keys()))
+          for k, v in d.items():
+              if k != "members": print(k, "=", v)
+          for m in d.get("members", []):
+              safe = {k: m.get(k) for k in ("did", "handle", "displayName", "role", "roleName", "status", "email", "joinedAt") if k in m}
+              print(json.dumps(safe))
+          if not d.get("members"): print(json.dumps(d)[:1500])
+          EOF
