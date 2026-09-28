@@ -228,6 +228,15 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { scene: SCENE_DID, events: rows });
     }
 
+    // Anonymous single-event read, as the public detail page and the Worker's
+    // per-event link previews (worker/src/seo.ts) use it.
+    case "social.scenius.getEvent": {
+      const m = /\/community\.lexicon\.calendar\.event\/(.+)$/.exec(url.searchParams.get("uri") ?? "");
+      const row = m ? events.get(m[1]) : undefined;
+      if (!row) return json(res, 404, { error: "NotFound", message: "no such event" });
+      return json(res, 200, { ...row, visibility: "public", hostName: "COhere Boulder" });
+    }
+
     case "social.scenius.getEventAttendance": {
       const rkey = url.searchParams.get("eventRkey") ?? "";
       const seats = attendance.get(rkey);

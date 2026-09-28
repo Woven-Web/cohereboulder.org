@@ -12,6 +12,7 @@
 
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
+import { decorateAssetResponse, handleSitemap } from "./seo";
 import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
 // --- admin event + access management (feat/admin-events-access) ---
 import {
@@ -926,6 +927,16 @@ export default {
     if (path.startsWith("/api/") || path === "/list") {
       return json({ error: "not found" }, 404, cors);
     }
-    return env.ASSETS.fetch(request);
+
+    // Static pages plus every upcoming event, for search engines (seo.ts).
+    if ((request.method === "GET" || request.method === "HEAD") && path === "/sitemap.xml") {
+      return handleSitemap(request, env);
+    }
+
+    // Per-page <head> for link previews and crawlers (event pages get their
+    // own title/description; every page its own canonical), plus immutable
+    // caching for hashed /assets/*. Best-effort: falls back to the file as-is.
+    const asset = await env.ASSETS.fetch(request);
+    return decorateAssetResponse(request, asset, env);
   },
 };
