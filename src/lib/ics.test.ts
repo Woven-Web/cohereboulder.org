@@ -60,7 +60,9 @@ describe("buildEventIcs — envelope and required fields", () => {
   it("omits DESCRIPTION and LOCATION when absent, without leaving blank lines", () => {
     const ics = buildEventIcs({ ...baseEvent, description: null, location: null }, SITE_URL) as string;
     const lines = icsLines(ics);
-    expect(lines.some((l) => l.startsWith("DESCRIPTION"))).toBe(false);
+    // The VALARM carries its own (required) DESCRIPTION; look outside it.
+    const eventProps = lines.slice(0, lines.indexOf("BEGIN:VALARM"));
+    expect(eventProps.some((l) => l.startsWith("DESCRIPTION"))).toBe(false);
     expect(lines.some((l) => l.startsWith("LOCATION"))).toBe(false);
     expect(lines.every((l) => l.length > 0)).toBe(true);
   });
@@ -160,5 +162,26 @@ describe("buildEventIcs — RFC 5545 §3.1 line folding", () => {
     const ics = buildEventIcs({ ...baseEvent, name: longName }, SITE_URL) as string;
     const unfolded = (ics as string).replace(/\r\n /g, "");
     expect(unfolded).toContain(`SUMMARY:${longName}`);
+  });
+});
+
+describe("buildEventIcs — day-before reminder", () => {
+  it("carries a DISPLAY VALARM that fires one day before, inside the VEVENT", () => {
+    const lines = icsLines(buildEventIcs(baseEvent, SITE_URL) as string);
+    const begin = lines.indexOf("BEGIN:VALARM");
+    const end = lines.indexOf("END:VALARM");
+    expect(begin).toBeGreaterThan(lines.indexOf("BEGIN:VEVENT"));
+    expect(end).toBeGreaterThan(begin);
+    expect(end).toBeLessThan(lines.indexOf("END:VEVENT"));
+    const alarm = lines.slice(begin, end + 1);
+    expect(alarm).toContain("ACTION:DISPLAY");
+    expect(alarm).toContain("TRIGGER:-P1D");
+    // RFC 5545 §3.6.6: a DISPLAY alarm MUST carry a DESCRIPTION.
+    expect(alarm).toContain(`DESCRIPTION:Tomorrow: ${baseEvent.name}`);
+  });
+
+  it("escapes the event name in the alarm text", () => {
+    const ics = buildEventIcs({ ...baseEvent, name: "Tea; talk, walk" }, SITE_URL) as string;
+    expect(ics).toContain("DESCRIPTION:Tomorrow: Tea\\; talk\\, walk");
   });
 });
