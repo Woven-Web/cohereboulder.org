@@ -116,8 +116,24 @@ type Upstream<T> = { ok: true; data: T } | { ok: false; response: Response };
  * it as "your session ended" and sign a working admin out. So everything 4xx
  * except 404 lands as a 400 carrying upstream's own `message`, which is what
  * an organizer can actually act on ("only a Builder of the collective may…").
+ *
+ * On a call made WITH the service token (`asService`), an upstream 401/403 is
+ * never the organizer's fault: it means cohere-site's own access is gone
+ * (token expired or revoked, a scope or role removed). Upstream's wording for
+ * that ("NotAuthorized … (scope check)") reads like *you* lack permission, so
+ * the `message` says plainly whose access broke and who to tell; upstream's
+ * own sentence rides along in `detail`, and `siteAccess: true` flags it.
  */
-async function callUpstream<T>(url: string, init: RequestInit, what: string): Promise<Upstream<T>> {
+export const SITE_ACCESS_REFUSED =
+  "The site's calendar connection to regenOS was refused (the cohere-site account lost access " +
+  "or its token expired). This isn't your account. Tell Aaron (ag@unforced.org).";
+
+async function callUpstream<T>(
+  url: string,
+  init: RequestInit,
+  what: string,
+  asService = false,
+): Promise<Upstream<T>> {
   let res: Response;
   try {
     res = await fetch(url, { ...init, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
@@ -132,6 +148,17 @@ async function callUpstream<T>(url: string, init: RequestInit, what: string): Pr
     // request content, and nothing here ever logs the token.
     console.warn(`regenOS ${what} returned ${res.status} (${code})`);
     const status = res.status === 404 ? 404 : res.status < 500 ? 400 : 502;
+    const upstreamMessage =
+      typeof body.message === "string" && body.message ? body.message : `regenOS returned ${res.status}.`;
+    if (asService && (res.status === 401 || res.status === 403)) {
+      return {
+        ok: false,
+        response: json(
+          { error: code, message: SITE_ACCESS_REFUSED, detail: upstreamMessage, siteAccess: true },
+          status,
+        ),
+      };
+    }
     return {
       ok: false,
       response: json(
@@ -175,6 +202,7 @@ function readXrpcAs<T>(
     url.toString(),
     { headers: { accept: "application/json", Authorization: `Bearer ${token}` } },
     what,
+    true,
   );
 }
 
@@ -202,6 +230,7 @@ function writeXrpc<T>(
       body: JSON.stringify(body),
     },
     what,
+    true,
   );
 }
 

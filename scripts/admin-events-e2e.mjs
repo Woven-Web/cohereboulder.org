@@ -272,8 +272,14 @@ try {
     const writeBody = await write.json();
     expect(write.status === 400, `a write answers 400, not 500 (got ${write.status})`);
     expect(
-      typeof writeBody.message === "string" && writeBody.message.includes("scope check"),
-      `…carrying regenOS's own sentence: ${JSON.stringify(writeBody.message)}`,
+      typeof writeBody.message === "string" && writeBody.message.includes("This isn't your account"),
+      `…saying plainly it's the site's regenOS access, not the organizer's: ${JSON.stringify(writeBody.message)}`,
+    );
+    expect(
+      writeBody.siteAccess === true &&
+        typeof writeBody.detail === "string" &&
+        writeBody.detail.includes("scope check"),
+      `…with regenOS's own sentence kept as detail: ${JSON.stringify(writeBody.detail)}`,
     );
     expect(
       !JSON.stringify(writeBody).toLowerCase().includes("at worker") &&

@@ -329,7 +329,11 @@ export const ADMIN_PAGE = `<!doctype html>
         // ("only a Builder of the collective may…"). Losing it to
         // "request failed: 400" would make every upstream refusal look the same.
         return r.json().then(function (body) {
-          throw new Error(body.message || body.error || "request failed: " + r.status);
+          var message = body.message || body.error || "request failed: " + r.status;
+          // The site's own regenOS access was refused (siteAccess): the
+          // plain sentence leads, upstream's wording follows as a detail.
+          if (body.siteAccess && body.detail) message += " (regenOS said: " + body.detail + ")";
+          throw new Error(message);
         }, function () {
           throw new Error("request failed: " + r.status);
         });

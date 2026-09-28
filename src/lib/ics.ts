@@ -72,6 +72,13 @@ export function buildEventIcs(
     ...(event.description ? [`DESCRIPTION:${icsEscape(event.description)}`] : []),
     ...(where ? [`LOCATION:${icsEscape(where)}`] : []),
     `URL:${siteUrl}`,
+    // A day-before reminder travels with the file, so someone who adds the
+    // event gets nudged without handing us an email address.
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${icsEscape(`Tomorrow: ${event.name}`)}`,
+    "TRIGGER:-P1D",
+    "END:VALARM",
     "END:VEVENT",
     "END:VCALENDAR",
   ];
