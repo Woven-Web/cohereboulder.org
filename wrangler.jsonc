@@ -42,7 +42,10 @@
     // If it is ever unreachable or empty the site falls back to the Luma embed.
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",
-    "REGENOS_WEB_URL": "https://scenius.social"
+    "REGENOS_WEB_URL": "https://scenius.social",
+    // Personal regenOS sign-in + on-site hosting (worker/src/regenos-auth.ts).
+    // Enabled 2026-09-28 on Aaron's go-ahead; cohereboulder.org is in regenOS ALLOWED_APP_ORIGINS.
+    "REGENOS_LOGIN_ENABLED": "true"
   },
   "d1_databases": [
     {
