@@ -24,11 +24,10 @@ const PAGES = [
   { path: "/calendar", expect: "Community Calendar" },
   // Accountless propose flow — always reachable, no session needed.
   { path: "/propose", expect: "Propose an event" },
-  // The magic-link landing page. REGENOS_LOGIN_ENABLED is off in production
-  // today (see CLAUDE.md), so a no-token visit has nothing to do here and
-  // (since PR #25) is sent to the organizer sign-in. Prove the redirect
-  // actually happened, not just that the sign-in card's text showed up.
-  { path: "/login", expect: "Sign in with your email", finalPath: "/admin" },
+  // The magic-link landing page. With REGENOS_LOGIN_ENABLED on (production
+  // since 2026-09-28) a no-token visit shows the handle step; with it off it
+  // redirects to the organizer sign-in. Either proves the page mounted.
+  { path: "/login", expect: ["Choose your handle", "Sign in with your email"] },
   // The admin portal is a self-contained HTML page the Worker serves
   // directly (worker/src/admin-page.ts) — not part of the React SPA, so a
   // 200 here is closer to proof than elsewhere, but still worth checking the
