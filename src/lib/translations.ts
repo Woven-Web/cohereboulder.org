@@ -13,6 +13,8 @@ export const translations = {
     archive: { en: "Archive", es: "Archivo" },
     donateNow: { en: "Donate Now", es: "Donar Ahora" },
     supportCohere: { en: "Support COhere", es: "Apoyar COhere" },
+    openMenu: { en: "Open menu", es: "Abrir menú" },
+    closeMenu: { en: "Close menu", es: "Cerrar menú" },
     announcement: {
       en: "COhere continues weaving Boulder's resilient community. Join our newsletter to stay connected!",
       es: "COhere continúa tejiendo la comunidad resiliente de Boulder. ¡Únete a nuestro boletín para mantenerte conectado!",

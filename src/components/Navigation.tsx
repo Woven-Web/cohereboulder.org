@@ -88,6 +88,8 @@ export const Navigation = () => {
                 size="icon"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="rounded-full"
+                aria-label={tr(isMenuOpen ? "nav.closeMenu" : "nav.openMenu")}
+                aria-expanded={isMenuOpen}
               >
                 {isMenuOpen ? (
                   <X className="h-5 w-5" />
