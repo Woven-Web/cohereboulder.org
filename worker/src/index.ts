@@ -741,8 +741,9 @@ export default {
     // ------------------------------------------------------------ email RSVPs
 
     // "RSVP · remind me" without an account (worker/src/rsvps.ts). The cancel
-    // link works without sign-in; GET removes in one click, as does the
-    // mail provider's RFC 8058 one-click POST.
+    // link works without sign-in: GET renders a page that auto-POSTs (so a
+    // scanner fetching the URL cancels nothing); POST removes, and is also the
+    // mail provider's RFC 8058 one-click target.
     if (request.method === "POST" && path === "/api/rsvp") {
       return handleCreateRsvp(request, env, url);
     }
