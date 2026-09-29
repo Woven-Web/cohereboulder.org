@@ -34,7 +34,7 @@
   "send_email": [{ "name": "SEND_EMAIL" }],
 
   // Daily at 15:00 UTC = 9am in Boulder during MDT (8am once DST ends Nov 1).
-  // The Worker's scheduled() sends day-before reminders to email RSVPs and
+  // scheduled() sends day-before reminders to email RSVPs (once per row) and
   // deletes RSVPs 30 days after their event (worker/src/rsvps.ts).
   "triggers": { "crons": ["0 15 * * *"] },
   "vars": {

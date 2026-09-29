@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the three regenOS-hosting e2e scripts hermetically, against a local
+# Runs the regenOS-hosting and RSVP e2e scripts hermetically, against a local
 # wrangler dev + the mock AppView (scripts/regenos-mock.mjs) — never
 # scenius.social. Used by .github/workflows/deploy-worker.yml as a gate
 # before deploy, and safe to run the same way on a laptop.
@@ -36,7 +36,9 @@ PIDS=()
 cleanup() {
   local pid
   for pid in "${PIDS[@]:-}"; do
-    kill "$pid" >/dev/null 2>&1 || true
+    # Each local server has its own session, including Wrangler's workerd
+    # children. Killing only npm's wrapper leaves D1 open across lanes.
+    kill -TERM -- "-$pid" >/dev/null 2>&1 || true
   done
   wait >/dev/null 2>&1 || true
 }
@@ -58,7 +60,7 @@ wait_for() {
 
 start_mock() {
   local port="$1" logfile="$2"
-  PORT="$port" node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
+  PORT="$port" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/xrpc/social.scenius.getEvents" "regenOS mock on :$port"
 }
@@ -67,7 +69,7 @@ start_mock() {
 start_worker() {
   local port="$1" inspector="$2" logfile="$3"
   shift 3
-  npx wrangler dev --port "$port" --inspector-port "$inspector" "${WRANGLER_LOCAL_ARGS[@]}" "$@" >"$logfile" 2>&1 &
+  setsid node node_modules/wrangler/bin/wrangler.js dev --port "$port" --inspector-port "$inspector" "${WRANGLER_LOCAL_ARGS[@]}" "$@" >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/" "wrangler dev on :$port"
 }
@@ -133,6 +135,22 @@ start_worker 28861 28234 /tmp/ci-e2e-worker-3-none.log \
   --var REGENOS_BASE_URL:http://127.0.0.1:28946 \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
 if ! node scripts/proposals-e2e.mjs http://127.0.0.1:28860 "$SESSION_TOKEN" http://127.0.0.1:28946 http://127.0.0.1:28861; then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
+# --- 4. rsvp-e2e.mjs: email RSVP, admin list, reminder cron, cancel -------
+# --test-scheduled exposes /cdn-cgi/local/scheduled; local send_email only
+# writes .eml files, so nothing is ever delivered.
+echo "::group::rsvp-e2e (email RSVP + reminder cron lane)"
+start_mock 28948 /tmp/ci-e2e-mock-4.log
+start_worker 28870 28235 /tmp/ci-e2e-worker-4.log --test-scheduled \
+  --var REGENOS_LOGIN_ENABLED:false \
+  --var REGENOS_BASE_URL:http://127.0.0.1:28948 \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:28870 "$SESSION_TOKEN" http://127.0.0.1:28948; then
   fail=1
 fi
 cleanup

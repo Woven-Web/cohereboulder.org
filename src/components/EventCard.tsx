@@ -103,7 +103,7 @@ export function EventCard({ event }: { event: CommunityEvent }) {
                   onClick={handleRsvp}
                 >
                   <BellRing className="h-3.5 w-3.5" />
-                  {tr("rsvp.button")}
+                  {tr("calendar.rsvp.button")}
                 </Button>
               )}
               <Button

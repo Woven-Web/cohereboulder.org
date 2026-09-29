@@ -51,7 +51,7 @@ export function EventRsvp({ event }: { event: CommunityEvent }) {
     >
       <h2 id="rsvp-title" className="flex items-center gap-2 text-lg font-semibold text-foreground mb-3">
         <BellRing className="h-5 w-5 text-primary" aria-hidden />
-        {tr("rsvp.title")}
+        {tr("calendar.rsvp.title")}
       </h2>
       {laneOn && sessionLoading ? (
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
@@ -87,7 +87,7 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
   const seat = data?.seat ?? null;
   const active = seat === "confirmed" || seat === "requested" || seat === "waitlisted";
   const statusLine =
-    seat === "confirmed" ? tr("rsvp.going") : seat === "requested" ? tr("rsvp.requested") : tr("rsvp.waitlisted");
+    seat === "confirmed" ? tr("calendar.rsvp.going") : seat === "requested" ? tr("calendar.rsvp.requested") : tr("calendar.rsvp.waitlisted");
 
   return (
     <div className="space-y-3">
@@ -97,7 +97,7 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
             <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
             {statusLine}
           </p>
-          <p className="text-sm text-muted-foreground">{tr("rsvp.reminderNote")}</p>
+          <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.reminderNote")}</p>
           <Button
             variant="outline"
             size="sm"
@@ -105,12 +105,12 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
             onClick={() => mutation.mutate("notgoing")}
           >
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {tr("rsvp.cancelRsvp")}
+            {tr("calendar.rsvp.cancelRsvp")}
           </Button>
         </>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{tr("rsvp.reminderNote")}</p>
+          <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.reminderNote")}</p>
           <Button
             variant="community"
             className="gap-2"
@@ -118,11 +118,11 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
             onClick={() => mutation.mutate("going")}
           >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}
-            {tr("rsvp.button")}
+            {tr("calendar.rsvp.button")}
           </Button>
         </>
       )}
-      {(mutation.isError || isError) && <p className="text-sm text-destructive">{tr("rsvp.error")}</p>}
+      {(mutation.isError || isError) && <p className="text-sm text-destructive">{tr("calendar.rsvp.error")}</p>}
     </div>
   );
 }
@@ -157,7 +157,7 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
       });
       setResult(already ? "already" : "done");
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : tr("rsvp.error"));
+      setError(err instanceof Error && err.message ? err.message : tr("calendar.rsvp.error"));
     } finally {
       setBusy(false);
     }
@@ -168,10 +168,10 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
       <div className="space-y-1" role="status" data-testid="rsvp-done">
         <p className="flex items-center gap-2 font-medium text-foreground">
           <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
-          {tr("rsvp.doneTitle")}
+          {tr("calendar.rsvp.doneTitle")}
         </p>
         <p className="text-sm text-muted-foreground">
-          {result === "already" ? tr("rsvp.alreadyBody") : tr("rsvp.doneBody")}
+          {result === "already" ? tr("calendar.rsvp.alreadyBody") : tr("calendar.rsvp.doneBody")}
         </p>
       </div>
     );
@@ -179,7 +179,7 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
 
   const signInLink = offerSignIn && (
     <button type="button" onClick={openSignInDialog} className="text-sm text-primary hover:underline">
-      {tr("rsvp.orSignIn")}
+      {tr("calendar.rsvp.orSignIn")}
     </button>
   );
 
@@ -188,7 +188,7 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Button variant="community" className="gap-2" onClick={() => setOpen(true)}>
           <BellRing className="h-4 w-4" />
-          {tr("rsvp.button")}
+          {tr("calendar.rsvp.button")}
         </Button>
         {signInLink}
       </div>
@@ -197,14 +197,14 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="rsvp-form">
-      <p className="text-sm text-muted-foreground">{tr("rsvp.emailIntro")}</p>
+      <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.emailIntro")}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="rsvp-name">{tr("rsvp.nameLabel")}</Label>
+          <Label htmlFor="rsvp-name">{tr("calendar.rsvp.nameLabel")}</Label>
           <Input id="rsvp-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoComplete="name" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="rsvp-email">{tr("rsvp.emailLabel")}</Label>
+          <Label htmlFor="rsvp-email">{tr("calendar.rsvp.emailLabel")}</Label>
           <Input
             id="rsvp-email"
             type="email"
@@ -232,13 +232,13 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="community" disabled={busy} className="gap-2">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          {busy ? tr("rsvp.sending") : tr("rsvp.submit")}
+          {busy ? tr("calendar.rsvp.sending") : tr("calendar.rsvp.submit")}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-          {tr("rsvp.cancelForm")}
+          {tr("calendar.rsvp.cancelForm")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">{tr("rsvp.privacy")}</p>
+      <p className="text-xs text-muted-foreground">{tr("calendar.rsvp.privacy")}</p>
       {signInLink}
     </form>
   );

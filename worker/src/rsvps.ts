@@ -12,9 +12,8 @@
 //
 // Routes (wired in index.ts):
 //   POST /api/rsvp                    public; honeypot + IP/email rate limits
-//   GET  /rsvp/cancel?token=…         confirm page (no sign-in needed)
-//   POST /rsvp/cancel?token=…         removes the RSVP(s); also the RFC 8058
-//                                     one-click List-Unsubscribe target
+//   GET  /rsvp/cancel?token=…         one-click browser cancel (auto-POST)
+//   POST /rsvp/cancel?token=…         RFC 8058 one-click List-Unsubscribe target
 //   GET  /api/admin/rsvps             per-event email-RSVP counts   (admin)
 //   GET  /api/admin/rsvps/:did/:rkey  the list for one event         (admin)
 //   scheduled()                       runRsvpCron — reminders + retention
@@ -32,8 +31,6 @@ export const EVENT_TZ = "America/Denver";
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Rows go away this long after the event's start. */
 export const RETENTION_DAYS = 30;
-/** How far ahead the cron re-reads events for moved start times. */
-const LOOKAHEAD_DAYS = 45;
 /** D1 caps bound parameters per statement at 100. */
 const ID_CHUNK = 90;
 /** One send per recipient; stay well inside the per-invocation subrequest budget. */
@@ -432,9 +429,9 @@ export interface RsvpDeps {
  * `POST /api/rsvp` — `{did, rkey, email, name?, language?, website?}`.
  *
  * Anyone may call it, so it can email an arbitrary address: that is what the
- * honeypot, the per-IP and per-email limits, and "one confirmation per
- * (event, email), ever" are for. A repeat RSVP answers `{ok, already:true}`
- * and sends nothing.
+ * honeypot and per-IP/per-email limits are for. A repeat RSVP returns
+ * `{ok, already:true}` and resends the existing confirmation, allowing a
+ * recipient to recover a lost message without creating a second RSVP.
  */
 export async function handleCreateRsvp(
   request: Request,
@@ -518,6 +515,17 @@ export async function handleCreateRsvp(
     .run();
 
   if (!inserted.meta?.changes) {
+    const existing = await env.cohere
+      .prepare(`SELECT name, language, cancel_token FROM event_rsvps WHERE event_did = ?1 AND event_rkey = ?2 AND email = ?3`)
+      .bind(event.did, event.rkey, email)
+      .first<{ name: string | null; language: string; cancel_token: string }>();
+    if (existing) {
+      try {
+        await send(env, email, confirmationEmail(event, existing, existing.language === "es" ? "es" : "en", env.PUBLIC_BASE_URL || url.origin));
+      } catch (error) {
+        console.error("rsvp confirmation resend failed:", error instanceof Error ? error.message : error);
+      }
+    }
     return json({ ok: true, already: true }, 200);
   }
 
@@ -555,10 +563,11 @@ function cancelPage(state: "confirm" | "done" | "unknown", names: string[], toke
       : state === "confirm"
         ? `<h1>Cancel your RSVP?</h1>
            <ul>${list}</ul>
-           <p>You won't get a reminder, and we'll delete your details for ${names.length > 1 ? "these events" : "this event"}.</p>
-           <form method="POST" action="/rsvp/cancel?token=${encodeURIComponent(token)}">
+           <p>Finishing your cancellation… If it doesn't finish automatically, use the button.</p>
+           <form id="cancel" method="POST" action="/rsvp/cancel?token=${encodeURIComponent(token)}">
              <button type="submit">Yes, cancel my RSVP · Sí, cancelar</button>
-           </form>`
+           </form>
+           <script>document.getElementById('cancel').submit()</script>`
         : `<h1>Nothing to cancel</h1>
            <p>This RSVP was already cancelled, or its details have been deleted after the event.</p>
            <p lang="es">Esta confirmación ya fue cancelada o sus datos ya se borraron.</p>`;
@@ -588,21 +597,17 @@ function cancelPage(state: "confirm" | "done" | "unknown", names: string[], toke
 const HTML = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
 
 /**
- * GET shows what would be cancelled and asks for one click (a POST), so a
- * link scanner that prefetches the URL cancels nothing — the same posture as
- * /unsubscribe. POST deletes; it is also the RFC 8058 List-Unsubscribe-Post
- * target, which mail providers call directly. Idempotent: an unknown or
- * already-used token is a friendly page, and a POST never errors.
+ * GET renders a page whose script submits a POST. Link scanners that only
+ * fetch the URL cannot cancel; browsers finish in one click. With scripting
+ * disabled the visitor can submit the form. POST is also the RFC 8058
+ * List-Unsubscribe-Post target and is idempotent.
  */
 export async function handleRsvpCancel(request: Request, env: RsvpEnv, url: URL): Promise<Response> {
   const tokens = parseTokens(url.searchParams.get("token"));
   const rows = tokens.length
     ? (
         await env.cohere
-          .prepare(
-            `SELECT id, event_name FROM event_rsvps WHERE cancel_token IN (${placeholders(tokens.length)})
-             ORDER BY event_starts_at`,
-          )
+          .prepare(`SELECT id, event_name FROM event_rsvps WHERE cancel_token IN (${placeholders(tokens.length)}) ORDER BY event_starts_at`)
           .bind(...tokens)
           .all<{ id: string; event_name: string }>()
       ).results
@@ -617,16 +622,8 @@ export async function handleRsvpCancel(request: Request, env: RsvpEnv, url: URL)
     }
     return new Response(cancelPage(rows.length ? "done" : "unknown", []), { status: 200, headers: HTML });
   }
-
   if (!rows.length) return new Response(cancelPage("unknown", []), { status: 404, headers: HTML });
-  return new Response(
-    cancelPage(
-      "confirm",
-      rows.map((r) => r.event_name),
-      tokens.join(","),
-    ),
-    { status: 200, headers: HTML },
-  );
+  return new Response(cancelPage("confirm", rows.map((r) => r.event_name), tokens.join(",")), { status: 200, headers: HTML });
 }
 
 // ------------------------------------------------------------------ admin
@@ -734,21 +731,12 @@ export async function runRsvpCron(
     deferred: 0,
   };
 
-  // 1. retention
+  // Recheck every unsent RSVP before retention: an event can move into
+  // tomorrow from any prior date, even after its original cutoff.
   const cutoff = new Date(now.getTime() - RETENTION_DAYS * DAY_MS).toISOString();
-  const purge = await env.cohere.prepare(`DELETE FROM event_rsvps WHERE event_starts_at < ?1`).bind(cutoff).run();
-  result.deleted = purge.meta?.changes ?? 0;
-
-  // 2. pending rows for anything not yet over (a moved event may have been
-  //    stored for a later day), refreshed from the live event.
   const window = zonedDayWindow(now, 1);
   const { results: pending } = await env.cohere
-    .prepare(
-      `SELECT * FROM event_rsvps
-       WHERE reminder_sent_at IS NULL AND event_starts_at >= ?1 AND event_starts_at < ?2
-       ORDER BY event_starts_at`,
-    )
-    .bind(now.toISOString(), new Date(now.getTime() + LOOKAHEAD_DAYS * DAY_MS).toISOString())
+    .prepare(`SELECT * FROM event_rsvps WHERE reminder_sent_at IS NULL ORDER BY event_starts_at`)
     .all<RsvpRow>();
 
   const live = new Map<string, LiveLookup>();
@@ -800,6 +788,10 @@ export async function runRsvpCron(
     if (!event.startsAt || event.startsAt < window.start || event.startsAt >= window.end) continue;
     for (const row of rows) due.push({ ...row, live: event });
   }
+  // Retain a moved RSVP until the live date has been refreshed. Purge only
+  // after inspecting pending rows, not against the stale snapshot at entry.
+  const purge = await env.cohere.prepare(`DELETE FROM event_rsvps WHERE event_starts_at < ?1`).bind(cutoff).run();
+  result.deleted = purge.meta?.changes ?? 0;
   result.candidates = due.length;
   if (!due.length) return result;
 

@@ -114,13 +114,13 @@ describe("POST /api/rsvp", () => {
     expect(message.attachments?.[0].content).toContain("DTSTART:20261016T003000Z");
   });
 
-  it("dedupes on (event, email): a repeat answers already and sends nothing", async () => {
+  it("dedupes on (event, email): a repeat answers already and resends its link", async () => {
     const url = new URL(`${BASE}/api/rsvp`);
     await handleCreateRsvp(post({ did: DID, rkey: "ev1", email: "ana@example.org" }), env, url, deps());
     const again = await handleCreateRsvp(post({ did: DID, rkey: "ev1", email: "ANA@example.org" }), env, url, deps());
     expect(await again.json()).toEqual({ ok: true, already: true });
     expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM event_rsvps").all()[0].n).toBe(1);
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -195,11 +195,16 @@ describe("POST /api/rsvp", () => {
     expect(send).toHaveBeenCalledTimes(20);
   });
 
-  it("keeps the RSVP if the confirmation email fails", async () => {
-    send.mockRejectedValue(new Error("mail down"));
-    const res = await handleCreateRsvp(post({ did: DID, rkey: "ev1", email: "a@b.org" }), env, new URL(`${BASE}/api/rsvp`), deps());
+  it("keeps the RSVP and lets its owner retry a failed confirmation", async () => {
+    send.mockRejectedValueOnce(new Error("mail down"));
+    const url = new URL(`${BASE}/api/rsvp`);
+    const res = await handleCreateRsvp(post({ did: DID, rkey: "ev1", email: "a@b.org" }), env, url, deps());
     expect(res.status).toBe(200);
     expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM event_rsvps").all()[0].n).toBe(1);
+    const retry = await handleCreateRsvp(post({ did: DID, rkey: "ev1", email: "a@b.org" }), env, url, deps());
+    expect(await retry.json()).toEqual({ ok: true, already: true });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect((send.mock.calls[1][2] as MailMessage).text).toContain("/rsvp/cancel?token=");
   });
 });
 
@@ -228,22 +233,19 @@ function seed(env: ReturnType<typeof makeEnv>, row: Partial<RsvpRow> & { id: str
 }
 
 describe("/rsvp/cancel", () => {
-  it("GET asks and changes nothing; POST removes; a second POST is still fine", async () => {
+  it("GET offers a one-click browser POST without mutating; repeat POST is harmless", async () => {
     const env = makeEnv();
     seed(env, { id: "r1", email: "a@b.org", event_rkey: "ev1", event_starts_at: "2026-10-16T00:30:00.000Z", cancel_token: "abcdef0123456789" });
     const url = new URL(`${BASE}/rsvp/cancel?token=abcdef0123456789`);
 
-    const ask = await handleRsvpCancel(new Request(url), env, url);
-    expect(ask.status).toBe(200);
-    expect(await ask.text()).toContain("Event ev1");
+    const preview = await handleRsvpCancel(new Request(url), env, url);
+    expect(preview.status).toBe(200);
+    expect(await preview.text()).toContain("document.getElementById('cancel').submit()");
     expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM event_rsvps").all()[0].n).toBe(1);
-
-    const done = await handleRsvpCancel(new Request(url, { method: "POST", body: "List-Unsubscribe=One-Click" }), env, url);
-    expect(done.status).toBe(200);
+    const done = await handleRsvpCancel(new Request(url, { method: "POST" }), env, url);
     expect(await done.text()).toContain("RSVP cancelled");
     expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM event_rsvps").all()[0].n).toBe(0);
-
-    const again = await handleRsvpCancel(new Request(url, { method: "POST" }), env, url);
+    const again = await handleRsvpCancel(new Request(url, { method: "POST", body: "List-Unsubscribe=One-Click" }), env, url);
     expect(again.status).toBe(200);
     expect((await handleRsvpCancel(new Request(url), env, url)).status).toBe(404);
   });
@@ -299,7 +301,7 @@ describe("runRsvpCron", () => {
   it("sends one email per person for tomorrow's events (Denver day), skipping deleted/cancelled", async () => {
     const { env, lookup, send } = setup();
     const result = await runRsvpCron(env, NOW, { lookup, send });
-    expect(result).toMatchObject({ claimed: 3, emailsSent: 2, emailsFailed: 0, skippedGone: 1, skippedCancelled: 1 });
+    expect(result).toMatchObject({ claimed: 3, emailsSent: 2, emailsFailed: 0, skippedGone: 2, skippedCancelled: 1 });
 
     const byTo = Object.fromEntries(send.mock.calls.map(([, to, m]) => [to, m as MailMessage]));
     expect(Object.keys(byTo).sort()).toEqual(["ana@x.org", "bo@x.org"]);
@@ -364,6 +366,21 @@ describe("runRsvpCron", () => {
     const rows = env.cohere.raw.prepare("SELECT id, event_starts_at, event_name, reminder_sent_at FROM event_rsvps ORDER BY id").all();
     expect(rows[0]).toMatchObject({ id: "m1", event_starts_at: "2026-10-15T18:00:00.000Z", event_name: "New name" });
     expect(rows[1]).toMatchObject({ id: "m2", event_starts_at: "2026-10-22T18:00:00.000Z", reminder_sent_at: null });
+  });
+
+  it("rescues an RSVP moved in from beyond the old lookup window or retention cutoff", async () => {
+    const env = makeEnv();
+    seed(env, { id: "far", email: "far@x.org", event_rkey: "far", event_starts_at: "2027-03-01T18:00:00.000Z" });
+    seed(env, { id: "oldmove", email: "old@x.org", event_rkey: "oldmove", event_starts_at: "2026-09-01T18:00:00.000Z" });
+    const lookup = lookupFrom({
+      far: { kind: "ok", event: liveEvent("far", TOMORROW_EARLY) },
+      oldmove: { kind: "ok", event: liveEvent("oldmove", TOMORROW_LATE) },
+    });
+    const send = vi.fn().mockResolvedValue(undefined);
+    const result = await runRsvpCron(env, NOW, { lookup, send });
+    expect(result.emailsSent).toBe(2);
+    expect(result.deleted).toBe(0);
+    expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM event_rsvps").all()[0].n).toBe(2);
   });
 
   it("falls back to the snapshot when regenOS is unreachable", async () => {
