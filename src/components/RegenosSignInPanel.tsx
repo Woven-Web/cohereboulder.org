@@ -21,7 +21,8 @@ import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
  *  request never yanks the view out from under the person. */
 type Stage = "idle" | "checkEmail";
 
-export function RegenosSignInPanel() {
+/** `embedded`: inside a dialog that already has its own title and frame. */
+export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { tr } = useLanguage();
   const navigate = useNavigate();
   const invalidateSession = useInvalidateRegenosSession();
@@ -31,6 +32,8 @@ export function RegenosSignInPanel() {
   const [returning, setReturning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const frame = embedded ? "border-0 shadow-none bg-transparent" : "max-w-md mx-auto";
+  const pad = embedded ? "p-0 pt-2" : "p-6";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,8 +62,8 @@ export function RegenosSignInPanel() {
 
   if (stage === "checkEmail") {
     return (
-      <Card className="max-w-md mx-auto">
-        <CardContent className="p-6 text-center space-y-4">
+      <Card className={frame}>
+        <CardContent className={`${pad} text-center space-y-4`}>
           <MailCheck className="h-8 w-8 mx-auto text-primary" aria-hidden />
           <div className="space-y-1">
             <p className="font-semibold text-foreground">{tr("calendar.host.checkEmailTitle")}</p>
@@ -88,16 +91,18 @@ export function RegenosSignInPanel() {
   }
 
   return (
-    <Card className="max-w-md mx-auto">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">{tr("calendar.host.panelTitle")}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className={frame}>
+      {!embedded && (
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{tr("calendar.host.panelTitle")}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className={embedded ? "p-0" : undefined}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="regenos-email">{tr("calendar.host.emailLabel")}</Label>
+            <Label htmlFor={embedded ? "regenos-email-dialog" : "regenos-email"}>{tr("calendar.host.emailLabel")}</Label>
             <Input
-              id="regenos-email"
+              id={embedded ? "regenos-email-dialog" : "regenos-email"}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

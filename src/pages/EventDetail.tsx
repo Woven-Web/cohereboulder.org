@@ -1,4 +1,5 @@
 import { ShareEvent } from "@/components/ShareEvent";
+import { EventRsvp } from "@/components/EventRsvp";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +184,8 @@ export default function EventDetail() {
                   {event.description}
                 </p>
               )}
+
+              <EventRsvp key={`rsvp-${event.did}/${event.rkey}`} event={event} />
 
               {event.uris.length > 0 && (
                 <div className="mb-8">

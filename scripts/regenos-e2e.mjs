@@ -42,14 +42,20 @@ const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 try {
   const metadata = await context.request.get(new URL("/oauth-client-metadata.json", target).href);
   if (metadata.status() !== 404) throw new Error("Unimplemented OAuth metadata must return 404");
-  for (const nsid of ["beginOAuth", "oauthCallback", "rsvp"]) {
+  for (const nsid of ["beginOAuth", "oauthCallback", "respondToRequest"]) {
     const response = await context.request.get(new URL(`/xrpc/social.scenius.${nsid}`, target).href);
     if (response.status() !== 404) throw new Error(`Unused ${nsid} must return 404`);
   }
-  ok("unfinished OAuth and RSVP endpoints are not advertised or proxied");
+  ok("unfinished OAuth endpoints and other unused methods are not advertised or proxied");
   // ── 1. Anonymous calendar: the sign-in affordance renders ─────────────────
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+  // The nav's Sign in opens the same regenOS sign-in in a dialog.
+  await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
+  await page.getByRole("dialog").getByText("Sign in to COhere").waitFor({ timeout: 10_000 });
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog").waitFor({ state: "detached" });
+  ok("nav Sign in opens the sign-in dialog");
   await page.getByRole("button", { name: "Sign in to host events" }).click();
   // The footer's newsletter form also labels an "Email" input — target by id.
   await page.locator("#regenos-email").fill("new@example.com");
@@ -72,7 +78,11 @@ try {
   step = "session";
   await page.getByRole("link", { name: "Go to the calendar" }).click();
   await page.getByText("Signed in as").waitFor({ timeout: 10_000 });
-  await page.getByText("tester.mock.test").waitFor();
+  await page.getByText("tester.mock.test").first().waitFor();
+  // The nav's account control shows the same handle once signed in.
+  const navHandle = (await page.getByTestId("nav-handle").first().textContent())?.trim();
+  if (navHandle !== "tester.mock.test") fail(`nav account control shows ${navHandle ?? "(nothing)"}`);
+  else ok("nav shows the signed-in handle");
   ok("browser stored the relayed __Host-rs_session cookie; getSession sees the account");
 
   // ── 3b. The cookie filter, both directions ───────────────────────────────
@@ -109,6 +119,21 @@ try {
     ok("upstream's hostile Set-Cookie was dropped; the site's own cookie survives");
   }
   await context.clearCookies({ name: "cohere_session" });
+
+  // ── 3c. RSVP as the signed-in user, on regenOS through the proxy ─────────
+  step = "signed-in rsvp";
+  await page.goto(new URL("/events/did:plc:mockscene/ev-seed1", target).toString(), { waitUntil: "networkidle" });
+  const rsvpPanel = page.getByTestId("event-rsvp");
+  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).click();
+  await rsvpPanel.getByTestId("rsvp-state").getByText("You're going").waitFor({ timeout: 10_000 });
+  await page.reload({ waitUntil: "networkidle" });
+  await rsvpPanel.getByTestId("rsvp-state").waitFor({ timeout: 10_000 });
+  ok("rsvp going → getEventAttendance.mySeat reads back 'You're going' after a reload");
+  await rsvpPanel.getByRole("button", { name: "Cancel my RSVP" }).click();
+  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).waitFor({ timeout: 10_000 });
+  if (await rsvpPanel.getByTestId("rsvp-form").count()) fail("signed-in visitor was shown the email form");
+  ok("notgoing withdraws; no email form for a signed-in visitor");
+  await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
 
   // ── 4. Create an event ────────────────────────────────────────────────────
   step = "create event";

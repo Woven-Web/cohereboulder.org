@@ -97,3 +97,24 @@ CREATE TABLE IF NOT EXISTS event_proposals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_proposals_status ON event_proposals(status, created_at DESC);
+
+-- Email RSVPs ("RSVP · remind me"), worker/migrations/0004_event_rsvps.sql.
+-- Not the mailing list; rows are deleted 30 days after the event starts.
+CREATE TABLE IF NOT EXISTS event_rsvps (
+  id               TEXT PRIMARY KEY,
+  event_did        TEXT NOT NULL,
+  event_rkey       TEXT NOT NULL,
+  event_name       TEXT NOT NULL,   -- snapshot at RSVP time; refreshed by the cron
+  event_starts_at  TEXT NOT NULL,   -- RFC3339 UTC (toISOString), so it sorts as text
+  event_where      TEXT,            -- venue line snapshot
+  email            TEXT NOT NULL,   -- lowercased
+  name             TEXT,
+  language         TEXT NOT NULL DEFAULT 'en',  -- en | es, for the emails
+  cancel_token     TEXT NOT NULL UNIQUE,
+  reminder_sent_at TEXT,            -- set when the day-before reminder is claimed/sent
+  created_at       TEXT NOT NULL,
+  UNIQUE (event_did, event_rkey, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_rsvps_starts ON event_rsvps(event_starts_at);
+CREATE INDEX IF NOT EXISTS idx_event_rsvps_event ON event_rsvps(event_did, event_rkey);

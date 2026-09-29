@@ -200,6 +200,12 @@ const ANON_ONLY = new Set([
   "social.scenius.getEventAttendance",
 ]);
 
+/**
+ * The signed-in mock user's own RSVPs, keyed by rkey → seat state. Read back
+ * as getEventAttendance.mySeat (auth-only upstream: anonymous ⇒ null).
+ */
+const mySeats = new Map();
+
 /** What the last proposeInvite carried, for the e2e script to inspect. */
 let lastInvite = null;
 
@@ -241,7 +247,7 @@ const server = http.createServer(async (req, res) => {
       const rkey = url.searchParams.get("eventRkey") ?? "";
       const seats = attendance.get(rkey);
       if (!seats) return json(res, 404, { error: "NotFound", message: "no such event" });
-      return json(res, 200, seats);
+      return json(res, 200, { ...seats, mySeat: signedIn ? (mySeats.get(rkey) ?? null) : null });
     }
 
     case "social.scenius.getSceneMembers": {
@@ -361,6 +367,29 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true }, [
         ["set-cookie", `${SESSION_COOKIE}=; ${COOKIE_ATTRS}; Max-Age=0`],
       ]);
+    }
+
+    // A visitor's own RSVP (event.rs `rsvp`): user-only, never the service
+    // token. going → confirmed on an open event, requested on approval-only;
+    // notgoing withdraws. Mirrors production's seat derivation, not its cap.
+    case "social.scenius.rsvp": {
+      if (!signedIn || asService) return json(res, 401, { error: "AuthRequired", message: "sign in to RSVP" });
+      const input = await readBody(req);
+      const seats = attendance.get(input.eventRkey);
+      if (!seats) return json(res, 404, { error: "NotFound", message: "no such event" });
+      if (!["going", "notgoing", "interested"].includes(input.intent)) {
+        return json(res, 400, { error: "InvalidRequest", message: "unknown intent" });
+      }
+      const before = mySeats.get(input.eventRkey) ?? null;
+      let state = "none";
+      if (input.intent === "going") state = seats.attendance === "approval" ? "requested" : "confirmed";
+      if (before === "confirmed") seats.confirmed -= 1;
+      if (before === "requested") seats.requested -= 1;
+      if (state === "confirmed") seats.confirmed += 1;
+      if (state === "requested") seats.requested += 1;
+      if (state === "none") mySeats.delete(input.eventRkey);
+      else mySeats.set(input.eventRkey, state);
+      return json(res, 200, { state, decidedBy: "self" });
     }
 
     case "social.scenius.createEvent":

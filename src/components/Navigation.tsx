@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AccountControl } from "@/components/AccountControl";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -60,6 +61,9 @@ export const Navigation = () => {
               <Button asChild variant="community" size="sm">
                 <Link to="/register">{tr("nav.register")}</Link>
               </Button>
+
+              {/* Sign in / account (regenOS) — only when the lane is on */}
+              <AccountControl variant="desktop" />
 
               {/* Language Toggle */}
               <Button
@@ -125,6 +129,10 @@ export const Navigation = () => {
                     {tr("nav.register")}
                   </Link>
                 </Button>
+
+                <div className="flex flex-col">
+                  <AccountControl variant="mobile" onNavigate={() => setIsMenuOpen(false)} />
+                </div>
               </div>
             </div>
           )}

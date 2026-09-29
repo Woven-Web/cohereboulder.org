@@ -306,7 +306,7 @@ export const ADMIN_PAGE = `<!doctype html>
 <script>
 (function () {
   var people = [], forms = [], filter = "all", query = "";
-  var events = [], eventWhen = "upcoming", rsvpCache = {}, accessMembers = [];
+  var events = [], eventWhen = "upcoming", rsvpCache = {}, emailRsvpCounts = {}, accessMembers = [];
   var proposals = [], proposalStatus = "pending";
 
   function el(id) { return document.getElementById(id); }
@@ -617,6 +617,7 @@ export const ADMIN_PAGE = `<!doctype html>
       el("eventmsg").textContent = "";
       renderEvents();
       fillRsvpColumns();
+      loadEmailRsvpCounts();
     }).catch(function (e) {
       el("eventmsg").textContent = e.message;
       el("eventrows").innerHTML =
@@ -643,6 +644,8 @@ export const ADMIN_PAGE = `<!doctype html>
       var rsvps = known
         ? esc(seats.confirmed + " confirmed" + (seats.attendance === "approval" ? " \u00b7 by approval" : ""))
         : (seats ? "\u2014" : '<span class="muted">\u2026</span>');
+      var emailCount = emailRsvpCounts[eventKey(e)] || 0;
+      if (emailCount) rsvps += '<div class="muted">+ ' + esc(String(emailCount)) + " by email</div>";
       var cap = known
         ? esc(seats.maxAttendees ? String(seats.maxAttendees) : "no limit")
         : (seats ? "\u2014" : '<span class="muted">\u2026</span>');
@@ -662,6 +665,16 @@ export const ADMIN_PAGE = `<!doctype html>
         if (found) openEventDrawer(found);
       });
     });
+  }
+
+  // Email RSVPs ("RSVP \u00b7 remind me" without an account) live in D1, one
+  // call for every event's count.
+  function loadEmailRsvpCounts() {
+    return api("/api/admin/rsvps").then(function (r) { return r.json(); }).then(function (data) {
+      emailRsvpCounts = {};
+      (data.counts || []).forEach(function (c) { emailRsvpCounts[c.did + "|" + c.rkey] = c.count; });
+      renderEvents();
+    }).catch(function () { /* the column just shows regenOS counts */ });
   }
 
   function fetchRsvps(ev) {
@@ -724,6 +737,15 @@ export const ADMIN_PAGE = `<!doctype html>
           '<div class="note">Confirmed guests only \u2014 requests and the waitlist ' +
             "aren't visible here yet; the event's host sees them on regenOS.</div>" +
           '<div class="row"><button class="btn" id="refreshrsvp">Refresh</button></div>' +
+        "</div>") +
+      (isNew ? "" :
+        '<div class="sub" id="emailrsvppanel">' +
+          '<div class="label">Email RSVPs</div>' +
+          '<div id="emailrsvpbody" class="muted">Loading\u2026</div>' +
+          '<div class="note">People without a COhere account who asked for a reminder. ' +
+            "They get one email the morning before; the list is deleted 30 days after the event.</div>" +
+          '<div class="row"><button class="btn" id="copyemailrsvp" hidden>Copy as CSV</button>' +
+            '<span class="muted" id="copyemailmsg"></span></div>' +
         "</div>") +
       '<div class="sub">' +
         '<div class="label">' + (isNew ? "Details" : "Edit") + "</div>" +
@@ -821,10 +843,43 @@ export const ADMIN_PAGE = `<!doctype html>
       });
     }
 
+    var emailRsvpCsv = "";
+    function loadEmailRsvps() {
+      var body = el("emailrsvpbody");
+      return api("/api/admin/rsvps/" + encodeURIComponent(e.did) + "/" + encodeURIComponent(e.rkey))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rows = data.rsvps || [];
+          if (!el("emailrsvpbody")) return;
+          emailRsvpCounts[eventKey(e)] = rows.length;
+          if (!rows.length) { body.className = "muted"; body.textContent = "No email RSVPs yet."; return; }
+          body.className = "";
+          body.innerHTML = '<table><thead><tr><th>Name</th><th>Email</th><th>RSVP\u2019d</th><th>Reminded</th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              return "<tr><td>" + esc(r.name || "") + "</td><td>" + esc(r.email) + "</td><td>" +
+                esc(whenText(r.created_at)) + "</td><td>" + esc(r.reminder_sent_at ? "yes" : "\u2014") + "</td></tr>";
+            }).join("") + "</tbody></table>";
+          function cell(v) { v = String(v || ""); return /[",\\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+          emailRsvpCsv = "name,email,rsvped_at\\n" + rows.map(function (r) {
+            return [cell(r.name), cell(r.email), cell(r.created_at)].join(",");
+          }).join("\\n") + "\\n";
+          el("copyemailrsvp").hidden = false;
+        })
+        .catch(function () {
+          if (body) { body.className = "err"; body.textContent = "Couldn't read the email RSVPs."; }
+        });
+    }
+
     if (!isNew) {
+      loadEmailRsvps();
+      el("copyemailrsvp").addEventListener("click", function () {
+        var msg = el("copyemailmsg");
+        navigator.clipboard.writeText(emailRsvpCsv).then(function () { msg.textContent = "Copied."; },
+          function () { msg.textContent = "Couldn't copy \u2014 select the table instead."; });
+      });
       var cached = rsvpCache[eventKey(e)];
       if (cached) { renderSeats(cached); applySeats(cached); } else { loadSeats(); }
-      el("refreshrsvp").addEventListener("click", loadSeats);
+      el("refreshrsvp").addEventListener("click", function () { loadSeats(); loadEmailRsvps(); });
     }
 
     el("closedrawer").addEventListener("click", closeDrawer);

@@ -54,8 +54,12 @@ domain.
 
 See [the regenOS consumer quickstart](docs/REGENOS_CONSUMER_QUICKSTART.md) for
 the local mock walkthrough, auth boundaries, configuration, and rollout checks.
-Atproto OAuth and public RSVP are not implemented; their proxy methods and
-OAuth discovery metadata remain unavailable until the full flows exist.
+Atproto OAuth is not implemented; its proxy methods and discovery metadata
+remain unavailable. RSVP is: signed-in visitors RSVP on regenOS through the
+proxy (`social.scenius.rsvp`, read back via `getEventAttendance.mySeat`);
+everyone else leaves an email (`worker/src/rsvps.ts`, D1 `event_rsvps`), gets a
+confirmation with an .ics, and one reminder from the daily 15:00 UTC cron the
+day before. Rows are deleted 30 days after the event.
 
 ## Commands
 

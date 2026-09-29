@@ -68,11 +68,16 @@ export async function isAllowedAdmin(env: AuthEnv, email: string): Promise<{ ema
  * proposals.ts) throttles by IP with the exact same KV-backed window this
  * file uses for sign-in requests, rather than growing a second one.
  */
-export async function rateLimited(env: AuthEnv, subject: string): Promise<boolean> {
+export async function rateLimited(
+  env: AuthEnv,
+  subject: string,
+  max = MAX_REQUESTS_PER_WINDOW,
+  windowSeconds = RATE_WINDOW_SECONDS,
+): Promise<boolean> {
   const key = `rate:${await sha256(subject)}`;
   const current = Number((await env.COHERE_AUTH.get(key)) ?? "0");
-  if (current >= MAX_REQUESTS_PER_WINDOW) return true;
-  await env.COHERE_AUTH.put(key, String(current + 1), { expirationTtl: RATE_WINDOW_SECONDS });
+  if (current >= max) return true;
+  await env.COHERE_AUTH.put(key, String(current + 1), { expirationTtl: windowSeconds });
   return false;
 }
 
@@ -138,24 +143,48 @@ function encodeHeader(value: string): string {
   return `=?UTF-8?B?${btoa(binary)}?=`;
 }
 
-function buildMime(
-  from: { name: string; address: string },
-  to: string,
-  message: { subject: string; html: string; text: string },
-): string {
+/** A file carried alongside the message body (e.g. an event's .ics). */
+export interface MailAttachment {
+  filename: string;
+  /** e.g. `text/calendar; method=PUBLISH`. */
+  contentType: string;
+  /** UTF-8 text; base64-encoded on the wire. */
+  content: string;
+}
+
+export interface MailMessage {
+  subject: string;
+  html: string;
+  text: string;
+  /**
+   * Extra headers, e.g. RFC 8058's List-Unsubscribe / List-Unsubscribe-Post.
+   * Names and values must be plain ASCII with no line breaks — anything else
+   * is dropped rather than risk header injection.
+   */
+  headers?: Record<string, string>;
+  attachments?: MailAttachment[];
+}
+
+function utf8Base64(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function safeHeaders(headers: Record<string, string> | undefined): [string, string][] {
+  return Object.entries(headers ?? {}).filter(
+    ([name, value]) => /^[A-Za-z0-9-]+$/.test(name) && /^[\x20-\x7E]*$/.test(value),
+  );
+}
+
+export function buildMime(from: { name: string; address: string }, to: string, message: MailMessage): string {
   const boundary = `b${crypto.randomUUID().replace(/-/g, "")}`;
   const domain = from.address.split("@")[1] ?? "cohereboulder.org";
   const fromHeader = from.name ? `${encodeHeader(from.name)} <${from.address}>` : from.address;
+  const attachments = message.attachments ?? [];
 
-  return [
-    `From: ${fromHeader}`,
-    `To: ${to}`,
-    `Subject: ${encodeHeader(message.subject)}`,
-    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
-    `Date: ${new Date().toUTCString()}`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
+  const alternative = [
     `--${boundary}`,
     'Content-Type: text/plain; charset="utf-8"',
     "Content-Transfer-Encoding: 7bit",
@@ -169,8 +198,50 @@ function buildMime(
     message.html,
     "",
     `--${boundary}--`,
+  ];
+
+  const head = [
+    `From: ${fromHeader}`,
+    `To: ${to}`,
+    `Subject: ${encodeHeader(message.subject)}`,
+    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
+    `Date: ${new Date().toUTCString()}`,
+    ...safeHeaders(message.headers).map(([name, value]) => `${name}: ${value}`),
+    "MIME-Version: 1.0",
+  ];
+
+  if (!attachments.length) {
+    return [...head, `Content-Type: multipart/alternative; boundary="${boundary}"`, "", ...alternative, ""].join(
+      "\r\n",
+    );
+  }
+
+  // With attachments the alternative body nests inside multipart/mixed.
+  const mixed = `m${crypto.randomUUID().replace(/-/g, "")}`;
+  const parts: string[] = [
+    ...head,
+    `Content-Type: multipart/mixed; boundary="${mixed}"`,
     "",
-  ].join("\r\n");
+    `--${mixed}`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    ...alternative,
+    "",
+  ];
+  for (const file of attachments) {
+    const name = file.filename.replace(/[^A-Za-z0-9._-]/g, "_");
+    parts.push(
+      `--${mixed}`,
+      `Content-Type: ${file.contentType}; charset="utf-8"; name="${name}"`,
+      `Content-Disposition: attachment; filename="${name}"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      ...(utf8Base64(file.content).match(/.{1,76}/g) ?? []),
+      "",
+    );
+  }
+  parts.push(`--${mixed}--`, "");
+  return parts.join("\r\n");
 }
 
 /**
@@ -181,11 +252,7 @@ function buildMime(
  * sign in here, but can never reach the wider member list. Resend stays as a
  * fallback for that day.
  */
-export async function sendMail(
-  env: AuthEnv,
-  to: string,
-  message: { subject: string; html: string; text: string },
-): Promise<void> {
+export async function sendMail(env: AuthEnv, to: string, message: MailMessage): Promise<void> {
   const from = parseFrom(env.MAIL_FROM || "COhere Boulder <cohere@wovenweb.org>");
 
   if (env.SEND_EMAIL) {
@@ -206,6 +273,16 @@ export async function sendMail(
         subject: message.subject,
         html: message.html,
         text: message.text,
+        ...(message.headers ? { headers: Object.fromEntries(safeHeaders(message.headers)) } : {}),
+        ...(message.attachments?.length
+          ? {
+              attachments: message.attachments.map((file) => ({
+                filename: file.filename,
+                content: utf8Base64(file.content),
+                content_type: file.contentType,
+              })),
+            }
+          : {}),
       }),
     });
     if (!response.ok) {

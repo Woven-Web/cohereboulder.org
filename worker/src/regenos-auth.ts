@@ -58,6 +58,12 @@ const UPSTREAM_TIMEOUT_MS = 8_000;
  *    re-gated server-side by the AppView (Builder+ of the event's authority
  *    for the event writes), so the proxy widens
  *    reach, never authority.
+ *  - rsvp — a signed-in visitor's own RSVP (intent going / notgoing). The
+ *    AppView requires a signed-in user and writes the claim into THAT user's
+ *    repo; it derives the seat itself and ignores client-sent attendance.
+ *  - getEventAttendance — read back the caller's own `mySeat` for the
+ *    "You're going" state. Public events answer anonymously too; the roster
+ *    beyond confirmed guests stays host-only upstream.
  */
 const ALLOWED_NSIDS = new Set([
   "social.scenius.beginSignup",
@@ -70,6 +76,8 @@ const ALLOWED_NSIDS = new Set([
   "social.scenius.createEvent",
   "social.scenius.updateEvent",
   "social.scenius.deleteEvent",
+  "social.scenius.rsvp",
+  "social.scenius.getEventAttendance",
 ]);
 
 /** A successful one of these stales the edge-cached /api/events listing. */

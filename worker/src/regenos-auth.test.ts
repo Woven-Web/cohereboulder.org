@@ -45,9 +45,31 @@ describe("XRPC proxy boundary", () => {
       expect(await response.json()).toMatchObject({ error: "InvalidUpstreamRedirect" });
     },
   );
-  it.each(["beginOAuth", "oauthCallback", "rsvp"])("does not expose unused %s", async (name) => {
+  it.each(["beginOAuth", "oauthCallback", "respondToRequest", "checkIn", "getEvents", "createCheckout"])("does not expose unused %s", async (name) => {
     expect((await call(new URL(`/xrpc/social.scenius.${name}`, url))).status).toBe(404);
     expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["rsvp", "POST"],
+    ["getEventAttendance", "GET"],
+  ])("forwards the RSVP method %s with only regenOS's own cookie", async (name, method) => {
+    upstreamFetch.mockResolvedValue(new Response(JSON.stringify({ state: "confirmed" }), {
+      headers: { "Content-Type": "application/json" },
+    }));
+    const target = new URL(`/xrpc/social.scenius.${name}?eventDid=did:plc:x&eventRkey=r`, url);
+    const response = await handleXrpcProxy(new Request(target, {
+      method,
+      headers: { Cookie: "cohere_session=private; __Host-rs_session=allowed" },
+      ...(method === "POST" ? { body: JSON.stringify({ intent: "going" }) } : {}),
+    }), env, target);
+    expect(response.status).toBe(200);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+    const [calledUrl, init] = upstreamFetch.mock.calls[0];
+    expect(calledUrl).toBe(`https://upstream.test/xrpc/social.scenius.${name}${target.search}`);
+    expect((init.headers as Headers).get("Cookie")).toBe("__Host-rs_session=allowed");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    // An RSVP is not an event write: the public listing cache stays put.
+    expect(deleteCache).not.toHaveBeenCalled();
   });
   it("keeps the whole proxy off unless enabled", async () => {
     expect((await call(url, { ...env, REGENOS_LOGIN_ENABLED: "false" })).status).toBe(404);

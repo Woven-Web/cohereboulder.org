@@ -128,3 +128,29 @@ export async function proposeEvent(payload: ProposeEventPayload): Promise<void> 
   });
   if (!response.ok) throw new Error(await readError(response));
 }
+
+/**
+ * "RSVP · remind me" without an account: stored by the Worker
+ * (worker/src/rsvps.ts), confirmed by email, reminded the morning before.
+ * `already` is true when this address had already RSVP'd — nothing is re-sent.
+ */
+export interface EmailRsvpPayload {
+  did: string;
+  rkey: string;
+  email: string;
+  name?: string;
+  language?: "en" | "es";
+  /** Hidden honeypot; bots fill it, people never see it. */
+  website?: string;
+}
+
+export async function createEmailRsvp(payload: EmailRsvpPayload): Promise<{ already: boolean }> {
+  const response = await fetch(`${API_BASE}/api/rsvp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  const body = (await response.json().catch(() => ({}))) as { already?: boolean };
+  return { already: body.already === true };
+}

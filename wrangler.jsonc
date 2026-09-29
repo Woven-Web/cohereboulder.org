@@ -32,6 +32,11 @@
     { "binding": "COHERE_AUTH", "id": "2fbaac0edc1f494ea87a7cb752be7ce1" }
   ],
   "send_email": [{ "name": "SEND_EMAIL" }],
+
+  // Daily at 15:00 UTC = 9am in Boulder during MDT (8am once DST ends Nov 1).
+  // scheduled() sends day-before reminders to email RSVPs (once per row) and
+  // deletes RSVPs 30 days after their event (worker/src/rsvps.ts).
+  "triggers": { "crons": ["0 15 * * *"] },
   "vars": {
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
