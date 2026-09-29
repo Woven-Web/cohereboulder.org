@@ -72,6 +72,19 @@ try {
   await page.getByRole("button", { name: "RSVP · remind me" }).first().click();
   await page.waitForURL(/\/events\/.+#rsvp$/, { timeout: 10_000 });
   await page.getByTestId("rsvp-form").waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Add to calendar" }).click();
+  const google = page.getByRole("menuitem", { name: "Google Calendar" });
+  const href = await google.getAttribute("href");
+  if (!href?.startsWith("https://calendar.google.com/calendar/r/eventedit?")) fail(`Google Calendar link missing: ${href}`);
+  await page.getByRole("menuitem", { name: "Apple / other calendars (.ics)" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Subscribe to Calendar" }).click();
+  await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar" }).waitFor();
+  await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
+  const feedUrl = await page.getByRole("textbox", { name: "Calendar feed URL" }).inputValue();
+  if (!feedUrl.endsWith("/calendar.ics")) fail(`subscription feed missing: ${feedUrl}`);
+  await page.keyboard.press("Escape");
+  ok("calendar subscription explains Apple and Google feed setup");
   // This lane explicitly switches sign-in off; the anonymous email form
   // remains available and offers no dead sign-in control.
   if (await page.getByText("or sign in to RSVP with your COhere account").count()) {

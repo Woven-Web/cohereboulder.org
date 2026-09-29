@@ -621,6 +621,17 @@ export const translations = {
         en: "Add to calendar",
         es: "Añadir al calendario",
       },
+      googleCalendar: { en: "Google Calendar", es: "Google Calendar" },
+      appleOtherCalendar: {
+        en: "Apple / other calendars (.ics)",
+        es: "Apple / otros calendarios (.ics)",
+      },
+      appleCalendar: { en: "Apple Calendar", es: "Apple Calendar" },
+      feedUrlLabel: { en: "Calendar feed URL", es: "URL del calendario" },
+      googleSubscribeHint: {
+        en: "For Google Calendar, copy the URL below, then choose Other calendars → From URL in Google Calendar.",
+        es: "Para Google Calendar, copia la URL de abajo y elige Otros calendarios → Desde URL en Google Calendar.",
+      },
       tabUpcoming: {
         en: "Upcoming",
         es: "Próximos",

@@ -78,6 +78,7 @@ const ALLOWED_NSIDS = new Set([
   "social.scenius.deleteEvent",
   "social.scenius.rsvp",
   "social.scenius.getEventAttendance",
+  "social.scenius.getSceneMembers",
 ]);
 
 /** A successful one of these stales the edge-cached /api/events listing. */

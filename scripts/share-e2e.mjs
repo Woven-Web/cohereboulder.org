@@ -32,7 +32,7 @@ try {
       await page.goto(`${origin}${path}?private=value#fragment`, { waitUntil: 'domcontentloaded' });
       if (scheduled) {
         await page.getByRole('button', { name: 'Add to calendar', exact: true }).waitFor();
-        await page.getByRole('link', { name: 'Subscribe to Calendar', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Subscribe to Calendar', exact: true }).waitFor();
       }
       await page.getByRole('button', { name: 'Share event', exact: true }).click();
       await page.waitForFunction(() => !document.querySelector('button:disabled'));

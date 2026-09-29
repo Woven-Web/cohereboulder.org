@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { LumaCalendar } from "@/components/LumaCalendar";
 import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { CommunityEventForm } from "@/components/CommunityEventForm";
@@ -15,7 +16,8 @@ import { CalendarPlus, Loader2, LogOut, Pencil, Sparkles, Trash2 } from "lucide-
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
-import { describeWriteError, signOut, xrpcPost } from "@/lib/regenos";
+import { describeWriteError, fetchSceneRoster, signOut, xrpcPost } from "@/lib/regenos";
+import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
 import { fetchCommunityCalendar, type CommunityEvent } from "@/lib/events";
 
@@ -37,6 +39,13 @@ export default function CalendarPage() {
   const { data: session } = useRegenosSession(hostingOn);
   const invalidateSession = useInvalidateRegenosSession();
   const signedIn = Boolean(session?.did);
+  const { data: roster } = useQuery({
+    queryKey: ["scene-roster", config?.collectiveDid, session?.did],
+    queryFn: () => fetchSceneRoster(config!.collectiveDid!),
+    enabled: hostingOn && signedIn && Boolean(config?.collectiveDid),
+    staleTime: 30_000,
+  });
+  const canHostCollective = canHostScene(session?.did ?? null, roster);
 
   /** Which host surface is open: the sign-in panel, the create form, or an edit. */
   const [panel, setPanel] = useState<"none" | "signIn" | "create">("none");
@@ -44,14 +53,11 @@ export default function CalendarPage() {
   const [deletingRkey, setDeletingRkey] = useState<string | null>(null);
   const [manageError, setManageError] = useState<string | null>(null);
 
-  /**
-   * Whether to OFFER manage controls: their own events, or anything on the
-   * collective's calendar. The AppView re-decides on every write (Builder+ of
-   * the authority), so this is a courtesy, not a gate — an over-offer ends in
-   * the honest "ask the organizers" message, never a silent failure.
-   */
+  // The public "Propose an event" path is available to everyone. Only
+  // builders and stewards of the collective see direct create/edit controls;
+  // the AppView remains the final authority on writes.
   const canManage = (event: CommunityEvent): boolean =>
-    signedIn && (event.did === session?.did || event.did === config?.collectiveDid);
+    signedIn && canHostCollective && (event.did === session?.did || event.did === config?.collectiveDid);
 
   async function handleDelete(event: CommunityEvent) {
     if (!window.confirm(tr("calendar.host.confirmDelete"))) return;
@@ -109,12 +115,7 @@ export default function CalendarPage() {
               </Link>
             </Button>
             {data?.source === "regenos" && data.icsUrl && (
-              <Button asChild variant="community" size="sm" className="flex-1 gap-2">
-                <a href={data.icsUrl}>
-                  <CalendarPlus className="h-4 w-4" aria-hidden="true" />
-                  {tr("calendar.events.subscribe")}
-                </a>
-              </Button>
+              <CalendarSubscribe feedUrl={data.icsUrl} compact />
             )}
           </div>
 
@@ -147,7 +148,7 @@ export default function CalendarPage() {
                     {/* No collective DID means nothing to create an event
                         under — the form below would never render, so don't
                         offer a button that does nothing. */}
-                    {panel !== "create" && !editing && config?.collectiveDid && (
+                    {panel !== "create" && !editing && config?.collectiveDid && canHostCollective && (
                       <Button
                         variant="community"
                         size="sm"
@@ -166,7 +167,7 @@ export default function CalendarPage() {
                       {tr("calendar.host.signOut")}
                     </Button>
                   </div>
-                  {panel === "create" && config?.collectiveDid && (
+                  {panel === "create" && config?.collectiveDid && canHostCollective && (
                     <CommunityEventForm
                       authority={config.collectiveDid}
                       event={null}
@@ -209,12 +210,7 @@ export default function CalendarPage() {
             <>
               {data.icsUrl && (
                 <div className="hidden md:block text-center mb-8 space-y-2">
-                  <Button asChild variant="community" size="lg" className="gap-2">
-                    <a href={data.icsUrl}>
-                      <CalendarPlus className="h-4 w-4" />
-                      {tr("calendar.events.subscribe")}
-                    </a>
-                  </Button>
+                  <CalendarSubscribe feedUrl={data.icsUrl} />
                   <p className="text-sm text-muted-foreground">
                     {tr("calendar.events.subscribeCaption")}
                   </p>

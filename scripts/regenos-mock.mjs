@@ -61,6 +61,7 @@ const members = new Map([
   [SERVICE_DID, { did: SERVICE_DID, handle: "cohere-site.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockji", { did: "did:plc:mockji", handle: "claudeji.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockbuilder", { did: "did:plc:mockbuilder", handle: "rosa.mock.test", kind: "person", name: "Rosa Mock", role: "builder" }],
+  [USER_DID, { did: USER_DID, handle: USER_HANDLE, kind: "person", name: null, role: "builder" }],
 ]);
 
 /** Seeded RSVPs, keyed by rkey. Counts plus CONFIRMED guests, as production. */
@@ -253,8 +254,11 @@ const server = http.createServer(async (req, res) => {
     case "social.scenius.getSceneMembers": {
       // Anonymous callers get the roster without the viewer flag; a bearer
       // call also learns whether the caller is a steward.
+      const viewerMembers = req.headers.cookie?.includes(`${SESSION_COOKIE}=mock-member`)
+        ? [...members.values()].map((m) => m.did === USER_DID ? { ...m, role: "member" } : m)
+        : [...members.values()];
       return json(res, 200, {
-        members: [...members.values()],
+        members: viewerMembers,
         steward: asService,
       });
     }
@@ -398,6 +402,11 @@ const server = http.createServer(async (req, res) => {
         return json(res, 401, { error: "AuthRequired", message: "sign in first" });
       }
       const input = await readBody(req);
+      // Mirrors the AppView's require_owner_or_builder: a plain member may
+      // not write under the collective.
+      if (!asService && req.headers.cookie?.includes(`${SESSION_COOKIE}=mock-member`) && input.authority === SCENE_DID) {
+        return json(res, 403, { error: "Forbidden", message: "only a Builder of the collective may create an event" });
+      }
       if (String(input.name ?? "").includes("forbidden")) {
         return json(res, 403, { error: "Forbidden", message: "only a Builder of the collective may edit an event" });
       }

@@ -50,6 +50,11 @@ try {
   // ── 1. Anonymous calendar: the sign-in affordance renders ─────────────────
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+  const headerLinks = await page.locator("nav").first().getByRole("link").allTextContents();
+  if (!headerLinks[1]?.includes("Calendar")) fail(`Calendar is not the first nav destination: ${headerLinks.join(" | ")}`);
+  if (headerLinks.some((text) => text === "About")) fail("About still occupies the primary navigation");
+  await page.locator("footer").getByRole("link", { name: "About" }).waitFor();
+  ok("Calendar is first in the nav, About lives in the footer");
   // The nav's Sign in opens the same regenOS sign-in in a dialog.
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   await page.getByRole("dialog").getByText("Sign in to COhere").waitFor({ timeout: 10_000 });
@@ -134,6 +139,38 @@ try {
   if (await rsvpPanel.getByTestId("rsvp-form").count()) fail("signed-in visitor was shown the email form");
   ok("notgoing withdraws; no email form for a signed-in visitor");
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+
+  // A signed-in member is not a collective builder: direct event controls
+  // must not be offered. The public proposal form stays available.
+  step = "ordinary member sees proposal, not direct management";
+  await context.addCookies([{
+    name: "__Host-rs_session", value: "mock-member", domain: "127.0.0.1", path: "/",
+    secure: true, httpOnly: true, sameSite: "Lax",
+  }]);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("link", { name: "Propose an event" }).first().waitFor();
+  if (await page.getByRole("button", { name: "Add an event" }).count()) fail("member was offered direct event creation");
+  if (await page.getByRole("button", { name: "Edit", exact: true }).count()) fail("member was offered event editing");
+  ok("ordinary member sees Propose, not Add/Edit/Cancel event");
+  // Hidden controls are courtesy; a direct write must still be refused.
+  const memberWrite = await page.evaluate(async () => {
+    const res = await fetch("/xrpc/social.scenius.createEvent", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ authority: "did:plc:mockscene", rkey: "member-try", name: "Member try", startsAt: "2030-01-01T18:00:00Z" }),
+    });
+    return res.status;
+  });
+  if (memberWrite !== 403) fail(`member direct createEvent answered ${memberWrite}, expected 403`);
+  await page.getByRole("link", { name: "Propose an event" }).first().click();
+  await page.waitForURL(/\/propose$/);
+  await page.getByRole("heading").first().waitFor();
+  ok("member direct write is refused (403) and the proposal page loads");
+  await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+  await context.addCookies([{
+    name: "__Host-rs_session", value: "sess-1", domain: "127.0.0.1", path: "/",
+    secure: true, httpOnly: true, sameSite: "Lax",
+  }]);
+  await page.reload({ waitUntil: "networkidle" });
 
   // ── 4. Create an event ────────────────────────────────────────────────────
   step = "create event";
