@@ -38,6 +38,14 @@ import {
 } from "./proposals";
 // --- end event proposals ---
 import {
+  handleAdminRsvpCounts,
+  handleAdminRsvpList,
+  handleCreateRsvp,
+  handleRsvpCancel,
+  runRsvpCron,
+  type RsvpEnv,
+} from "./rsvps";
+import {
   clearedCookie,
   consumeLinkToken,
   currentSession,
@@ -51,7 +59,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -639,6 +647,22 @@ export default {
       }
       // ============ end admin event + access management ============
 
+      // Email RSVPs ("RSVP · remind me", worker/src/rsvps.ts) — names and
+      // addresses, so admin-only. regenOS attendance is read separately above.
+      if (request.method === "GET" && path === "/api/admin/rsvps") {
+        return handleAdminRsvpCounts(env);
+      }
+      if (request.method === "GET" && path.startsWith("/api/admin/rsvps/")) {
+        let parts: string[];
+        try {
+          parts = path.slice("/api/admin/rsvps/".length).split("/").map(decodeURIComponent);
+        } catch {
+          return json({ error: "not found" }, 404);
+        }
+        if (parts.length === 2 && parts[0] && parts[1]) return handleAdminRsvpList(env, parts[0], parts[1]);
+        return json({ error: "not found" }, 404);
+      }
+
       // ============ event proposal moderation queue (feat/event-proposals) ============
       // Anyone can propose an event from /propose with no account at all —
       // see worker/src/proposals.ts for the public route. Everything here is
@@ -712,6 +736,18 @@ export default {
         status: person ? 200 : 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
+    }
+
+    // ------------------------------------------------------------ email RSVPs
+
+    // "RSVP · remind me" without an account (worker/src/rsvps.ts). The cancel
+    // link works without sign-in; GET only asks, POST (or a mail provider's
+    // RFC 8058 one-click POST) removes the RSVP.
+    if (request.method === "POST" && path === "/api/rsvp") {
+      return handleCreateRsvp(request, env, url);
+    }
+    if (path === "/rsvp/cancel" && (request.method === "GET" || request.method === "POST")) {
+      return handleRsvpCancel(request, env, url);
     }
 
     // -------------------------------------------------------------- site config
@@ -938,5 +974,14 @@ export default {
     // caching for hashed /assets/*. Best-effort: falls back to the file as-is.
     const asset = await env.ASSETS.fetch(request);
     return decorateAssetResponse(request, asset, env);
+  },
+
+  // Daily at 15:00 UTC (wrangler.jsonc `triggers.crons`) — 9am in Boulder
+  // during MDT, 8am after DST ends. Sends the day-before RSVP reminders and
+  // deletes RSVPs 30 days after their event. Safe to run twice: rows are
+  // claimed before sending (worker/src/rsvps.ts runRsvpCron).
+  async scheduled(controller: { scheduledTime: number }, env: Env): Promise<void> {
+    const result = await runRsvpCron(env, new Date(controller.scheduledTime));
+    console.info("rsvp cron:", JSON.stringify(result));
   },
 };
