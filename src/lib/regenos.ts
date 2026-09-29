@@ -153,3 +153,47 @@ export async function createCustodialAccount(): Promise<RegenosSession> {
   );
   return { did: data.did ?? null, handle: data.handle ?? null };
 }
+
+// ---------------------------------------------------------------------- RSVP
+
+/**
+ * The signed-in visitor's own seat on one event, from getEventAttendance's
+ * `mySeat` ("confirmed" | "waitlisted" | "requested" | "declined" | null), plus
+ * the event's attendance mode, which the rsvp call must echo back.
+ */
+export interface MySeat {
+  seat: string | null;
+  attendance: "open" | "approval";
+}
+
+export async function fetchMySeat(eventDid: string, eventRkey: string): Promise<MySeat> {
+  const data = await xrpcGet<{ mySeat?: string | null; attendance?: string }>(
+    "social.scenius.getEventAttendance",
+    { eventDid, eventRkey },
+  );
+  return {
+    seat: typeof data.mySeat === "string" ? data.mySeat : null,
+    attendance: data.attendance === "open" ? "open" : "approval",
+  };
+}
+
+/**
+ * RSVP as the signed-in regenOS user. regenOS derives the seat itself (an
+ * approval-only event lands as "requested") and ignores the `attendance` we
+ * send; `notgoing` withdraws. Returns the resulting seat state.
+ */
+export async function rsvpOnRegenos(
+  eventDid: string,
+  eventRkey: string,
+  intent: "going" | "notgoing",
+  attendance: "open" | "approval",
+): Promise<string> {
+  const data = await xrpcPost<{ state?: string }>("social.scenius.rsvp", {
+    eventDid,
+    eventRkey,
+    intent,
+    attendance,
+    audience: "public",
+  });
+  return typeof data.state === "string" ? data.state : "none";
+}

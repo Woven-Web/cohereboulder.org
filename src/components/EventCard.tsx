@@ -2,8 +2,8 @@ import type { MouseEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "react-router-dom";
-import { Download, Clock, MapPin } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BellRing, Download, Clock, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
@@ -35,6 +35,16 @@ export function EventCard({ event }: { event: CommunityEvent }) {
   const where = locationLine(event.location);
   const badged = event.status && BADGED_STATUSES.has(event.status);
   const cancelled = event.status === "cancelled";
+  const navigate = useNavigate();
+  const upcoming = Boolean(event.startsAt) && new Date(event.startsAt ?? 0).getTime() > Date.now();
+
+  // The card is one big link, so no form lives inside it: the button opens
+  // the detail page with its RSVP panel expanded (EventRsvp reads #rsvp).
+  function handleRsvp(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`${eventPath(event)}#rsvp`);
+  }
 
   function handleAddToCalendar(e: MouseEvent) {
     e.preventDefault();
@@ -84,11 +94,22 @@ export function EventCard({ event }: { event: CommunityEvent }) {
             </p>
           )}
           {event.startsAt && !cancelled && (
-            <div className="pt-1">
+            <div className="pt-1 flex flex-wrap gap-x-1">
+              {upcoming && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 -ml-2.5 text-primary hover:text-primary"
+                  onClick={handleRsvp}
+                >
+                  <BellRing className="h-3.5 w-3.5" />
+                  {tr("rsvp.button")}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 -ml-2.5 text-muted-foreground hover:text-foreground"
+                className={`gap-1.5 text-muted-foreground hover:text-foreground ${upcoming ? "" : "-ml-2.5"}`}
                 onClick={handleAddToCalendar}
               >
                 <Download className="h-3.5 w-3.5" />

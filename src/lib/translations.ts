@@ -15,6 +15,15 @@ export const translations = {
     supportCohere: { en: "Support COhere", es: "Apoyar COhere" },
     openMenu: { en: "Open menu", es: "Abrir menú" },
     closeMenu: { en: "Close menu", es: "Cerrar menú" },
+    signIn: { en: "Sign in", es: "Iniciar sesión" },
+    signOut: { en: "Sign out", es: "Cerrar sesión" },
+    signedInAs: { en: "Signed in as", es: "Sesión iniciada como" },
+    accountMenu: { en: "Your account", es: "Tu cuenta" },
+    signInDialogTitle: { en: "Sign in to COhere", es: "Inicia sesión en COhere" },
+    signInDialogBody: {
+      en: "One account for RSVPs, reminders, and hosting events on the community calendar.",
+      es: "Una cuenta para confirmar asistencia, recibir recordatorios y organizar eventos en el calendario comunitario.",
+    },
     announcement: {
       en: "COhere continues weaving Boulder's resilient community. Join our newsletter to stay connected!",
       es: "COhere continúa tejiendo la comunidad resiliente de Boulder. ¡Únete a nuestro boletín para mantenerte conectado!",
@@ -715,6 +724,49 @@ export const translations = {
           en: "Hybrid",
           es: "Híbrido",
         },
+      },
+    },
+    // "RSVP · remind me" on each event (src/components/EventRsvp.tsx).
+    rsvp: {
+      button: { en: "RSVP · remind me", es: "Confirmar · recuérdame" },
+      title: { en: "Coming?", es: "¿Vienes?" },
+      emailIntro: {
+        en: "Leave your email and we'll send a reminder the morning before (around 9am Boulder time). It doesn't add you to our mailing list.",
+        es: "Déjanos tu correo y te enviaremos un recordatorio la mañana anterior (alrededor de las 9am, hora de Boulder). No te añade a nuestra lista de correo.",
+      },
+      nameLabel: { en: "Name (optional)", es: "Nombre (opcional)" },
+      emailLabel: { en: "Email", es: "Correo electrónico" },
+      submit: { en: "RSVP", es: "Confirmar" },
+      sending: { en: "Sending…", es: "Enviando…" },
+      cancelForm: { en: "Not now", es: "Ahora no" },
+      privacy: {
+        en: "Only the organizers see RSVPs, and we delete them 30 days after the event.",
+        es: "Solo el equipo organizador ve las confirmaciones, y las borramos 30 días después del evento.",
+      },
+      doneTitle: { en: "You're on the list!", es: "¡Estás en la lista!" },
+      doneBody: {
+        en: "Check your inbox for a confirmation with a calendar file. We'll remind you the morning before.",
+        es: "Revisa tu correo: te enviamos una confirmación con un archivo de calendario. Te recordaremos la mañana anterior.",
+      },
+      alreadyBody: {
+        en: "This address had already RSVP'd — you're all set. We'll remind you the morning before.",
+        es: "Esta dirección ya había confirmado — todo listo. Te recordaremos la mañana anterior.",
+      },
+      orSignIn: {
+        en: "or sign in to RSVP with your COhere account",
+        es: "o inicia sesión para confirmar con tu cuenta COhere",
+      },
+      going: { en: "You're going", es: "Vas a asistir" },
+      requested: { en: "Request sent — the host will confirm", es: "Solicitud enviada — el anfitrión confirmará" },
+      waitlisted: { en: "You're on the waitlist", es: "Estás en la lista de espera" },
+      reminderNote: {
+        en: "COhere will remind you the day before and an hour before, by the email or channel on your account.",
+        es: "COhere te recordará el día anterior y una hora antes, por el correo o canal de tu cuenta.",
+      },
+      cancelRsvp: { en: "Cancel my RSVP", es: "Cancelar mi confirmación" },
+      error: {
+        en: "Something went wrong. Please try again.",
+        es: "Algo salió mal. Por favor, inténtalo de nuevo.",
       },
     },
     // Hosting events with a COhere (regenOS) account — the whole block only
