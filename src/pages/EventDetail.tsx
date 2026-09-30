@@ -2,12 +2,14 @@ import { ShareEvent } from "@/components/ShareEvent";
 import { EventRsvp } from "@/components/EventRsvp";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarPlus, Clock, Download, ExternalLink, MapPin } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Clock, ExternalLink, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
@@ -19,6 +21,7 @@ import {
   locationLine,
 } from "@/lib/events";
 import { downloadEventIcs } from "@/lib/ics";
+import { googleCalendarEventUrl } from "@/lib/calendarLinks";
 // The event API doesn't carry a per-event image today, so a detail page
 // gets a tasteful COhere still as a banner instead of a blank header — real
 // footage, never AI/stock, per Eileen's rule. Picked deterministically per
@@ -212,20 +215,29 @@ export default function EventDetail() {
 
               <div className="border-t pt-6 flex flex-wrap gap-3">
                 <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
-                {event.startsAt && !cancelled && (
-                  <Button variant="community" className="gap-2" onClick={handleAddToCalendar}>
-                    <Download className="h-4 w-4" />
-                    {tr("calendar.events.addToCalendar")}
-                  </Button>
+                {event.startsAt && !Number.isNaN(Date.parse(event.startsAt)) && !cancelled && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="community" className="gap-2">
+                        <CalendarPlus className="h-4 w-4" />
+                        {tr("calendar.events.addToCalendar")}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {googleCalendarEventUrl(event) && (
+                        <DropdownMenuItem asChild>
+                          <a href={googleCalendarEventUrl(event)!} target="_blank" rel="noopener noreferrer">
+                            {tr("calendar.events.googleCalendar")}
+                          </a>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onSelect={handleAddToCalendar}>
+                        {tr("calendar.events.appleOtherCalendar")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-                {data?.icsUrl && (
-                  <Button asChild variant="outline" className="gap-2">
-                    <a href={data.icsUrl}>
-                      <CalendarPlus className="h-4 w-4" />
-                      {tr("calendar.events.subscribe")}
-                    </a>
-                  </Button>
-                )}
+                {data?.icsUrl && <CalendarSubscribe feedUrl={data.icsUrl} />}
               </div>
             </article>
           )}

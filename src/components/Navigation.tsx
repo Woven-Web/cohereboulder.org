@@ -11,15 +11,8 @@ export const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
-    {
-      href: "/about",
-      label: tr("nav.about"),
-    },
-    {
-      href: "/co-create",
-      label: tr("nav.participate"),
-    },
     { href: "/calendar", label: tr("nav.calendar") },
+    { href: "/co-create", label: tr("nav.participate") },
     { href: "/archive", label: tr("nav.archive") },
   ];
 

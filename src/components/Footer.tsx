@@ -57,6 +57,10 @@ export const Footer = () => {
               <span className="mx-2">•</span>
               <span>{tr("footer.wovenWeb")}</span>
               <span className="mx-2">•</span>
+              <Link to="/about" className="hover:text-primary-foreground transition-colors">
+                {tr("nav.about")}
+              </Link>
+              <span className="mx-2">•</span>
               <Link to="/propose" className="hover:text-primary-foreground transition-colors">
                 {tr("nav.proposeEvent")}
               </Link>

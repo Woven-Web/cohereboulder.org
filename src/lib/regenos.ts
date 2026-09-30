@@ -25,6 +25,7 @@
 //   createCustodialAccount→ mints the account + session cookie (wizard step 3)
 
 import { API_BASE } from "./api";
+import type { SceneRoster } from "./hostAccess";
 
 /** What /api/config says about this deployment. */
 export interface SiteConfig {
@@ -111,6 +112,14 @@ export async function fetchRegenosSession(): Promise<RegenosSession> {
   return {
     did: typeof data.did === "string" ? data.did : null,
     handle: typeof data.handle === "string" ? data.handle : null,
+  };
+}
+
+export async function fetchSceneRoster(sceneDid: string): Promise<SceneRoster> {
+  const data = await xrpcGet<Partial<SceneRoster>>("social.scenius.getSceneMembers", { scene: sceneDid });
+  return {
+    members: Array.isArray(data.members) ? data.members : [],
+    steward: data.steward === true,
   };
 }
 
