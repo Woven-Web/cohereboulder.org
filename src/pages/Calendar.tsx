@@ -94,110 +94,35 @@ export default function CalendarPage() {
 
       <main className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
+          {/* Eileen, 2026-09-30: events come first. Only the title and the
+              subscribe button sit above them; propose + hosting live below. */}
+          <div className="text-center mb-8 space-y-4">
+            <h1 className="text-4xl font-bold text-foreground">
               {tr("calendar.events.title")}
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
-              {tr("calendar.events.subtitle")}
-            </p>
-          </div>
-
-          {/* Mobile: a compact row instead of the full callout + subscribe
-              blocks below, so the toggle and first event stay above the
-              fold. Desktop keeps the full versions further down. */}
-          <div className="flex md:hidden items-center justify-center gap-3 mb-6">
-            <Button asChild variant="outline" size="sm" className="flex-1 gap-2">
-              <Link to="/propose">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-                {tr("calendar.proposeCallout.button")}
-              </Link>
-            </Button>
             {data?.source === "regenos" && data.icsUrl && (
-              <CalendarSubscribe feedUrl={data.icsUrl} compact />
+              <CalendarSubscribe feedUrl={data.icsUrl} />
             )}
           </div>
 
-          {/* Propose an event — no account needed, lands in the organizers'
-              approval queue. Kept in the header area, separate from the
-              subscribe/hosting controls below. Desktop only; see the compact
-              mobile row above. */}
-          <Card className="hidden md:block max-w-2xl mx-auto mb-10 border-dashed">
-            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
-              <Button asChild variant="outline" size="sm" className="shrink-0">
-                <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Hosting — only exists when the regenOS lane is enabled. */}
-          {hostingOn && (
+          {/* A host's create/edit form stays on top: Edit scrolls here. */}
+          {hostingOn && signedIn && (
             <div className="mb-10 space-y-4">
-              {signedIn ? (
-                <>
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      {tr("calendar.host.signedInAs")}{" "}
-                      <span className="font-medium text-foreground">
-                        {session?.handle ?? session?.did}
-                      </span>
-                    </p>
-                    {/* No collective DID means nothing to create an event
-                        under — the form below would never render, so don't
-                        offer a button that does nothing. */}
-                    {panel !== "create" && !editing && config?.collectiveDid && canHostCollective && (
-                      <Button
-                        variant="community"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          setEditing(null);
-                          setPanel("create");
-                        }}
-                      >
-                        <CalendarPlus className="h-4 w-4" />
-                        {tr("calendar.host.addEvent")}
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="gap-2" onClick={handleSignOut}>
-                      <LogOut className="h-4 w-4" />
-                      {tr("calendar.host.signOut")}
-                    </Button>
-                  </div>
-                  {panel === "create" && config?.collectiveDid && canHostCollective && (
-                    <CommunityEventForm
-                      authority={config.collectiveDid}
-                      event={null}
-                      onDone={() => setPanel("none")}
-                      onCancel={() => setPanel("none")}
-                    />
-                  )}
-                  {editing && (
-                    <CommunityEventForm
-                      authority={editing.did}
-                      event={editing}
-                      onDone={() => setEditing(null)}
-                      onCancel={() => setEditing(null)}
-                    />
-                  )}
-                  {manageError && (
-                    <p className="text-sm text-destructive text-center">{manageError}</p>
-                  )}
-                </>
-              ) : panel === "signIn" ? (
-                <RegenosSignInPanel />
-              ) : (
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    {tr("calendar.host.signInPrompt")}
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => setPanel("signIn")}>
-                    {tr("calendar.host.signInButton")}
-                  </Button>
-                </div>
+              {panel === "create" && config?.collectiveDid && canHostCollective && (
+                <CommunityEventForm
+                  authority={config.collectiveDid}
+                  event={null}
+                  onDone={() => setPanel("none")}
+                  onCancel={() => setPanel("none")}
+                />
+              )}
+              {editing && (
+                <CommunityEventForm
+                  authority={editing.did}
+                  event={editing}
+                  onDone={() => setEditing(null)}
+                  onCancel={() => setEditing(null)}
+                />
               )}
             </div>
           )}
@@ -208,15 +133,6 @@ export default function CalendarPage() {
             </p>
           ) : data?.source === "regenos" ? (
             <>
-              {data.icsUrl && (
-                <div className="hidden md:block text-center mb-8 space-y-2">
-                  <CalendarSubscribe feedUrl={data.icsUrl} />
-                  <p className="text-sm text-muted-foreground">
-                    {tr("calendar.events.subscribeCaption")}
-                  </p>
-                </div>
-              )}
-
               <Tabs defaultValue="upcoming" className="max-w-3xl mx-auto">
                 <TabsList className="mx-auto mb-6 grid w-full max-w-xs grid-cols-2">
                   <TabsTrigger value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
@@ -272,6 +188,72 @@ export default function CalendarPage() {
           ) : (
             <LumaCalendar />
           )}
+
+          {/* Propose an event: no account needed, lands in the organizers'
+              approval queue. */}
+          <Card className="max-w-2xl mx-auto mt-12 border-dashed">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Hosting — only exists when the regenOS lane is enabled. */}
+          {hostingOn && (
+            <div className="mt-12 space-y-4">
+              {signedIn ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      {tr("calendar.host.signedInAs")}{" "}
+                      <span className="font-medium text-foreground">
+                        {session?.handle ?? session?.did}
+                      </span>
+                    </p>
+                    {/* No collective DID means nothing to create an event
+                        under — the form below would never render, so don't
+                        offer a button that does nothing. */}
+                    {panel !== "create" && !editing && config?.collectiveDid && canHostCollective && (
+                      <Button
+                        variant="community"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          setEditing(null);
+                          setPanel("create");
+                        }}
+                      >
+                        <CalendarPlus className="h-4 w-4" />
+                        {tr("calendar.host.addEvent")}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="gap-2" onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4" />
+                      {tr("calendar.host.signOut")}
+                    </Button>
+                  </div>
+                  {manageError && (
+                    <p className="text-sm text-destructive text-center">{manageError}</p>
+                  )}
+                </>
+              ) : panel === "signIn" ? (
+                <RegenosSignInPanel />
+              ) : (
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {tr("calendar.host.signInPrompt")}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => setPanel("signIn")}>
+                    {tr("calendar.host.signInButton")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
 
