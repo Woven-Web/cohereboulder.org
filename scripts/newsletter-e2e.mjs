@@ -10,17 +10,23 @@
 //      after the hold sends exactly N, each with List-Unsubscribe headers and
 //      its own idempotency key → another cron sends 0 more
 //   4. the one-click List-Unsubscribe POST unsubscribes
+//   5. Resend webhooks, Svix-signed exactly as Resend signs them: unsigned and
+//      wrongly signed posts are 401; delivered / hard bounce / soft bounce /
+//      complaint land on the right D1 rows; a replayed svix-id changes nothing;
+//      the undeliverable and the complainer drop out of the next audience
+//      count; the Newsletter tab shows delivered/bounced/complained
 //
 // Usage:
 //   PORT=9960 node scripts/resend-mock.mjs &
 //   npx wrangler dev --port 8796 --test-scheduled --persist-to <dir> \
 //     --var RESEND_API_BASE:http://127.0.0.1:9960 --var RESEND_API_KEY:mock-key \
-//     --var PUBLIC_BASE_URL:http://127.0.0.1:8796
-//   E2E_PERSIST_DIR=<dir> node scripts/newsletter-e2e.mjs http://127.0.0.1:8796 <admin-session-token> http://127.0.0.1:9960
+//     --var PUBLIC_BASE_URL:http://127.0.0.1:8796 --var RESEND_WEBHOOK_SECRET:<whsec_…>
+//   E2E_PERSIST_DIR=<dir> RESEND_WEBHOOK_SECRET=<same whsec_…> node scripts/newsletter-e2e.mjs http://127.0.0.1:8796 <admin-session-token> http://127.0.0.1:9960
 //
 // The admin session is a KV row for an `admins` address (see ci-e2e.sh).
 
 import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,8 +36,10 @@ const target = process.argv[2];
 const sessionToken = process.argv[3];
 const mockUrl = process.argv[4] ?? "http://127.0.0.1:9960";
 const persist = process.env.E2E_PERSIST_DIR;
-if (!target || !sessionToken || !persist) {
-  console.error("usage: E2E_PERSIST_DIR=<dir> node scripts/newsletter-e2e.mjs <wrangler-dev-url> <admin-session-token> [resend-mock-url]");
+// A throwaway test-only signing key, the same one ci-e2e.sh hands the Worker.
+const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+if (!target || !sessionToken || !persist || !webhookSecret) {
+  console.error("usage: E2E_PERSIST_DIR=<dir> RESEND_WEBHOOK_SECRET=<whsec_…> node scripts/newsletter-e2e.mjs <wrangler-dev-url> <admin-session-token> [resend-mock-url]");
   process.exit(2);
 }
 
@@ -275,6 +283,8 @@ try {
     "each carries its own List-Unsubscribe link (header and footer) and One-Click",
   );
   expect(new Set(blast.map((m) => m.idempotencyKey)).size === count && blast.every((m) => m.idempotencyKey?.startsWith(`newsletter:${id}:`)), "each has its own idempotency key");
+  expect(blast.every((m) => m.tags?.find((t) => t.name === "newsletter_id")?.value === id && m.tags?.find((t) => t.name === "person_id")?.value),
+    "each send carries newsletter/person correlation tags (not addresses)");
   nl = (await adminGet(`/api/admin/newsletters/${id}`)).body.newsletter;
   expect(nl.status === "sent" && nl.counts.sent === count, `marked sent with a full log (${nl.status}, ${nl.counts.sent})`);
 
@@ -294,6 +304,89 @@ try {
   expect(d1(`SELECT subscribed FROM people WHERE email = 'nl-a-${stamp}@example.org'`)[0].subscribed === 0, "one-click unsubscribed them");
   const after = (await adminPost("/api/admin/newsletters/count", { audience: { kind: "all" } })).body.count;
   expect(after === count - 1, `and the live count drops to ${count - 1}`);
+
+  // ── 5. Resend webhooks: bounces, complaints, deliveries ─────────────────
+  step = "resend webhooks";
+  let svixSeq = 0;
+  async function webhook(event, { id, secret = webhookSecret, ts = Math.floor(Date.now() / 1000), signature } = {}) {
+    const svixId = id ?? `msg_e2e_${stamp}_${++svixSeq}`;
+    const body = JSON.stringify(event);
+    const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+    const sig = signature ?? `v1,${createHmac("sha256", key).update(`${svixId}.${ts}.${body}`).digest("base64")}`;
+    const res = await api.post("/api/webhooks/resend", {
+      headers: { "Content-Type": "application/json", "svix-id": svixId, "svix-timestamp": String(ts), "svix-signature": sig },
+      data: body,
+    });
+    return { status: res.status(), body: await res.json().catch(() => null), svixId };
+  }
+  const idFor = (email) => blast.find((m) => m.to[0] === email)?.id;
+  const sendRow = (email) => d1(`SELECT status, last_event FROM newsletter_sends WHERE newsletter_id = '${id}' AND email = '${email}'`)[0];
+  const evt = (type, email, extra = {}) => ({
+    type,
+    created_at: new Date().toISOString(),
+    data: { email_id: idFor(email), to: [email], tags: Object.fromEntries((blast.find((m) => m.to[0] === email)?.tags ?? []).map((t) => [t.name, t.value])), subject, from: "COhere Boulder <hello@news.cohereboulder.org>", ...extra },
+  });
+  const hardEmail = `bh-new-${stamp}@example.org`;
+  const spamEmail = `nl-b-${stamp}@example.org`;
+  const okEmail = `nl-a-${stamp}@example.org`;
+  if (!idFor(hardEmail) || !idFor(spamEmail) || !idFor(okEmail)) throw new Error("the blast is missing a recipient this step needs");
+  const countBefore = (await adminPost("/api/admin/newsletters/count", { audience: { kind: "all" } })).body.count;
+
+  let w = await api.post("/api/webhooks/resend", { headers: { "Content-Type": "application/json" }, data: evt("email.complained", spamEmail) });
+  expect(w.status() === 401, `an unsigned webhook is refused (${w.status()})`);
+  const wrongKey = `whsec_${Buffer.from("not-the-configured-key!!").toString("base64")}`;
+  let wr = await webhook(evt("email.complained", spamEmail), { secret: wrongKey });
+  expect(wr.status === 401, `a webhook signed with another secret is refused (${wr.status})`);
+  wr = await webhook(evt("email.complained", spamEmail), { ts: Math.floor(Date.now() / 1000) - 600 });
+  expect(wr.status === 401, `a ten-minute-old timestamp is refused (${wr.status})`);
+  expect(d1(`SELECT subscribed FROM people WHERE email = '${spamEmail}'`)[0].subscribed === 1, "and none of them changed anything");
+
+  wr = await webhook(evt("email.delivered", okEmail));
+  expect(wr.status === 200 && wr.body?.effect === "delivered", `delivered is accepted (${wr.status} ${wr.body?.effect})`);
+  expect(sendRow(okEmail)?.status === "delivered", "the send row is marked delivered");
+
+  const hard = evt("email.bounced", hardEmail, {
+    bounce: { type: "Permanent", subType: "General", message: `550 5.1.1 <${hardEmail}>: mailbox unavailable` },
+  });
+  wr = await webhook(hard);
+  expect(wr.status === 200 && wr.body?.effect === "tagged-undeliverable", `a hard bounce tags the person (${wr.body?.effect})`);
+  let hp = d1(`SELECT tags, internal_notes, subscribed FROM people WHERE email = '${hardEmail}'`)[0];
+  expect(hp.tags === "beehiiv,cohere-2024,undeliverable", `tags now ${hp.tags}`);
+  const noteRe = new RegExp(`^\\d{4}-\\d{2}-\\d{2}: Resend hard bounce, tagged undeliverable \\(Permanent/General\\)`);
+  expect(noteRe.test(hp.internal_notes ?? "") && !(hp.internal_notes ?? "").includes(hardEmail), `a dated note, no address in it: ${hp.internal_notes}`);
+  expect(sendRow(hardEmail)?.status === "bounced", "the send row is marked bounced");
+  const replay = await webhook(hard, { id: wr.svixId });
+  expect(replay.status === 200 && replay.body?.duplicate === true, "replaying the same svix-id is acknowledged as a duplicate");
+  hp = d1(`SELECT tags, internal_notes FROM people WHERE email = '${hardEmail}'`)[0];
+  expect(hp.tags === "beehiiv,cohere-2024,undeliverable" && hp.internal_notes.split("\n").length === 1, "and applies nothing twice");
+
+  wr = await webhook(evt("email.bounced", spamEmail, { bounce: { type: "Transient", subType: "MailboxFull" } }));
+  expect(wr.body?.effect === "soft-bounce-recorded", `a transient bounce is only recorded (${wr.body?.effect})`);
+  expect(!/undeliverable/.test(d1(`SELECT tags FROM people WHERE email = '${spamEmail}'`)[0].tags ?? ""), "no undeliverable tag for a soft bounce");
+  expect(sendRow(spamEmail)?.last_event === "bounced:Transient", "its send row records the event");
+
+  wr = await webhook(evt("email.complained", spamEmail));
+  expect(wr.body?.effect === "unsubscribed", `a complaint unsubscribes (${wr.body?.effect})`);
+  const sp = d1(`SELECT subscribed, internal_notes FROM people WHERE email = '${spamEmail}'`)[0];
+  expect(sp.subscribed === 0 && /marked a newsletter as spam/.test(sp.internal_notes ?? ""), "subscribed = 0, with a note");
+  expect(sendRow(spamEmail)?.status === "complained", "the send row is marked complained");
+
+  wr = await webhook({ type: "email.bounced", data: { email_id: "re_nobody", to: [`nobody-${stamp}@example.org`], bounce: { type: "Permanent" } } });
+  expect(wr.status === 200 && wr.body?.effect === "unknown-recipient", `an unknown recipient is acknowledged (${wr.body?.effect})`);
+
+  const countAfter = (await adminPost("/api/admin/newsletters/count", { audience: { kind: "all" } })).body.count;
+  expect(countAfter === countBefore - 2, `the next audience drops the bounced and the complainer (${countBefore} → ${countAfter})`);
+
+  nl = (await adminGet(`/api/admin/newsletters/${id}`)).body.newsletter;
+  expect(nl.counts.delivered === 1 && nl.counts.bounced === 1 && nl.counts.complained === 1 && nl.counts.sent === count,
+    `counts: ${JSON.stringify(nl.counts)}`);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "Newsletter", exact: true }).click();
+  const cell = page.locator("#nlrows tr", { hasText: subject }).getByTestId("nl-delivery-cell");
+  await cell.getByText("1 delivered · 1 bounced · 1 complained").waitFor({ timeout: 10_000 });
+  ok("the Newsletter tab shows 1 delivered · 1 bounced · 1 complained");
+  const sentCell = await page.locator("#nlrows tr", { hasText: subject }).getByTestId("nl-sent-cell").textContent();
+  expect(sentCell?.trim() === String(count), `the Sent column still counts all ${count} (${sentCell})`);
 } catch (error) {
   fail(error.message.split("\n")[0]);
 } finally {

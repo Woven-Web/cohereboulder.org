@@ -158,7 +158,26 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (
   attempts      INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL,
+  -- 0007_resend_webhooks.sql: after 'sent', Resend's webhook moves status to
+  -- delivered / bounced (permanent only) / complained and records the latest event.
+  last_event    TEXT,
+  last_event_at TEXT,
   UNIQUE (newsletter_id, person_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_newsletter_sends_status ON newsletter_sends(newsletter_id, status);
+CREATE INDEX IF NOT EXISTS idx_newsletter_sends_resend_id ON newsletter_sends(resend_id);
+
+-- Resend webhook replay guard (worker/migrations/0007_resend_webhooks.sql,
+-- worker/src/resend-webhook.ts). One row per svix-id; no email addresses.
+CREATE TABLE IF NOT EXISTS resend_webhook_events (
+  svix_id      TEXT PRIMARY KEY,
+  type         TEXT NOT NULL,
+  email_id     TEXT,
+  bounce_type  TEXT,
+  person_id    TEXT,
+  effect       TEXT,
+  received_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_resend_webhook_events_received ON resend_webhook_events(received_at);

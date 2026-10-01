@@ -2,7 +2,9 @@
 
 `/admin` → **Newsletter**. Any signed-in admin can write, test and send. Code:
 `worker/src/newsletter.ts`; tables `newsletters` and `newsletter_sends`
-(`worker/migrations/0005_newsletters.sql`).
+(`worker/migrations/0005_newsletters.sql`). Bounce/complaint handling:
+`worker/src/resend-webhook.ts`, table `resend_webhook_events`
+(`worker/migrations/0007_resend_webhooks.sql`).
 
 ## Two mail transports, kept apart
 
@@ -20,8 +22,9 @@ newsletters never go through `sendMail`.
 Everyone subscribed, registrants of one form (`submissions.form_slug`, e.g.
 `register-2026`, `register-2025`, `signup-2026`), or one tag (whole-tag,
 case-insensitive match on the comma-separated `people.tags`). **Always**
-`subscribed = 1` and never anyone tagged `undeliverable`. Tag a bounced
-address `undeliverable` in the People tab and every audience drops it.
+`subscribed = 1` and never anyone tagged `undeliverable`. Hard bounces are
+tagged automatically by the Resend webhook (below); you can also tag an
+address `undeliverable` by hand in the People tab, and every audience drops it.
 
 ## Body
 
@@ -87,6 +90,87 @@ Every message has the person's own unsubscribe link in the footer, plus
 `/unsubscribe` POST is the RFC 8058 one-click target. It accepts any POST body,
 including `List-Unsubscribe=One-Click`.
 
+## Bounces and complaints (Resend webhook)
+
+`POST /api/webhooks/resend` (`worker/src/resend-webhook.ts`) takes Resend's
+delivery events and acts on them, so nobody has to tag bounces by hand.
+
+| Event | Effect |
+| --- | --- |
+| `email.bounced`, `bounce.type` = `Permanent` (hard) | person tagged `undeliverable` (same comma-tag as before), dated line appended to `internal_notes`, send row → `bounced` |
+| `email.bounced`, `Transient` or `Undetermined` (soft) | recorded on the send row (`last_event`) only; no tag, no note |
+| `email.complained` (marked as spam) | `subscribed = 0`, dated note, send row → `complained` |
+| `email.delivered` | send row → `delivered` |
+| `email.delivery_delayed` | recorded on the send row only |
+| anything else | acknowledged and ignored |
+
+The note reads like `2026-10-01: Resend hard bounce, tagged undeliverable
+(Permanent/General) on “Subject” — 550 5.1.1 <<email>>: mailbox unavailable`.
+Addresses in the bounce message are replaced with `<email>`.
+
+Each newsletter send carries Resend tags `newsletter_id` and `person_id`.
+The signed webhook uses those plus a matching ledger recipient to attach
+`data.email_id` even before the send HTTP response returns (or if that response
+is lost). Existing mail matches by `newsletter_sends.resend_id`; without a
+send-row match, `data.to[]` is looked up against `people.email` (test sends and
+admin notices have no send row). An address we don't know is acknowledged with 200 and changes
+nothing. Send-row statuses only move forward: a late `delivered` never
+overwrites `bounced` or `complained`.
+
+**Admin view.** The Newsletter tab's list has a **Delivery** column
+(`N delivered · N bounced · N complained`), filled in as events arrive; the
+editor's status line shows the same. **Sent** still counts everything Resend
+accepted. The tag and the note show in the People tab.
+
+**Security.** Resend signs webhooks with Svix. The Worker checks the
+`svix-id`, `svix-timestamp` and `svix-signature` headers: HMAC-SHA256 over
+`${svix-id}.${svix-timestamp}.${raw body}` with the base64 key after
+`whsec_`, any one `v1,<sig>` entry may match (there are several during a
+secret rotation), compared in constant time (WebCrypto `verify`). Timestamps
+more than 5 minutes off are refused. Bad or missing signature → 401. No
+`RESEND_WEBHOOK_SECRET` → 503, so the route is inert until it is set. No
+dependency was added.
+
+**Replays and crashes.** The `svix-id` ledger insert, send/person effects and
+applied marker commit together in one D1 `batch()` transaction (migration
+`0007_resend_webhooks.sql`). Concurrent replays serialize: only the first
+transaction applies, others answer `{ok:true, duplicate:true}`. A failed
+transaction rolls back the claim **and** all effects and answers 500 so Svix
+can retry; there is no claimed-but-unapplied crash window. Events arriving
+before the send response records `resend_id` attach it directly using the
+signed correlation tags, so a lost response cannot hide an accepted
+bounce/complaint as a skipped send. Older, untagged successful acknowledgments
+also reconcile their delivery status from the event ledger. The daily 15:00 UTC cron deletes ledger rows older
+than 60 days. No raw webhook payload or addresses are stored in the ledger;
+request payloads and DB exceptions are never logged.
+
+Counts represent each send's current terminal outcome, not cumulative event
+counts: a delivered message that is later complained about moves from delivered
+to complained. Soft bounces/delays leave the delivery status unchanged.
+
+Sources: Resend's [event types](https://resend.com/docs/dashboard/webhooks/event-types),
+[`email.bounced` payload](https://resend.com/docs/webhooks/emails/bounced),
+[bounce types](https://resend.com/docs/dashboard/emails/email-bounces) and
+[verifying webhooks](https://resend.com/docs/webhooks/verify-webhooks-requests);
+Svix's [manual verification](https://docs.svix.com/receiving/verifying-payloads/how-manual).
+
+### Setting it up (once, after deploying)
+
+1. Apply migration `0007_resend_webhooks.sql` (the deploy workflow runs
+   `wrangler d1 migrations apply cohere --remote` before deploying).
+2. Resend dashboard → **Webhooks** → **Add webhook**. Endpoint
+   `https://cohereboulder.org/api/webhooks/resend`. Events: `email.bounced`,
+   `email.complained`, `email.delivered` (optionally `email.delivery_delayed`).
+3. Open the new webhook and copy its **signing secret** (`whsec_…`).
+4. `npx wrangler secret put RESEND_WEBHOOK_SECRET` and paste it. Until this is
+   set the route answers 503 and Resend keeps retrying, which is harmless.
+5. Check it: Resend's webhook page lists each delivery attempt with our
+   response; a 200 with `"effect"` in the body means it landed. A 401 means the
+   secret doesn't match the one on that webhook.
+
+Rotating: roll the secret in Resend, then `wrangler secret put` the new one.
+Deliveries in between are refused with 401 and retried by Svix.
+
 ## Beehiiv import
 
 Same tab. Upload Beehiiv's subscriber export CSV (`subscriber_id`, …,
@@ -111,6 +195,7 @@ Merge is by lowercased email:
 | Name | Kind | Default |
 | --- | --- | --- |
 | `RESEND_API_KEY` | Worker **secret** | unset. Test sends answer "isn't configured yet" and nothing goes out |
+| `RESEND_WEBHOOK_SECRET` | Worker **secret** | unset. `/api/webhooks/resend` answers 503. The `whsec_…` signing secret of the Resend webhook |
 | `NEWSLETTER_FROM` | var | `COhere Boulder <hello@news.cohereboulder.org>` |
 | `NEWSLETTER_REPLY_TO` | var | `COhere@wovenweb.org` |
 | `RESEND_API_BASE` | var (tests only) | `https://api.resend.com` |
@@ -125,5 +210,10 @@ sending-only key. Secrets persist across deploys. Alternatively, add it to
 There is never a reason to use a real key. `scripts/resend-mock.mjs` stands in
 for Resend (it honours `Idempotency-Key` and exposes `GET /_messages`), and
 `RESEND_API_BASE` points the Worker at it. Lane 5 of `scripts/ci-e2e.sh` runs
-`scripts/newsletter-e2e.mjs` that way. Unit tests: `worker/src/newsletter.test.ts`.
+`scripts/newsletter-e2e.mjs` that way; its last step posts Svix-signed
+webhooks (signed with a throwaway key `ci-e2e.sh` generates per run) and
+checks the D1 effects, the replay guard, the next audience count and the
+Delivery column. Unit tests include concurrent replays, transaction rollback and webhook-before-send-ack
+races: `worker/src/newsletter.test.ts`,
+`worker/src/resend-webhook.test.ts`.
 **Never point a test at api.resend.com**, and no real send without Aaron's go.

@@ -26,8 +26,9 @@ cd "$(dirname "$0")/.."
 # bucket (worker/src/proposals.ts) and the fourth run got a real 429. A fresh
 # dir each run is what CI gets for free from an ephemeral runner; this makes
 # a laptop rerun behave the same way.
-PERSIST_DIR="$(pwd)/.wrangler-ci-e2e-state"
-rm -rf "$PERSIST_DIR"
+# Give each invocation its own directory: concurrent worktrees/runners must
+# not wipe another runner's sessions or D1 while its browser is still using it.
+PERSIST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cohere-ci-e2e.XXXXXX")
 WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR")
 
 SESSION_TOKEN="ci-e2e-$(date +%s)-$$"
@@ -161,7 +162,10 @@ echo "::endgroup::"
 # --- 5. newsletter-e2e.mjs: Beehiiv import, send safeguards, cron send -----
 # RESEND_API_BASE points at scripts/resend-mock.mjs, so no real mail is sent;
 # PUBLIC_BASE_URL makes the unsubscribe links point back at this local Worker.
-echo "::group::newsletter-e2e (Beehiiv import + newsletter send lane)"
+echo "::group::newsletter-e2e (Beehiiv import + newsletter send + Resend webhook lane)"
+# A fresh throwaway signing key per run, in Resend's whsec_<base64> format;
+# the e2e signs its webhooks with it exactly as Resend (Svix) would.
+WEBHOOK_SECRET="whsec_$(node -e 'process.stdout.write(require("crypto").randomBytes(24).toString("base64"))')"
 PORT=28962 setsid node scripts/resend-mock.mjs >/tmp/ci-e2e-mock-5.log 2>&1 &
 PIDS+=("$!")
 wait_for "http://127.0.0.1:28962/_messages" "Resend mock on :28962"
@@ -169,8 +173,9 @@ start_worker 28880 28236 /tmp/ci-e2e-worker-5.log --test-scheduled \
   --var REGENOS_LOGIN_ENABLED:false \
   --var RESEND_API_BASE:http://127.0.0.1:28962 \
   --var RESEND_API_KEY:mock-key \
-  --var PUBLIC_BASE_URL:http://127.0.0.1:28880
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/newsletter-e2e.mjs http://127.0.0.1:28880 "$SESSION_TOKEN" http://127.0.0.1:28962; then
+  --var PUBLIC_BASE_URL:http://127.0.0.1:28880 \
+  --var "RESEND_WEBHOOK_SECRET:$WEBHOOK_SECRET"
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" RESEND_WEBHOOK_SECRET="$WEBHOOK_SECRET" node scripts/newsletter-e2e.mjs http://127.0.0.1:28880 "$SESSION_TOKEN" http://127.0.0.1:28962; then
   fail=1
 fi
 cleanup
