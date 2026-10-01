@@ -46,6 +46,12 @@ import {
   type RsvpEnv,
 } from "./rsvps";
 import {
+  handleNewsletterAdmin,
+  handleNewsletterCancelLink,
+  runNewsletterCron,
+  type NewsletterEnv,
+} from "./newsletter";
+import {
   clearedCookie,
   consumeLinkToken,
   currentSession,
@@ -59,7 +65,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, NewsletterEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -74,6 +80,9 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Must match the newsletter entry in wrangler.jsonc `triggers.crons`. */
+const NEWSLETTER_CRON = "* * * * *";
 
 function corsHeaders(origin: string | null): Record<string, string> {
   return {
@@ -663,6 +672,14 @@ export default {
         return json({ error: "not found" }, 404);
       }
 
+      // Newsletters + the Beehiiv subscriber import (worker/src/newsletter.ts).
+      // Any signed-in admin may use them; the safeguards live in that file.
+      if (path.startsWith("/api/admin/newsletters") || path === "/api/admin/import/beehiiv") {
+        const session = await currentSession(env, request);
+        if (!session) return json({ error: "unauthorized" }, 401);
+        return handleNewsletterAdmin(request, env, url, session);
+      }
+
       // ============ event proposal moderation queue (feat/event-proposals) ============
       // Anyone can propose an event from /propose with no account at all —
       // see worker/src/proposals.ts for the public route. Everything here is
@@ -736,6 +753,12 @@ export default {
         status: person ? 200 : 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
+    }
+
+    // The cancel link every admin gets when a newsletter is confirmed. GET
+    // shows a button; only POST cancels (scanners prefetch GETs).
+    if (path === "/newsletter/cancel" && (request.method === "GET" || request.method === "POST")) {
+      return handleNewsletterCancelLink(request, env, url);
     }
 
     // ------------------------------------------------------------ email RSVPs
@@ -977,12 +1000,23 @@ export default {
     return decorateAssetResponse(request, asset, env);
   },
 
-  // Daily at 15:00 UTC (wrangler.jsonc `triggers.crons`) — 9am in Boulder
-  // during MDT, 8am after DST ends. Sends the day-before RSVP reminders and
-  // deletes RSVPs 30 days after their event. Safe to run twice: rows are
-  // claimed before sending (worker/src/rsvps.ts runRsvpCron).
-  async scheduled(controller: { scheduledTime: number }, env: Env): Promise<void> {
-    const result = await runRsvpCron(env, new Date(controller.scheduledTime));
+  // Two schedules (wrangler.jsonc `triggers.crons`):
+  //  - "0 15 * * *", daily at 15:00 UTC — 9am in Boulder during MDT, 8am after
+  //    DST ends. Day-before RSVP reminders and the 30-day RSVP purge. Safe to
+  //    run twice: rows are claimed before sending (worker/src/rsvps.ts).
+  //  - NEWSLETTER_CRON, every minute — starts newsletters whose 15-minute hold
+  //    has passed and sends the next batch (worker/src/newsletter.ts). Cheap
+  //    when idle: two indexed SELECTs.
+  async scheduled(controller: { scheduledTime: number; cron?: string }, env: Env): Promise<void> {
+    const now = new Date(controller.scheduledTime);
+    if (controller.cron === NEWSLETTER_CRON) {
+      const result = await runNewsletterCron(env, now);
+      if (result.started || result.sent || result.failed || result.skipped || result.retried || result.completed || result.aborted) {
+        console.info("newsletter cron:", JSON.stringify(result));
+      }
+      return;
+    }
+    const result = await runRsvpCron(env, now);
     console.info("rsvp cron:", JSON.stringify(result));
   },
 };

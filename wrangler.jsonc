@@ -36,11 +36,18 @@
   // Daily at 15:00 UTC = 9am in Boulder during MDT (8am once DST ends Nov 1).
   // scheduled() sends day-before reminders to email RSVPs (once per row) and
   // deletes RSVPs 30 days after their event (worker/src/rsvps.ts).
-  "triggers": { "crons": ["0 15 * * *"] },
+  // Every minute: newsletters past their 15-minute hold start sending, a
+  // batch per tick (worker/src/newsletter.ts). scheduled() tells the two apart
+  // by the cron string, so keep these in step with index.ts.
+  "triggers": { "crons": ["0 15 * * *", "* * * * *"] },
   "vars": {
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",
+    // Newsletters go through Resend (secret RESEND_API_KEY), never MAIL_FROM's
+    // Cloudflare transport. news.cohereboulder.org is verified in Resend.
+    "NEWSLETTER_FROM": "COhere Boulder <hello@news.cohereboulder.org>",
+    "NEWSLETTER_REPLY_TO": "COhere@wovenweb.org",
     // The community calendar reads from regenOS (worker/src/events.ts).
     // The COhere Boulder scene, minted 2026-08-30:
     //   https://scenius.social/scenes/did:plc:w54s52ycbw5lreyhlzexredb
