@@ -45,6 +45,8 @@ import {
   runRsvpCron,
   type RsvpEnv,
 } from "./rsvps";
+import { routeCheckin, runCheckinRetention, type CheckinEnv } from "./checkins";
+import { CHECKIN_PAGE } from "./checkin-page";
 import {
   clearedCookie,
   consumeLinkToken,
@@ -59,7 +61,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -292,6 +294,19 @@ export default {
 
     if (request.method === "GET" && (path === "/admin" || path === "/admin/")) {
       return new Response(ADMIN_PAGE, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Robots-Tag": "noindex, nofollow",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    // Door check-in, phone-first (worker/src/checkin-page.ts). The page is
+    // static and holds no data; every call it makes goes through the same
+    // admin session gate below, and it shows the sign-in link when that 401s.
+    if (request.method === "GET" && (path === "/admin/checkin" || path === "/admin/checkin/")) {
+      return new Response(CHECKIN_PAGE, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "X-Robots-Tag": "noindex, nofollow",
@@ -663,6 +678,13 @@ export default {
         return json({ error: "not found" }, 404);
       }
 
+      // Door check-in (worker/src/checkins.ts): who arrived, per event.
+      if (path === "/api/admin/checkin" || path.startsWith("/api/admin/checkin/")) {
+        const session = await currentSession(env, request);
+        if (!session) return json({ error: "unauthorized" }, 401);
+        return routeCheckin(request, env, url, session.email);
+      }
+
       // ============ event proposal moderation queue (feat/event-proposals) ============
       // Anyone can propose an event from /propose with no account at all —
       // see worker/src/proposals.ts for the public route. Everything here is
@@ -979,10 +1001,20 @@ export default {
 
   // Daily at 15:00 UTC (wrangler.jsonc `triggers.crons`) — 9am in Boulder
   // during MDT, 8am after DST ends. Sends the day-before RSVP reminders and
-  // deletes RSVPs 30 days after their event. Safe to run twice: rows are
+  // deletes RSVPs and door check-ins 30 days after their event. Safe to run twice: rows are
   // claimed before sending (worker/src/rsvps.ts runRsvpCron).
   async scheduled(controller: { scheduledTime: number }, env: Env): Promise<void> {
-    const result = await runRsvpCron(env, new Date(controller.scheduledTime));
+    const now = new Date(controller.scheduledTime);
+    // Door check-ins share the RSVPs' 30-days-after-the-event retention. Run
+    // first and on its own, so a regenOS hiccup in the reminder pass can never
+    // keep check-in rows past their deletion date.
+    try {
+      const checkins = await runCheckinRetention(env, now);
+      console.info("checkin retention:", JSON.stringify(checkins));
+    } catch (error) {
+      console.error("checkin retention failed:", error instanceof Error ? error.message : error);
+    }
+    const result = await runRsvpCron(env, now);
     console.info("rsvp cron:", JSON.stringify(result));
   },
 };
