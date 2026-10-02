@@ -81,9 +81,7 @@ try{
  await page.getByRole('checkbox',{name:'Local walk'}).check();await celebration.waitFor();
  await waitForContinueFocus();
  assert.equal(await celebration.locator('.companion-yay').first().evaluate(el=>getComputedStyle(el).animationName),'none');
- // Bounded retry: a key press landing before Radix's layer index settles is a
- // test-timing artefact, not a product bug; a real user's Escape comes later.
- for(let i=0;;i++){await page.keyboard.press('Escape');try{await celebration.waitFor({state:'hidden',timeout:1000});break;}catch(error){if(i>=9)throw error;}}
+ await page.keyboard.press('Escape');await celebration.waitFor({state:'hidden'});
  await page.waitForFunction(()=>document.activeElement===document.querySelector('.companion-check input'));
  await page.getByRole('status').filter({hasText:'The completion report could not be sent.'}).waitFor();
  assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
