@@ -62,7 +62,9 @@ try{
  const screen=await celebration.boundingBox();assert.equal(screen.width,390);assert.equal(screen.height,844);
  await page.keyboard.press('Tab');assert.equal(await continueButton.evaluate(el=>document.activeElement===el),true);
  await continueButton.click();await celebration.waitFor({state:'hidden'});
- assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).evaluate(el=>document.activeElement===el),true);
+ // Radix restores focus after its asynchronous unmount cleanup; hidden alone
+ // does not prove that cleanup has completed on a slower CI browser.
+ await page.waitForFunction(()=>document.activeElement===document.querySelector('.companion-check input'));
  // A failed/offline report must not suppress local celebration or lose the check.
  await page.getByRole('checkbox',{name:'Local walk'}).uncheck();
  await page.emulateMedia({reducedMotion:'reduce'});
