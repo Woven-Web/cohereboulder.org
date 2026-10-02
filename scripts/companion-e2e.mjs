@@ -56,7 +56,30 @@ try{
  await page.getByRole('button',{name:'Share',exact:true}).click();assert.match(await page.getByRole('link',{name:'Share by text',exact:true}).getAttribute('href'),/^sms:/);
  await page.getByRole('button',{name:'Copy link',exact:true}).click();await page.getByRole('status').filter({hasText:'Link copied'}).waitFor();assert.equal(await page.evaluate(()=>window.localCopied),base+eventPath);
  await page.getByLabel('Your reply', {exact:true}).fill('Browser local reply');await page.getByRole('button',{name:'Send reply',exact:true}).click();await page.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
- await page.getByRole('link',{name:'Quests',exact:true}).last().click();await page.getByRole('checkbox',{name:'Local walk'}).check();await page.getByRole('status').filter({hasText:'YAY!'}).waitFor();
+ await page.getByRole('link',{name:'Quests',exact:true}).last().click();await page.getByRole('checkbox',{name:'Local walk'}).check();const celebration=page.getByRole('dialog',{name:'YAY!',exact:true});await celebration.waitFor();
+ const continueButton=celebration.getByRole('button',{name:'Continue',exact:true});await continueButton.focus();
+ assert.equal(await continueButton.evaluate(el=>document.activeElement===el),true);
+ const screen=await celebration.boundingBox();assert.equal(screen.width,390);assert.equal(screen.height,844);
+ await page.keyboard.press('Tab');assert.equal(await continueButton.evaluate(el=>document.activeElement===el),true);
+ await continueButton.click();await celebration.waitFor({state:'hidden'});
+ assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).evaluate(el=>document.activeElement===el),true);
+ // A failed/offline report must not suppress local celebration or lose the check.
+ await page.getByRole('checkbox',{name:'Local walk'}).uncheck();
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.route('**/api/companion/completions',route=>route.abort());
+ await page.getByRole('checkbox',{name:'Local walk'}).check();await celebration.waitFor();
+ assert.equal(await celebration.locator('.companion-yay').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+ await page.keyboard.press('Escape');await celebration.waitFor({state:'hidden'});
+ await page.getByRole('status').filter({hasText:'The completion report could not be sent.'}).waitFor();
+ assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
+ await page.unroute('**/api/companion/completions');
+ await page.getByRole('button',{name:'Retry completion report',exact:true}).click();
+ await page.getByRole('button',{name:'Retry completion report',exact:true}).waitFor({state:'hidden'});
+ assert.equal(await celebration.count(),0);
+ await page.locator('.companion-page header button').click();
+ await page.getByRole('checkbox',{name:'Local walk'}).uncheck();await page.getByRole('checkbox',{name:'Local walk'}).check();
+ await page.getByRole('dialog',{name:'¡YAY!',exact:true}).getByRole('button',{name:'Continuar',exact:true}).click();
+ await page.locator('.companion-page header button').click();
  await page.reload();await page.getByRole('checkbox',{name:'Local walk'}).waitFor();assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
  await page.goto(base+'/more');await page.getByRole('heading',{name:'Install COhere',exact:true}).waitFor();
  // Simulate Chromium's install event without attempting a real browser install.

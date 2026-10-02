@@ -125,6 +125,8 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
         if (daily)
             await db.prepare('INSERT INTO companion_daily(date,title,body,title_es,body_es,question,question_es) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(date) DO UPDATE SET title=excluded.title,body=excluded.body,title_es=excluded.title_es,body_es=excluded.body_es,question=excluded.question,question_es=excluded.question_es').bind(id, body.title, body.body ?? '', body.title_es ?? null, body.body_es ?? null, body.question ?? null, body.question_es ?? null).run();
         else {
+            body.start_date = body.start_date === undefined ? start(env) : body.start_date;
+            body.end_date = body.end_date === undefined ? end(env) : body.end_date;
             if (!dateOK(body.start_date) || !dateOK(body.end_date) || body.end_date < body.start_date)
                 return json({ error: 'invalid window' }, 400);
             await db.prepare('INSERT INTO companion_quests(id,title,description,title_es,description_es,start_date,end_date) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,title_es=excluded.title_es,description_es=excluded.description_es,start_date=excluded.start_date,end_date=excluded.end_date').bind(id, body.title, body.description ?? '', body.title_es ?? null, body.description_es ?? null, body.start_date, body.end_date).run();

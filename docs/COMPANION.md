@@ -153,7 +153,9 @@ Quest content:
 A nonempty title is required; examples intentionally contain no real content.
 Titles are limited to 200 characters, body/description to 3000, questions to
 1000. Spanish fields fall back to English when empty. Quest windows must be
-valid and ordered. Replies and totals are read-only organizer views. Reply
+valid and ordered after defaults: each omitted `start_date` / `end_date` uses
+`COMPANION_START_DATE` / `COMPANION_END_DATE` (October 15 / 25, 2026 by default).
+Explicit empty, null, invalid or reversed dates are rejected. Replies and totals are read-only organizer views. Reply
 viewer and CSV export use pages of 100; the CSV link exports the current page.
 Content and totals lists are capped at 100 rows (enough for this gathering);
 API editing by date/id remains available for other rows. Text is rendered with
@@ -184,7 +186,10 @@ Quest checks remain on the device, and completion reports have a unique
 device/quest pair. Unchecking does not retract a historical completion report.
 Repeated reports are idempotent; failed reports can be retried. If storage is
 unavailable, device identity/checks work within the session but do not survive
-closing it. YAY's scale animation runs only when reduced motion is not requested.
+closing it. Checking a quest opens a full-screen YAY dialog immediately, even
+if reporting fails or the device is offline. Continue (localized) or Escape
+dismisses it and returns focus to the checkbox; reporting errors and retry
+remain on the checklist separately. YAY's scale animation runs only when reduced motion is not requested.
 
 Hourly D1 abuse counters limit replies to 20, subscriptions to 30 and completion
 reports to 100 per network bucket. Buckets hash hour + network address; raw IP

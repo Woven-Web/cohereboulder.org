@@ -178,3 +178,22 @@ it('cron truncation preserves Unicode at the body length boundary',async()=>{
  const row=await env.cohere.prepare("SELECT payload_en FROM companion_ledger WHERE recipient='*'").first<{payload_en:string}>();
  expect(JSON.parse(row!.payload_en).body).toBe('x'.repeat(999)+'🌻');
 });
+
+it.each([
+ [{}, '2026-10-16', '2026-10-24'],
+ [{start_date:'2026-10-17'}, '2026-10-17', '2026-10-24'],
+ [{end_date:'2026-10-20'}, '2026-10-16', '2026-10-20'],
+ [{start_date:'2026-10-18',end_date:'2026-10-18'}, '2026-10-18', '2026-10-18'],
+])('defaults omitted quest dates independently from configured gathering: %j', async (dates, start_date, end_date) => {
+ Object.assign(env,{COMPANION_START_DATE:'2026-10-16',COMPANION_END_DATE:'2026-10-24'});
+ expect((await companionRoute(req('content',{type:'quest',id:'window',title:'Window',...dates},'PUT'),env,true,true)).status).toBe(200);
+ expect(await env.cohere.prepare('SELECT start_date,end_date FROM companion_quests WHERE id=?1').bind('window').first()).toEqual({start_date,end_date});
+});
+it.each([{start_date:'2026-10-26'},{end_date:'2026-10-14'},{start_date:null},{end_date:''},{start_date:'2026-02-30'}])('validates resulting quest window and rejects explicit invalid dates: %j',async dates=>{
+ expect((await companionRoute(req('content',{type:'quest',id:'window',title:'Window',...dates},'PUT'),env,true,true)).status).toBe(400);
+ expect(await env.cohere.prepare('SELECT * FROM companion_quests').first()).toBe(null);
+});
+it('defaults quest dates to standard gathering when no override is configured',async()=>{
+ await companionRoute(req('content',{type:'quest',id:'window',title:'Window'},'PUT'),env,true,true);
+ expect(await env.cohere.prepare('SELECT start_date,end_date FROM companion_quests').first()).toEqual({start_date:'2026-10-15',end_date:'2026-10-25'});
+});

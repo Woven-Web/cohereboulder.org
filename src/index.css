@@ -172,6 +172,9 @@ All colors MUST be HSL.
 .companion-ios { list-style:decimal; padding-left:1.5rem; }
 .companion-ios li { padding:.75rem; }
 .companion-ios svg { display:inline-block; margin-right:.75rem; color:var(--brand-deep); }
+.companion-celebration { position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2rem; padding:2rem; text-align:center; overflow:auto; background:hsl(var(--background)); color:hsl(var(--foreground)); }
+.companion-celebration button { border:2px solid var(--brand-deep); color:var(--brand-deep); border-radius:.5rem; padding:1rem 2rem; }
+.companion-celebration button:focus-visible { outline:3px solid var(--brand-deep); outline-offset:4px; }
 .companion-yay { color:var(--brand-deep); font-size:2rem; font-weight:700; }
 @media (prefers-reduced-motion:no-preference) { .companion-yay { animation:companion-pop .4s ease-out; } }
 @keyframes companion-pop { from { transform:scale(.8); } to { transform:scale(1); } }

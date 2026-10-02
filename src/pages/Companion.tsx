@@ -1,6 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Dialog, DialogPortal } from '@/components/ui/dialog';
+import { QuestCelebration } from '@/components/QuestCelebration';
 import { Share, SquarePlus, Smartphone } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,6 +21,8 @@ export default function Companion() {
     const [notice, setNotice] = useState(''), [permission, setPermission] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission), [subscribed, setSubscribed] = useState(false), [busy, setBusy] = useState(false);
     const [reply, setReply] = useState(''), [name, setName] = useState(''), [answered, setAnswered] = useState(false);
     const [checks, setChecks] = useState<string[]>(questChecks), [celebrate, setCelebrate] = useState(false);
+    const completionFocus = useRef<HTMLInputElement | null>(null);
+    const [failedReport, setFailedReport] = useState<string | null>(null);
     const [shareUrl, setShareUrl] = useState(''), [shareName, setShareName] = useState('');
     useEffect(() => {
         if ('serviceWorker' in navigator) {
@@ -116,18 +120,20 @@ export default function Companion() {
         localSet('cohere-quests', JSON.stringify(next));
         if (!next.includes(id))
             return;
+        setCelebrate(true);
         await report(id);
     }
     async function report(id: string) {
         setBusy(true);
         setNotice('reporting');
+        setFailedReport(null);
         try {
             await companionRequest('completions', { device_id: anonymousDevice(), quest_id: id });
-            setNotice('yay');
-            setCelebrate(true);
+            setNotice('');
         }
         catch {
-            setNotice('error');
+            setNotice('');
+            setFailedReport(id);
         }
         finally {
             setBusy(false);
@@ -152,7 +158,7 @@ export default function Companion() {
  <header><h1>{tr('companion.' + (route === '/quests' ? 'quests' : route === '/more' ? 'more' : 'heading'))}</h1><button onClick={toggleLanguage}>{tr('companion.language')}</button></header>
  <div className="companion-links"><Link to="/today">{tr('companion.today')}</Link><Link to="/calendar">{tr('nav.calendar')}</Link><Link to="/quests">{tr('companion.quests')}</Link><Link to="/more">{tr('companion.more')}</Link></div>
  {isLoading && <p>{tr('companion.loading')}</p>}{isError && <p role="status">{tr('companion.offline')}</p>}
- {notice && <p role="status" className={celebrate && notice === 'yay' ? 'companion-yay' : ''}>{tr('companion.' + notice)}</p>}
+ {notice && <p role="status">{tr('companion.' + notice)}</p>}
  {route === '/today' && <>
  <section><h2>{tr('companion.practice')}</h2>{daily ? <><h3>{localized(daily.title, daily.title_es)}</h3><p className="whitespace-pre-wrap">{localized(daily.body, daily.body_es)}</p></> : <p>{tr('companion.empty')}</p>}</section>
  <section><h2>{tr('companion.events')}</h2>{events.isError && <p>{tr('companion.offline')}</p>}{data && eventsForDays(events.data ?? [], data.date).filter(e => e.status !== 'cancelled').map(e => { const path = '/events/' + encodeURIComponent(e.did) + '/' + encodeURIComponent(e.rkey); return <article key={path}><h3><Link to={path}>{e.name}</Link></h3><p>{e.startsAt && new Intl.DateTimeFormat(language, { timeZone: 'America/Denver', weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startsAt))}</p><button onClick={() => void share(location.origin + path, e.name)}>{tr('companion.share')}</button></article>; })}
@@ -160,7 +166,7 @@ export default function Companion() {
  {daily?.question && <section><h2>{tr('companion.question')}</h2><p>{localized(daily.question, daily.question_es)}</p><form onSubmit={sendReply}><label>{tr('companion.reply')}<textarea required maxLength={2000} value={reply} onChange={e => setReply(e.target.value)} disabled={answered}/></label><label>{tr('companion.name')}<input maxLength={80} value={name} onChange={e => setName(e.target.value)} disabled={answered}/></label><button disabled={busy || answered} type="submit">{tr('companion.send')}</button></form></section>}
  <Link to="/more">{tr('companion.install')}</Link>
  </>}
- {route === '/quests' && <section>{data?.quests.length ? data.quests.map(q => <article key={q.id}><label className="companion-check"><input type="checkbox" checked={checks.includes(q.id)} disabled={busy} onChange={() => void complete(q.id)}/><span>{localized(q.title, q.title_es)}</span></label><p>{localized(q.description, q.description_es)}</p>{checks.includes(q.id) && <span>{tr('companion.done')}</span>}{checks.includes(q.id) && notice === 'error' && <button onClick={() => void report(q.id)}>{tr('companion.send')}</button>}</article>) : <p>{tr('companion.noQuests')}</p>}</section>}
+ {route === '/quests' && <section>{data?.quests.length ? data.quests.map(q => <article key={q.id}><label className="companion-check"><input type="checkbox" checked={checks.includes(q.id)} onChange={event => { completionFocus.current = event.currentTarget; void complete(q.id); }}/><span>{localized(q.title, q.title_es)}</span></label><p>{localized(q.description, q.description_es)}</p>{checks.includes(q.id) && <span>{tr('companion.done')}</span>}{checks.includes(q.id) && failedReport === q.id && <><p role="status">{tr('companion.reportError')}</p><button disabled={busy} onClick={() => void report(q.id)}>{tr('companion.retryReport')}</button></>}</article>) : <p>{tr('companion.noQuests')}</p>}</section>}
  {route === '/more' && <>
  <section><h2>{tr('companion.install')}</h2>{installed ? <p>{tr('companion.installed')}</p> : ios ? <><p>{tr('companion.iosIntro')}</p><ol className="companion-ios"><li><Share aria-hidden="true"/>{tr('companion.iosShare')}</li><li><SquarePlus aria-hidden="true"/>{tr('companion.iosAdd')}</li><li><Smartphone aria-hidden="true"/>{tr('companion.iosOpen')}</li></ol></> : prompt ? <button onClick={() => { void prompt.prompt().then(() => prompt.userChoice).then(() => clearInstallPrompt()).catch(() => setNotice('error')); }}>{tr('companion.install')}</button> : <p>{tr('companion.manual')}</p>}</section>
  <section><h2>{tr('companion.notifications')}</h2><p>{tr('companion.schedule')}</p><p>{tr('companion.' + (!supported ? 'unsupported' : !data?.pushKey ? 'disabled' : permission === 'denied' ? 'denied' : subscribed ? 'enabled' : 'off'))}</p>
@@ -169,5 +175,9 @@ export default function Companion() {
  </section><section><p>{tr('companion.privacy')}</p><Link to="/">{tr('companion.back')}</Link></section>
  </>}
  {shareUrl && <section><p>{shareName}</p><a href={'sms:?body=' + encodeURIComponent(shareName + ' ' + shareUrl)}>{tr('companion.sms')}</a><button onClick={() => { void navigator.clipboard.writeText(shareUrl).then(() => setNotice('copied')).catch(() => setNotice('error')); }}>{tr('companion.copy')}</button></section>}
- </main></>;
+ </main>
+ <Dialog open={celebrate} onOpenChange={setCelebrate}>
+ <DialogPortal><QuestCelebration tr={tr} onDismissFocus={() => completionFocus.current?.focus()}/></DialogPortal>
+ </Dialog>
+ </>;
 }

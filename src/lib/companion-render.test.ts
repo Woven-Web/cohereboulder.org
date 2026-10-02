@@ -22,3 +22,16 @@ it('renders real quest checklist and iOS installation guidance without requiring
 it.each(['null','{}','42','[1,null]'])('ignores malformed stored checklist %s',value=>{
  vi.stubGlobal('localStorage',{getItem:()=>value});try{expect(render('/quests')).toContain('Local walk');}finally{vi.unstubAllGlobals();}
 });
+
+it.each(['en','es'] as const)('celebration renders an accessible screen with a localized dismiss action (%s)',async language=>{
+ const {Dialog}=await import('../components/ui/dialog');
+ const {QuestCelebration}=await import('../components/QuestCelebration');
+ const {getTranslation}=await import('./translations');
+ const html=renderToStaticMarkup(createElement(Dialog,{open:true},createElement(QuestCelebration,{tr:key=>getTranslation(key,language),onDismissFocus:()=>{}})));
+ expect(html).toContain('role="dialog"');
+ expect(html).toContain('aria-labelledby=');expect(html).toContain('aria-describedby=');
+ expect(html).toContain('companion-celebration');
+ expect(html).toContain(getTranslation('companion.yay',language));
+ expect(html).toContain(getTranslation('companion.continue',language));
+ expect(html).toContain('<button');
+});
