@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Runs the regenOS-hosting and RSVP e2e scripts hermetically, against a local
-# wrangler dev + the mock AppView (scripts/regenos-mock.mjs) — never
-# scenius.social. Used by .github/workflows/deploy-worker.yml as a gate
+# Runs the regenOS-hosting, RSVP and newsletter e2e scripts hermetically,
+# against a local wrangler dev + the mock AppView (scripts/regenos-mock.mjs) —
+# never scenius.social — and the mock Resend API (scripts/resend-mock.mjs) —
+# never a real inbox. Used by .github/workflows/deploy-worker.yml as a gate
 # before deploy, and safe to run the same way on a laptop.
 #
 # Additional coverage: the "wrong/missing service token"
@@ -151,6 +152,25 @@ start_worker 28870 28235 /tmp/ci-e2e-worker-4.log --test-scheduled \
   --var REGENOS_BASE_URL:http://127.0.0.1:28948 \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
 if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:28870 "$SESSION_TOKEN" http://127.0.0.1:28948; then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
+# --- 5. newsletter-e2e.mjs: Beehiiv import, send safeguards, cron send -----
+# RESEND_API_BASE points at scripts/resend-mock.mjs, so no real mail is sent;
+# PUBLIC_BASE_URL makes the unsubscribe links point back at this local Worker.
+echo "::group::newsletter-e2e (Beehiiv import + newsletter send lane)"
+PORT=28962 setsid node scripts/resend-mock.mjs >/tmp/ci-e2e-mock-5.log 2>&1 &
+PIDS+=("$!")
+wait_for "http://127.0.0.1:28962/_messages" "Resend mock on :28962"
+start_worker 28880 28236 /tmp/ci-e2e-worker-5.log --test-scheduled \
+  --var REGENOS_LOGIN_ENABLED:false \
+  --var RESEND_API_BASE:http://127.0.0.1:28962 \
+  --var RESEND_API_KEY:mock-key \
+  --var PUBLIC_BASE_URL:http://127.0.0.1:28880
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/newsletter-e2e.mjs http://127.0.0.1:28880 "$SESSION_TOKEN" http://127.0.0.1:28962; then
   fail=1
 fi
 cleanup
