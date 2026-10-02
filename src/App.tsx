@@ -1,3 +1,5 @@
+import Companion from "./pages/Companion";
+import { CompanionNav } from "./components/CompanionNav";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,6 +39,9 @@ const App = () => (
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
           <Routes>
+            <Route path="/today" element={<Companion />} />
+            <Route path="/quests" element={<Companion />} />
+            <Route path="/more" element={<Companion />} />
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />
@@ -62,6 +67,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <CompanionNav />
         </BrowserRouter>
       </TooltipProvider>
     </LanguageProvider>

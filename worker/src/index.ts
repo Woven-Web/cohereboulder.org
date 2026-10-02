@@ -1,3 +1,4 @@
+import { companionRoute, runCompanionCron, type CompanionEnv } from "./companion";
 // COhere member API + admin portal.
 //
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
@@ -65,7 +66,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, NewsletterEnv {
+interface Env extends CompanionEnv, AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, NewsletterEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -380,6 +381,9 @@ export default {
 
       return json({ error: "not found" }, 404);
     }
+
+    if (path.startsWith("/api/companion/")) return companionRoute(request, env);
+    if (path.startsWith("/api/admin/companion/")) return companionRoute(request, env, await isAdmin(request, env), true);
 
     // --------------------------------------------------------------- admin API
 
@@ -1009,6 +1013,7 @@ export default {
   //    when idle: two indexed SELECTs.
   async scheduled(controller: { scheduledTime: number; cron?: string }, env: Env): Promise<void> {
     const now = new Date(controller.scheduledTime);
+    try { await runCompanionCron(env, now); } catch { console.error("companion cron failed"); }
     if (controller.cron === NEWSLETTER_CRON) {
       const result = await runNewsletterCron(env, now);
       if (result.started || result.sent || result.failed || result.skipped || result.retried || result.completed || result.aborted) {
@@ -1016,6 +1021,7 @@ export default {
       }
       return;
     }
+    if (controller.cron !== "0 15 * * *") return;
     const result = await runRsvpCron(env, now);
     console.info("rsvp cron:", JSON.stringify(result));
   },
