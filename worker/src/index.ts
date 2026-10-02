@@ -53,6 +53,7 @@ import {
   runNewsletterCron,
   type NewsletterEnv,
 } from "./newsletter";
+import { handleResendWebhook, purgeWebhookEvents, type ResendWebhookEnv } from "./resend-webhook";
 import {
   clearedCookie,
   consumeLinkToken,
@@ -67,7 +68,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv {
+interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -777,6 +778,13 @@ export default {
       });
     }
 
+    // Resend's delivery events (bounces, complaints, deliveries) for newsletter
+    // mail. Authenticated by its Svix signature, not a session; 503 until
+    // RESEND_WEBHOOK_SECRET is set (worker/src/resend-webhook.ts).
+    if (path === "/api/webhooks/resend") {
+      return handleResendWebhook(request, env);
+    }
+
     // The cancel link every admin gets when a newsletter is confirmed. GET
     // shows a button; only POST cancels (scanners prefetch GETs).
     if (path === "/newsletter/cancel" && (request.method === "GET" || request.method === "POST")) {
@@ -1025,7 +1033,8 @@ export default {
   // Two schedules (wrangler.jsonc `triggers.crons`):
   //  - "0 15 * * *", daily at 15:00 UTC — 9am in Boulder during MDT, 8am after
   //    DST ends. Day-before RSVP reminders and the 30-day RSVP purge. Safe to
-  //    run twice: rows are claimed before sending (worker/src/rsvps.ts).
+  //    run twice: rows are claimed before sending (worker/src/rsvps.ts). Also
+  //    forgets Resend webhook replay-guard rows older than 60 days.
   //  - NEWSLETTER_CRON, every minute — starts newsletters whose 15-minute hold
   //    has passed and sends the next batch (worker/src/newsletter.ts). Cheap
   //    when idle: two indexed SELECTs.
@@ -1049,5 +1058,7 @@ export default {
     }
     const result = await runRsvpCron(env, now);
     console.info("rsvp cron:", JSON.stringify(result));
+    const purged = await purgeWebhookEvents(env, now).catch(() => 0);
+    if (purged) console.info("resend webhook events purged:", purged);
   },
 };
