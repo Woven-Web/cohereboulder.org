@@ -1,3 +1,5 @@
+import { translations } from "../../src/lib/translations";
+const companionCopy = (key: keyof typeof translations.companionAdmin) => { const copy = translations.companionAdmin[key]; return copy.en + " / " + copy.es; };
 // The admin portal, served as a single self-contained page from GET /admin.
 // No build step and no framework: it fetches the admin API with the key the
 // organizer types in, held in sessionStorage for the tab's lifetime only.
@@ -173,12 +175,27 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="true" data-tab="people">People</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="companion">${companionCopy("tab")}</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
     </div>
 
+    <section id="tab-companion" class="hidden" style="flex-direction:column;gap:1rem">
+      <h2>${companionCopy("heading")}</h2>
+      <p>${companionCopy("intro")}</p>
+      <label>${companionCopy("content")} <select id="comp-kind"><option value="daily">${companionCopy("daily")}</option><option value="quest">${companionCopy("quest")}</option></select></label>
+      <label>${companionCopy("existing")} <select id="comp-existing"><option value="">${companionCopy("new")}</option></select></label>
+      <label>JSON <textarea id="comp-json" rows="12" aria-label="${companionCopy("json")}"></textarea></label>
+      <div><button id="comp-new">${companionCopy("new")}</button> <button id="comp-save">${companionCopy("save")}</button> <button id="comp-delete">${companionCopy("delete")}</button></div>
+      <p id="comp-message" role="status"></p>
+      <h3>${companionCopy("totals")}</h3><pre id="comp-totals"></pre>
+      <h3>${companionCopy("replies")}</h3><p>${companionCopy("repliesIntro")}</p>
+      <button id="comp-replies">${companionCopy("load")}</button> <button id="comp-next" disabled>${companionCopy("next")}</button>
+      <a id="comp-csv" href="/api/admin/companion/replies.csv" download>${companionCopy("csv")}</a>
+      <div class="table-scroll"><table><thead><tr><th>${companionCopy("date")}</th><th>${companionCopy("name")}</th><th>${companionCopy("reply")}</th></tr></thead><tbody id="comp-reply-rows"></tbody></table></div>
+    </section>
     <section id="tab-people" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="toolbar">
         <input type="search" id="q" placeholder="Search name, email, org, or any answer…">
@@ -1654,13 +1671,52 @@ export const ADMIN_PAGE = `<!doctype html>
     }).then(function () { el("sendinvite").disabled = false; });
   });
 
+  var compData = { daily: [], quests: [] }, compNext = null, compAfter = "";
+  function newCompanion() {
+    var date = new Date().toISOString().slice(0,10);
+    var value = el("comp-kind").value === "daily"
+      ? { type:"daily", date:date, title:"", body:"", title_es:"", body_es:"", question:"", question_es:"" }
+      : { type:"quest", id:"", title:"", description:"", title_es:"", description_es:"", start_date:date, end_date:date };
+    el("comp-json").value = JSON.stringify(value,null,2);
+  }
+  function fillCompanion() {
+    var daily = el("comp-kind").value === "daily";
+    el("comp-existing").innerHTML = '<option value="">${companionCopy("new")}</option>' + compData[daily ? "daily" : "quests"].map(function(r){ var id = daily ? r.date : r.id; return '<option value="'+esc(id)+'">'+esc(id+' — '+r.title)+'</option>'; }).join("");
+    newCompanion();
+  }
+  function loadCompanion() {
+    api("/api/admin/companion/content").then(function(r){return r.json();}).then(function(d){ compData=d; fillCompanion(); el("comp-totals").textContent=JSON.stringify(d.totals,null,2); }).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-kind").addEventListener("change", fillCompanion);
+  el("comp-existing").addEventListener("change", function(){
+    var daily=el("comp-kind").value === "daily", id=el("comp-existing").value;
+    var row=compData[daily ? "daily" : "quests"].find(function(r){return (daily ? r.date : r.id) === id;});
+    if(row) el("comp-json").value=JSON.stringify(Object.assign({type:daily?"daily":"quest"},row),null,2); else newCompanion();
+  });
+  el("comp-new").addEventListener("click",newCompanion);
+  function saveCompanion(method) {
+    var body;try{body=JSON.parse(el("comp-json").value);}catch(e){el("comp-message").textContent="${companionCopy("invalid")}";return;}
+    api("/api/admin/companion/content",{method:method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(){el("comp-message").textContent="${companionCopy("saved")}";loadCompanion();}).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-save").addEventListener("click",function(){saveCompanion("PUT");});
+  el("comp-delete").addEventListener("click",function(){if(confirm("${companionCopy("confirm")}"))saveCompanion("DELETE");});
+  function loadCompanionReplies(after) {
+    compAfter=after || "";
+    api("/api/admin/companion/replies?after="+encodeURIComponent(compAfter)).then(function(r){return r.json();}).then(function(d){
+      el("comp-reply-rows").innerHTML=d.replies.map(function(r){return "<tr><td>"+esc(r.date)+"</td><td>"+esc(r.name)+"</td><td>"+esc(r.reply)+"</td></tr>";}).join("");
+      compNext=d.next;el("comp-next").disabled=!compNext;el("comp-csv").href="/api/admin/companion/replies.csv?after="+encodeURIComponent(compAfter);
+    }).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-replies").addEventListener("click",function(){loadCompanionReplies("");});
+  el("comp-next").addEventListener("click",function(){if(compNext)loadCompanionReplies(compNext);});
+
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
     tab.addEventListener("click", function () {
       var name = tab.getAttribute("data-tab");
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "newsletter", "access", "admins"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "newsletter", "access", "admins", "companion"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -1670,6 +1726,7 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
       if (name === "newsletter") loadNewsletters();
+      if (name === "companion") loadCompanion();
     });
   });
 

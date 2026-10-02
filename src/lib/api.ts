@@ -154,3 +154,15 @@ export async function createEmailRsvp(payload: EmailRsvpPayload): Promise<{ alre
   const body = (await response.json().catch(() => ({}))) as { already?: boolean };
   return { already: body.already === true };
 }
+
+export interface CompanionDaily {date:string;title:string;body:string;title_es?:string;body_es?:string;question?:string;question_es?:string;}
+export interface CompanionQuest {id:string;title:string;description:string;title_es?:string;description_es?:string;start_date:string;end_date:string;}
+export interface CompanionToday {date:string;daily:CompanionDaily|null;quests:CompanionQuest[];pushKey:string|null;start:string;end:string;}
+export async function companionRequest<T = {ok:boolean}>(path:string,body?:unknown,method=body?'POST':'GET'):Promise<T>{
+ const response=await fetch(`${API_BASE}/api/companion/${path}`,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin'});
+ if(!response.ok)throw new Error(String(response.status));return response.json();
+}
+export async function companionEvents():Promise<import('./events').CommunityEvent[]>{
+ const response=await fetch(`${API_BASE}/api/events`);if(!response.ok)throw new Error('events unavailable');
+ const data=await response.json() as {events?:import('./events').CommunityEvent[]};return data.events??[];
+}

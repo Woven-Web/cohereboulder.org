@@ -26,9 +26,39 @@ cd "$(dirname "$0")/.."
 # bucket (worker/src/proposals.ts) and the fourth run got a real 429. A fresh
 # dir each run is what CI gets for free from an ephemeral runner; this makes
 # a laptop rerun behave the same way.
-# Give each invocation its own directory: concurrent worktrees/runners must
-# not wipe another runner's sessions or D1 while its browser is still using it.
-PERSIST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cohere-ci-e2e.XXXXXX")
+PWA_SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/pwa-e2e-XXXXXX")"
+PERSIST_DIR="$PWA_SCRATCH/state"
+export WRANGLER_LOG_PATH="$PWA_SCRATCH/pwa-merge-wrangler.log"
+export npm_config_logs_dir="$PWA_SCRATCH/pwa-merge-npm-logs"
+E2E_PORT_OFFSET="${E2E_PORT_OFFSET:-0}"
+P28229=$(( 28229 + E2E_PORT_OFFSET ))
+P28230=$(( 28230 + E2E_PORT_OFFSET ))
+P28231=$(( 28231 + E2E_PORT_OFFSET ))
+P28232=$(( 28232 + E2E_PORT_OFFSET ))
+P28233=$(( 28233 + E2E_PORT_OFFSET ))
+P28234=$(( 28234 + E2E_PORT_OFFSET ))
+P28235=$(( 28235 + E2E_PORT_OFFSET ))
+P28236=$(( 28236 + E2E_PORT_OFFSET ))
+P28237=$(( 28237 + E2E_PORT_OFFSET ))
+P28789=$(( 28789 + E2E_PORT_OFFSET ))
+P28850=$(( 28850 + E2E_PORT_OFFSET ))
+P28851=$(( 28851 + E2E_PORT_OFFSET ))
+P28852=$(( 28852 + E2E_PORT_OFFSET ))
+P28860=$(( 28860 + E2E_PORT_OFFSET ))
+P28861=$(( 28861 + E2E_PORT_OFFSET ))
+P28870=$(( 28870 + E2E_PORT_OFFSET ))
+P28880=$(( 28880 + E2E_PORT_OFFSET ))
+P28890=$(( 28890 + E2E_PORT_OFFSET ))
+P28944=$(( 28944 + E2E_PORT_OFFSET ))
+P28946=$(( 28946 + E2E_PORT_OFFSET ))
+P28948=$(( 28948 + E2E_PORT_OFFSET ))
+P28950=$(( 28950 + E2E_PORT_OFFSET ))
+P28952=$(( 28952 + E2E_PORT_OFFSET ))
+P28962=$(( 28962 + E2E_PORT_OFFSET ))
+PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
+PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
+PWA_PUSH_PORT="${PWA_PUSH_PORT:-10049}"
+PWA_INSPECTOR_PORT="${PWA_INSPECTOR_PORT:-19298}"
 WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR")
 
 SESSION_TOKEN="ci-e2e-$(date +%s)-$$"
@@ -44,7 +74,11 @@ cleanup() {
   done
   wait >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+finish() {
+  cleanup
+  rm -f "$PWA_SCRATCH/pwa-merge-push-keys.json"
+}
+trap finish EXIT
 
 # --- helpers ----------------------------------------------------------------
 
@@ -88,15 +122,15 @@ fail=0
 
 # --- 1. regenos-e2e.mjs: the sign-in + on-site hosting lane ----------------
 echo "::group::regenos-e2e (sign-in lane)"
-start_mock 28944 /tmp/ci-e2e-mock-1.log
-start_worker 28789 28229 /tmp/ci-e2e-worker-1.log \
+start_mock ${P28944} "$PWA_SCRATCH/pwa-merge-mock-1.log"
+start_worker ${P28789} ${P28229} "$PWA_SCRATCH/pwa-merge-worker-1.log" \
   --var REGENOS_LOGIN_ENABLED:true \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28944 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28944} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! node scripts/share-e2e.mjs http://127.0.0.1:28789; then
+if ! node scripts/share-e2e.mjs http://127.0.0.1:${P28789}; then
   fail=1
 fi
-if ! node scripts/regenos-e2e.mjs http://127.0.0.1:28789; then
+if ! node scripts/regenos-e2e.mjs http://127.0.0.1:${P28789}; then
   fail=1
 fi
 cleanup
@@ -106,20 +140,20 @@ echo "::endgroup::"
 # --- 2. admin-events-e2e.mjs: the organizer Events + Access tabs -----------
 echo "::group::admin-events-e2e (organizer calendar + access lane)"
 seed_d1_and_kv
-start_mock 28950 /tmp/ci-e2e-mock-2.log
-start_worker 28850 28230 /tmp/ci-e2e-worker-2-main.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_mock ${P28950} "$PWA_SCRATCH/pwa-merge-mock-2.log"
+start_worker ${P28850} ${P28230} "$PWA_SCRATCH/pwa-merge-worker-2-main.log" \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28950} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token
-start_worker 28851 28231 /tmp/ci-e2e-worker-2-bad.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_worker ${P28851} ${P28231} "$PWA_SCRATCH/pwa-merge-worker-2-bad.log" \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28950} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:bad-token
-start_worker 28852 28232 /tmp/ci-e2e-worker-2-none.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_worker ${P28852} ${P28232} "$PWA_SCRATCH/pwa-merge-worker-2-none.log" \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28950} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_BAD_TOKEN_URL=http://127.0.0.1:28851 E2E_NO_TOKEN_URL=http://127.0.0.1:28852 \
-    node scripts/admin-events-e2e.mjs http://127.0.0.1:28850 "$SESSION_TOKEN" http://127.0.0.1:28950; then
+if ! E2E_BAD_TOKEN_URL=http://127.0.0.1:${P28851} E2E_NO_TOKEN_URL=http://127.0.0.1:${P28852} \
+    node scripts/admin-events-e2e.mjs http://127.0.0.1:${P28850} "$SESSION_TOKEN" http://127.0.0.1:${P28950}; then
   fail=1
 fi
 cleanup
@@ -128,15 +162,15 @@ echo "::endgroup::"
 
 # --- 3. proposals-e2e.mjs: the accountless propose + approval lane ---------
 echo "::group::proposals-e2e (propose + approval lane)"
-start_mock 28946 /tmp/ci-e2e-mock-3.log
-start_worker 28860 28233 /tmp/ci-e2e-worker-3-main.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28946 \
+start_mock ${P28946} "$PWA_SCRATCH/pwa-merge-mock-3.log"
+start_worker ${P28860} ${P28233} "$PWA_SCRATCH/pwa-merge-worker-3-main.log" \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28946} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token
-start_worker 28861 28234 /tmp/ci-e2e-worker-3-none.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28946 \
+start_worker ${P28861} ${P28234} "$PWA_SCRATCH/pwa-merge-worker-3-none.log" \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28946} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! node scripts/proposals-e2e.mjs http://127.0.0.1:28860 "$SESSION_TOKEN" http://127.0.0.1:28946 http://127.0.0.1:28861; then
+if ! node scripts/proposals-e2e.mjs http://127.0.0.1:${P28860} "$SESSION_TOKEN" http://127.0.0.1:${P28946} http://127.0.0.1:${P28861}; then
   fail=1
 fi
 cleanup
@@ -147,12 +181,13 @@ echo "::endgroup::"
 # --test-scheduled exposes /cdn-cgi/local/scheduled; local send_email only
 # writes .eml files, so nothing is ever delivered.
 echo "::group::rsvp-e2e (email RSVP + reminder cron lane)"
-start_mock 28948 /tmp/ci-e2e-mock-4.log
-start_worker 28870 28235 /tmp/ci-e2e-worker-4.log --test-scheduled \
+start_mock ${P28948} "$PWA_SCRATCH/pwa-merge-mock-4.log"
+start_worker ${P28870} ${P28235} "$PWA_SCRATCH/pwa-merge-worker-4.log" --test-scheduled \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28948 \
+  --var REGENOS_SERVICE_TOKEN:mock-token \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28948} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:28870 "$SESSION_TOKEN" http://127.0.0.1:28948; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:${P28870} "$SESSION_TOKEN" http://127.0.0.1:${P28948}; then
   fail=1
 fi
 cleanup
@@ -166,16 +201,17 @@ echo "::group::newsletter-e2e (Beehiiv import + newsletter send + Resend webhook
 # A fresh throwaway signing key per run, in Resend's whsec_<base64> format;
 # the e2e signs its webhooks with it exactly as Resend (Svix) would.
 WEBHOOK_SECRET="whsec_$(node -e 'process.stdout.write(require("crypto").randomBytes(24).toString("base64"))')"
-PORT=28962 setsid node scripts/resend-mock.mjs >/tmp/ci-e2e-mock-5.log 2>&1 &
+PORT=${P28962} setsid node scripts/resend-mock.mjs >"$PWA_SCRATCH/pwa-merge-mock-5.log" 2>&1 &
 PIDS+=("$!")
-wait_for "http://127.0.0.1:28962/_messages" "Resend mock on :28962"
-start_worker 28880 28236 /tmp/ci-e2e-worker-5.log --test-scheduled \
+wait_for "http://127.0.0.1:${P28962}/_messages" "Resend mock on :${P28962}"
+start_worker ${P28880} ${P28236} "$PWA_SCRATCH/pwa-merge-worker-5.log" --test-scheduled \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var RESEND_API_BASE:http://127.0.0.1:28962 \
+  --var REGENOS_SERVICE_TOKEN:mock-token \
+  --var RESEND_API_BASE:http://127.0.0.1:${P28962} \
   --var RESEND_API_KEY:mock-key \
-  --var PUBLIC_BASE_URL:http://127.0.0.1:28880 \
+  --var PUBLIC_BASE_URL:http://127.0.0.1:${P28880} \
   --var "RESEND_WEBHOOK_SECRET:$WEBHOOK_SECRET"
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" RESEND_WEBHOOK_SECRET="$WEBHOOK_SECRET" node scripts/newsletter-e2e.mjs http://127.0.0.1:28880 "$SESSION_TOKEN" http://127.0.0.1:28962; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" RESEND_WEBHOOK_SECRET="$WEBHOOK_SECRET" node scripts/newsletter-e2e.mjs http://127.0.0.1:${P28880} "$SESSION_TOKEN" http://127.0.0.1:${P28962}; then
   fail=1
 fi
 cleanup
@@ -187,22 +223,49 @@ echo "::endgroup::"
 # no mail at all; the one email RSVP it seeds goes to local .eml only.
 echo "::group::checkin-e2e (door check-in lane)"
 seed_d1_and_kv
-start_mock 28952 /tmp/ci-e2e-mock-6.log
-start_worker 28890 28237 /tmp/ci-e2e-worker-6.log \
+start_mock ${P28952} "$PWA_SCRATCH/pwa-merge-mock-6.log"
+start_worker ${P28890} ${P28237} "$PWA_SCRATCH/pwa-merge-worker-6.log" \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28952 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28952} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:28890 "$SESSION_TOKEN" http://127.0.0.1:28952; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:${P28890} "$SESSION_TOKEN" http://127.0.0.1:${P28952}; then
   fail=1
 fi
 cleanup
 PIDS=()
 echo "::endgroup::"
 
+# --- 7. Companion: real crypto, loopback-only push and mobile browser ---
+echo "::group::companion-e2e"
+start_mock "$PWA_MOCK_PORT" "$PWA_SCRATCH/pwa-merge-companion-events.log"
+PWA_KEYS_FILE="$PWA_SCRATCH/pwa-merge-push-keys.json"
+PORT="$PWA_PUSH_PORT" PWA_KEYS_FILE="$PWA_KEYS_FILE" setsid node scripts/pwa-push-mock.mjs >"$PWA_SCRATCH/pwa-merge-push.log" 2>&1 &
+PIDS+=("$!")
+wait_for "http://127.0.0.1:$PWA_PUSH_PORT/messages" "local push mock"
+PWA_PUBLIC_KEY=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1])).publicKey)' "$PWA_KEYS_FILE")
+PWA_PRIVATE_KEY=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1])).privateKey)' "$PWA_KEYS_FILE")
+PWA_DATE=$(node -e 'process.stdout.write(new Intl.DateTimeFormat("en-CA",{timeZone:"America/Denver",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()))')
+start_worker "$PWA_WORKER_PORT" "$PWA_INSPECTOR_PORT" "$PWA_SCRATCH/pwa-merge-companion-worker.log" --test-scheduled \
+  --var REGENOS_LOGIN_ENABLED:false \
+  --var REGENOS_SERVICE_TOKEN:mock-token \
+  --var "REGENOS_BASE_URL:http://127.0.0.1:$PWA_MOCK_PORT" \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var "VAPID_PUBLIC_KEY:$PWA_PUBLIC_KEY" --var "VAPID_PRIVATE_KEY:$PWA_PRIVATE_KEY" \
+  --var VAPID_SUBJECT:mailto:test@example.test \
+  --var "COMPANION_LOCAL_PUSH_MOCK:http://127.0.0.1:$PWA_PUSH_PORT" \
+  --var "COMPANION_START_DATE:$PWA_DATE" --var "COMPANION_END_DATE:$PWA_DATE"
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/companion-e2e.mjs "http://127.0.0.1:$PWA_WORKER_PORT" "$SESSION_TOKEN" "http://127.0.0.1:$PWA_PUSH_PORT" "$PWA_KEYS_FILE" "http://127.0.0.1:$PWA_MOCK_PORT"; then
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -f "$PWA_KEYS_FILE"
+unset PWA_PRIVATE_KEY
+echo "::endgroup::"
 rm -rf "$PERSIST_DIR"
 
 if [ "$fail" -ne 0 ]; then
-  echo "::error::one or more hermetic e2e scripts failed — logs are in /tmp/ci-e2e-*.log"
+  echo "::error::one or more hermetic e2e scripts failed — logs are in $PWA_SCRATCH/pwa-merge-*.log"
   exit 1
 fi
 echo "All hermetic e2e scripts passed."

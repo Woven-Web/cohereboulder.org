@@ -39,7 +39,7 @@
   // Every minute: newsletters past their 15-minute hold start sending, a
   // batch per tick (worker/src/newsletter.ts). scheduled() tells the two apart
   // by the cron string, so keep these in step with index.ts.
-  "triggers": { "crons": ["0 15 * * *", "* * * * *"] },
+  "triggers": { "crons": ["0 12 * * *", "0 15 * * *", "0 21 * * *", "* * * * *"] },
   "vars": {
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
