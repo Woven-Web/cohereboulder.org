@@ -162,3 +162,27 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (
 );
 
 CREATE INDEX IF NOT EXISTS idx_newsletter_sends_status ON newsletter_sends(newsletter_id, status);
+
+-- Door check-in, worker/migrations/0006_event_checkins.sql. Who actually
+-- arrived; never the mailing list. Rows are deleted 30 days after the event.
+CREATE TABLE IF NOT EXISTS event_checkins (
+  id               TEXT PRIMARY KEY,
+  event_did        TEXT NOT NULL,
+  event_rkey       TEXT NOT NULL,
+  event_name       TEXT NOT NULL,
+  event_starts_at  TEXT NOT NULL,
+  email            TEXT,
+  guest_did        TEXT,
+  name             TEXT,
+  source           TEXT NOT NULL CHECK (source IN ('rsvp_email', 'rsvp_regenos', 'registrant', 'walkin')),
+  person_id        TEXT,
+  checked_in_by    TEXT NOT NULL,
+  checked_in_at    TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_email
+  ON event_checkins(event_did, event_rkey, email) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_guest
+  ON event_checkins(event_did, event_rkey, guest_did) WHERE guest_did IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins(event_did, event_rkey);
+CREATE INDEX IF NOT EXISTS idx_event_checkins_starts ON event_checkins(event_starts_at);

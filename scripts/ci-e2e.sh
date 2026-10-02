@@ -177,6 +177,23 @@ cleanup
 PIDS=()
 echo "::endgroup::"
 
+# --- 6. checkin-e2e.mjs: door check-in at a phone viewport ----------------
+# Reuses lane 2's admin + session seed (same --persist-to dir). Check-in sends
+# no mail at all; the one email RSVP it seeds goes to local .eml only.
+echo "::group::checkin-e2e (door check-in lane)"
+seed_d1_and_kv
+start_mock 28952 /tmp/ci-e2e-mock-6.log
+start_worker 28890 28237 /tmp/ci-e2e-worker-6.log \
+  --var REGENOS_LOGIN_ENABLED:false \
+  --var REGENOS_BASE_URL:http://127.0.0.1:28952 \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:28890 "$SESSION_TOKEN" http://127.0.0.1:28952; then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
 rm -rf "$PERSIST_DIR"
 
 if [ "$fail" -ne 0 ]; then

@@ -160,6 +160,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <div class="brand"><h1>COhere member portal</h1><span id="dbnote">loading</span></div>
     <div class="row">
       <span class="muted" id="whoami"></span>
+      <a class="btn" href="/admin/checkin" id="checkinlink" style="text-decoration:none">Door check-in</a>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="signout">Sign out</button>
     </div>
