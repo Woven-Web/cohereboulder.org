@@ -216,6 +216,50 @@ describe("POST /api/webhooks/resend", () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain("@");
   });
 
+  it.each(["email.bounced", "email.complained"])("Beehiiv import preserves concurrent %s suppression", async (type) => {
+    const env = makeEnv();
+    const id = person(env, "race@example.org", { tags: "volunteer" });
+    const nl = newsletterWithSend(env, id, "race@example.org", "re_race");
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const prepare = env.cohere.prepare.bind(env.cohere);
+    let interleaved = false;
+    vi.spyOn(env.cohere, "prepare").mockImplementation((sql) => {
+      const statement = prepare(sql);
+      if (sql === "SELECT id, email, name, tags, subscribed FROM people") {
+        const all = statement.all.bind(statement);
+        vi.spyOn(statement, "all").mockImplementation(async () => {
+          const snapshot = await all();
+          expect(snapshot.results[0]).toMatchObject({ tags: "volunteer", subscribed: 1 });
+          // Complete the actual signed webhook after the import read, before its write.
+          const res = await call(env, webhookRequest(JSON.stringify(event(type, {
+            email_id: "re_race", to: ["race@example.org"], bounce: { type: "Permanent" },
+          }))));
+          expect(res.status).toBe(200);
+          expect(await res.json()).toEqual({ ok: true, effect: type === "email.bounced" ? "tagged-undeliverable" : "unsubscribed" });
+          interleaved = true;
+          return snapshot;
+        });
+      }
+      return statement;
+    });
+    const request = new Request("https://cohereboulder.org/api/admin/import/beehiiv", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ csv: "email,status,tags\nrace@example.org,active,cohere-2024", apply: true }),
+    });
+    const response = await handleNewsletterAdmin(request, env, new URL(request.url), {
+      email: "admin@cohere.test", name: "Admin", createdAt: NOW.toISOString(),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ applied: 1, pending: 0 });
+    expect(interleaved).toBe(true);
+    expect(row(env, `SELECT tags, subscribed FROM people WHERE id = ?`, id)).toEqual({
+      tags: type === "email.bounced" ? "volunteer,beehiiv,cohere-2024,undeliverable" : "volunteer,beehiiv,cohere-2024",
+      subscribed: type === "email.bounced" ? 1 : 0,
+    });
+    expect(row(env, `SELECT status FROM newsletter_sends WHERE newsletter_id = ?`, nl)).toEqual({ status: type.slice(6) });
+    expect(await audienceSize(env)).toBe(0);
+  });
+
   it("transient and undetermined bounces only record; no tag, no note", async () => {
     const env = makeEnv();
     const id = person(env, "full@example.org", { tags: "beehiiv" });

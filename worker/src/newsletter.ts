@@ -1232,10 +1232,16 @@ async function handleBeehiivImport(request: Request, env: NewsletterEnv): Promis
         .bind(crypto.randomUUID(), a.email, a.name, a.subscribed, crypto.randomUUID(), a.tags, at)
         .run();
     } else {
-      // MIN() makes "never resubscribe" hold even against a concurrent change.
+      // Preserve live bounce suppression and opt-outs even if the plan is stale.
       await env.cohere
         .prepare(
-          `UPDATE people SET name = COALESCE(name, ?2), tags = ?3, subscribed = MIN(subscribed, ?4), updated_at = ?5
+          `UPDATE people SET name = COALESCE(name, ?2),
+             tags = CASE
+               WHEN INSTR(${TAGS_EXPR.replace("p.tags", "tags")}, ',undeliverable,') > 0
+                AND INSTR(${TAGS_EXPR.replace("p.tags", "?3")}, ',undeliverable,') = 0
+               THEN CASE WHEN COALESCE(?3, '') = '' THEN 'undeliverable' ELSE ?3 || ',undeliverable' END
+               ELSE ?3 END,
+             subscribed = MIN(subscribed, ?4), updated_at = ?5
            WHERE id = ?1`,
         )
         .bind(a.personId, a.name, a.tags, a.subscribed, at)
