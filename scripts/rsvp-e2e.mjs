@@ -127,14 +127,22 @@ try {
 
   // ── 3. The cron: a day early sends nothing, the morning before claims it ─
   step = "cron";
-  await runCron(context.request, startsAt - 3 * 24 * 3600 * 1000);
+  // The mock starts at the current wall-clock time, not necessarily in the
+  // afternoon. Subtracting 20h can still be the event's Boulder calendar day.
+  // Exercise the actual 15:00 UTC cron on the preceding Boulder date instead.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver", year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(new Date(startsAt));
+  const part = (type) => Number(parts.find((p) => p.type === type).value);
+  const morningBefore = Date.UTC(part("year"), part("month") - 1, part("day") - 1, 15);
+  await runCron(context.request, morningBefore - 2 * 24 * 3600 * 1000);
   rows = await adminRsvps(context.request);
   if (rows.find((r) => r.email === email)?.reminder_sent_at) fail("reminded three days early");
-  await runCron(context.request, startsAt - 20 * 3600 * 1000);
+  await runCron(context.request, morningBefore);
   rows = await adminRsvps(context.request);
   const sentAt = rows.find((r) => r.email === email)?.reminder_sent_at;
   if (!sentAt) fail("the morning-before run did not claim the RSVP");
-  await runCron(context.request, startsAt - 19 * 3600 * 1000);
+  await runCron(context.request, morningBefore + 3600 * 1000);
   rows = await adminRsvps(context.request);
   if (rows.find((r) => r.email === email)?.reminder_sent_at !== sentAt) fail("a second run touched it again");
   ok("scheduled() reminds only on the day before, once");

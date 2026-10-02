@@ -174,6 +174,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
     </div>
@@ -275,6 +276,82 @@ export const ADMIN_PAGE = `<!doctype html>
           <thead><tr><th>Who</th><th>Role</th><th></th></tr></thead>
           <tbody id="accessrows"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="tab-newsletter" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Email the list from here. Sending unlocks only after you send yourself a test of the exact
+        version, you type the recipient count to confirm, and then it waits 15 minutes — every
+        organizer gets an email with a cancel link. Unsubscribed people and anyone tagged
+        <code>undeliverable</code> are always left out.
+      </p>
+      <div class="toolbar">
+        <button class="btn primary" id="nlnew">New newsletter</button>
+        <span class="muted" id="nllistmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Subject</th><th>Audience</th><th>Status</th><th>Sent</th><th>By</th><th>Updated</th></tr></thead>
+          <tbody id="nlrows"></tbody>
+        </table>
+      </div>
+
+      <div class="form-card hidden" id="nleditor" data-testid="nl-editor">
+        <div class="row" style="justify-content:space-between">
+          <strong id="nltitle">New newsletter</strong>
+          <span class="pill" id="nlstatus"></span>
+        </div>
+        <div class="field"><label for="nlsubject">Subject</label><input type="text" id="nlsubject" maxlength="200"></div>
+        <div class="field">
+          <label for="nlaudience">Audience</label>
+          <select id="nlaudience"></select>
+          <span class="muted" id="nlcount"></span>
+        </div>
+        <div class="field">
+          <label for="nlbody">Body</label>
+          <textarea id="nlbody" style="min-height:16rem;font-family:var(--sans);font-size:0.9rem"></textarea>
+          <span class="muted">Blank line = new paragraph. <code>## Heading</code>, <code>- list item</code>,
+            <code>**bold**</code>, <code>*italic*</code>, <code>[link text](https://…)</code>, and an image on its own line:
+            <code>![description](https://…/photo.jpg)</code>. Each email gets the person's own unsubscribe link at the bottom.</span>
+        </div>
+        <div class="row">
+          <button class="btn" id="nlsave">Save draft</button>
+          <button class="btn" id="nlpreview">Preview</button>
+          <button class="btn" id="nltest">Send me a test</button>
+          <button class="btn primary" id="nlsend" disabled>Send…</button>
+          <button class="btn hidden" id="nlcancel">Cancel send</button>
+          <button class="btn hidden" id="nlreopen">Reopen as draft</button>
+          <button class="btn hidden" id="nldelete">Delete draft</button>
+        </div>
+        <p class="note" id="nllock"></p>
+        <p class="err" id="nlmsg" role="status"></p>
+        <div class="sub hidden" id="nlconfirm" data-testid="nl-confirm">
+          <span class="label">Confirm send</span>
+          <p style="margin:0">This emails <b id="nlconfirmcount"></b> people (<span id="nlconfirmaud"></span>).
+            It goes out 15 minutes after you confirm; every organizer is emailed a cancel link.</p>
+          <div class="field"><label for="nlconfirminput">Type the number of recipients to confirm</label>
+            <input type="text" inputmode="numeric" id="nlconfirminput" autocomplete="off"></div>
+          <div class="row">
+            <button class="btn primary" id="nlconfirmgo">Confirm and schedule</button>
+            <button class="btn" id="nlconfirmback">Back</button>
+          </div>
+        </div>
+        <iframe id="nlframe" class="hidden" title="Newsletter preview" sandbox=""
+                style="width:100%;height:32rem;border:1px solid var(--hair);background:#fff"></iframe>
+      </div>
+
+      <div class="form-card" data-testid="nl-import">
+        <strong>Import subscribers from Beehiiv</strong>
+        <p class="muted" style="margin:0">Upload Beehiiv's subscriber export (CSV). Matched by email: new people are
+          added tagged <code>beehiiv</code> plus their Beehiiv tags; people already here get the tag. Unsubscribes win
+          both ways — nobody unsubscribed here is ever re-subscribed. Preview first, then apply.</p>
+        <div class="row">
+          <input type="file" id="bhfile" accept=".csv,text/csv">
+          <button class="btn" id="bhpreview">Preview import</button>
+          <button class="btn primary" id="bhapply" disabled>Apply import</button>
+        </div>
+        <div id="bhresult" class="muted" role="status"></div>
       </div>
     </section>
 
@@ -1239,6 +1316,271 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   }
 
+  // ------------------------------------------------------------ newsletter
+  // The server enforces every safeguard (worker/src/newsletter.ts); this only
+  // mirrors the state so the buttons say what will happen.
+  var newsletters = [], nlCurrent = null, nlDirty = false, nlAudiences = null, bhCsv = null;
+
+  function audienceValue(a) {
+    if (!a) return "all";
+    return a.kind === "form" ? "form:" + a.form : a.kind === "tag" ? "tag:" + a.tag : "all";
+  }
+  function audienceFromValue(v) {
+    if (v.indexOf("form:") === 0) return { kind: "form", form: v.slice(5) };
+    if (v.indexOf("tag:") === 0) return { kind: "tag", tag: v.slice(4) };
+    return { kind: "all" };
+  }
+  function audienceText(a) {
+    if (!a) return "—";
+    return a.kind === "form" ? "registrants of " + a.form : a.kind === "tag" ? "tagged " + a.tag : "everyone subscribed";
+  }
+  function nlTime(iso) { return iso ? new Date(iso).toLocaleString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"; }
+
+  function loadNewsletters() {
+    var audiences = nlAudiences ? Promise.resolve(nlAudiences) :
+      api("/api/admin/newsletters/audiences").then(function (r) { return r.json(); }).then(function (d) { nlAudiences = d; return d; });
+    return Promise.all([api("/api/admin/newsletters").then(function (r) { return r.json(); }), audiences]).then(function (res) {
+      newsletters = res[0].newsletters;
+      renderNewsletterRows();
+      fillAudienceSelect();
+    }).catch(function (e) { el("nllistmsg").textContent = e.message; });
+  }
+
+  function renderNewsletterRows() {
+    el("nlrows").innerHTML = newsletters.length ? newsletters.map(function (n) {
+      var cls = n.status === "sent" ? "on" : n.status === "cancelled" ? "off" : "";
+      return '<tr data-nl="' + esc(n.id) + '">' +
+        '<td class="wrapcell">' + esc(n.subject) + "</td>" +
+        "<td>" + esc(audienceText(n.audience)) + "</td>" +
+        '<td><span class="pill ' + cls + '">' + esc(n.status) + "</span>" +
+          (n.status === "scheduled" ? " " + esc(nlTime(n.scheduled_for)) : "") + "</td>" +
+        "<td>" + esc(n.sent_count) + (n.failed_count ? " (" + esc(n.failed_count) + " failed)" : "") + "</td>" +
+        "<td>" + esc(n.confirmed_by || n.created_by) + "</td>" +
+        "<td>" + esc(nlTime(n.updated_at)) + "</td></tr>";
+    }).join("") : '<tr><td colspan="6" class="muted">No newsletters yet.</td></tr>';
+    Array.prototype.forEach.call(el("nlrows").querySelectorAll("[data-nl]"), function (tr) {
+      tr.addEventListener("click", function () { openNewsletter(tr.getAttribute("data-nl")); });
+    });
+  }
+
+  function fillAudienceSelect() {
+    if (!nlAudiences) return;
+    var current = el("nlaudience").value || "all";
+    var opts = ['<option value="all">Everyone subscribed</option>'];
+    nlAudiences.forms.forEach(function (f) {
+      opts.push('<option value="form:' + esc(f.slug) + '">Registrants: ' + esc(f.title) + " (" + esc(f.slug) + ")</option>");
+    });
+    nlAudiences.tags.forEach(function (t) {
+      opts.push('<option value="tag:' + esc(t.tag) + '">Tagged: ' + esc(t.tag) + " (" + esc(t.people) + ")</option>");
+    });
+    el("nlaudience").innerHTML = opts.join("");
+    el("nlaudience").value = current;
+    if (el("nlaudience").value !== current) el("nlaudience").value = "all";
+  }
+
+  function refreshCount() {
+    el("nlcount").textContent = "Counting…";
+    api("/api/admin/newsletters/count", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audience: audienceFromValue(el("nlaudience").value) })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      el("nlcount").textContent = d.count + " people would receive it right now.";
+    }).catch(function (e) { el("nlcount").textContent = e.message; });
+  }
+
+  function showNewsletter(n) {
+    nlCurrent = n; nlDirty = false;
+    show("nleditor", true); show("nlconfirm", false); show("nlframe", false);
+    el("nlmsg").textContent = "";
+    el("nltitle").textContent = n ? "Newsletter" : "New newsletter";
+    el("nlsubject").value = n ? n.subject : "";
+    el("nlbody").value = n ? n.text : "";
+    if (n) el("nlaudience").value = audienceValue(n.audience);
+    if (el("nlaudience").value === "" ) el("nlaudience").value = "all";
+    var draft = !n || n.status === "draft";
+    ["nlsubject", "nlbody", "nlaudience"].forEach(function (id) { el(id).disabled = !draft; });
+    el("nlstatus").textContent = n ? n.status + (n.status === "scheduled" ? " · goes out " + nlTime(n.scheduled_for) : "") +
+      (n.counts && (n.counts.sent || n.counts.failed) ? " · " + n.counts.sent + " sent, " + n.counts.failed + " failed" : "") : "draft";
+    show("nlsave", draft); show("nltest", draft); show("nlsend", draft);
+    show("nlcancel", !!n && (n.status === "scheduled" || n.status === "sending"));
+    show("nlreopen", !!n && n.status === "cancelled");
+    show("nldelete", !!n && (n.status === "draft" || n.status === "cancelled"));
+    el("nlpreview").disabled = !n;
+    updateLock();
+    refreshCount();
+  }
+
+  function updateLock() {
+    var n = nlCurrent;
+    var unlocked = !!n && n.send_unlocked && !nlDirty;
+    el("nlsend").disabled = !unlocked;
+    el("nllock").textContent = !n ? "Save the draft, then send yourself a test." :
+      nlDirty ? "You've changed it since the last save — save and send yourself a new test before sending." :
+      n.status !== "draft" ? "" :
+      unlocked ? "Tested " + nlTime(n.test_sent_at) + " to " + n.test_sent_to + ". Ready to send." :
+      (n.lock_reason || "Send yourself a test first.");
+  }
+
+  function openNewsletter(id) {
+    api("/api/admin/newsletters/" + encodeURIComponent(id)).then(function (r) { return r.json(); })
+      .then(function (d) { showNewsletter(d.newsletter); el("nleditor").scrollIntoView({ block: "start" }); })
+      .catch(function (e) { el("nllistmsg").textContent = e.message; });
+  }
+
+  function saveNewsletter() {
+    var payload = JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value, audience: audienceFromValue(el("nlaudience").value) });
+    var req = nlCurrent
+      ? api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id), { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload })
+      : api("/api/admin/newsletters", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
+    return req.then(function (r) { return r.json(); }).then(function (d) {
+      showNewsletter(d.newsletter);
+      loadNewsletters();
+      return d.newsletter;
+    });
+  }
+
+  function nlAction(button, work) {
+    el("nlmsg").textContent = "";
+    button.disabled = true;
+    return work().catch(function (e) { el("nlmsg").textContent = e.message; })
+      .then(function () { button.disabled = false; updateLock(); });
+  }
+
+  el("nlnew").addEventListener("click", function () { showNewsletter(null); el("nlsubject").focus(); });
+  ["nlsubject", "nlbody"].forEach(function (id) {
+    el(id).addEventListener("input", function () { nlDirty = true; show("nlconfirm", false); updateLock(); });
+  });
+  el("nlaudience").addEventListener("change", function () { nlDirty = true; show("nlconfirm", false); updateLock(); refreshCount(); });
+
+  el("nlsave").addEventListener("click", function () {
+    nlAction(el("nlsave"), function () { return saveNewsletter().then(function () { el("nlmsg").textContent = "Saved."; }); });
+  });
+
+  el("nlpreview").addEventListener("click", function () {
+    if (!nlCurrent) return;
+    nlAction(el("nlpreview"), function () {
+      var save = nlDirty ? saveNewsletter() : Promise.resolve(nlCurrent);
+      return save.then(function (n) {
+        return api("/api/admin/newsletters/" + encodeURIComponent(n.id) + "/preview").then(function (r) { return r.json(); });
+      }).then(function (d) {
+        // Sandboxed with no permissions: the server escapes the body, and even
+        // so nothing in the preview can run script or reach this page.
+        el("nlframe").srcdoc = d.html;
+        show("nlframe", true);
+      });
+    });
+  });
+
+  el("nltest").addEventListener("click", function () {
+    nlAction(el("nltest"), function () {
+      var save = nlDirty || !nlCurrent ? saveNewsletter() : Promise.resolve(nlCurrent);
+      return save.then(function (n) {
+        return api("/api/admin/newsletters/" + encodeURIComponent(n.id) + "/test", { method: "POST" });
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        showNewsletter(d.newsletter);
+        el("nlmsg").textContent = "Test sent to " + d.newsletter.test_sent_to + ". Check it, then send.";
+      });
+    });
+  });
+
+  el("nlsend").addEventListener("click", function () {
+    if (!nlCurrent || nlDirty) return;
+    nlAction(el("nlsend"), function () {
+      return api("/api/admin/newsletters/count", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audience: nlCurrent.audience })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        el("nlconfirmcount").textContent = d.count;
+        el("nlconfirmaud").textContent = audienceText(nlCurrent.audience);
+        el("nlconfirminput").value = "";
+        show("nlconfirm", true);
+        el("nlconfirminput").focus();
+      });
+    });
+  });
+  el("nlconfirmback").addEventListener("click", function () { show("nlconfirm", false); });
+
+  el("nlconfirmgo").addEventListener("click", function () {
+    nlAction(el("nlconfirmgo"), function () {
+      return api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id) + "/send", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm_count: el("nlconfirminput").value.trim() })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        showNewsletter(d.newsletter);
+        loadNewsletters();
+        el("nlmsg").textContent = "Scheduled for " + nlTime(d.newsletter.scheduled_for) + ". " + d.notified +
+          " organizer(s) were emailed a cancel link.";
+      });
+    });
+  });
+
+  el("nlcancel").addEventListener("click", function () {
+    if (!confirm("Cancel this send? Anyone it already reached keeps it; nobody else gets it.")) return;
+    nlAction(el("nlcancel"), function () {
+      return api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id) + "/cancel", { method: "POST" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { showNewsletter(d.newsletter); loadNewsletters(); el("nlmsg").textContent = "Cancelled."; });
+    });
+  });
+
+  el("nlreopen").addEventListener("click", function () {
+    nlAction(el("nlreopen"), function () {
+      return api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id) + "/reopen", { method: "POST" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { showNewsletter(d.newsletter); loadNewsletters(); });
+    });
+  });
+
+  el("nldelete").addEventListener("click", function () {
+    if (!confirm("Delete this draft?")) return;
+    nlAction(el("nldelete"), function () {
+      return api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id), { method: "DELETE" })
+        .then(function () { nlCurrent = null; show("nleditor", false); loadNewsletters(); });
+    });
+  });
+
+  function importCountsText(c) {
+    return c.rows + " rows: " + c.new + " new (" + c.new_unsubscribed + " of them unsubscribed), " +
+      c.existing + " already here (" + c.existing_changed + " to update, " + c.unchanged + " unchanged), " +
+      c.would_unsubscribe + " would be unsubscribed, " + c.skipped_invalid + " skipped as invalid" +
+      (c.duplicates_in_file ? ", " + c.duplicates_in_file + " duplicate rows merged" : "") + ".";
+  }
+
+  el("bhfile").addEventListener("change", function () { bhCsv = null; el("bhapply").disabled = true; el("bhresult").textContent = ""; });
+
+  el("bhpreview").addEventListener("click", function () {
+    var file = el("bhfile").files[0];
+    if (!file) { el("bhresult").textContent = "Choose the CSV first."; return; }
+    el("bhresult").textContent = "Reading…";
+    file.text().then(function (text) {
+      bhCsv = text;
+      return api("/api/admin/import/beehiiv", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv: text }) });
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      el("bhresult").textContent = "Preview — nothing written yet. " + importCountsText(d.counts);
+      el("bhapply").disabled = d.pending === 0;
+      if (d.pending === 0) el("bhresult").textContent += " Nothing to change.";
+    }).catch(function (e) { el("bhresult").textContent = e.message; });
+  });
+
+  el("bhapply").addEventListener("click", function () {
+    if (!bhCsv) return;
+    el("bhapply").disabled = true;
+    var applied = 0, first = null;
+    function step(guard) {
+      return api("/api/admin/import/beehiiv", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv: bhCsv, apply: true }) })
+        .then(function (r) { return r.json(); }).then(function (d) {
+          first = first || d.counts;
+          applied += d.applied;
+          el("bhresult").textContent = "Applying… " + applied + " written, " + d.pending + " to go.";
+          if (d.pending > 0 && d.applied > 0 && guard < 500) return step(guard + 1);
+          el("bhresult").textContent = "Imported. " + importCountsText(first) + " " + applied + " people written.";
+          nlAudiences = null;
+          return load();
+        });
+    }
+    step(0).catch(function (e) { el("bhresult").textContent = e.message; });
+  });
+
   el("sendlink").addEventListener("click", requestCode);
   el("email").addEventListener("keydown", function (e) { if (e.key === "Enter") requestCode(); });
   el("verify").addEventListener("click", verifyTypedCode);
@@ -1306,7 +1648,7 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "access", "admins"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "newsletter", "access", "admins"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -1315,6 +1657,7 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "events") loadEvents();
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
+      if (name === "newsletter") loadNewsletters();
     });
   });
 
