@@ -57,7 +57,16 @@ try{
  await page.getByRole('button',{name:'Copy link',exact:true}).click();await page.getByRole('status').filter({hasText:'Link copied'}).waitFor();assert.equal(await page.evaluate(()=>window.localCopied),base+eventPath);
  await page.getByLabel('Your reply', {exact:true}).fill('Browser local reply');await page.getByRole('button',{name:'Send reply',exact:true}).click();await page.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
  await page.getByRole('link',{name:'Quests',exact:true}).last().click();await page.getByRole('checkbox',{name:'Local walk'}).check();const celebration=page.getByRole('dialog',{name:'YAY!',exact:true});await celebration.waitFor();
- const continueButton=celebration.getByRole('button',{name:'Continue',exact:true});await continueButton.focus();
+ const continueButton=celebration.getByRole('button',{name:'Continue',exact:true});
+ // Visibility precedes Radix's passive mount effects. Observe its autofocus
+ // (never force focus) before testing the focus trap or sending Escape.
+ const waitForContinueFocus=async()=>{
+  await page.waitForFunction(()=>document.activeElement===document.querySelector('.companion-celebration button'));
+  // Layer registration also schedules a render that updates Escape's layer
+  // index. Let that mount work finish before the next keyboard event.
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve())));
+ };
+ await waitForContinueFocus();
  assert.equal(await continueButton.evaluate(el=>document.activeElement===el),true);
  const screen=await celebration.boundingBox();assert.equal(screen.width,390);assert.equal(screen.height,844);
  await page.keyboard.press('Tab');assert.equal(await continueButton.evaluate(el=>document.activeElement===el),true);
@@ -70,8 +79,10 @@ try{
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.route('**/api/companion/completions',route=>route.abort());
  await page.getByRole('checkbox',{name:'Local walk'}).check();await celebration.waitFor();
+ await waitForContinueFocus();
  assert.equal(await celebration.locator('.companion-yay').first().evaluate(el=>getComputedStyle(el).animationName),'none');
  await page.keyboard.press('Escape');await celebration.waitFor({state:'hidden'});
+ await page.waitForFunction(()=>document.activeElement===document.querySelector('.companion-check input'));
  await page.getByRole('status').filter({hasText:'The completion report could not be sent.'}).waitFor();
  assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
  await page.unroute('**/api/companion/completions');
