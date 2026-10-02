@@ -228,7 +228,10 @@ try {
     const cookie = `cohere_session=${sessionToken}`;
     const seedResponse = await fetch(new URL("/api/events/propose", noTokenTarget), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      // This is a separate caller from the public-form cases above. Both
+      // Workers share local KV, so reusing their client IP exhausts the
+      // real proposal rate limit and masks the missing-token assertion.
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "192.0.2.35" },
       body: JSON.stringify({
         name: `E2E No Token ${stamp}`,
         startsAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),

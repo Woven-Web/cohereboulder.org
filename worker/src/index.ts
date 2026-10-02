@@ -46,12 +46,15 @@ import {
   runRsvpCron,
   type RsvpEnv,
 } from "./rsvps";
+import { routeCheckin, runCheckinRetention, type CheckinEnv } from "./checkins";
+import { CHECKIN_PAGE } from "./checkin-page";
 import {
   handleNewsletterAdmin,
   handleNewsletterCancelLink,
   runNewsletterCron,
   type NewsletterEnv,
 } from "./newsletter";
+import { handleResendWebhook, purgeWebhookEvents, type ResendWebhookEnv } from "./resend-webhook";
 import {
   clearedCookie,
   consumeLinkToken,
@@ -66,7 +69,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends CompanionEnv, AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, NewsletterEnv {
+interface Env extends CompanionEnv, AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -302,6 +305,19 @@ export default {
 
     if (request.method === "GET" && (path === "/admin" || path === "/admin/")) {
       return new Response(ADMIN_PAGE, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Robots-Tag": "noindex, nofollow",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    // Door check-in, phone-first (worker/src/checkin-page.ts). The page is
+    // static and holds no data; every call it makes goes through the same
+    // admin session gate below, and it shows the sign-in link when that 401s.
+    if (request.method === "GET" && (path === "/admin/checkin" || path === "/admin/checkin/")) {
+      return new Response(CHECKIN_PAGE, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "X-Robots-Tag": "noindex, nofollow",
@@ -684,6 +700,13 @@ export default {
         return handleNewsletterAdmin(request, env, url, session);
       }
 
+      // Door check-in (worker/src/checkins.ts): who arrived, per event.
+      if (path === "/api/admin/checkin" || path.startsWith("/api/admin/checkin/")) {
+        const session = await currentSession(env, request);
+        if (!session) return json({ error: "unauthorized" }, 401);
+        return routeCheckin(request, env, url, session.email);
+      }
+
       // ============ event proposal moderation queue (feat/event-proposals) ============
       // Anyone can propose an event from /propose with no account at all —
       // see worker/src/proposals.ts for the public route. Everything here is
@@ -757,6 +780,13 @@ export default {
         status: person ? 200 : 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
+    }
+
+    // Resend's delivery events (bounces, complaints, deliveries) for newsletter
+    // mail. Authenticated by its Svix signature, not a session; 503 until
+    // RESEND_WEBHOOK_SECRET is set (worker/src/resend-webhook.ts).
+    if (path === "/api/webhooks/resend") {
+      return handleResendWebhook(request, env);
     }
 
     // The cancel link every admin gets when a newsletter is confirmed. GET
@@ -1004,10 +1034,12 @@ export default {
     return decorateAssetResponse(request, asset, env);
   },
 
-  // Two schedules (wrangler.jsonc `triggers.crons`):
+  // Companion runs at 12:00, 15:00 and 21:00 UTC, with minute ticks for retries.
+  // Its errors are contained so the existing schedules still run:
   //  - "0 15 * * *", daily at 15:00 UTC — 9am in Boulder during MDT, 8am after
   //    DST ends. Day-before RSVP reminders and the 30-day RSVP purge. Safe to
-  //    run twice: rows are claimed before sending (worker/src/rsvps.ts).
+  //    run twice: rows are claimed before sending (worker/src/rsvps.ts). Also
+  //    forgets Resend webhook replay-guard rows older than 60 days.
   //  - NEWSLETTER_CRON, every minute — starts newsletters whose 15-minute hold
   //    has passed and sends the next batch (worker/src/newsletter.ts). Cheap
   //    when idle: two indexed SELECTs.
@@ -1022,7 +1054,18 @@ export default {
       return;
     }
     if (controller.cron !== "0 15 * * *") return;
+    // Door check-ins share the RSVPs' 30-days-after-the-event retention. Run
+    // first and on its own, so a regenOS hiccup in the reminder pass can never
+    // keep check-in rows past their deletion date.
+    try {
+      const checkins = await runCheckinRetention(env, now);
+      console.info("checkin retention:", JSON.stringify(checkins));
+    } catch (error) {
+      console.error("checkin retention failed:", error instanceof Error ? error.message : error);
+    }
     const result = await runRsvpCron(env, now);
     console.info("rsvp cron:", JSON.stringify(result));
+    const purged = await purgeWebhookEvents(env, now).catch(() => 0);
+    if (purged) console.info("resend webhook events purged:", purged);
   },
 };

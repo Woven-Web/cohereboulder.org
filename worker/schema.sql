@@ -158,6 +158,10 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (
   attempts      INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL,
+  -- 0007_resend_webhooks.sql: after 'sent', Resend's webhook moves status to
+  -- delivered / bounced (permanent only) / complained and records the latest event.
+  last_event    TEXT,
+  last_event_at TEXT,
   UNIQUE (newsletter_id, person_id)
 );
 
@@ -197,3 +201,42 @@ CREATE TABLE IF NOT EXISTS companion_rate_limits (
  PRIMARY KEY(bucket,action,window)
 );
 CREATE INDEX IF NOT EXISTS companion_rate_windows ON companion_rate_limits(window);
+CREATE INDEX IF NOT EXISTS idx_newsletter_sends_resend_id ON newsletter_sends(resend_id);
+
+-- Resend webhook replay guard (worker/migrations/0007_resend_webhooks.sql,
+-- worker/src/resend-webhook.ts). One row per svix-id; no email addresses.
+CREATE TABLE IF NOT EXISTS resend_webhook_events (
+  svix_id      TEXT PRIMARY KEY,
+  type         TEXT NOT NULL,
+  email_id     TEXT,
+  bounce_type  TEXT,
+  person_id    TEXT,
+  effect       TEXT,
+  received_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_resend_webhook_events_received ON resend_webhook_events(received_at);
+
+-- Door check-in, worker/migrations/0006_event_checkins.sql. Who actually
+-- arrived; never the mailing list. Rows are deleted 30 days after the event.
+CREATE TABLE IF NOT EXISTS event_checkins (
+  id               TEXT PRIMARY KEY,
+  event_did        TEXT NOT NULL,
+  event_rkey       TEXT NOT NULL,
+  event_name       TEXT NOT NULL,
+  event_starts_at  TEXT NOT NULL,
+  email            TEXT,
+  guest_did        TEXT,
+  name             TEXT,
+  source           TEXT NOT NULL CHECK (source IN ('rsvp_email', 'rsvp_regenos', 'registrant', 'walkin')),
+  person_id        TEXT,
+  checked_in_by    TEXT NOT NULL,
+  checked_in_at    TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_email
+  ON event_checkins(event_did, event_rkey, email) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_guest
+  ON event_checkins(event_did, event_rkey, guest_did) WHERE guest_did IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins(event_did, event_rkey);
+CREATE INDEX IF NOT EXISTS idx_event_checkins_starts ON event_checkins(event_starts_at);

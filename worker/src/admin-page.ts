@@ -162,6 +162,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <div class="brand"><h1>COhere member portal</h1><span id="dbnote">loading</span></div>
     <div class="row">
       <span class="muted" id="whoami"></span>
+      <a class="btn" href="/admin/checkin" id="checkinlink" style="text-decoration:none">Door check-in</a>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="signout">Sign out</button>
     </div>
@@ -300,7 +301,8 @@ export const ADMIN_PAGE = `<!doctype html>
         Email the list from here. Sending unlocks only after you send yourself a test of the exact
         version, you type the recipient count to confirm, and then it waits 15 minutes — every
         organizer gets an email with a cancel link. Unsubscribed people and anyone tagged
-        <code>undeliverable</code> are always left out.
+        <code>undeliverable</code> are always left out. Hard bounces get that tag automatically, and
+        anyone who marks a newsletter as spam is unsubscribed — both leave a dated line in their notes.
       </p>
       <div class="toolbar">
         <button class="btn primary" id="nlnew">New newsletter</button>
@@ -308,7 +310,7 @@ export const ADMIN_PAGE = `<!doctype html>
       </div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Subject</th><th>Audience</th><th>Status</th><th>Sent</th><th>By</th><th>Updated</th></tr></thead>
+          <thead><tr><th>Subject</th><th>Audience</th><th>Status</th><th>Sent</th><th title="Reported back by Resend's webhook">Delivery</th><th>By</th><th>Updated</th></tr></thead>
           <tbody id="nlrows"></tbody>
         </table>
       </div>
@@ -1362,6 +1364,14 @@ export const ADMIN_PAGE = `<!doctype html>
     }).catch(function (e) { el("nllistmsg").textContent = e.message; });
   }
 
+  // Filled in by Resend's webhook after a send: delivered / bounced (hard) /
+  // complained (marked as spam). Blank until the first event arrives.
+  function deliveryText(delivered, bounced, complained) {
+    delivered = Number(delivered || 0); bounced = Number(bounced || 0); complained = Number(complained || 0);
+    if (!delivered && !bounced && !complained) return "";
+    return delivered + " delivered · " + bounced + " bounced · " + complained + " complained";
+  }
+
   function renderNewsletterRows() {
     el("nlrows").innerHTML = newsletters.length ? newsletters.map(function (n) {
       var cls = n.status === "sent" ? "on" : n.status === "cancelled" ? "off" : "";
@@ -1370,10 +1380,11 @@ export const ADMIN_PAGE = `<!doctype html>
         "<td>" + esc(audienceText(n.audience)) + "</td>" +
         '<td><span class="pill ' + cls + '">' + esc(n.status) + "</span>" +
           (n.status === "scheduled" ? " " + esc(nlTime(n.scheduled_for)) : "") + "</td>" +
-        "<td>" + esc(n.sent_count) + (n.failed_count ? " (" + esc(n.failed_count) + " failed)" : "") + "</td>" +
+        '<td data-testid="nl-sent-cell">' + esc(n.sent_count) + (n.failed_count ? " (" + esc(n.failed_count) + " failed)" : "") + "</td>" +
+        '<td data-testid="nl-delivery-cell">' + esc(deliveryText(n.delivered_count, n.bounced_count, n.complained_count)) + "</td>" +
         "<td>" + esc(n.confirmed_by || n.created_by) + "</td>" +
         "<td>" + esc(nlTime(n.updated_at)) + "</td></tr>";
-    }).join("") : '<tr><td colspan="6" class="muted">No newsletters yet.</td></tr>';
+    }).join("") : '<tr><td colspan="7" class="muted">No newsletters yet.</td></tr>';
     Array.prototype.forEach.call(el("nlrows").querySelectorAll("[data-nl]"), function (tr) {
       tr.addEventListener("click", function () { openNewsletter(tr.getAttribute("data-nl")); });
     });
@@ -1416,7 +1427,9 @@ export const ADMIN_PAGE = `<!doctype html>
     var draft = !n || n.status === "draft";
     ["nlsubject", "nlbody", "nlaudience"].forEach(function (id) { el(id).disabled = !draft; });
     el("nlstatus").textContent = n ? n.status + (n.status === "scheduled" ? " · goes out " + nlTime(n.scheduled_for) : "") +
-      (n.counts && (n.counts.sent || n.counts.failed) ? " · " + n.counts.sent + " sent, " + n.counts.failed + " failed" : "") : "draft";
+      (n.counts && (n.counts.sent || n.counts.failed) ? " · " + n.counts.sent + " sent, " + n.counts.failed + " failed" : "") +
+      (n.counts && deliveryText(n.counts.delivered, n.counts.bounced, n.counts.complained)
+        ? " · " + deliveryText(n.counts.delivered, n.counts.bounced, n.counts.complained) : "") : "draft";
     show("nlsave", draft); show("nltest", draft); show("nlsend", draft);
     show("nlcancel", !!n && (n.status === "scheduled" || n.status === "sending"));
     show("nlreopen", !!n && n.status === "cancelled");

@@ -50,8 +50,28 @@ class Statement {
 export function testD1(schemaFiles: string[]) {
   const db = new DatabaseSync(":memory:");
   for (const file of schemaFiles) db.exec(readFileSync(new URL(file, import.meta.url), "utf8"));
+  let batchTail: Promise<unknown> = Promise.resolve();
   return {
     prepare: (sql: string) => new Statement(db, sql),
+    /** D1 batch() commits all statements or rolls the entire batch back. */
+    batch(statements: Statement[]) {
+      const run = async () => {
+        db.exec("BEGIN");
+        try {
+          const results = [];
+          for (const statement of statements) results.push(await statement.run());
+          db.exec("COMMIT");
+          return results;
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+      };
+      // D1 serializes transactions, including concurrently submitted batches.
+      const result = batchTail.then(run);
+      batchTail = result.catch(() => {});
+      return result;
+    },
     /** Direct access for assertions. */
     raw: db,
   };

@@ -66,6 +66,8 @@ const MIN_SEND_INTERVAL_MS = 120;
 export const DEFAULT_FROM = "COhere Boulder <hello@news.cohereboulder.org>";
 export const DEFAULT_REPLY_TO = "COhere@wovenweb.org";
 const UNDELIVERABLE_TAG = "undeliverable";
+/** newsletter_sends statuses that follow `sent`, set by the Resend webhook. */
+const DELIVERY_STATUSES = ["delivered", "bounced", "complained"];
 const MAX_SUBJECT = 200;
 const MAX_TEXT = 50_000;
 /** Rows written per import request; the page loops until nothing is pending. */
@@ -337,11 +339,13 @@ export interface ResendSend {
   to: string;
   message: OutgoingMessage;
   idempotencyKey?: string;
+  /** Authenticated correlation for webhooks arriving before the HTTP response. */
+  tags?: { newsletter_id: string; person_id: string };
 }
 
 export type ResendSender = (env: NewsletterEnv, send: ResendSend) => Promise<{ id: string | null }>;
 
-export const sendViaResend: ResendSender = async (env, { to, message, idempotencyKey }) => {
+export const sendViaResend: ResendSender = async (env, { to, message, idempotencyKey, tags }) => {
   if (!env.RESEND_API_KEY) throw new ResendError("RESEND_API_KEY is not set", 503);
   const base = (env.RESEND_API_BASE || "https://api.resend.com").replace(/\/$/, "");
   let response: Response;
@@ -361,6 +365,7 @@ export const sendViaResend: ResendSender = async (env, { to, message, idempotenc
         html: message.html,
         text: message.text,
         headers: message.headers,
+        ...(tags ? { tags: Object.entries(tags).map(([name, value]) => ({ name, value })) } : {}),
       }),
     });
   } catch (error) {
@@ -409,8 +414,17 @@ async function sendCounts(env: NewsletterEnv, id: string): Promise<Record<string
     .prepare(`SELECT status, COUNT(*) AS n FROM newsletter_sends WHERE newsletter_id = ?1 GROUP BY status`)
     .bind(id)
     .all<{ status: string; n: number }>();
-  const counts: Record<string, number> = { queued: 0, sending: 0, sent: 0, failed: 0, skipped: 0 };
-  for (const r of results) counts[r.status] = Number(r.n);
+  // `sent` is everything Resend accepted. Resend's webhook (resend-webhook.ts)
+  // later moves a row on to delivered / bounced / complained; those are
+  // reported separately AND still counted in `sent`.
+  const counts: Record<string, number> = {
+    queued: 0, sending: 0, sent: 0, failed: 0, skipped: 0, delivered: 0, bounced: 0, complained: 0,
+  };
+  for (const r of results) {
+    const n = Number(r.n);
+    counts[r.status] = (counts[r.status] ?? 0) + n;
+    if (DELIVERY_STATUSES.includes(r.status)) counts.sent += n;
+  }
   return counts;
 }
 
@@ -494,8 +508,12 @@ export async function handleNewsletterAdmin(
       .prepare(
         `SELECT n.id, n.subject, n.audience, n.status, n.created_by, n.confirmed_by, n.scheduled_for,
                 n.sent_at, n.created_at, n.updated_at, n.recipient_count_confirmed, n.cancelled_by,
-                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'sent') AS sent_count,
-                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'failed') AS failed_count
+                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id
+                   AND s.status IN ('sent', 'delivered', 'bounced', 'complained')) AS sent_count,
+                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'failed') AS failed_count,
+                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'delivered') AS delivered_count,
+                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'bounced') AS bounced_count,
+                (SELECT COUNT(*) FROM newsletter_sends s WHERE s.newsletter_id = n.id AND s.status = 'complained') AS complained_count
          FROM newsletters n ORDER BY n.created_at DESC LIMIT 200`,
       )
       .all<Record<string, unknown>>();
@@ -945,6 +963,7 @@ export async function runNewsletterCron(
           to: row.email,
           message: newsletterMessage(nl, unsubscribeUrl(base, person.unsubscribe_token)),
           idempotencyKey: `newsletter:${nl.id}:${row.person_id}`,
+          tags: { newsletter_id: nl.id, person_id: row.person_id },
         });
         await setSendStatus(env, nl.id, row.person_id, "sent", id, null, at, true);
         result.sent += 1;
@@ -991,7 +1010,20 @@ async function setSendStatus(
 ): Promise<void> {
   await env.cohere
     .prepare(
-      `UPDATE newsletter_sends SET status = ?3, resend_id = COALESCE(?4, resend_id), error = ?5,
+      // A webhook can arrive before the provider's send response is recorded.
+      // Reconcile the atomic event ledger when attaching resend_id, and don't
+      // downgrade an already-delivered/bounced/complained row back to sent.
+      `UPDATE newsletter_sends SET status = CASE
+         WHEN status IN ('delivered', 'bounced', 'complained') THEN status
+         WHEN ?3 = 'sent' THEN COALESCE((
+           SELECT CASE type WHEN 'email.complained' THEN 'complained'
+             WHEN 'email.bounced' THEN 'bounced' ELSE 'delivered' END
+           FROM resend_webhook_events WHERE email_id = ?4 AND effect IS NOT NULL
+             AND (type IN ('email.delivered', 'email.complained')
+                  OR (type = 'email.bounced' AND LOWER(TRIM(bounce_type)) = 'permanent'))
+           ORDER BY CASE type WHEN 'email.complained' THEN 3 WHEN 'email.bounced' THEN 2 ELSE 1 END DESC LIMIT 1
+         ), ?3) ELSE ?3 END,
+         resend_id = COALESCE(?4, resend_id), error = ?5,
          attempts = attempts + ?6, updated_at = ?7
        WHERE newsletter_id = ?1 AND person_id = ?2`,
     )
@@ -1200,10 +1232,16 @@ async function handleBeehiivImport(request: Request, env: NewsletterEnv): Promis
         .bind(crypto.randomUUID(), a.email, a.name, a.subscribed, crypto.randomUUID(), a.tags, at)
         .run();
     } else {
-      // MIN() makes "never resubscribe" hold even against a concurrent change.
+      // Preserve live bounce suppression and opt-outs even if the plan is stale.
       await env.cohere
         .prepare(
-          `UPDATE people SET name = COALESCE(name, ?2), tags = ?3, subscribed = MIN(subscribed, ?4), updated_at = ?5
+          `UPDATE people SET name = COALESCE(name, ?2),
+             tags = CASE
+               WHEN INSTR(${TAGS_EXPR.replace("p.tags", "tags")}, ',undeliverable,') > 0
+                AND INSTR(${TAGS_EXPR.replace("p.tags", "?3")}, ',undeliverable,') = 0
+               THEN CASE WHEN COALESCE(?3, '') = '' THEN 'undeliverable' ELSE ?3 || ',undeliverable' END
+               ELSE ?3 END,
+             subscribed = MIN(subscribed, ?4), updated_at = ?5
            WHERE id = ?1`,
         )
         .bind(a.personId, a.name, a.tags, a.subscribed, at)
