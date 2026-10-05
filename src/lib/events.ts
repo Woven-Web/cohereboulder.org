@@ -214,7 +214,27 @@ export function formatEventEnd(
 export function locationLine(location: CommunityEventLocation | null): string | null {
   if (!location) return null;
   const parts = [location.name, location.street, location.locality].filter(
-    (p): p is string => typeof p === "string" && p.trim().length > 0,
+    (p): p is string => typeof p === "string" && !isPlaceholder(p),
   );
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+// Organizers type "TBD" while a venue is being confirmed. Attendees should see
+// nothing rather than "TBD · Boulder". Mirrors worker/src/event-completeness.ts
+// (the SPA's tsconfig can't import Worker code); keep the two lists in step.
+const PLACEHOLDERS = new Set([
+  "tbd",
+  "tba",
+  "to be determined",
+  "to be announced",
+  "to be confirmed",
+  "tbc",
+  "por anunciar",
+  "por determinar",
+  "por confirmar",
+]);
+
+function isPlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  return normalized === "" || PLACEHOLDERS.has(normalized);
 }

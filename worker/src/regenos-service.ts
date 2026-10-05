@@ -29,6 +29,7 @@
 // are public invitations at published addresses.
 
 import { toCommunityEvent, type CommunityEvent, type GetEventsRow } from "./events";
+import { missingDetails, type MissingDetail } from "./event-completeness";
 
 export interface RegenosServiceEnv {
   /** Base URL of regenOS's /xrpc surface, no trailing slash (shared with events.ts). */
@@ -415,6 +416,8 @@ interface AdminEvent extends CommunityEvent {
   isPast: boolean;
   /** Where this event lives on cohereboulder.org, for the "View" link. */
   publicPath: string;
+  /** Details attendees would notice are missing (venue, street, description). */
+  missing: MissingDetail[];
 }
 
 /**
@@ -458,6 +461,7 @@ export async function handleAdminEventsList(env: RegenosServiceEnv): Promise<Res
       hostName: typeof row.hostName === "string" ? row.hostName : null,
       isPast,
       publicPath: `/events/${core.did}/${core.rkey}`,
+      missing: missingDetails(core),
     };
     if (Number.isNaN(startMs)) undated.push(event);
     else if (isPast) past.push({ event, startMs });
