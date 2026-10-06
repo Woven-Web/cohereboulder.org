@@ -22,6 +22,7 @@ import type { AuthEnv, MailMessage } from "./auth";
 import { mailShell, rateLimited, sendMail } from "./auth";
 import type { EventsEnv } from "./events";
 import { handleEventDetail } from "./events";
+import { isPlaceholder } from "./event-completeness";
 
 export interface RsvpEnv extends AuthEnv, EventsEnv {
   cohere: D1Database;
@@ -96,14 +97,10 @@ function lang(value: unknown): Lang {
   return value === "es" ? "es" : "en";
 }
 
-function isTbd(value: string | undefined): boolean {
-  return !value || !value.trim() || value.trim().toLowerCase() === "tbd";
-}
-
 function whereLine(location: { name?: string; street?: string; locality?: string } | null | undefined): string | null {
   if (!location) return null;
   const parts = [location.name, location.street, location.locality].filter(
-    (p): p is string => typeof p === "string" && !isTbd(p),
+    (p): p is string => typeof p === "string" && !isPlaceholder(p),
   );
   return parts.length ? parts.join(", ") : null;
 }

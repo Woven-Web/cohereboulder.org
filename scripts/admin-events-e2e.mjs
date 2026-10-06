@@ -106,6 +106,15 @@ try {
   await page.locator('#tab-events .chip[data-when="past"]').click();
   await page.locator("#eventrows tr", { hasText: "Last Month's Potluck" }).waitFor({ timeout: 10_000 });
   ok("the Past toggle shows an event /api/events drops");
+  // The seeded upcoming event has venue, street and description; the past one
+  // lacks a street but past events are never flagged.
+  await page.locator('#tab-events .chip[data-when="incomplete"]').click();
+  await page.locator("#eventrows", { hasText: "Every upcoming event has a venue" }).waitFor({ timeout: 10_000 });
+  expect(
+    (await page.locator("#eventrows .needs").count()) === 0,
+    "Needs details lists nothing when every upcoming event is complete",
+  );
+  ok("the Needs details filter is empty for complete events and ignores past ones");
   await page.locator('#tab-events .chip[data-when="upcoming"]').click();
 
   // ── 3. Create ─────────────────────────────────────────────────────────────
@@ -180,6 +189,25 @@ try {
     (renamedFeed.events ?? []).some((e) => e.name === renamedName),
     "the rename shows on the public feed too",
   );
+
+  // ── 6b. A TBD venue is flagged for organizers ─────────────────────────────
+  step = "needs details";
+  await page.locator("#eventrows tr", { hasText: renamedName }).click();
+  await page.locator("#evplace").waitFor({ state: "visible" });
+  await page.waitForFunction(() => !document.getElementById("evcap").disabled, null, { timeout: 10_000 });
+  await page.locator("#evplace").fill("TBD");
+  await page.locator("#evsave").click();
+  await page.locator("#eventrows tr", { hasText: renamedName }).locator(".needs", { hasText: "Needs venue" })
+    .waitFor({ timeout: 15_000 });
+  await page.locator('#tab-events .chip[data-when="incomplete"]').click();
+  await page.locator("#eventrows tr", { hasText: renamedName }).waitFor({ timeout: 10_000 });
+  expect(
+    (await page.locator("#eventrows tr", { hasText: "Seed Gathering" }).count()) === 0 &&
+      (await page.locator("#incompletechip").innerText()) === "Needs details (1)",
+    "Needs details lists only the TBD event, with a count on the chip",
+  );
+  ok("a TBD venue is flagged and filterable");
+  await page.locator('#tab-events .chip[data-when="upcoming"]').click();
 
   // ── 7. Access: the roster, an invite, a role change, a revoke ─────────────
   step = "access tab";

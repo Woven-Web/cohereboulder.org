@@ -89,6 +89,7 @@ export const ADMIN_PAGE = `<!doctype html>
           background: var(--surface-2); color: var(--ink-2); }
   .pill.on { background: var(--teal-soft); color: var(--teal); }
   .pill.off { background: var(--clay-soft); color: var(--clay); }
+  .needs { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--clay); }
 
   /* detail drawer */
   .drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; }
@@ -228,6 +229,7 @@ export const ADMIN_PAGE = `<!doctype html>
         <button class="btn primary" id="newevent">New event</button>
         <button class="chip" data-when="upcoming" aria-pressed="true">Upcoming</button>
         <button class="chip" data-when="past" aria-pressed="false">Past</button>
+        <button class="chip" data-when="incomplete" aria-pressed="false" id="incompletechip">Needs details</button>
         <span class="muted" id="eventmsg"></span>
       </div>
       <div class="table-scroll">
@@ -722,14 +724,33 @@ export const ADMIN_PAGE = `<!doctype html>
   }
 
   function shownEvents() {
+    if (eventWhen === "incomplete") {
+      return events.filter(function (e) { return !e.isPast && missingOf(e).length; });
+    }
     return events.filter(function (e) { return eventWhen === "past" ? e.isPast : !e.isPast; });
   }
 
+  // What an attendee would notice is missing, from the Worker's \`missing\`
+  // (worker/src/event-completeness.ts). Past events are left alone.
+  var MISSING_LABEL = { venue: "venue", street: "street address", description: "description" };
+  function missingOf(e) { return Array.isArray(e.missing) ? e.missing : []; }
+  function needsText(e) {
+    return "Needs " + missingOf(e).map(function (m) { return MISSING_LABEL[m] || m; }).join(", ");
+  }
+
+  function renderIncompleteCount() {
+    var n = events.filter(function (e) { return !e.isPast && missingOf(e).length; }).length;
+    el("incompletechip").textContent = n ? "Needs details (" + n + ")" : "Needs details";
+  }
+
   function renderEvents() {
+    renderIncompleteCount();
     var shown = shownEvents();
     if (!shown.length) {
       el("eventrows").innerHTML = '<tr><td colspan="5" class="muted">' +
-        (eventWhen === "past"
+        (eventWhen === "incomplete"
+          ? "Every upcoming event has a venue, street address and description."
+          : eventWhen === "past"
           ? "Nothing has happened yet."
           : "Nothing on the calendar yet \u2014 add the first event.") + "</td></tr>";
       return;
@@ -747,7 +768,9 @@ export const ADMIN_PAGE = `<!doctype html>
         : (seats ? "\u2014" : '<span class="muted">\u2026</span>');
       return '<tr data-ev="' + esc(eventKey(e)) + '">' +
         "<td>" + esc(whenText(e.startsAt)) + "</td>" +
-        "<td>" + esc(e.name) + "</td>" +
+        "<td>" + esc(e.name) +
+          (!e.isPast && missingOf(e).length ? '<span class="needs">' + esc(needsText(e)) + "</span>" : "") +
+        "</td>" +
         '<td class="wrapcell">' + esc(whereText(e)) + "</td>" +
         "<td>" + rsvps + "</td>" +
         "<td>" + cap + "</td>" +

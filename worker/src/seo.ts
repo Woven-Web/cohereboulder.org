@@ -17,6 +17,7 @@
 // Also here: /sitemap.xml, and long-term caching for Vite's hashed /assets/*.
 
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
+import { isPlaceholder } from "./event-completeness";
 
 /** Where canonical URLs point, whichever hostname served the request. */
 export const DEFAULT_ORIGIN = "https://cohereboulder.org";
@@ -131,14 +132,10 @@ export function clip(text: string, max: number): string {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:–-]+$/, "")}…`;
 }
 
-function isTbd(value: string | undefined): boolean {
-  return !value || !value.trim() || value.trim().toLowerCase() === "tbd";
-}
-
 function whereLine(location: MetaEvent["location"]): string | null {
   if (!location) return null;
   const parts = [location.name, location.street, location.locality].filter(
-    (p): p is string => typeof p === "string" && !isTbd(p),
+    (p): p is string => typeof p === "string" && !isPlaceholder(p),
   );
   return parts.length ? parts.join(", ") : null;
 }
