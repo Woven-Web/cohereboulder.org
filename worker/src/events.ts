@@ -1,3 +1,4 @@
+import { eventImageUrl, imageVersions, type EventImagesEnv } from "./event-images";
 // The community calendar read proxy — regenOS (scenius.social) → this Worker → the SPA.
 //
 // Why a proxy at all: the regenOS AppView sends no CORS headers on any /xrpc
@@ -13,7 +14,7 @@
 // must never break /calendar — the frontend sees `degraded`/`unconfigured` and
 // falls back to the Luma embed (src/lib/events.ts).
 
-export interface EventsEnv {
+export interface EventsEnv extends EventImagesEnv {
   /** Base URL of regenOS's public /xrpc surface, no trailing slash. */
   REGENOS_BASE_URL?: string;
   /**
@@ -112,6 +113,7 @@ export interface CommunityEvent {
   did: string;
   rkey: string;
   name: string;
+  imageUrl: string | null;
   startsAt: string | null;
   endsAt: string | null;
   description: string | null;
@@ -166,6 +168,7 @@ export function toCommunityEvent(row: GetEventsRow): CommunityEvent | null {
     did: parts.did,
     rkey: parts.rkey,
     name: v.name,
+    imageUrl: null,
     startsAt: typeof v.startsAt === "string" ? v.startsAt : null,
     endsAt: typeof v.endsAt === "string" ? v.endsAt : null,
     description: typeof v.description === "string" ? v.description : null,
@@ -208,6 +211,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
  */
 function withCors(response: Response, cors: Record<string, string>): Response {
   const out = new Response(response.body, response);
+  out.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
   for (const [name, value] of Object.entries(cors)) out.headers.set(name, value);
   return out;
 }
@@ -255,12 +259,14 @@ export async function handleEventsList(
     }
 
     const data = (await res.json()) as { events?: GetEventsRow[] };
+    const versions = await imageVersions(env);
     const now = Date.now();
     const dated: { event: CommunityEvent; startMs: number }[] = [];
     const undated: CommunityEvent[] = [];
     for (const row of data.events ?? []) {
       const event = toCommunityEvent(row);
       if (!event) continue;
+      event.imageUrl = eventImageUrl(versions, event.did, event.rkey);
       const startMs = event.startsAt ? Date.parse(event.startsAt) : NaN;
       if (Number.isNaN(startMs)) {
         // No start time (both are optional in the lexicon) — keep it, last,
@@ -346,6 +352,8 @@ export async function handleEventDetail(
     const core = toCommunityEvent({ uri: data.uri ?? atUri, value: v });
     if (!core) return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
 
+    core.imageUrl = eventImageUrl(await imageVersions(env), core.did, core.rkey);
+
     // `uris` has carried both bare strings and { uri, name } objects; take
     // either, but only on a safe scheme — see SAFE_URI_SCHEMES.
     const uris: { uri: string; name?: string }[] = [];
@@ -362,7 +370,7 @@ export async function handleEventDetail(
         icsUrl: calendarIcsUrl(env),
       },
       200,
-      { ...cors, "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
+      { ...cors, "Cache-Control": "public, max-age=0, must-revalidate" },
     );
   } catch (err) {
     console.warn("regenOS getEvent failed — degraded:", err instanceof Error ? err.message : err);

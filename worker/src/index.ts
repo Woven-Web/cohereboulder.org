@@ -10,6 +10,7 @@
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
+import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
@@ -647,6 +648,9 @@ export default {
           if (request.method === "GET") return handleAdminEventsList(env);
           if (request.method === "POST") return handleAdminEventCreate(request, env, url);
         }
+        if (parts.length === 3 && parts[2] === "image" && ["PUT", "DELETE"].includes(request.method)) {
+          return handleAdminEventImage(request, env, parts[0], parts[1]);
+        }
         if (parts.length === 2) {
           const [did, rkey] = parts;
           if (request.method === "PUT") return handleAdminEventUpdate(request, env, url, did, rkey);
@@ -825,6 +829,13 @@ export default {
     // Read-only proxy to the regenOS commons calendar (see events.ts) — the
     // AppView has no CORS, so the browser can't reach it directly. Same-origin
     // GETs only; no credentials are forwarded either way.
+    if (request.method === "GET" && path.startsWith("/api/event-image/")) {
+      const parts = path.slice("/api/event-image/".length).split("/");
+      try {
+        if (parts.length === 2) return await handleEventImage(request, env, decodeURIComponent(parts[0]), decodeURIComponent(parts[1]));
+      } catch { /* malformed path */ }
+      return json({ error: "not found" }, 404);
+    }
     if (request.method === "GET" && path === "/api/events") {
       return handleEventsList(request, env, cors);
     }

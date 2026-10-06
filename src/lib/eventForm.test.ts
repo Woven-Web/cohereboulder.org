@@ -157,6 +157,7 @@ describe("buildDeleteEventInput", () => {
 
 describe("eventToFormValues", () => {
   const stored: CommunityEvent = {
+    imageUrl: null,
     did: "did:plc:mockscene",
     rkey: "ev-test1",
     name: "Ecology Walk",

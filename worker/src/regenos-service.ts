@@ -1,3 +1,4 @@
+import { eventImageUrl, imageVersions, type EventImagesEnv } from "./event-images";
 // The organizers' lane onto regenOS — server-side writes with a service token.
 //
 // WHY A SERVICE TOKEN AND NOT THE ORGANIZER'S OWN LOGIN: Aaron, Benya and
@@ -31,7 +32,7 @@
 import { toCommunityEvent, type CommunityEvent, type GetEventsRow } from "./events";
 import { missingDetails, type MissingDetail } from "./event-completeness";
 
-export interface RegenosServiceEnv {
+export interface RegenosServiceEnv extends EventImagesEnv {
   /** Base URL of regenOS's /xrpc surface, no trailing slash (shared with events.ts). */
   REGENOS_BASE_URL?: string;
   /** DID of the COhere collective — the repo every event created here lands in. */
@@ -243,7 +244,7 @@ const edgeCache = (caches as unknown as { default: Cache }).default;
  * /api/events for 300s). Drop it here so the calendar shows the change on the
  * next load instead of up to five minutes later.
  */
-async function purgeEventsCache(url: URL): Promise<void> {
+export async function purgeEventsCache(url: URL): Promise<void> {
   await edgeCache.delete(new Request(new URL("/api/events", url).toString())).catch(() => {});
 }
 
@@ -443,6 +444,7 @@ export async function handleAdminEventsList(env: RegenosServiceEnv): Promise<Res
   // and the organizer retries. Never a stack trace, never an upstream body.
   if (!upstream.ok) return json({ error: UNREACHABLE }, 503);
 
+  const versions = await imageVersions(env);
   const now = Date.now();
   const upcoming: { event: AdminEvent; startMs: number }[] = [];
   const undated: AdminEvent[] = [];
@@ -458,6 +460,7 @@ export async function handleAdminEventsList(env: RegenosServiceEnv): Promise<Res
     const isPast = !Number.isNaN(overAt) && overAt < now;
     const event: AdminEvent = {
       ...core,
+      imageUrl: eventImageUrl(versions, core.did, core.rkey),
       hostName: typeof row.hostName === "string" ? row.hostName : null,
       isPast,
       publicPath: `/events/${core.did}/${core.rkey}`,

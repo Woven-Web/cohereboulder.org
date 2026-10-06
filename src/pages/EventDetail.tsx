@@ -129,8 +129,8 @@ export default function EventDetail() {
             <article>
               <div className="relative rounded-lg overflow-hidden shadow-warm mb-8">
                 <img
-                  src={bannerFor(`${event.did}/${event.rkey}`)}
-                  alt={tr("calendar.events.bannerAlt")}
+                  src={event.imageUrl || bannerFor(`${event.did}/${event.rkey}`)}
+                  alt={event.imageUrl ? event.name : tr("calendar.events.bannerAlt")}
                   className="h-48 sm:h-64 w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-canopy" aria-hidden="true" />

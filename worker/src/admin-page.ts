@@ -833,6 +833,13 @@ export const ADMIN_PAGE = `<!doctype html>
             '" target="_blank" rel="noopener">View the public page</a></dd>' +
         "</dl>") +
       (isNew ? "" :
+        '<div class="sub"><label for="evphoto">Event photo</label>' +
+        '<div id="evphotopreview"></div>' +
+        '<input id="evphoto" type="file" accept="image/jpeg,image/png,image/webp">' +
+        '<div class="row"><button class="btn" id="evphotoupload">Upload</button>' +
+        '<button class="btn" id="evphotoremove">Remove photo</button></div>' +
+        '<div id="evphotomsg" role="status"></div></div>') +
+      (isNew ? "" :
         '<div class="sub" id="rsvppanel">' +
           '<div class="label">RSVPs</div>' +
           '<div id="rsvpbody" class="muted">Loading\u2026</div>' +
@@ -982,6 +989,54 @@ export const ADMIN_PAGE = `<!doctype html>
       var cached = rsvpCache[eventKey(e)];
       if (cached) { renderSeats(cached); applySeats(cached); } else { loadSeats(); }
       el("refreshrsvp").addEventListener("click", function () { loadSeats(); loadEmailRsvps(); });
+    }
+
+    if (!isNew) {
+      function renderPhoto() {
+        el("evphotopreview").innerHTML = e.imageUrl
+          ? '<img src="' + esc(e.imageUrl) + '" alt="' + esc(e.name) + '" style="max-width:240px;max-height:160px">'
+          : '<p class="muted">Using an automatic photo</p>';
+        el("evphotoremove").disabled = !e.imageUrl;
+      }
+      renderPhoto();
+      async function changePhoto(remove) {
+        var msg = el("evphotomsg");
+        var upload = el("evphotoupload");
+        var removeButton = el("evphotoremove");
+        upload.disabled = removeButton.disabled = true;
+        msg.textContent = remove ? "Removing photo…" : "Preparing photo…";
+        try {
+          var body;
+          if (!remove) {
+            var file = el("evphoto").files[0];
+            if (!file) throw new Error("Choose a photo first.");
+            if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("Use a JPEG, PNG, or WebP image.");
+            var bitmap = await createImageBitmap(file);
+            try {
+              var scale = Math.min(1, 1600 / bitmap.width, 1600 / bitmap.height);
+              var canvas = document.createElement("canvas");
+              canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+              canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+              canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+              body = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/webp", 0.85); });
+            } finally { bitmap.close(); }
+            if (!body || body.type !== "image/webp") throw new Error("Couldn't prepare this photo. Try another image.");
+            if (body.size > 2 * 1024 * 1024) throw new Error("This photo is still over 2 MB. Choose a smaller image.");
+            msg.textContent = "Uploading photo…";
+          }
+          var response = await api("/api/admin/events/" + encodeURIComponent(e.did) + "/" + encodeURIComponent(e.rkey) + "/image", {
+            method: remove ? "DELETE" : "PUT", headers: remove ? {} : { "Content-Type": "image/webp" }, body: body
+          });
+          var data = await response.json();
+          e.imageUrl = data.imageUrl;
+          renderPhoto();
+          el("evphoto").value = "";
+          msg.textContent = remove ? "Photo removed. Using an automatic photo." : "Photo uploaded.";
+        } catch (err) { msg.textContent = err.message || "Couldn't update the photo."; }
+        finally { upload.disabled = false; removeButton.disabled = !e.imageUrl; }
+      }
+      el("evphotoupload").addEventListener("click", function () { changePhoto(false); });
+      el("evphotoremove").addEventListener("click", function () { changePhoto(true); });
     }
 
     el("closedrawer").addEventListener("click", closeDrawer);
