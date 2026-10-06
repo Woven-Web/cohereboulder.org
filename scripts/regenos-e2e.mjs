@@ -55,6 +55,17 @@ try {
   if (headerLinks.some((text) => text === "About")) fail("About still occupies the primary navigation");
   await page.locator("footer").getByRole("link", { name: "About" }).waitFor();
   ok("Calendar is first in the nav, About lives in the footer");
+  // A week out, the home hero's only call to action is Register; the
+  // email-only subscribe lives in the footer.
+  await page.goto(new URL("/", target).toString(), { waitUntil: "networkidle" });
+  const heroRegister = page.getByRole("link", { name: "Register for COhere 2026" }).first();
+  await heroRegister.waitFor();
+  const hero = page.locator("section", { has: heroRegister }).first();
+  const heroEmail = await hero.locator("input[type=email]").count();
+  const footerEmail = await page.locator("footer input[type=email]").count();
+  if (heroEmail !== 0 || footerEmail !== 1) fail(`home email fields: hero=${heroEmail} footer=${footerEmail}`);
+  ok("home hero is register-only; the footer keeps the email subscribe");
+  await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   // The nav's Sign in opens the same regenOS sign-in in a dialog.
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   await page.getByRole("dialog").getByText("Sign in to COhere").waitFor({ timeout: 10_000 });
@@ -138,6 +149,36 @@ try {
   await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).waitFor({ timeout: 10_000 });
   if (await rsvpPanel.getByTestId("rsvp-form").count()) fail("signed-in visitor was shown the email form");
   ok("notgoing withdraws; no email form for a signed-in visitor");
+  await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+
+  // ── 3d. One-click RSVP from a calendar card when signed in ───────────────
+  step = "one-click card rsvp";
+  const seedCard = page.locator("a", { hasText: "Seed Gathering" }).first();
+  // Slow the write so a second click lands while the first is in flight: it
+  // must neither navigate (fall through to the card link) nor RSVP twice.
+  let rsvpWrites = 0;
+  await page.route("**/xrpc/social.scenius.rsvp", async (route) => {
+    rsvpWrites += 1;
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.continue();
+  });
+  const cardButton = seedCard.getByTestId("card-rsvp");
+  await cardButton.click();
+  // Prove the second click lands WHILE busy: wait for the spinner, then
+  // force it (a normal click would wait for the button to free up).
+  await cardButton.locator(".animate-spin").waitFor({ timeout: 5_000 });
+  await cardButton.click({ force: true });
+  await page.waitForTimeout(300);
+  if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`a busy click navigated to ${page.url()}`);
+  await cardButton.getByText("You're going").waitFor({ timeout: 10_000 });
+  await page.unroute("**/xrpc/social.scenius.rsvp");
+  if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
+  if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
+  await page.goto(new URL("/events/did:plc:mockscene/ev-seed1", target).toString(), { waitUntil: "networkidle" });
+  await rsvpPanel.getByTestId("rsvp-state").getByText("You're going").waitFor({ timeout: 10_000 });
+  ok("a signed-in card click RSVPs in place, and the detail page agrees");
+  await rsvpPanel.getByRole("button", { name: "Cancel my RSVP" }).click();
+  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).waitFor({ timeout: 10_000 });
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
 
   // A signed-in member is not a collective builder: direct event controls

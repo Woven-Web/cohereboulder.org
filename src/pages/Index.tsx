@@ -13,7 +13,6 @@ import {
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
-import { EmailSignup } from "@/components/EmailSignup";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
@@ -68,13 +67,11 @@ const Index = () => {
                 <p className="text-muted-foreground mb-6">
                   {tr("hero.tenDayContainer")}
                 </p>
-                <Button asChild size="lg" variant="community" className="w-full mb-5">
+                {/* A week out, registering is the one call to action here; the
+                    email-only subscribe lives in the footer. */}
+                <Button asChild size="lg" variant="community" className="w-full">
                   <Link to="/register">{tr("hero.registerHere")}</Link>
                 </Button>
-                <p className="text-sm text-muted-foreground mb-3">
-                  {tr("signup.orJustEmail")}
-                </p>
-                <EmailSignup source="hero" />
               </CardContent>
             </Card>
 
