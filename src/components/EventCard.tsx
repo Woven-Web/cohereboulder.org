@@ -132,7 +132,10 @@ export function EventCard({ event }: { event: CommunityEvent }) {
                   size="sm"
                   className="gap-1.5 -ml-2.5 text-primary hover:text-primary"
                   onClick={handleRsvp}
-                  disabled={rsvp === "busy"}
+                  // Not `disabled`: a disabled button gets pointer-events:none,
+                  // so a second click would fall through to the card's Link.
+                  // handleRsvp ignores clicks while busy instead.
+                  aria-disabled={rsvp === "busy"}
                   aria-live="polite"
                   data-testid="card-rsvp"
                 >

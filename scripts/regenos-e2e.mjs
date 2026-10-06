@@ -154,8 +154,19 @@ try {
   // ── 3d. One-click RSVP from a calendar card when signed in ───────────────
   step = "one-click card rsvp";
   const seedCard = page.locator("a", { hasText: "Seed Gathering" }).first();
+  // Slow the write so a second click lands while the first is in flight: it
+  // must neither navigate (fall through to the card link) nor RSVP twice.
+  let rsvpWrites = 0;
+  await page.route("**/xrpc/social.scenius.rsvp", async (route) => {
+    rsvpWrites += 1;
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.continue();
+  });
+  await seedCard.getByTestId("card-rsvp").click();
   await seedCard.getByTestId("card-rsvp").click();
   await seedCard.getByTestId("card-rsvp").getByText("You're going").waitFor({ timeout: 10_000 });
+  await page.unroute("**/xrpc/social.scenius.rsvp");
+  if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
   await page.goto(new URL("/events/did:plc:mockscene/ev-seed1", target).toString(), { waitUntil: "networkidle" });
   await rsvpPanel.getByTestId("rsvp-state").getByText("You're going").waitFor({ timeout: 10_000 });
