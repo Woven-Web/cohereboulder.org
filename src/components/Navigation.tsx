@@ -12,6 +12,7 @@ export const Navigation = () => {
 
   const navItems = [
     { href: "/calendar", label: tr("nav.calendar") },
+    { href: "/today", label: tr("companion.today") },
     { href: "/co-create", label: tr("nav.participate") },
     { href: "/archive", label: tr("nav.archive") },
   ];

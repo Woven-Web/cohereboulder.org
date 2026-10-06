@@ -50,7 +50,7 @@ try{
  await context.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/today');await page.getByRole('heading',{name:'Local daily practice',exact:true}).waitFor();
- await page.locator('.companion-page header button').click();await page.getByRole('heading',{name:'Práctica local',exact:true}).waitFor();await page.locator('.companion-page header button').click();
+ await page.getByRole('button',{name:'En/Es',exact:true}).last().click();await page.getByRole('heading',{name:'Práctica local',exact:true}).waitFor();await page.getByRole('button',{name:'Es/En',exact:true}).last().click();
  try { await page.getByRole('heading',{name:'Local tomorrow gathering',exact:true}).waitFor({timeout:5000}); } catch(error) { process.stderr.write(JSON.stringify(await page.evaluate(async()=>({today:await (await fetch('/api/companion/today')).json(),events:await (await fetch('/api/events')).json(),text:document.querySelector('.companion-page')?.textContent})))+'\n');throw error; }
  await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.localCopied=value;}}});});
  await page.getByRole('button',{name:'Share',exact:true}).click();assert.match(await page.getByRole('link',{name:'Share by text',exact:true}).getAttribute('href'),/^sms:/);
@@ -89,10 +89,10 @@ try{
  await page.getByRole('button',{name:'Retry completion report',exact:true}).click();
  await page.getByRole('button',{name:'Retry completion report',exact:true}).waitFor({state:'hidden'});
  assert.equal(await celebration.count(),0);
- await page.locator('.companion-page header button').click();
+ await page.getByRole('button',{name:'En/Es',exact:true}).last().click();
  await page.getByRole('checkbox',{name:'Local walk'}).uncheck();await page.getByRole('checkbox',{name:'Local walk'}).check();
  await page.getByRole('dialog',{name:'¡YAY!',exact:true}).getByRole('button',{name:'Continuar',exact:true}).click();
- await page.locator('.companion-page header button').click();
+ await page.getByRole('button',{name:'Es/En',exact:true}).last().click();
  await page.reload();await page.getByRole('checkbox',{name:'Local walk'}).waitFor();assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
  await page.goto(base+'/more');await page.getByRole('heading',{name:'Install COhere',exact:true}).waitFor();
  // Simulate Chromium's install event without attempting a real browser install.
@@ -118,10 +118,10 @@ try{
  await pushPage.getByRole('button',{name:'Enable daily notifications',exact:true}).click();const enrollment=await enrolled;assert.equal(enrollment.status(),200);
  await pushPage.getByText('Daily notifications are on.',{exact:true}).waitFor();
  const synced=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='PATCH'&&r.request().postDataJSON().language==='es');
- await pushPage.locator('.companion-page header button').click();assert.equal((await synced).status(),200);
+ await pushPage.getByRole('button',{name:/^(En\/Es|Es\/En)$/}).last().click();assert.equal((await synced).status(),200);
  // A failed language update must be visible.
  await pushPage.route('**/api/companion/subscriptions',route=>route.request().method()==='PATCH'?route.fulfill({status:503,json:{error:'local failure'}}):route.continue());
- await pushPage.locator('.companion-page header button').click();await pushPage.getByRole('status').filter({hasText:'Could not save.'}).waitFor();
+ await pushPage.getByRole('button',{name:/^(En\/Es|Es\/En)$/}).last().click();await pushPage.getByRole('status').filter({hasText:'Could not save.'}).waitFor();
  await pushPage.unroute('**/api/companion/subscriptions');
  await pushPage.evaluate(()=>localStorage.removeItem('cohere-companion-device'));
  const removed=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='DELETE');

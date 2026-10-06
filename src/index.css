@@ -159,6 +159,8 @@ All colors MUST be HSL.
 .companion-page h2 { font-size:1.4rem; font-weight:600; margin-bottom:1rem; }
 .companion-page h3 { font-size:1.15rem; font-weight:600; }
 .companion-page section { padding:1.5rem; margin-bottom:1.5rem; border:1px solid hsl(var(--border)); border-radius:1rem; background:hsl(var(--card)); }
+.companion-event { margin-bottom:1rem; }
+.companion-event > button { margin-top:.4rem; font-size:.9rem; color:var(--brand-deep); }
 .companion-page article { padding:1rem 0; border-bottom:1px solid hsl(var(--border)); }
 .companion-page p { margin:.75rem 0; }
 .companion-page a { color:var(--brand-deep); text-decoration:underline; }

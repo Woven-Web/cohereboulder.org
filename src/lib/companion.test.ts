@@ -19,7 +19,7 @@ it('event dates use Denver including tomorrow across UTC midnight', () => {
 });
 it('manifest, brand icons, Apple metadata and private-safe service worker exist', () => {
     const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8'));
-    expect(manifest).toMatchObject({ name: 'COhere Boulder Companion', start_url: '/today', display: 'standalone' });
+    expect(manifest).toMatchObject({ name: 'COhere Boulder', start_url: '/today', display: 'standalone' });
     expect(manifest.icons.map((i: {
         sizes: string;
     }) => i.sizes)).toEqual(['192x192', '512x512']);

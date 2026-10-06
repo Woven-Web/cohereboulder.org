@@ -5,13 +5,14 @@ import { Dialog, DialogPortal } from '@/components/ui/dialog';
 import { QuestCelebration } from '@/components/QuestCelebration';
 import { Share, SquarePlus, Smartphone } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
+import { EventCard } from '@/components/EventCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { companionEvents, companionRequest, type CompanionToday } from '@/lib/api';
 import { getInstallState, subscribeInstall, clearInstallPrompt } from '@/lib/install';
 import { anonymousDevice, eventsForDays, installPlatform, localGet, localSet, questChecks, currentDenverDate } from '@/lib/companion';
 const keyBytes = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 export default function Companion() {
-    const { tr, language, toggleLanguage } = useLanguage();
+    const { tr, language } = useLanguage();
     const route = useLocation().pathname;
     const [date, setDate] = useState(currentDenverDate);
     const { data, refetch, isLoading, isError } = useQuery({ queryKey: ['companion'], queryFn: () => companionRequest<CompanionToday>('today'), retry: 1 });
@@ -155,13 +156,13 @@ export default function Companion() {
     }
     const daily = data?.daily;
     return <><Navigation /><main className="companion-page">
- <header><h1>{tr('companion.' + (route === '/quests' ? 'quests' : route === '/more' ? 'more' : 'heading'))}</h1><button onClick={toggleLanguage}>{tr('companion.language')}</button></header>
- <div className="companion-links"><Link to="/today">{tr('companion.today')}</Link><Link to="/calendar">{tr('nav.calendar')}</Link><Link to="/quests">{tr('companion.quests')}</Link><Link to="/more">{tr('companion.more')}</Link></div>
+ <header><h1>{tr('companion.' + (route === '/quests' ? 'quests' : route === '/more' ? 'more' : 'heading'))}</h1></header>
+ <div className="companion-links"><Link to="/today">{tr('companion.today')}</Link><Link to="/quests">{tr('companion.quests')}</Link><Link to="/more">{tr('companion.more')}</Link></div>
  {isLoading && <p>{tr('companion.loading')}</p>}{isError && <p role="status">{tr('companion.offline')}</p>}
  {notice && <p role="status">{tr('companion.' + notice)}</p>}
  {route === '/today' && <>
  <section><h2>{tr('companion.practice')}</h2>{daily ? <><h3>{localized(daily.title, daily.title_es)}</h3><p className="whitespace-pre-wrap">{localized(daily.body, daily.body_es)}</p></> : <p>{tr('companion.empty')}</p>}</section>
- <section><h2>{tr('companion.events')}</h2>{events.isError && <p>{tr('companion.offline')}</p>}{data && eventsForDays(events.data ?? [], data.date).filter(e => e.status !== 'cancelled').map(e => { const path = '/events/' + encodeURIComponent(e.did) + '/' + encodeURIComponent(e.rkey); return <article key={path}><h3><Link to={path}>{e.name}</Link></h3><p>{e.startsAt && new Intl.DateTimeFormat(language, { timeZone: 'America/Denver', weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(e.startsAt))}</p><button onClick={() => void share(location.origin + path, e.name)}>{tr('companion.share')}</button></article>; })}
+ <section><h2>{tr('companion.events')}</h2>{events.isError && <p>{tr('companion.offline')}</p>}{data && eventsForDays(events.data ?? [], data.date).filter(e => e.status !== 'cancelled').map(e => { const path = '/events/' + encodeURIComponent(e.did) + '/' + encodeURIComponent(e.rkey); return <div key={path} className="companion-event"><EventCard event={e} /><button onClick={() => void share(location.origin + path, e.name)}>{tr('companion.share')}</button></div>; })}
  {data && !eventsForDays(events.data ?? [], data.date).length && <p>{tr('companion.noEvents')}</p>}<Link to="/calendar">{tr('nav.calendar')}</Link></section>
  {daily?.question && <section><h2>{tr('companion.question')}</h2><p>{localized(daily.question, daily.question_es)}</p><form onSubmit={sendReply}><label>{tr('companion.reply')}<textarea required maxLength={2000} value={reply} onChange={e => setReply(e.target.value)} disabled={answered}/></label><label>{tr('companion.name')}<input maxLength={80} value={name} onChange={e => setName(e.target.value)} disabled={answered}/></label><button disabled={busy || answered} type="submit">{tr('companion.send')}</button></form></section>}
  <Link to="/more">{tr('companion.install')}</Link>
