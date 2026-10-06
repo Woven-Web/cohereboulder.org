@@ -1,9 +1,10 @@
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
-import { BellRing, Download, Clock, MapPin } from "lucide-react";
+import { BellRing, CheckCircle2, Download, Clock, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
@@ -14,6 +15,8 @@ import {
   type CommunityEvent,
 } from "@/lib/events";
 import { downloadEventIcs } from "@/lib/ics";
+import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
 
 /** The statuses worth a badge; anything else renders as a plain event. */
 const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
@@ -36,15 +39,43 @@ export function EventCard({ event }: { event: CommunityEvent }) {
   const badged = event.status && BADGED_STATUSES.has(event.status);
   const cancelled = event.status === "cancelled";
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: config } = useSiteConfig();
+  const laneOn = config?.regenosLoginEnabled === true;
+  const { data: session } = useRegenosSession(laneOn);
+  const signedIn = laneOn && Boolean(session?.did);
+  const [rsvp, setRsvp] = useState<"idle" | "busy" | "going" | "requested" | "waitlisted" | "error">("idle");
   const upcoming = Boolean(event.startsAt) && new Date(event.startsAt ?? 0).getTime() > Date.now();
 
   // The card is one big link, so no form lives inside it: the button opens
   // the detail page with its RSVP panel expanded (EventRsvp reads #rsvp).
-  function handleRsvp(e: MouseEvent) {
+  // Signed in on regenOS, the card RSVPs in one click (same call and cache
+  // key as the detail page's panel). Anonymous visitors still need the email
+  // form, which lives on the detail page.
+  async function handleRsvp(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`${eventPath(event)}#rsvp`);
+    if (!signedIn) {
+      navigate(`${eventPath(event)}#rsvp`);
+      return;
+    }
+    if (rsvp === "busy") return;
+    setRsvp("busy");
+    const key = ["regenos-my-seat", event.did, event.rkey];
+    try {
+      const current = await fetchMySeat(event.did, event.rkey);
+      let seat = current.seat;
+      if (seat !== "confirmed" && seat !== "requested" && seat !== "waitlisted") {
+        seat = await rsvpOnRegenos(event.did, event.rkey, "going", current.attendance);
+      }
+      queryClient.setQueryData(key, { seat, attendance: current.attendance });
+      setRsvp(seat === "confirmed" ? "going" : seat === "requested" ? "requested" : seat === "waitlisted" ? "waitlisted" : "error");
+    } catch {
+      setRsvp("error");
+    }
   }
+
+  const rsvpDone = rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted";
 
   function handleAddToCalendar(e: MouseEvent) {
     e.preventDefault();
@@ -101,9 +132,22 @@ export function EventCard({ event }: { event: CommunityEvent }) {
                   size="sm"
                   className="gap-1.5 -ml-2.5 text-primary hover:text-primary"
                   onClick={handleRsvp}
+                  disabled={rsvp === "busy"}
+                  aria-live="polite"
+                  data-testid="card-rsvp"
                 >
-                  <BellRing className="h-3.5 w-3.5" />
-                  {tr("calendar.rsvp.button")}
+                  {rsvp === "busy" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : rsvpDone ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <BellRing className="h-3.5 w-3.5" />
+                  )}
+                  {rsvpDone
+                    ? tr(`calendar.rsvp.${rsvp}`)
+                    : rsvp === "error"
+                      ? tr("calendar.rsvp.error")
+                      : tr("calendar.rsvp.button")}
                 </Button>
               )}
               <Button
