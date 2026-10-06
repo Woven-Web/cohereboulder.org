@@ -17,6 +17,8 @@
 # Usage: bash scripts/ci-e2e.sh
 
 set -euo pipefail
+E2E_PORT_OFFSET=${E2E_PORT_OFFSET:-0}
+[[ "$E2E_PORT_OFFSET" =~ ^[0-9]+$ ]] || { echo "E2E_PORT_OFFSET must be a nonnegative integer"; exit 2; }
 cd "$(dirname "$0")/.."
 
 # A dedicated, wiped-at-start local state dir — never the default
@@ -88,15 +90,15 @@ fail=0
 
 # --- 1. regenos-e2e.mjs: the sign-in + on-site hosting lane ----------------
 echo "::group::regenos-e2e (sign-in lane)"
-start_mock 28944 /tmp/ci-e2e-mock-1.log
-start_worker 28789 28229 /tmp/ci-e2e-worker-1.log \
+start_mock $((28944 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-1.log
+start_worker $((28789 + E2E_PORT_OFFSET)) $((28229 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-1.log \
   --var REGENOS_LOGIN_ENABLED:true \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28944 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28944 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! node scripts/share-e2e.mjs http://127.0.0.1:28789; then
+if ! node scripts/share-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); then
   fail=1
 fi
-if ! node scripts/regenos-e2e.mjs http://127.0.0.1:28789; then
+if ! node scripts/regenos-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
@@ -106,20 +108,20 @@ echo "::endgroup::"
 # --- 2. admin-events-e2e.mjs: the organizer Events + Access tabs -----------
 echo "::group::admin-events-e2e (organizer calendar + access lane)"
 seed_d1_and_kv
-start_mock 28950 /tmp/ci-e2e-mock-2.log
-start_worker 28850 28230 /tmp/ci-e2e-worker-2-main.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_mock $((28950 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-2.log
+start_worker $((28850 + E2E_PORT_OFFSET)) $((28230 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-2-main.log \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28950 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token
-start_worker 28851 28231 /tmp/ci-e2e-worker-2-bad.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_worker $((28851 + E2E_PORT_OFFSET)) $((28231 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-2-bad.log \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28950 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:bad-token
-start_worker 28852 28232 /tmp/ci-e2e-worker-2-none.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28950 \
+start_worker $((28852 + E2E_PORT_OFFSET)) $((28232 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-2-none.log \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28950 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_BAD_TOKEN_URL=http://127.0.0.1:28851 E2E_NO_TOKEN_URL=http://127.0.0.1:28852 \
-    node scripts/admin-events-e2e.mjs http://127.0.0.1:28850 "$SESSION_TOKEN" http://127.0.0.1:28950; then
+if ! E2E_BAD_TOKEN_URL=http://127.0.0.1:$((28851 + E2E_PORT_OFFSET)) E2E_NO_TOKEN_URL=http://127.0.0.1:$((28852 + E2E_PORT_OFFSET)) \
+    node scripts/admin-events-e2e.mjs http://127.0.0.1:$((28850 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28950 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
@@ -128,15 +130,15 @@ echo "::endgroup::"
 
 # --- 3. proposals-e2e.mjs: the accountless propose + approval lane ---------
 echo "::group::proposals-e2e (propose + approval lane)"
-start_mock 28946 /tmp/ci-e2e-mock-3.log
-start_worker 28860 28233 /tmp/ci-e2e-worker-3-main.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28946 \
+start_mock $((28946 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-3.log
+start_worker $((28860 + E2E_PORT_OFFSET)) $((28233 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-3-main.log \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28946 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token
-start_worker 28861 28234 /tmp/ci-e2e-worker-3-none.log \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28946 \
+start_worker $((28861 + E2E_PORT_OFFSET)) $((28234 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-3-none.log \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28946 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! node scripts/proposals-e2e.mjs http://127.0.0.1:28860 "$SESSION_TOKEN" http://127.0.0.1:28946 http://127.0.0.1:28861; then
+if ! node scripts/proposals-e2e.mjs http://127.0.0.1:$((28860 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28946 + E2E_PORT_OFFSET)) http://127.0.0.1:$((28861 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
@@ -147,12 +149,12 @@ echo "::endgroup::"
 # --test-scheduled exposes /cdn-cgi/local/scheduled; local send_email only
 # writes .eml files, so nothing is ever delivered.
 echo "::group::rsvp-e2e (email RSVP + reminder cron lane)"
-start_mock 28948 /tmp/ci-e2e-mock-4.log
-start_worker 28870 28235 /tmp/ci-e2e-worker-4.log --test-scheduled \
+start_mock $((28948 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-4.log
+start_worker $((28870 + E2E_PORT_OFFSET)) $((28235 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-4.log --test-scheduled \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28948 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28948 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:28870 "$SESSION_TOKEN" http://127.0.0.1:28948; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:$((28870 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28948 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
@@ -166,16 +168,16 @@ echo "::group::newsletter-e2e (Beehiiv import + newsletter send + Resend webhook
 # A fresh throwaway signing key per run, in Resend's whsec_<base64> format;
 # the e2e signs its webhooks with it exactly as Resend (Svix) would.
 WEBHOOK_SECRET="whsec_$(node -e 'process.stdout.write(require("crypto").randomBytes(24).toString("base64"))')"
-PORT=28962 setsid node scripts/resend-mock.mjs >/tmp/ci-e2e-mock-5.log 2>&1 &
+PORT=$((28962 + E2E_PORT_OFFSET)) setsid node scripts/resend-mock.mjs >/tmp/ci-e2e-mock-5.log 2>&1 &
 PIDS+=("$!")
-wait_for "http://127.0.0.1:28962/_messages" "Resend mock on :28962"
-start_worker 28880 28236 /tmp/ci-e2e-worker-5.log --test-scheduled \
+wait_for "http://127.0.0.1:$((28962 + E2E_PORT_OFFSET))/_messages" "Resend mock on :$((28962 + E2E_PORT_OFFSET))"
+start_worker $((28880 + E2E_PORT_OFFSET)) $((28236 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-5.log --test-scheduled \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var RESEND_API_BASE:http://127.0.0.1:28962 \
+  --var RESEND_API_BASE:http://127.0.0.1:$((28962 + E2E_PORT_OFFSET)) \
   --var RESEND_API_KEY:mock-key \
-  --var PUBLIC_BASE_URL:http://127.0.0.1:28880 \
+  --var PUBLIC_BASE_URL:http://127.0.0.1:$((28880 + E2E_PORT_OFFSET)) \
   --var "RESEND_WEBHOOK_SECRET:$WEBHOOK_SECRET"
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" RESEND_WEBHOOK_SECRET="$WEBHOOK_SECRET" node scripts/newsletter-e2e.mjs http://127.0.0.1:28880 "$SESSION_TOKEN" http://127.0.0.1:28962; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" RESEND_WEBHOOK_SECRET="$WEBHOOK_SECRET" node scripts/newsletter-e2e.mjs http://127.0.0.1:$((28880 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28962 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
@@ -187,12 +189,12 @@ echo "::endgroup::"
 # no mail at all; the one email RSVP it seeds goes to local .eml only.
 echo "::group::checkin-e2e (door check-in lane)"
 seed_d1_and_kv
-start_mock 28952 /tmp/ci-e2e-mock-6.log
-start_worker 28890 28237 /tmp/ci-e2e-worker-6.log \
+start_mock $((28952 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-6.log
+start_worker $((28890 + E2E_PORT_OFFSET)) $((28237 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-6.log \
   --var REGENOS_LOGIN_ENABLED:false \
-  --var REGENOS_BASE_URL:http://127.0.0.1:28952 \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28952 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:28890 "$SESSION_TOKEN" http://127.0.0.1:28952; then
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:$((28890 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28952 + E2E_PORT_OFFSET)); then
   fail=1
 fi
 cleanup
