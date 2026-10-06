@@ -162,9 +162,15 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 800));
     await route.continue();
   });
-  await seedCard.getByTestId("card-rsvp").click();
-  await seedCard.getByTestId("card-rsvp").click();
-  await seedCard.getByTestId("card-rsvp").getByText("You're going").waitFor({ timeout: 10_000 });
+  const cardButton = seedCard.getByTestId("card-rsvp");
+  await cardButton.click();
+  // Prove the second click lands WHILE busy: wait for the spinner, then
+  // force it (a normal click would wait for the button to free up).
+  await cardButton.locator(".animate-spin").waitFor({ timeout: 5_000 });
+  await cardButton.click({ force: true });
+  await page.waitForTimeout(300);
+  if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`a busy click navigated to ${page.url()}`);
+  await cardButton.getByText("You're going").waitFor({ timeout: 10_000 });
   await page.unroute("**/xrpc/social.scenius.rsvp");
   if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
