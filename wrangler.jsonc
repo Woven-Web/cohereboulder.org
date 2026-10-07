@@ -41,6 +41,7 @@
   // by the cron string, so keep these in step with index.ts.
   "triggers": { "crons": ["0 15 * * *", "* * * * *"] },
   "vars": {
+    "RSVP_REMINDERS_PAUSED": "true",
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",
