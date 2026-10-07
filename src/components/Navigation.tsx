@@ -19,23 +19,25 @@ export const Navigation = () => {
   return (
     <>
       {/* Main Navigation */}
-      <nav className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+      <nav className="[&_button]:min-h-11 [&_button]:min-w-11 bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3">
-              <img
-                src={`${import.meta.env.BASE_URL}COHERE-Logo-Branding-2.webp`}
-                alt="[CO]here Logo"
-                className="h-10 w-auto"
-              />
+            <Link to="/" className="flex min-h-11 items-center space-x-3">
+              <span className="block h-10 w-12 overflow-hidden" aria-hidden="true">
+                <img
+                  src={`${import.meta.env.BASE_URL}COHERE-Logo-Branding-2.webp`}
+                  alt="[CO]here Logo"
+                  className="w-12 max-w-none"
+                />
+              </span>
               <span className="text-xl font-bold text-foreground">
                 [CO]here
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-6">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -51,7 +53,7 @@ export const Navigation = () => {
               ))}
 
               {/* Register - the primary action for anyone new */}
-              <Button asChild variant="community" size="sm">
+              <Button asChild variant="community" size="sm" className="min-h-11">
                 <Link to="/register">{tr("nav.register")}</Link>
               </Button>
 
@@ -62,7 +64,7 @@ export const Navigation = () => {
               <Button
                 variant="ghost"
                 onClick={toggleLanguage}
-                className="rounded-full px-3 flex items-center gap-1"
+                className="min-h-11 min-w-11 rounded-full px-3 flex items-center gap-1"
               >
                 <Globe className="h-4 w-4" />
                 <span className="text-sm font-medium">{language === "en" ? "En/Es" : "Es/En"}</span>
@@ -70,11 +72,11 @@ export const Navigation = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center space-x-2">
+            <div className="lg:hidden flex items-center space-x-2">
               <Button
                 variant="ghost"
                 onClick={toggleLanguage}
-                className="rounded-full px-2 flex items-center gap-1"
+                className="min-h-11 min-w-11 rounded-full px-2 flex items-center gap-1"
               >
                 <Globe className="h-4 w-4" />
                 <span className="text-sm">{language === "en" ? "En/Es" : "Es/En"}</span>
@@ -84,7 +86,7 @@ export const Navigation = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="rounded-full"
+                className="h-11 w-11 rounded-full"
                 aria-label={tr(isMenuOpen ? "nav.closeMenu" : "nav.openMenu")}
                 aria-expanded={isMenuOpen}
               >
@@ -99,13 +101,13 @@ export const Navigation = () => {
 
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="md:hidden bg-background border-t border-border">
+            <div className="lg:hidden bg-background border-t border-border">
               <div className="px-2 pt-2 pb-3 space-y-1">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`block px-3 py-2 transition-colors duration-300 font-medium ${
+                    className={`flex min-h-11 items-center px-3 py-2 transition-colors duration-300 font-medium ${
                       location.pathname === item.href
                         ? "text-primary bg-primary/10"
                         : "text-muted-foreground hover:text-foreground"
@@ -117,7 +119,7 @@ export const Navigation = () => {
                 ))}
                 
                 {/* Register - Mobile */}
-                <Button asChild variant="community" className="mx-3 mt-2">
+                <Button asChild variant="community" className="min-h-11 mx-3 mt-2">
                   <Link to="/register" onClick={() => setIsMenuOpen(false)}>
                     {tr("nav.register")}
                   </Link>

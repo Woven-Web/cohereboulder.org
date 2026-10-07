@@ -23,8 +23,7 @@ export const Footer = () => {
               <span className="text-2xl font-bold">[CO]here</span>
             </div>
             <p className="text-primary-foreground/80 leading-relaxed">
-              Connecting local community to create a regenerative, resilient
-              future.
+              {tr("footer.tagline")}
             </p>
             <div className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
@@ -52,27 +51,21 @@ export const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-sm text-primary-foreground/60">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center md:justify-start items-center gap-x-4 text-sm text-primary-foreground/80">
               <span>© 2026 [CO]here Boulder</span>
-              <span className="mx-2">•</span>
               <span>{tr("footer.wovenWeb")}</span>
-              <span className="mx-2">•</span>
-              <Link to="/about" className="hover:text-primary-foreground transition-colors">
-                {tr("nav.about")}
-              </Link>
-              <span className="mx-2">•</span>
-              <Link to="/propose" className="hover:text-primary-foreground transition-colors">
-                {tr("nav.proposeEvent")}
-              </Link>
+              <Link to="/about" className="inline-flex min-h-11 items-center hover:underline">{tr("nav.about")}</Link>
+              <Link to="/propose" className="inline-flex min-h-11 items-center hover:underline">{tr("nav.proposeEvent")}</Link>
             </div>
             <div className="flex items-center space-x-4">
               {/* Language Toggle */}
-              <div className="flex space-x-2 text-sm">
+              <div className="flex items-center space-x-2 text-sm">
                 <button
                   onClick={() => setLanguage("en")}
-                  className={`hover:text-primary-foreground transition-colors ${
+                  aria-pressed={language === "en"}
+                  className={`min-h-11 px-2 hover:text-primary-foreground transition-colors ${
                     language === "en"
-                      ? "text-primary-foreground"
+                      ? "text-primary-foreground font-semibold underline underline-offset-4"
                       : "text-primary-foreground/60"
                   }`}
                 >
@@ -81,9 +74,10 @@ export const Footer = () => {
                 <span className="text-primary-foreground/60">|</span>
                 <button
                   onClick={() => setLanguage("es")}
-                  className={`hover:text-primary-foreground transition-colors ${
+                  aria-pressed={language === "es"}
+                  className={`min-h-11 px-2 hover:text-primary-foreground transition-colors ${
                     language === "es"
-                      ? "text-primary-foreground"
+                      ? "text-primary-foreground font-semibold underline underline-offset-4"
                       : "text-primary-foreground/60"
                   }`}
                 >

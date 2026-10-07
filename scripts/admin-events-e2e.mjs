@@ -166,6 +166,7 @@ try {
   await detail.goto(detailPath);
   await detail.locator('article img[src^="/api/event-image/"]').waitFor();
   expect(await detail.locator('article img').getAttribute("alt") === eventName, "public photo uses the event name as alt text");
+  expect(await detail.getByTestId("event-banner").evaluate((img) => img.parentElement.children.length === 1 && getComputedStyle(img).filter === "none" && getComputedStyle(img).mixBlendMode === "normal"), "uploaded banner has no overlay, filter or blend");
   await page.locator("#evphotoremove").click();
   await page.locator("#evphotomsg", { hasText: "Photo removed." }).waitFor();
   expect((await page.locator("#evphotopreview").innerText()).includes("Using an automatic photo"), "drawer returns to the automatic photo");

@@ -37,8 +37,8 @@ export function ShareEvent({ event }: { event: CommunityEvent }) {
   }
 
   return (
-    <div className={status === "manual" ? "space-y-2 w-full min-w-0" : "max-w-full"}>
-      <Button variant="outline" className="gap-2" onClick={share} disabled={busy}>
+    <div className={status === "manual" ? "col-span-full space-y-2 w-full min-w-0" : "max-w-full"}>
+      <Button variant="outline" className="h-11 w-full gap-2" onClick={share} disabled={busy}>
         <Share2 className="h-4 w-4" aria-hidden="true" />
         {tr("calendar.events.share")}
       </Button>

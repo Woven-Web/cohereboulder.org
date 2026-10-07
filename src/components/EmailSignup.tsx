@@ -50,7 +50,7 @@ export const EmailSignup = ({ source = "homepage", className }: EmailSignupProps
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={tr("signup.placeholder")}
-          className="flex-1 bg-white text-foreground"
+          className="h-11 sm:flex-1 bg-white text-foreground"
           aria-label={tr("signup.placeholder")}
         />
         <input
@@ -62,7 +62,7 @@ export const EmailSignup = ({ source = "homepage", className }: EmailSignupProps
           aria-hidden="true"
           className="hidden"
         />
-        <Button type="submit" variant="community" disabled={status === "submitting"}>
+        <Button className="h-11 bg-community-orange bg-none text-accent-foreground hover:bg-community-orange" type="submit" variant="community" disabled={status === "submitting"}>
           {status === "submitting" ? tr("signup.submitting") : tr("signup.button")}
         </Button>
       </div>

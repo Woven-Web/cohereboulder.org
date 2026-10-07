@@ -33,7 +33,7 @@ All colors MUST be HSL.
     --secondary-foreground: 219 40% 14%;
 
     --muted: 130 30% 94%;
-    --muted-foreground: 219 14% 40%;
+    --muted-foreground: 215 19% 35%;
 
     --accent: var(--brand-sun);
     --accent-foreground: 30 45% 14%;
@@ -41,8 +41,8 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 140 30% 98%;
 
-    --border: 150 18% 88%;
-    --input: 150 18% 88%;
+    --border: 215 20% 65%;
+    --input: 215 20% 65%;
     --ring: var(--brand-water);
 
     --radius: 0.75rem;

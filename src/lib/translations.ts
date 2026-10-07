@@ -4,12 +4,12 @@
 export const translations = {
   // Navigation & Common
   nav: {
-    about: { en: "About", es: "Acerca de" },
+    about: { en: "About", es: "Quiénes somos" },
     register: { en: "Register", es: "Registrar" },
     join2025: { en: "Join 2025", es: "Únete 2025" },
-    participate: { en: "Co-Create", es: "Co-Crear" },
+    participate: { en: "Co-create", es: "Co-crear" },
     calendar: { en: "Calendar", es: "Calendario" },
-    proposeEvent: { en: "Propose an Event", es: "Proponer un Evento" },
+    proposeEvent: { en: "Propose an event", es: "Proponer un evento" },
     archive: { en: "Archive", es: "Archivo" },
     donateNow: { en: "Donate Now", es: "Donar Ahora" },
     supportCohere: { en: "Support COhere", es: "Apoyar COhere" },
@@ -53,8 +53,8 @@ export const translations = {
       es: "COhere Boulder 2026",
     },
     dates: {
-      en: "October 15-25, 2026",
-      es: "15-25 de Octubre, 2026",
+      en: "October 15–25, 2026",
+      es: "15–25 de octubre de 2026",
     },
     tenDayContainer: {
       en: "A 10-day event series for community connection that supports our collective wellbeing and belonging to place.",
@@ -74,7 +74,7 @@ export const translations = {
   communityCalendar: {
     title: {
       en: "The Community Calendar",
-      es: "El Calendario Comunitario",
+      es: "El calendario comunitario",
     },
     subtitle: {
       en: "Co-created by everyone who shows up",
@@ -327,6 +327,7 @@ export const translations = {
 
   // Footer
   footer: {
+    tagline: { en: "Connecting local community to create a regenerative, resilient future.", es: "Conectando a la comunidad local para crear un futuro regenerativo y resiliente." },
     description: {
       en: "An ongoing community weaving process creating resilience through connection.",
       es: "Un proceso continuo de tejido comunitario creando resiliencia a través de la conexión.",
@@ -346,14 +347,14 @@ export const translations = {
     registration2025: { en: "2025 Registration", es: "Registro 2025" },
     learnMore: { en: "Learn More", es: "Aprende Más" },
     dates2025: { en: "October 16-26, 2025", es: "16-26 de Octubre, 2025" },
-    dates2026: { en: "October 15-25, 2026", es: "15-25 de Octubre, 2026" },
+    dates2026: { en: "October 15–25, 2026", es: "15–25 de octubre de 2026" },
     stayInLoop: {
       en: "Sign up to hear about COhere Boulder 2026 as plans take shape.",
       es: "Regístrate para recibir noticias de COhere Boulder 2026 mientras los planes toman forma.",
     },
     wovenWeb: {
       en: "A Woven Web Initiative",
-      es: "Una Iniciativa de Red Tejida",
+      es: "Una iniciativa de Red Tejida",
     },
   },
 
@@ -597,17 +598,23 @@ export const translations = {
   calendar: {
     // The live community calendar (regenOS-backed, Luma as fallback)
     events: {
+      cardRsvp: { en: "RSVP", es: "Confirmar" },
+      cardGoing: { en: "✓ Going", es: "✓ Vas a ir" },
+      cancelHint: { en: "Tap to cancel your RSVP", es: "Toca para cancelar" },
+      cardMoreAbout: { en: "More about", es: "Más sobre" },
+      subscribeShort: { en: "Subscribe", es: "Suscríbete" },
+      cardMore: { en: "More", es: "Más" },
       title: {
         en: "Community Calendar",
-        es: "Calendario Comunitario",
+        es: "Calendario comunitario",
       },
       subtitle: {
         en: "Join us for events and gatherings throughout Boulder's regenerative journey.",
         es: "Acompáñanos en eventos y encuentros a lo largo del camino regenerativo de Boulder.",
       },
       subscribe: {
-        en: "Subscribe to Calendar",
-        es: "Suscríbete al Calendario",
+        en: "Subscribe to calendar",
+        es: "Suscribirse al calendario",
       },
       subscribeCaption: {
         en: "Get the whole community calendar in your own calendar app — new events included automatically.",
@@ -737,9 +744,10 @@ export const translations = {
         },
       },
     },
-    // "RSVP · remind me" on each event (src/components/EventRsvp.tsx).
+    // "RSVP" on each event (src/components/EventRsvp.tsx).
     rsvp: {
-      button: { en: "RSVP · remind me", es: "Confirmar · recuérdame" },
+      emailHint: { en: "No account needed: we'll email you a confirmation and a reminder the day before.", es: "No necesitas cuenta: te enviaremos una confirmación y un recordatorio el día anterior." },
+      button: { en: "RSVP", es: "Confirmar" },
       title: { en: "Coming?", es: "¿Vienes?" },
       emailIntro: {
         en: "Leave your email and we'll send a reminder the morning before (around 9am Boulder time). It doesn't add you to our mailing list.",
@@ -1070,6 +1078,12 @@ export const translations = {
     // the header area, not the subscribe/CTA button block another change is
     // touching at the same time.
     proposeCallout: {
+      signedInText: {
+        en: "Hosting something during COhere? Propose it for the calendar.",
+        es: "¿Organizas algo durante COhere? Proponlo para el calendario.",
+      },
+      accountPrompt: { en: "Already have an account?", es: "¿Ya tienes cuenta?" },
+      signIn: { en: "Sign in", es: "Inicia sesión" },
       text: {
         en: "Hosting something during COhere? You don't need an account to put it on this calendar.",
         es: "¿Vas a organizar algo durante COhere? No necesitas una cuenta para ponerlo en este calendario.",
@@ -1421,19 +1435,19 @@ export const translations = {
     },
   },
 
-  // Stay in the Loop signup
+  // Stay in the loop signup
   signup: {
-    title: { en: "Stay in the Loop", es: "Mantente al Tanto" },
+    title: { en: "Stay in the loop", es: "Mantente al tanto" },
     orJustEmail: {
       en: "Not ready to register? Just leave your email.",
       es: "¿Aún no quieres registrarte? Déjanos tu correo.",
     },
     description: {
-      en: "COhere Boulder returns October 15-25, 2026. Leave your email and we'll keep you posted as plans take shape.",
+      en: "COhere Boulder returns October 15–25, 2026. Leave your email and we'll keep you posted as plans take shape.",
       es: "COhere Boulder regresa del 15 al 25 de octubre de 2026. Déjanos tu correo y te mantendremos al tanto mientras los planes toman forma.",
     },
     placeholder: { en: "Your email address", es: "Tu correo electrónico" },
-    button: { en: "Keep Me Posted", es: "Mantenme Informado" },
+    button: { en: "Keep me posted", es: "Mantenme informado" },
     submitting: { en: "Signing up…", es: "Registrando…" },
     success: {
       en: "You're on the list — we'll be in touch!",
