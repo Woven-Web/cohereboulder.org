@@ -125,7 +125,9 @@ try {
   // The nav's Sign in opens the same regenOS sign-in in a dialog.
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   await page.getByRole("dialog").getByText("Sign in or join COhere").waitFor({ timeout: 10_000 });
-  await page.keyboard.press("Escape");
+  // Use the actionable close control: a visible title alone does not ensure
+  // the dialog has installed its document-level Escape listener yet.
+  await page.getByRole("dialog").getByRole("button", { name: "Close dialog", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("nav Sign in opens the sign-in dialog");
   await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
@@ -401,6 +403,7 @@ try {
   await linkTab.close();
   ok("an explicit event return path survives opening the email link in a new tab");
 } catch (error) {
+  console.error(error);
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();

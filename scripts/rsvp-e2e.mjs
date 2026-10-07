@@ -77,13 +77,16 @@ try {
   const href = await google.getAttribute("href");
   if (!href?.startsWith("https://calendar.google.com/calendar/r/eventedit?")) fail(`Google Calendar link missing: ${href}`);
   await page.getByRole("menuitem", { name: "Apple / other calendars (.ics)" }).waitFor();
-  await page.keyboard.press("Escape");
+  await google.press("Escape");
+  await google.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
   await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar" }).waitFor();
   await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
   const feedUrl = await page.getByRole("textbox", { name: "Calendar feed URL" }).inputValue();
   if (!feedUrl.endsWith("/calendar.ics")) fail(`subscription feed missing: ${feedUrl}`);
-  await page.keyboard.press("Escape");
+  // Finish dismissing the modal before interacting with the RSVP form.
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("calendar subscription explains Apple and Google feed setup");
   // This lane explicitly switches sign-in off; the anonymous email form
   // remains available and offers no dead sign-in control.
@@ -174,6 +177,7 @@ try {
   if (probe.status() !== 404) fail(`an unknown token answered ${probe.status()}`);
   ok("cancel link: plain GET is harmless; browser auto-POSTs; repeats and unknown tokens are harmless");
 } catch (error) {
+  console.error(error);
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();

@@ -285,6 +285,40 @@ and a `COHERE_AUTH` session, so the browser is signed in without email.
 same via `.github/workflows/deploy-worker.yml`, which typechecks, builds,
 deploys, then smoke-tests the live pages in headless Chromium.
 
+Review flow: **PR → staging deploy → organizer/Uni check → merge to main → prod**.
+Staging is https://cohere-signup-staging.unforced.workers.dev, served only on
+workers.dev by `cohere-signup-staging`. From the PR checkout, run
+`npm run deploy:staging` with the Cloudflare credentials above, or push the
+reviewed PR commit to the upstream repository's `staging` branch. Only pushes
+to `staging` trigger `.github/workflows/deploy-staging.yml`; PR branch pushes
+do not deploy. The workflow uses the existing Cloudflare repository secrets,
+passes `--config wrangler.staging.jsonc` to every remote operation, and uploads
+no Worker secrets. Never run `npm run deploy` to check a PR: that deploys prod.
+The workflow runs local checks before deployment and browser smoke checks after.
+
+Staging has its own D1 `cohere-staging` and its own SIGNUPS/COHERE_AUTH KV
+namespaces. It has no custom domains, email binding, Resend secret, scheduled
+jobs, or `REGENOS_SERVICE_TOKEN`. All email is disabled (including Uni's
+sign-in email); admin calendar writes are unavailable. Calendar reads remain
+anonymous against the real COhere scene. regenOS login is **off** because the
+staging origin has not been confirmed in regenOS `ALLOWED_APP_ORIGINS`.
+Do not enable it until that origin is approved upstream. For organizer review
+that needs admin access, Uni will need a staging-only session bootstrap or a
+separate change enforcing an email allowlist before enabling a mail transport.
+
+Bootstrap recorded 2026-10-07:
+- Loaded `worker/schema.sql` into the new staging database.
+- Recorded migrations `0001` and `0007` in staging's `d1_migrations` ledger:
+  their ALTER columns already exist in the current schema, so replaying them
+  would fail with duplicate columns. Their tables/indexes also exist.
+- Applied migrations `0002`–`0006` with Wrangler successfully. Future deploys
+  apply only new migrations to staging.
+- Copied only `SELECT * FROM forms WHERE slug = 'register-2026'` from production
+  (read-only), replacing migration 0002's default copy with the live form row.
+  Added only `uni@agi.unforced.org` to staging `admins`. No production people
+  or submissions were copied. Verified one form, one admin, zero people and
+  zero submissions. Form export and seed SQL stayed outside git.
+
 GitHub Pages is retired — the Worker serves the domain directly, so deep links
 return 200 and the API is same-origin.
 

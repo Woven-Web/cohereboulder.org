@@ -1222,6 +1222,7 @@ export const translations = {
 
   // Co-Create Page
   coCreate: {
+    volunteerSignup: { en: "Sign Up to Volunteer", es: "Inscríbete para ser voluntario/a" },
     title: {
       en: "Co-Create With Us",
       es: "Co-Crea Con Nosotros",
