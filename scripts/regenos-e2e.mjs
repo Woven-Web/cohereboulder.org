@@ -157,9 +157,11 @@ try {
   // Slow the write so a second click lands while the first is in flight: it
   // must neither navigate (fall through to the card link) nor RSVP twice.
   let rsvpWrites = 0;
+  let releaseWrite;
+  const writeGate = new Promise((resolve) => { releaseWrite = resolve; });
   await page.route("**/xrpc/social.scenius.rsvp", async (route) => {
     rsvpWrites += 1;
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await writeGate;
     await route.continue();
   });
   const cardButton = seedCard.getByTestId("card-rsvp");
@@ -180,14 +182,32 @@ try {
     text: el.textContent,
   }));
   if (clamped.clamp !== "3" || clamped.children !== 0 || /[\r\n]|^…$/.test(clamped.text.trim())) fail("description is not one clamped text block");
+  if ((await seedCard.getByRole("link", { name: "Seed Gathering", exact: true }).boundingBox()).height < 44) fail("card title tap target is shorter than 44px");
+  // Let the attendance query become stale, then refetch it while the write
+  // is held. A changed seat must never clear the independent write lock.
+  await page.waitForTimeout(31_000);
   await cardButton.click();
   // Prove the second click lands WHILE busy: wait for the spinner, then
   // force it (a normal click would wait for the button to free up).
   await cardButton.locator(".animate-spin").waitFor({ timeout: 5_000 });
+  for (let tries = 0; rsvpWrites === 0 && tries < 250; tries++) await page.waitForTimeout(20);
+  if (rsvpWrites !== 1) throw new Error("first card write never reached the held route");
+  let attendanceRefetched = false;
+  await page.route("**/xrpc/social.scenius.getEventAttendance?**", async (route) => {
+    attendanceRefetched = true;
+    await route.fulfill({ json: { mySeat: "confirmed", attendance: "open" } });
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+  await cardButton.getByText("Going", { exact: true }).waitFor({ timeout: 5_000 });
+  if (!attendanceRefetched) fail("attendance did not refetch during the held write");
   await cardButton.click({ force: true });
   await page.waitForTimeout(300);
+  if (rsvpWrites !== 1) fail(`mid-write attendance refetch allowed ${rsvpWrites} writes (including an unintended cancel)`);
+  releaseWrite();
+  await page.unroute("**/xrpc/social.scenius.getEventAttendance?**");
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`a busy click navigated to ${page.url()}`);
   await cardButton.getByText("Going", { exact: true }).waitFor({ timeout: 10_000 });
+  await cardButton.locator(".animate-spin").waitFor({ state: "detached" });
   await page.unroute("**/xrpc/social.scenius.rsvp");
   if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
@@ -217,10 +237,15 @@ try {
     secure: true, httpOnly: true, sameSite: "Lax",
   }]);
   await page.reload({ waitUntil: "networkidle" });
+  await page.getByText("Hosting something during COhere? Propose it for the calendar.", { exact: true }).waitFor();
+  if (await page.getByText(/You don.t need an account/).count()) fail("signed-in member sees accountless copy");
   await page.getByRole("link", { name: "Propose an event" }).first().waitFor();
   if (await page.getByRole("button", { name: "Add an event" }).count()) fail("member was offered direct event creation");
   if (await page.getByRole("button", { name: "Edit", exact: true }).count()) fail("member was offered event editing");
-  ok("ordinary member sees Propose, not Add/Edit/Cancel event");
+  await page.getByRole("button", { name: "En/Es" }).filter({ visible: true }).click();
+  await page.getByText("¿Organizas algo durante COhere? Proponlo para el calendario.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Es/En" }).filter({ visible: true }).click();
+  ok("ordinary member sees bilingual proposal callout, not Add/Edit/Cancel event");
   // Hidden controls are courtesy; a direct write must still be refused.
   const memberWrite = await page.evaluate(async () => {
     const res = await fetch("/xrpc/social.scenius.createEvent", {

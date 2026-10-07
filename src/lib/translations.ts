@@ -1078,6 +1078,10 @@ export const translations = {
     // the header area, not the subscribe/CTA button block another change is
     // touching at the same time.
     proposeCallout: {
+      signedInText: {
+        en: "Hosting something during COhere? Propose it for the calendar.",
+        es: "¿Organizas algo durante COhere? Proponlo para el calendario.",
+      },
       accountPrompt: { en: "Already have an account?", es: "¿Ya tienes cuenta?" },
       signIn: { en: "Sign in", es: "Inicia sesión" },
       text: {

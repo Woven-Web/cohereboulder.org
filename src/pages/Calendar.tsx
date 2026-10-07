@@ -46,6 +46,7 @@ export default function CalendarPage() {
     staleTime: 30_000,
   });
   const canHostCollective = canHostScene(session?.did ?? null, roster);
+  const canCreate = hostingOn && signedIn && Boolean(config?.collectiveDid) && canHostCollective;
 
   /** Which host surface is open: the sign-in panel, the create form, or an edit. */
   const [panel, setPanel] = useState<"none" | "signIn" | "create">("none");
@@ -108,7 +109,7 @@ export default function CalendarPage() {
           {/* A host's create/edit form stays on top: Edit scrolls here. */}
           {hostingOn && signedIn && (panel === "create" || editing) && (
             <div className="mb-10 space-y-4">
-              {panel === "create" && config?.collectiveDid && canHostCollective && (
+              {panel === "create" && config?.collectiveDid && canCreate && (
                 <CommunityEventForm
                   authority={config.collectiveDid}
                   event={null}
@@ -190,10 +191,10 @@ export default function CalendarPage() {
 
           {/* Propose an event: no account needed, lands in the organizers'
               approval queue. */}
-          {!signedIn && <Card className="w-full mx-auto mt-12">
+          {!canCreate && <Card className="w-full mx-auto mt-12">
             <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
               <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
+              <p className="text-sm text-muted-foreground flex-1">{tr(signedIn ? "calendar.proposeCallout.signedInText" : "calendar.proposeCallout.text")}</p>
               <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
                 <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
               </Button>
@@ -215,7 +216,7 @@ export default function CalendarPage() {
                     {/* No collective DID means nothing to create an event
                         under — the form below would never render, so don't
                         offer a button that does nothing. */}
-                    {panel !== "create" && !editing && config?.collectiveDid && canHostCollective && (
+                    {panel !== "create" && !editing && canCreate && (
                       <Button
                         variant="community"
                         size="sm"
