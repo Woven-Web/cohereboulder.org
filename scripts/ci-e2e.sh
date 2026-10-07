@@ -150,10 +150,12 @@ echo "::endgroup::"
 
 # --- 4. rsvp-e2e.mjs: email RSVP, admin list, reminder cron, cancel -------
 # --test-scheduled exposes /cdn-cgi/local/scheduled; local send_email only
-# writes .eml files, so nothing is ever delivered.
+# writes .eml files, so nothing is ever delivered. Explicitly unpause this
+# lane to keep testing reminder delivery while deployed reminders are paused.
 echo "::group::rsvp-e2e (email RSVP + reminder cron lane)"
 start_mock $((28948 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-4.log
 start_worker $((28870 + E2E_PORT_OFFSET)) $((28235 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-4.log --test-scheduled \
+  --var RSVP_REMINDERS_PAUSED:false \
   --var REGENOS_LOGIN_ENABLED:false \
   --var REGENOS_BASE_URL:http://127.0.0.1:$((28948 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene

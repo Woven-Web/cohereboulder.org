@@ -29,6 +29,7 @@
     }
   ],
   "vars": {
+    "RSVP_REMINDERS_PAUSED": "true",
     "PUBLIC_BASE_URL": "https://cohere-signup-staging.unforced.workers.dev",
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",

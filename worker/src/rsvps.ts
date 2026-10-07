@@ -26,6 +26,7 @@ import { isPlaceholder } from "./event-completeness";
 
 export interface RsvpEnv extends AuthEnv, EventsEnv {
   cohere: D1Database;
+  RSVP_REMINDERS_PAUSED?: string;
 }
 
 export const EVENT_TZ = "America/Denver";
@@ -789,6 +790,11 @@ export async function runRsvpCron(
   // after inspecting pending rows, not against the stale snapshot at entry.
   const purge = await env.cohere.prepare(`DELETE FROM event_rsvps WHERE event_starts_at < ?1`).bind(cutoff).run();
   result.deleted = purge.meta?.changes ?? 0;
+  // Aaron's 2026-10-07 pause: keep retention running, leave claims untouched.
+  if (env.RSVP_REMINDERS_PAUSED === "true") {
+    console.info("rsvp reminders paused");
+    return result;
+  }
   result.candidates = due.length;
   if (!due.length) return result;
 
