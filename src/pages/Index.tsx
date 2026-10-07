@@ -1,3 +1,4 @@
+import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,9 @@ import singingCirclePhoto from "@/assets/photos/singing-circle.webp";
 
 const Index = () => {
   const { tr } = useLanguage();
+  const { data: config } = useSiteConfig();
+  const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
+  const signedIn = Boolean(session?.did);
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,8 +73,8 @@ const Index = () => {
                 </p>
                 {/* A week out, registering is the one call to action here; the
                     email-only subscribe lives in the footer. */}
-                <Button asChild size="lg" variant="community" className="w-full">
-                  <Link to="/register">{tr("hero.registerHere")}</Link>
+                <Button asChild size="lg" variant={signedIn ? "outline" : "community"} className="w-full">
+                  <Link to="/register">{tr(signedIn ? "app.registerGathering" : "hero.registerHere")}</Link>
                 </Button>
               </CardContent>
             </Card>

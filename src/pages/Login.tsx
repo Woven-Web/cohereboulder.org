@@ -143,25 +143,29 @@ export default function Login() {
                     <h1 className="text-2xl font-bold text-foreground">
                       {tr("login.chooseHandleTitle")}
                     </h1>
-                    <p className="text-sm text-muted-foreground">{tr("login.chooseHandleBody")}</p>
+                    <p id="handle-hint" className="text-sm text-muted-foreground">{tr("app.handleHint")}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-handle">{tr("login.handleLabel")}</Label>
                     <Input
                       id="signup-handle"
+                      className="min-h-12"
+                      pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                      aria-describedby="handle-hint handle-preview"
                       value={handle}
-                      onChange={(e) => setHandle(e.target.value)}
+                      onChange={(e) => setHandle(e.target.value.toLowerCase())}
                       placeholder="firefly"
                       autoComplete="off"
                       required
                     />
                   </div>
+                  <p id="handle-preview" aria-live="polite" className="font-semibold break-all">@{handle || "firefly"}.scenius.social</p>
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <Button
                     type="submit"
                     variant="community"
                     disabled={stage === "creating"}
-                    className="w-full gap-2"
+                    className="w-full min-h-12 gap-2"
                   >
                     {stage === "creating" && <Loader2 className="h-4 w-4 animate-spin" />}
                     {stage === "creating" ? tr("login.creating") : tr("login.finishButton")}

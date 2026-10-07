@@ -47,18 +47,26 @@ try {
     if (response.status() !== 404) throw new Error(`Unused ${nsid} must return 404`);
   }
   ok("unfinished OAuth endpoints and other unused methods are not advertised or proxied");
+  await page.goto(new URL("/board", target).href, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
+  await page.getByRole("button", { name: "Join COhere", exact: true }).waitFor();
+  ok("signed-out Board shows members-only join gate");
   // ── 1. Anonymous calendar: the sign-in affordance renders ─────────────────
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   const headerLinks = await page.locator("nav").first().getByRole("link").allTextContents();
-  if (!headerLinks[1]?.includes("Calendar")) fail(`Calendar is not the first nav destination: ${headerLinks.join(" | ")}`);
-  if (headerLinks.some((text) => text === "About")) fail("About still occupies the primary navigation");
-  await page.locator("footer").getByRole("link", { name: "About" }).waitFor();
-  ok("Calendar is first in the nav, About lives in the footer");
+  if (!headerLinks[1]?.includes("Events") || !headerLinks[2]?.includes("Board")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
+  for (const width of [768, 800, 1023, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    if (!await page.getByTestId("header-tabs").isVisible()) fail(`Signed-out header tabs hidden at ${width}px`);
+    await page.getByTestId("header-tabs").getByRole("link", { name: "Events" }).getAttribute("aria-current").then(value => { if (value !== "page") fail("Events tab lacks active marker"); });
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  ok("Events and Board follow the logo and remain visible from 768px");
   // A week out, the home hero's only call to action is Register; the
   // email-only subscribe lives in the footer.
   await page.goto(new URL("/", target).toString(), { waitUntil: "networkidle" });
-  const heroRegister = page.getByRole("link", { name: "Register for COhere 2026" }).first();
+  const heroRegister = page.getByRole("link", { name: "Join COhere" }).first();
   await heroRegister.waitFor();
   const hero = page.locator("section", { has: heroRegister }).first();
   const heroEmail = await hero.locator("input[type=email]").count();
@@ -68,14 +76,14 @@ try {
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   // The nav's Sign in opens the same regenOS sign-in in a dialog.
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
-  await page.getByRole("dialog").getByText("Sign in to COhere").waitFor({ timeout: 10_000 });
+  await page.getByRole("dialog").getByText("Sign in or join COhere").waitFor({ timeout: 10_000 });
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("nav Sign in opens the sign-in dialog");
   await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
   // The footer's newsletter form also labels an "Email" input — target by id.
   await page.locator("#regenos-email").fill("new@example.com");
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Email me a link" }).click();
   await page.getByText("Check your email").waitFor({ timeout: 10_000 });
   ok("sign-in panel renders and beginSignup lands on the check-your-email state");
 
@@ -87,13 +95,28 @@ try {
   await page.getByText("Choose your handle").waitFor({ timeout: 10_000 });
   await page.getByLabel("Handle").fill("tester");
   await page.getByRole("button", { name: "Create my account" }).click();
-  await page.getByText("You're signed in!").waitFor({ timeout: 10_000 });
+  await page.waitForURL("**/events", { timeout: 10_000 });
   ok("verifySignup → setSignupProfile → createCustodialAccount completed");
 
   // ── 3. Back on the calendar, the session cookie must have stuck ───────────
   step = "session";
-  await page.getByRole("link", { name: "Go to the calendar" }).click();
-  await page.getByText("Signed in as").waitFor({ timeout: 10_000 });
+  await page.goto(new URL("/", target).href, { waitUntil: "networkidle" });
+  await page.waitForURL("**/events");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("bottom-tabs").getByRole("link", { name: "Board" }).click();
+  await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
+  if (await page.getByRole("button", { name: "Join COhere", exact: true }).count()) fail("signed-in Board still shows join gate");
+  await page.getByTestId("bottom-tabs").getByRole("link", { name: "Events" }).click();
+  await page.waitForURL("**/events");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  for (const width of [768, 800, 1023, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    if (!await page.getByTestId("header-tabs").isVisible()) fail(`Signed-in header tabs hidden at ${width}px`);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+    if (overflow) fail(`Signed-in header overflows at ${width}px`);
+  }
+  ok("sign-in and home land on events; phone tabs switch to the signed-in Board; header tabs remain visible from 768px");
+  await page.getByTestId("nav-handle").first().waitFor({ timeout: 10_000 });
   await page.getByText("tester.mock.test").first().waitFor();
   // The nav's account control shows the same handle once signed in.
   const navHandle = (await page.getByTestId("nav-handle").first().textContent())?.trim();
@@ -302,13 +325,13 @@ try {
   // ── 7. Spanish ────────────────────────────────────────────────────────────
   step = "spanish";
   await page.getByRole("button", { name: "En/Es" }).first().click();
-  await page.getByText("Sesión iniciada como").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Añadir un evento" }).waitFor();
   ok("ES toggle: hosting strings render in Spanish");
 
   // ── 8. Sign out ───────────────────────────────────────────────────────────
   step = "sign out";
-  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await page.getByRole("button", { name: "tester.mock.test", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
   await page.getByRole("button", { name: "Inicia sesión", exact: true }).waitFor({
     timeout: 10_000,
   });
@@ -316,10 +339,24 @@ try {
 
   step = "returning-user redirect";
   await page.goto(new URL("/xrpc/social.scenius.verifyEmail?token=tok-return", target).href);
-  if (page.url() !== new URL("/", target).href) throw new Error("Returning user did not land on this origin");
+  await page.waitForURL(new URL("/events", target).href);
   await page.goto(new URL("/calendar", target).href, { waitUntil: "networkidle" });
-  await page.getByText("Signed in as").waitFor({ timeout: 10_000 });
-  ok("returning-user redirect stays local and installs the session cookie");
+  await page.getByTestId("nav-handle").first().waitFor({ timeout: 10_000 });
+  ok("returning-user redirect stays local, lands on events and installs the session cookie");
+
+  step = "event return path across email-link tabs";
+  await context.request.post(new URL("/xrpc/social.scenius.logout", target).href, { data: {} });
+  const eventReturnPath = "/events/did:plc:mockscene/ev-seed1";
+  await page.goto(new URL(eventReturnPath, target).href, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
+  await page.locator("#regenos-email-dialog").fill("returning@example.test");
+  await page.getByRole("button", { name: "Email me a link" }).click();
+  await page.getByText("Check your email").waitFor();
+  const linkTab = await context.newPage();
+  await linkTab.goto(new URL("/xrpc/social.scenius.verifyEmail?token=tok-return", target).href);
+  await linkTab.waitForURL(url => decodeURIComponent(url.pathname) === eventReturnPath);
+  await linkTab.close();
+  ok("an explicit event return path survives opening the email link in a new tab");
 } catch (error) {
   fail(error.message.split("\n")[0]);
 } finally {

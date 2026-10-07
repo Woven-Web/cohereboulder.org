@@ -2,10 +2,24 @@
 // Add new translations here and use them throughout the app
 
 export const translations = {
+  app: {
+    tabs: { en: "COhere app", es: "Aplicación COhere" },
+    events: { en: "Events", es: "Eventos" },
+    board: { en: "Board", es: "Tablón" },
+    today: { en: "Today", es: "Hoy" },
+    todayBody: { en: "Today and tomorrow in our community", es: "Hoy y mañana en nuestra comunidad" },
+    membersOnly: { en: "Members only", es: "Solo para miembros" },
+    boardTitle: { en: "The COhere Board opens soon", es: "El tablón de COhere abre pronto" },
+    boardBody: { en: "A members-only space for today's practice, today's question, event threads, rides & offers.", es: "Un espacio para miembros con la práctica y la pregunta del día, conversaciones sobre eventos, viajes compartidos y ofrecimientos." },
+    boardGate: { en: "Join COhere to be ready when the Board opens.", es: "Únete a COhere para estar listo cuando abra el tablón." },
+    alreadyJoined: { en: "Already joined?", es: "¿Ya te uniste?" },
+    registerGathering: { en: "Register for the gathering", es: "Regístrate para el encuentro" },
+    handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
+  },
   // Navigation & Common
   nav: {
     about: { en: "About", es: "Quiénes somos" },
-    register: { en: "Register", es: "Registrar" },
+    register: { en: "Join COhere", es: "Únete a COhere" },
     join2025: { en: "Join 2025", es: "Únete 2025" },
     participate: { en: "Co-create", es: "Co-crear" },
     calendar: { en: "Calendar", es: "Calendario" },
@@ -18,11 +32,12 @@ export const translations = {
     signIn: { en: "Sign in", es: "Iniciar sesión" },
     signOut: { en: "Sign out", es: "Cerrar sesión" },
     signedInAs: { en: "Signed in as", es: "Sesión iniciada como" },
+    closeDialog: { en: "Close dialog", es: "Cerrar diálogo" },
     accountMenu: { en: "Your account", es: "Tu cuenta" },
-    signInDialogTitle: { en: "Sign in to COhere", es: "Inicia sesión en COhere" },
+    signInDialogTitle: { en: "Sign in or join COhere", es: "Inicia sesión o únete a COhere" },
     signInDialogBody: {
-      en: "One account for RSVPs, reminders, and hosting events on the community calendar.",
-      es: "Una cuenta para confirmar asistencia, recibir recordatorios y organizar eventos en el calendario comunitario.",
+      en: "A new email creates your free COhere account. Your sign-in link comes from noreply@cohereboulder.org.",
+      es: "Un correo nuevo crea tu cuenta gratuita de COhere. Tu enlace para iniciar sesión llega de noreply@cohereboulder.org.",
     },
     announcement: {
       en: "COhere continues weaving Boulder's resilient community. Join our newsletter to stay connected!",
@@ -65,8 +80,8 @@ export const translations = {
       es: "Este año comenzaremos con un encuentro más profundo e inmersivo durante el primer fin de semana.",
     },
     registerHere: {
-      en: "Register for COhere 2026",
-      es: "Regístrate para COhere 2026",
+      en: "Join COhere",
+      es: "Únete a COhere",
     },
   },
 
@@ -800,20 +815,20 @@ export const translations = {
         es: "Inicia sesión para organizar eventos",
       },
       panelTitle: {
-        en: "Sign in with your COhere account",
-        es: "Inicia sesión con tu cuenta COhere",
+        en: "Sign in or join COhere",
+        es: "Inicia sesión o únete a COhere",
       },
       emailLabel: {
         en: "Email",
         es: "Correo electrónico",
       },
       emailHelp: {
-        en: "We'll email you a sign-in link — no password needed.",
-        es: "Te enviaremos un enlace de acceso por correo — sin contraseña.",
+        en: "A new email creates your free account. Your link comes from noreply@cohereboulder.org.",
+        es: "Un correo nuevo crea tu cuenta gratuita. Tu enlace llega de noreply@cohereboulder.org.",
       },
       continue: {
-        en: "Continue",
-        es: "Continuar",
+        en: "Email me a link",
+        es: "Envíame un enlace",
       },
       checking: {
         en: "Checking…",

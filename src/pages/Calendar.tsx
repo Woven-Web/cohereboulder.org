@@ -12,14 +12,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CalendarPlus, Loader2, LogOut, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { CalendarPlus, Loader2, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
-import { describeWriteError, fetchSceneRoster, signOut, xrpcPost } from "@/lib/regenos";
+import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
-import { fetchCommunityCalendar, type CommunityEvent } from "@/lib/events";
+import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 export default function CalendarPage() {
   const { language } = useLanguage();
@@ -37,8 +37,11 @@ export default function CalendarPage() {
   const { data: config } = useSiteConfig();
   const hostingOn = config?.regenosLoginEnabled === true;
   const { data: session } = useRegenosSession(hostingOn);
-  const invalidateSession = useInvalidateRegenosSession();
   const signedIn = Boolean(session?.did);
+  const today = denverDateKey(new Date().toISOString())!;
+  const tomorrow = denverDateKey(new Date(Date.now() + 86400000).toISOString());
+  const todayEvents = today >= "2026-10-15" && today <= "2026-10-25"
+    ? (data?.events ?? []).filter(event => [today, tomorrow].includes(denverDateKey(event.startsAt))) : [];
   const { data: roster } = useQuery({
     queryKey: ["scene-roster", config?.collectiveDid, session?.did],
     queryFn: () => fetchSceneRoster(config!.collectiveDid!),
@@ -76,17 +79,6 @@ export default function CalendarPage() {
     } finally {
       setDeletingRkey(null);
     }
-  }
-
-  async function handleSignOut() {
-    try {
-      await signOut();
-    } catch {
-      // The cookie may already be gone; re-asking below settles it either way.
-    }
-    setPanel("none");
-    setEditing(null);
-    invalidateSession();
   }
 
   return (
@@ -134,6 +126,15 @@ export default function CalendarPage() {
             </p>
           ) : data?.source === "regenos" ? (
             <>
+              {todayEvents.length > 0 && (
+                <section className="max-w-3xl mx-auto mb-10 space-y-4">
+                  <h2 className="text-2xl font-bold">{tr("app.today")}</h2>
+                  <p>{tr("app.todayBody")}</p>
+                  {todayEvents.map(event => (
+                    <EventCard key={`${event.did}/${event.rkey}`} event={event} />
+                  ))}
+                </section>
+              )}
               <Tabs defaultValue="upcoming" className="max-w-3xl mx-auto">
                 <TabsList className="mx-auto mb-6 grid h-auto w-full grid-cols-2 gap-1 p-1 border border-slate-400">
                   <TabsTrigger className="min-h-11 text-slate-600 data-[state=active]:font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
@@ -206,13 +207,7 @@ export default function CalendarPage() {
             <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
               {signedIn ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      {tr("calendar.host.signedInAs")}{" "}
-                      <span className="font-medium text-foreground">
-                        {session?.handle ?? session?.did}
-                      </span>
-                    </p>
+                  <div className="flex flex-wrap items-center gap-3">
                     {/* No collective DID means nothing to create an event
                         under — the form below would never render, so don't
                         offer a button that does nothing. */}
@@ -230,10 +225,7 @@ export default function CalendarPage() {
                         {tr("calendar.host.addEvent")}
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="min-h-11 gap-2" onClick={handleSignOut}>
-                      <LogOut className="h-4 w-4" />
-                      {tr("calendar.host.signOut")}
-                    </Button>
+
                   </div>
                   {manageError && (
                     <p className="text-sm text-destructive text-center">{manageError}</p>

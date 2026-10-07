@@ -62,7 +62,7 @@ export const EmailSignup = ({ source = "homepage", className }: EmailSignupProps
           aria-hidden="true"
           className="hidden"
         />
-        <Button className="h-11 bg-community-orange bg-none text-accent-foreground hover:bg-community-orange" type="submit" variant="community" disabled={status === "submitting"}>
+        <Button className="h-11 bg-brand-sun bg-none text-accent-foreground hover:bg-brand-sun" type="submit" variant="community" disabled={status === "submitting"}>
           {status === "submitting" ? tr("signup.submitting") : tr("signup.button")}
         </Button>
       </div>
