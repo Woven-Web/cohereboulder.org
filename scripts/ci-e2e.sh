@@ -88,6 +88,20 @@ seed_d1_and_kv() {
 
 fail=0
 
+# --- membership: signed-in registration + existing registrants + retries ---
+seed_d1_and_kv
+start_mock $((28954 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-membership.log
+start_worker $((28900 + E2E_PORT_OFFSET)) $((28238 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-membership.log \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var REGENOS_SERVICE_TOKEN:mock-token
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/membership-e2e.mjs http://127.0.0.1:$((28900 + E2E_PORT_OFFSET)) http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) "$SESSION_TOKEN"; then
+  fail=1
+fi
+cleanup
+PIDS=()
+
 # --- 1. regenos-e2e.mjs: the sign-in + on-site hosting lane ----------------
 echo "::group::regenos-e2e (sign-in lane)"
 start_mock $((28944 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-1.log

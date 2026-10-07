@@ -155,7 +155,7 @@ export async function createEmailRsvp(payload: EmailRsvpPayload): Promise<{ alre
   return { already: body.already === true };
 }
 
-export async function fetchMyRegistration(): Promise<{ registered: boolean | null }> {
+export async function fetchMyRegistration(): Promise<{ registered: boolean | null; email?: string; membership?: "member" | "pending" }> {
   const response = await fetch(`${API_BASE}/api/me/registration`, { credentials: "same-origin", cache: "no-store" });
   if (!response.ok) throw new Error("Registration status unavailable");
   return response.json();

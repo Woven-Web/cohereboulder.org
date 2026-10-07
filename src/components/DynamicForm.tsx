@@ -78,9 +78,11 @@ interface DynamicFormProps {
   intro?: React.ReactNode;
   successTitle?: string;
   successMessage?: string;
+  initialEmail?: string;
+  successExtra?: React.ReactNode;
 }
 
-export const DynamicForm = ({ slug, intro, successTitle, successMessage }: DynamicFormProps) => {
+export const DynamicForm = ({ slug, intro, successTitle, successMessage, initialEmail, successExtra }: DynamicFormProps) => {
   const queryClient = useQueryClient();
   const { language } = useLanguage();
   const spanish = language === "es";
@@ -121,6 +123,10 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
       cancelled = true;
     };
   }, [slug, spanish]);
+
+  useEffect(() => {
+    if (initialEmail && definition) setValues(previous => ({ ...previous, email: initialEmail }));
+  }, [initialEmail, definition]);
 
   const labelFor = (field: FormField) => (spanish && field.label_es ? field.label_es : field.label);
   const introFor = (field: FormField) => (spanish && field.intro_es ? field.intro_es : field.intro);
@@ -222,6 +228,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
                   : "Thanks for registering. We'll be in touch as COhere takes shape.")}
             </p>
           )}
+          {successExtra}
           {completion?.link && isSafeLink(completion.link) && (
             <Button asChild size="lg" variant="community" className="mt-2">
               <a href={completion.link} target="_blank" rel="noreferrer">
@@ -301,6 +308,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
                   <Input
                     id={id}
                     type={field.type}
+                    readOnly={field.key === "email" && Boolean(initialEmail)}
                     required={field.required}
                     value={String(value ?? "")}
                     onChange={(e) => setValue(field.key, e.target.value)}

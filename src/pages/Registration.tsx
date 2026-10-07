@@ -1,4 +1,4 @@
-import { useSiteConfig } from "@/hooks/useRegenos";
+import { useMyRegistration, useSiteConfig } from "@/hooks/useRegenos";
 import { openSignInDialog } from "@/lib/signin";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const Registration = () => {
   const { tr, language } = useLanguage();
   const { data: config } = useSiteConfig();
+  const { data: registration } = useMyRegistration();
   const spanish = language === "es";
 
   return (
@@ -26,9 +27,16 @@ const Registration = () => {
             <p className="text-lg font-medium text-primary">{tr("hero.dates")}</p>
           </div>
 
-          {/* TODO: regenOS getSession exposes only DID/handle; prefill name/email when available. */}
-          {config?.regenosLoginEnabled === true && <p className="text-center">{tr("app.alreadyJoined")} <button className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>{tr("nav.signIn")}</button></p>}
-          <DynamicForm
+          {config?.regenosLoginEnabled === true && !registration?.email && <p className="text-center">{tr("app.alreadyJoined")} <button className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>{tr("nav.signIn")}</button></p>}
+          {registration?.membership === "member" ? (
+            <div className="max-w-2xl mx-auto rounded-lg border bg-card p-8 text-center space-y-4" role="status">
+              <h2 className="text-2xl font-bold">{tr("membership.joined")}</h2>
+              <p>{tr("membership.permanent")}</p>
+              <p className="text-sm text-muted-foreground">{tr("membership.visible")}</p>
+            </div>
+          ) : <DynamicForm
+            initialEmail={registration?.email}
+            successExtra={config?.regenosLoginEnabled === true ? <p>{tr(registration?.email ? "membership.pending" : "membership.signIn")}</p> : undefined}
             slug="register-2026"
             successTitle={spanish ? "¡Estás dentro!" : "You're woven in!"}
             successMessage={
@@ -36,7 +44,7 @@ const Registration = () => {
                 ? "Gracias por registrarte. Te escribiremos a medida que COhere 2026 tome forma, y podrás elegir tu propia aventura desde el calendario comunitario."
                 : "Thanks for registering. We'll be in touch as COhere 2026 takes shape — and you'll be able to choose your own adventure from the community calendar."
             }
-          />
+          />}
         </div>
       </section>
 

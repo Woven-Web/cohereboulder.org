@@ -8,6 +8,13 @@ export const translations = {
       es: "Regístrate para COhere Boulder 2026",
     },
   },
+  membership: {
+    joined: { en: "You're a member of COhere", es: "Eres miembro de COhere" },
+    permanent: { en: "Your COhere membership is permanent. Every event is opt-in.", es: "Tu membresía de COhere es permanente. Cada evento es opcional." },
+    visible: { en: "Visible to everyone in COhere", es: "Visible para todas las personas de COhere" },
+    pending: { en: "You're registered. We'll finish linking your membership the next time you sign in.", es: "Ya estás registrado/a. Terminaremos de vincular tu membresía la próxima vez que inicies sesión." },
+    signIn: { en: "Sign in with your registration email to activate your permanent COhere membership.", es: "Inicia sesión con el correo de tu registro para activar tu membresía permanente de COhere." },
+  },
   app: {
     tabs: { en: "COhere app", es: "Aplicación COhere" },
     events: { en: "Events", es: "Eventos" },

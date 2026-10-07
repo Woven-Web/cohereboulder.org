@@ -152,6 +152,7 @@ export default function Login() {
                       {tr("login.chooseHandleTitle")}
                     </h1>
                     <p id="handle-hint" className="text-sm text-muted-foreground">{tr("app.handleHint")}</p>
+                    <p className="text-sm text-muted-foreground">{tr("membership.visible")}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-handle">{tr("login.handleLabel")}</Label>

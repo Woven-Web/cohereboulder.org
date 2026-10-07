@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import Registration from "./Registration";
 
 const config = vi.hoisted(() => ({ regenosLoginEnabled: false }));
-vi.mock("@/hooks/useRegenos", () => ({ useSiteConfig: () => ({ data: config }) }));
+vi.mock("@/hooks/useRegenos", () => ({ useSiteConfig: () => ({ data: config }), useMyRegistration: () => ({ data: undefined }) }));
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ tr: (key: string) => key, language: "en" }) }));
 vi.mock("@/components/Navigation", () => ({ Navigation: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));

@@ -205,3 +205,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_guest
   ON event_checkins(event_did, event_rkey, guest_did) WHERE guest_did IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins(event_did, event_rkey);
 CREATE INDEX IF NOT EXISTS idx_event_checkins_starts ON event_checkins(event_starts_at);
+-- Local identity link and reconciliation receipt, never the membership authority.
+-- No expiry: joining COhere is permanent. Apply to staging only during review.
+CREATE TABLE IF NOT EXISTS membership_links (
+  person_id TEXT PRIMARY KEY REFERENCES people(id) ON DELETE CASCADE,
+  did TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK(status IN ('pending', 'member')),
+  role TEXT,
+  updated_at TEXT NOT NULL
+);

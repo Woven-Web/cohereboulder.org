@@ -367,3 +367,25 @@ frontend's Supabase dependency was removed entirely. `supabase/` is kept as an
 **archive only** — nothing in it is deployed, maintained, or linted. The project
 originated on Lovable.dev, which explains the `src/components/ui/` shadcn
 scaffolding and some legacy naming.
+
+## Permanent membership on joining
+
+With regenOS login enabled, successful session reads and `register-2026`
+submissions reconcile by the caller's owner-only **verified** contact email.
+The site's steward adds absent accounts with `setMembership(role: "member")`
+(Member = 10); existing roles are left alone. `membership_links` (migration
+0008) stores a DID link and a pending/success receipt, without an expiry.
+Failures preserve sign-in and registration and retry on subsequent sign-in.
+`GET /api/admin/membership/dry-run` is behind the admin session gate and returns
+counts only, without upstream reads or writes. Awaiting sign-in is a potential
+link count, not proof of an existing regenOS account.
+
+The upstream API currently has no conditional-create or placement parameter.
+The local regenOS implementation of setMembership uses public claim placement
+(`space_addr: None`), so the requested scene-member-space placement needs an
+upstream change/confirmation before rollout. The roster check avoids downgrading
+existing roles, but cannot prevent a concurrent external promotion between the
+read and write without an upstream add-only operation. Keep these limitations
+visible in review; do not represent the D1 receipt as the membership authority.
+Staging retains login off and no service token. Migration 0008 is staging-only
+during review; do not apply it to production as part of this PR.

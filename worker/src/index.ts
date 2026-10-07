@@ -1,3 +1,4 @@
+import { reconcileMembership, membershipDryRun } from "./membership";
 // COhere member API + admin portal.
 //
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
@@ -15,7 +16,7 @@ import { handleMyRegistration } from "./registration";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
-import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
+import { handleXrpcProxy, isRegenosLoginEnabled, readVerifiedSessionEmail, type RegenosAuthEnv } from "./regenos-auth";
 // --- admin event + access management (feat/admin-events-access) ---
 import {
   handleAdminAccessInvite,
@@ -291,7 +292,12 @@ export default {
     if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env);
 
     if (path === "/xrpc" || path.startsWith("/xrpc/")) {
-      return handleXrpcProxy(request, env, url);
+      const response = await handleXrpcProxy(request, env, url);
+      if (url.pathname === "/xrpc/social.scenius.getSession" && response.ok) {
+        const session = await response.clone().json() as { did?: string };
+        if (session.did) await reconcileMembership(request, env, session.did).catch(() => {});
+      }
+      return response;
     }
 
     if (request.method === "OPTIONS") {
@@ -665,6 +671,7 @@ export default {
         return json({ error: "not found" }, 404);
       }
 
+      if (request.method === "GET" && path === "/api/admin/membership/dry-run") return membershipDryRun(env);
       if (request.method === "GET" && path === "/api/admin/access") {
         return handleAdminAccessList(env);
       }
@@ -924,7 +931,19 @@ export default {
       if (!form) return json({ error: "unknown form" }, 404, cors);
       if (!form.active) return json({ error: "this form is closed" }, 410, cors);
 
-      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      let email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      let registrationDid: string | undefined;
+      if (formSlug === "register-2026" && isRegenosLoginEnabled(env)) {
+        const sessionUrl = new URL("/xrpc/social.scenius.getSession", request.url);
+        try {
+          const response = await handleXrpcProxy(new Request(sessionUrl, { headers: request.headers }), env, sessionUrl);
+          const session = response.ok ? await response.json() as { did?: string } : {};
+          if (session.did) {
+            const verifiedEmail = await readVerifiedSessionEmail(request, env);
+            if (verifiedEmail) { email = verifiedEmail; registrationDid = session.did; }
+          }
+        } catch { /* Anonymous registration remains available during an outage. */ }
+      }
       if (!EMAIL_RE.test(email) || email.length > 254) {
         return json({ error: "invalid email" }, 400, cors);
       }
@@ -938,6 +957,11 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
+      let membership;
+      if (registrationDid) {
+        try { membership = (await reconcileMembership(request, env, registrationDid)).membership; }
+        catch { /* Registration and sign-in survive unavailable membership. */ }
+      }
 
       // Confirmation mail, if this form defines one. Copy lives in the
       // database alongside the questions, so it is editable without a deploy.
@@ -978,7 +1002,7 @@ export default {
           .run();
       }
 
-      return json({ ok: true }, 200, cors);
+      return json({ ok: true, membership }, 200, cors);
     }
 
     // Legacy "stay in the loop" capture. Writes D1 and KV so nothing is lost

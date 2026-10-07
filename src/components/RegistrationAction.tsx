@@ -18,7 +18,7 @@ export const RegistrationAction = forwardRef<HTMLElement, Props>(function Regist
       className={cn(props.className, "items-center justify-center gap-2 border-0 rounded-full w-fit h-auto min-h-0 mx-auto px-3 py-1 bg-secondary text-secondary-foreground shadow-none cursor-default hover:bg-secondary hover:text-secondary-foreground hover:shadow-none hover:scale-100")}
     >
       <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
-      {tr("app.registered")}
+      {tr(data.membership === "member" ? "membership.joined" : "app.registered")}
     </span>
   );
   const quiet = Boolean(session?.did) && data?.registered !== false;
