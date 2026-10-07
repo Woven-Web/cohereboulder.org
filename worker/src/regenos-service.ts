@@ -879,7 +879,7 @@ export async function ensureCollectiveMember(env: RegenosServiceEnv, did: string
   if (!roster.ok || !Array.isArray(roster.data.members)) throw new Error("Roster unavailable");
   const existing = roster.data.members.find(member => member.did === did);
   if (existing) {
-    if (!existing.role || !(existing.role in ROLE_CLAIM)) throw new Error("Unknown membership role");
+    if (!existing.role || !Object.prototype.hasOwnProperty.call(ROLE_CLAIM, existing.role)) throw new Error("Unknown membership role");
     return existing.role;
   }
   const write = await writeXrpc<Record<string, unknown>>(base, token, "social.scenius.setMembership", { scene, member: did, role: "member" }, "setMembership");

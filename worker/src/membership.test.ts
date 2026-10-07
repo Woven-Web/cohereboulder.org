@@ -47,8 +47,8 @@ it("does not write for unregistered, unverified or disabled accounts", async () 
   await reconcileMembership(request, { ...env(), REGENOS_LOGIN_ENABLED: "false" } as never, "did:plc:me");
   expect(fetch).not.toHaveBeenCalled();
 });
-it("fails closed on unreadable rosters and unknown roles", async () => {
-  mock("unknown");
+it.each(["unknown", "constructor"])("fails closed on unknown role %s", async role => {
+  mock(role);
   expect(await reconcileMembership(request, env() as never, "did:plc:me")).toMatchObject({ membership: "pending" });
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("setMembership"))).toBe(false);
 });
