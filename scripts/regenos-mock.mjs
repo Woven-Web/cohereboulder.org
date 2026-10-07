@@ -301,6 +301,10 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    case "social.scenius.getMyContactPref": {
+      return json(res, signedIn ? 200 : 401, { channels: [] });
+    }
+
     case "social.scenius.getSession": {
       const headers = [
         ["x-mock-saw-origin", req.headers.origin ?? "(none)"],

@@ -19,11 +19,13 @@ export const translations = {
     boardBody: { en: "A members-only space for today's practice, today's question, event threads, rides & offers.", es: "Un espacio para miembros con la práctica y la pregunta del día, conversaciones sobre eventos, viajes compartidos y ofrecimientos." },
     boardGate: { en: "Join COhere to be ready when the Board opens.", es: "Únete a COhere para estar listo cuando abra el tablón." },
     alreadyJoined: { en: "Already joined?", es: "¿Ya te uniste?" },
+    registered: { en: "You’re registered", es: "Ya estás registrado/a" },
     registerGathering: { en: "Register for the gathering", es: "Regístrate para el encuentro" },
     handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
   },
   // Navigation & Common
   nav: {
+    home: { en: "Home", es: "Inicio" },
     about: { en: "About", es: "Quiénes somos" },
     register: { en: "Join COhere", es: "Únete a COhere" },
     join2025: { en: "Join 2025", es: "Únete 2025" },

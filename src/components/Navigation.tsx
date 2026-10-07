@@ -1,3 +1,4 @@
+import { RegistrationAction } from "@/components/RegistrationAction";
 import { AppTabs } from "@/components/AppTabs";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { useState } from "react";
@@ -44,7 +45,7 @@ export const Navigation = () => {
             {/* Desktop Navigation */}
             <AppTabs />
             <div className="ml-auto flex items-center gap-1 md:gap-4">
-              {[{ href: "/home", label: tr("nav.about") }].map((item) => (
+              {[{ href: "/", label: tr("nav.home") }].map((item) => (
                 <Link
                   key={item.href}
                   to={item.href}
@@ -60,7 +61,7 @@ export const Navigation = () => {
 
               {/* Register - the primary action for anyone new */}
               <Button asChild variant={signedIn ? "outline" : "community"} size="sm" className="hidden xl:inline-flex min-h-11">
-                <Link to="/register">{tr(signedIn ? "app.registerGathering" : "nav.register")}</Link>
+                <RegistrationAction />
               </Button>
 
               {/* Sign in / account (regenOS) — only when the lane is on */}
@@ -100,7 +101,7 @@ export const Navigation = () => {
           {isMenuOpen && (
             <div className="xl:hidden bg-background border-t border-border">
               <div className="px-2 pt-2 pb-3 space-y-1">
-                {(signedIn ? [{ href: "/home", label: tr("nav.about") }] : [{ href: "/home", label: tr("nav.about") }, ...navItems]).map((item) => (
+                {(signedIn ? [{ href: "/", label: tr("nav.home") }] : [{ href: "/", label: tr("nav.home") }, ...navItems]).map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
@@ -117,9 +118,7 @@ export const Navigation = () => {
                 
                 {/* Register - Mobile */}
                 <Button asChild variant={signedIn ? "outline" : "community"} className="min-h-11 mx-3 mt-2">
-                  <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-                    {tr(signedIn ? "app.registerGathering" : "nav.register")}
-                  </Link>
+                  <RegistrationAction onClick={() => setIsMenuOpen(false)} />
                 </Button>
 
                 <div className="flex flex-col">

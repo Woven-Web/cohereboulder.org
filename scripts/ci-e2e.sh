@@ -95,6 +95,9 @@ start_worker $((28789 + E2E_PORT_OFFSET)) $((28229 + E2E_PORT_OFFSET)) /tmp/ci-e
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:$((28944 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/home-registration-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); then
+  fail=1
+fi
 if ! node scripts/share-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); then
   fail=1
 fi

@@ -1,3 +1,4 @@
+import { RegistrationAction } from "@/components/RegistrationAction";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -74,7 +75,7 @@ const Index = () => {
                 {/* A week out, registering is the one call to action here; the
                     email-only subscribe lives in the footer. */}
                 <Button asChild size="lg" variant={signedIn ? "outline" : "community"} className="w-full">
-                  <Link to="/register">{tr(signedIn ? "app.registerGathering" : "hero.registerHere")}</Link>
+                  <RegistrationAction anonymousKey="hero.registerHere" />
                 </Button>
               </CardContent>
             </Card>
