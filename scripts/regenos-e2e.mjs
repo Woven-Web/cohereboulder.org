@@ -40,6 +40,37 @@ page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 
 try {
+  // Session appearance must preserve the page where the dialog opened.
+  // Stub only the session read: these routing checks make no auth writes.
+  for (const path of ["/register", "/join/abc", "/board", "/"]) {
+    const routingContext = await browser.newContext();
+    try {
+      const routingPage = await routingContext.newPage();
+      let signedIn = false;
+      await routingPage.route("**/xrpc/social.scenius.getSession", route => route.fulfill({
+        json: signedIn ? { did: "did:plc:routing", handle: "routing.mock.test", kind: "user" } : {},
+      }));
+      await routingPage.route("**/xrpc/social.scenius.beginSignup", route => route.fulfill({
+        json: { stage: "checkEmail", returningUser: true },
+      }));
+      await routingPage.goto(new URL(path, target).href, { waitUntil: "networkidle" });
+      await routingPage.getByRole("button", { name: "Sign in", exact: true }).first().click();
+      const saved = await routingPage.evaluate(() => localStorage.getItem("cohere:returnTo"));
+      if (saved !== path) throw new Error(`Dialog did not save ${path}: ${saved}`);
+      const dialog = routingPage.getByRole("dialog");
+      await dialog.getByLabel("Email").fill("routing@example.test");
+      await dialog.getByRole("button", { name: "Email me a link" }).click();
+      signedIn = true;
+      await dialog.getByRole("button", { name: /I've clicked|clicked the link/i }).click();
+      await routingPage.getByTestId("nav-handle").first().waitFor();
+      const expected = path === "/" ? "/events" : path;
+      await routingPage.waitForURL(new URL(expected, target).href);
+      if (new URL(routingPage.url()).pathname !== expected) throw new Error(`Sign-in left ${path}`);
+      ok(`sign-in on ${path} lands on ${expected}`);
+    } finally {
+      await routingContext.close();
+    }
+  }
   const metadata = await context.request.get(new URL("/oauth-client-metadata.json", target).href);
   if (metadata.status() !== 404) throw new Error("Unimplemented OAuth metadata must return 404");
   for (const nsid of ["beginOAuth", "oauthCallback", "respondToRequest"]) {
@@ -95,7 +126,7 @@ try {
   await page.getByText("Choose your handle").waitFor({ timeout: 10_000 });
   await page.getByLabel("Handle").fill("tester");
   await page.getByRole("button", { name: "Create my account" }).click();
-  await page.waitForURL("**/events", { timeout: 10_000 });
+  await page.waitForURL("**/calendar", { timeout: 10_000 });
   ok("verifySignup → setSignupProfile → createCustodialAccount completed");
 
   // ── 3. Back on the calendar, the session cookie must have stuck ───────────

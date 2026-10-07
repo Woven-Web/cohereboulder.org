@@ -41,8 +41,8 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setError(null);
     try {
-      const path = window.location.pathname + window.location.search;
-      if (path.startsWith("/events/")) localStorage.setItem("cohere:returnTo", path);
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      localStorage.setItem("cohere:returnTo", path);
       const result = await beginSignup(email);
       if (result.stage === "login") {
         // Returning user whose session regenOS trusted immediately — no

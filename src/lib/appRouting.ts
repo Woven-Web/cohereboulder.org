@@ -1,5 +1,9 @@
 export function safeReturnPath(path: string | null): string | null {
-  return path && path.startsWith("/") && !path.startsWith("//") && !["/", "/login"].includes(path.split("?")[0]) ? path : null;
+  if (!path || !path.startsWith("/") || path.startsWith("//") || Array.from(path).some((char) => char === "\\" || char.charCodeAt(0) <= 32)) return null;
+  const base = "https://cohere.invalid";
+  const url = new URL(path, base);
+  if (url.origin !== base || ["/", "/login"].includes(url.pathname)) return null;
+  return url.pathname + url.search + url.hash;
 }
 export function signInDestination(path: string | null): string {
   return safeReturnPath(path) ?? "/events";
@@ -8,6 +12,7 @@ export function activeAppTab(path: string): "events" | "board" | null {
   return path === "/board" ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" ? "events" : null;
 }
 
-export function shouldRedirectToApp(signedIn: boolean, previousSignedIn: boolean | undefined, pathname: string): boolean {
-  return signedIn && (pathname === "/" || pathname === "/login" || (previousSignedIn === false && !pathname.startsWith("/events/")));
+// The /login wizard navigates only after completing the handle step.
+export function shouldRedirectToApp(signedIn: boolean, pathname: string): boolean {
+  return signedIn && pathname === "/";
 }

@@ -14,7 +14,7 @@
 // answers 404 — which renders as the same honest "invalid link" screen.
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 // /admin is the Worker's own self-contained HTML page, outside the SPA's
 // routes entirely (see CLAUDE.md's architecture diagram) — a client-side
 // <Link>/navigate to it would just render this app's own 404 instead of
@@ -30,10 +30,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useInvalidateRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { createCustodialAccount, setSignupProfile, verifySignupToken } from "@/lib/regenos";
 
+import { signInDestination } from "@/lib/appRouting";
+
 type Stage = "verifying" | "chooseHandle" | "creating" | "done" | "invalid";
 
 export default function Login() {
   const { tr } = useLanguage();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const invalidateSession = useInvalidateRegenosSession();
   const { data: config } = useSiteConfig();
@@ -82,8 +85,10 @@ export default function Login() {
       await setSignupProfile(handle.trim());
       await createCustodialAccount();
       // The session cookie just landed; tell the rest of the app to re-ask.
-      invalidateSession();
-      setStage("done");
+      await invalidateSession();
+      const destination = signInDestination(params.get("returnTo") ?? localStorage.getItem("cohere:returnTo"));
+      localStorage.removeItem("cohere:returnTo");
+      navigate(destination, { replace: true });
     } catch (err) {
       // A taken handle (upstream 409) or a validation 400 — say what upstream
       // said and let the person pick again.

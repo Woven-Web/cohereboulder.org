@@ -114,7 +114,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
         {tr("nav.signIn")}
       </Button>
     ) : (
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={openSignInDialog}>
         {tr("nav.signIn")}
       </Button>
     );
