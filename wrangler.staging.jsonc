@@ -1,0 +1,46 @@
+// Isolated staging. No mail transport, secrets, cron, or custom domains.
+{
+  "name": "cohere-signup-staging",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-06-09",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [],
+  "triggers": {
+    "crons": []
+  },
+  "kv_namespaces": [
+    {
+      "binding": "SIGNUPS",
+      "id": "382410221ec54128bbd1391d904e42b9"
+    },
+    {
+      "binding": "COHERE_AUTH",
+      "id": "e7c53df6f1ac45d49f2cd65da3097b74"
+    }
+  ],
+  "vars": {
+    "PUBLIC_BASE_URL": "https://cohere-signup-staging.unforced.workers.dev",
+    "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
+    "REGENOS_BASE_URL": "https://scenius.social",
+    "REGENOS_WEB_URL": "https://scenius.social",
+    "REGENOS_LOGIN_ENABLED": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "cohere",
+      "database_name": "cohere-staging",
+      "database_id": "a1233d5f-63fc-4fff-945b-1f59d042601a",
+      "migrations_dir": "worker/migrations"
+    }
+  ]
+}
