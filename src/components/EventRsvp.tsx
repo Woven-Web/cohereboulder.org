@@ -122,6 +122,7 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
           </Button>
         </>
       )}
+      <p className="text-sm text-muted-foreground">{tr("membership.visible")}</p>
       {(mutation.isError || isError) && <p className="text-sm text-destructive">{tr("calendar.rsvp.error")}</p>}
     </div>
   );

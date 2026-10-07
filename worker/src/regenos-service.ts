@@ -865,3 +865,24 @@ export async function handleAdminAccessRevoke(
   if (!upstream.ok && upstream.response.status !== 404) return upstream.response;
   return json({ ok: true }, 200);
 }
+
+/** Add only absent members. An unreadable/unknown roster fails closed, so
+ * roles present in the observed roster are never rewritten. Atomic
+ * protection against concurrent external promotions requires upstream support. The wire enum member = 10;
+ * setMembership authors the claim as the collective. Placement is controlled
+ * upstream; the current API offers no placement or conditional-create field.
+ */
+export async function ensureCollectiveMember(env: RegenosServiceEnv, did: string): Promise<string> {
+  const base = baseUrl(env), scene = collectiveDid(env), token = serviceToken(env);
+  if (!base || !scene || !token) throw new Error("Membership unavailable");
+  const roster = await fetchRoster(base, token, scene);
+  if (!roster.ok || !Array.isArray(roster.data.members)) throw new Error("Roster unavailable");
+  const existing = roster.data.members.find(member => member.did === did);
+  if (existing) {
+    if (!existing.role || !(existing.role in ROLE_CLAIM)) throw new Error("Unknown membership role");
+    return existing.role;
+  }
+  const write = await writeXrpc<Record<string, unknown>>(base, token, "social.scenius.setMembership", { scene, member: did, role: "member" }, "setMembership");
+  if (!write.ok) throw new Error("Membership write failed");
+  return "member";
+}

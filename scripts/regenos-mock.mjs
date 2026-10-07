@@ -209,6 +209,8 @@ const mySeats = new Map();
 
 /** What the last proposeInvite carried, for the e2e script to inspect. */
 let lastInvite = null;
+let membershipFixture = null;
+let membershipWrites = 0;
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
@@ -267,10 +269,9 @@ const server = http.createServer(async (req, res) => {
       if (!asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
       const input = await readBody(req);
       const existing = members.get(input.member);
-      if (!existing) {
-        return json(res, 404, { error: "NotFound", message: "that person is not a member" });
-      }
-      members.set(input.member, { ...existing, role: input.role });
+      membershipWrites++;
+      if (membershipFixture?.fail) return json(res, 503, { error: "Unavailable" });
+      members.set(input.member, { did: input.member, ...existing, role: input.role });
       return json(res, 200, { ok: true, role: input.role });
     }
 
@@ -302,7 +303,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     case "social.scenius.getMyContactPref": {
-      return json(res, signedIn ? 200 : 401, { channels: [] });
+      return json(res, signedIn ? 200 : 401, { channels: membershipFixture?.email ? [{ kind: "email", address: membershipFixture.email, verified: membershipFixture.verified !== false }] : [] });
     }
 
     case "social.scenius.getSession": {
@@ -445,6 +446,15 @@ const server = http.createServer(async (req, res) => {
 
     // A peephole for the e2e script: what the last proposeInvite actually
     // carried upstream. Not an AppView method — deliberately outside /xrpc.
+    case "/__membership": {
+      if (req.method === "POST") {
+        membershipFixture = await readBody(req);
+        membershipWrites = 0;
+        if (membershipFixture.role) members.set(USER_DID, { did: USER_DID, handle: USER_HANDLE, role: membershipFixture.role });
+        else members.delete(USER_DID);
+      }
+      return json(res, 200, { writes: membershipWrites, role: members.get(USER_DID)?.role ?? null });
+    }
     case "/__lastInvite": {
       return json(res, 200, lastInvite ?? {});
     }

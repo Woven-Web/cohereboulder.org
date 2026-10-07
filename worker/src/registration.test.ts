@@ -1,8 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 vi.hoisted(() => { vi.stubGlobal("caches", { default: { delete: vi.fn() } }); });
+vi.mock("./regenos-service", () => ({ ensureCollectiveMember: vi.fn() }));
 import { handleMyRegistration } from "./registration";
 const first = vi.fn();
-const bind = vi.fn(() => ({ first }));
+const run = vi.fn();
+const bind = vi.fn(() => ({ first, run }));
 const prepare = vi.fn(() => ({ bind }));
 const env = { REGENOS_LOGIN_ENABLED: "true", REGENOS_BASE_URL: "https://regen.test", cohere: { prepare } };
 const request = () => new Request("https://cohere.test/api/me/registration?email=other@test.com", { headers: { Cookie: "__Host-rs_session=mine; cohere_session=private" } });
@@ -14,9 +16,9 @@ function session(data: { did?: string; email?: string; emailVerified?: boolean }
 }
 it.each([true, false])("returns only the caller's registration: %s", async (registered) => {
   session({ did: "did:plc:me", email: " Verified@Test.com " });
-  first.mockResolvedValue(registered ? { "1": 1 } : null);
+  first.mockResolvedValue(registered ? { id: "p" } : null);
   const response = await handleMyRegistration(request(), env as never);
-  expect(await response.json()).toEqual({ registered });
+  expect(await response.json()).toMatchObject({ registered, email: "verified@test.com" });
   expect(bind).toHaveBeenCalledWith("verified@test.com");
   expect(prepare.mock.calls[0][0]).toContain("register-2026");
   expect(response.headers.get("Cache-Control")).toBe("no-store");
