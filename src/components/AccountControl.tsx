@@ -71,7 +71,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
       return (
         <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
           <span className="min-w-0 text-sm text-muted-foreground">
-            {tr("nav.signedInAs")} <span className="font-medium text-foreground break-all" data-testid="nav-handle">{who}</span>
+            {tr("nav.signedInAs")} <span className="inline-block max-w-full font-medium text-foreground break-all" data-testid="nav-handle">{who}</span>
           </span>
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1 shrink-0">
             <LogOut className="h-4 w-4" aria-hidden />

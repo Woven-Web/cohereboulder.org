@@ -9,6 +9,8 @@ const browser = await chromium.launch();
 try {
   for (const registered of [true, false, null]) {
     const context = await browser.newContext();
+    // Keep the home page check hermetic: embedded films are not under test.
+    await context.route("https://www.youtube.com/**", r => r.fulfill({ contentType: "text/html", body: "" }));
     const page = await context.newPage();
     await page.route("**/xrpc/social.scenius.getSession", r => r.fulfill({ json: { did: "did:plc:fixture", handle: "fixture.scenius.social" } }));
     await page.route("**/api/me/registration", r => r.fulfill({ json: { registered } }));

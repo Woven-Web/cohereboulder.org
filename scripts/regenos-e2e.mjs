@@ -35,7 +35,13 @@ function fail(message) {
 }
 
 const browser = await chromium.launch();
-const context = await browser.newContext();
+async function localContext() {
+  const ctx = await browser.newContext();
+  // The home page embeds films; external video loading is not under test.
+  await ctx.route("https://www.youtube.com/**", route => route.fulfill({ contentType: "text/html", body: "" }));
+  return ctx;
+}
+const context = await localContext();
 const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
@@ -66,14 +72,14 @@ try {
   // Real sign-in/cookie behavior remains covered by the mock wizard below.
   const shots = process.env.HANDLES_SHOTS_DIR;
   if (shots) await mkdir(shots, { recursive: true });
-  const displayContext = await browser.newContext();
+  const displayContext = await localContext();
   try {
     const displayPage = await displayContext.newPage();
     await displayPage.route("**/xrpc/social.scenius.getSession", route => route.fulfill({
       json: { did: "did:plc:display", handle: "aaron.scenius.social", kind: "user" },
     }));
     await displayPage.route("**/api/me/registration", route => route.fulfill({ json: { registered: null } }));
-    await displayPage.route("**/api/events/did:plc:mockscene/ev-seed1", async route => {
+    await displayPage.route("**/api/events/*/ev-seed1", async route => {
       const response = await route.fetch();
       const data = await response.json();
       data.event.hostName = "host.scenius.social";
@@ -115,7 +121,7 @@ try {
   // Session appearance must preserve the page where the dialog opened.
   // Stub only the session read: these routing checks make no auth writes.
   for (const path of ["/register", "/join/abc", "/board", "/"]) {
-    const routingContext = await browser.newContext();
+    const routingContext = await localContext();
     try {
       const routingPage = await routingContext.newPage();
       let signedIn = false;
