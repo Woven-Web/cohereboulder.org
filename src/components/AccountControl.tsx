@@ -84,7 +84,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-1.5 min-h-11" aria-label={who} title={who}>
             <UserRound className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="hidden md:inline-block max-w-[24ch] truncate" data-testid="nav-handle">{who}</span>
+            <span className="hidden xl:inline-block max-w-[24ch] truncate" data-testid="nav-handle">{who}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)]">

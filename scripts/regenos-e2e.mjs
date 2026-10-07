@@ -39,6 +39,27 @@ const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 
+async function checkHeaderLayout(signedIn) {
+  for (const language of ["en", "es"]) {
+    if (language === "es") await page.getByRole("button", { name: "En/Es", exact: true }).click();
+    for (const width of [768, 800, 900, 1023, 1067, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.evaluate(() => document.fonts.ready);
+      if (!await page.getByTestId("header-tabs").isVisible()) fail(`Header tabs hidden: signedIn=${signedIn}, ${language}, ${width}px`);
+      const overflow = await page.evaluate(() => {
+        const nav = document.querySelector("nav");
+        return document.documentElement.scrollWidth > innerWidth || [...nav.querySelectorAll("a, button")].some(el => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < 0 || rect.right > innerWidth - 16);
+        });
+      });
+      if (overflow) fail(`Header overflows or lacks margin: signedIn=${signedIn}, ${language}, ${width}px`);
+    }
+  }
+  await page.getByRole("button", { name: "Es/En", exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 800 });
+}
+
 try {
   // Session appearance must preserve the page where the dialog opened.
   // Stub only the session read: these routing checks make no auth writes.
@@ -87,12 +108,8 @@ try {
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   const headerLinks = await page.locator("nav").first().getByRole("link").allTextContents();
   if (!headerLinks[1]?.includes("Events") || !headerLinks[2]?.includes("Board")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
-  for (const width of [768, 800, 1023, 1280]) {
-    await page.setViewportSize({ width, height: 844 });
-    if (!await page.getByTestId("header-tabs").isVisible()) fail(`Signed-out header tabs hidden at ${width}px`);
-    await page.getByTestId("header-tabs").getByRole("link", { name: "Events" }).getAttribute("aria-current").then(value => { if (value !== "page") fail("Events tab lacks active marker"); });
-  }
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await checkHeaderLayout(false);
+  if (await page.getByTestId("header-tabs").getByRole("link", { name: "Events" }).getAttribute("aria-current") !== "page") fail("Events tab lacks active marker");
   ok("Events and Board follow the logo and remain visible from 768px");
   // A week out, the home hero's only call to action is Register; the
   // email-only subscribe lives in the footer.
@@ -140,12 +157,7 @@ try {
   await page.getByTestId("bottom-tabs").getByRole("link", { name: "Events" }).click();
   await page.waitForURL("**/events");
   await page.setViewportSize({ width: 1280, height: 800 });
-  for (const width of [768, 800, 1023, 1280]) {
-    await page.setViewportSize({ width, height: 800 });
-    if (!await page.getByTestId("header-tabs").isVisible()) fail(`Signed-in header tabs hidden at ${width}px`);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-    if (overflow) fail(`Signed-in header overflows at ${width}px`);
-  }
+  await checkHeaderLayout(true);
   ok("sign-in and home land on events; phone tabs switch to the signed-in Board; header tabs remain visible from 768px");
   await page.getByTestId("nav-handle").first().waitFor({ timeout: 10_000 });
   await page.getByText("tester.mock.test").first().waitFor();

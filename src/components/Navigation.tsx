@@ -36,7 +36,7 @@ export const Navigation = () => {
                   className="w-12 max-w-none"
                 />
               </span>
-              <span data-testid="header-wordmark" className="text-sm md:text-xl font-bold text-brand-deep">
+              <span data-testid="header-wordmark" className="hidden min-[900px]:inline text-xl font-bold text-brand-deep">
                 [CO]here
               </span>
             </Link>
@@ -48,7 +48,7 @@ export const Navigation = () => {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`hidden lg:flex min-h-11 items-center transition-colors duration-300 font-medium ${
+                  className={`hidden xl:flex min-h-11 items-center transition-colors duration-300 font-medium ${
                     location.pathname === item.href
                       ? "text-primary border-b-2 border-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -59,7 +59,7 @@ export const Navigation = () => {
               ))}
 
               {/* Register - the primary action for anyone new */}
-              <Button asChild variant={signedIn ? "outline" : "community"} size="sm" className="hidden lg:inline-flex min-h-11">
+              <Button asChild variant={signedIn ? "outline" : "community"} size="sm" className="hidden xl:inline-flex min-h-11">
                 <Link to="/register">{tr(signedIn ? "app.registerGathering" : "nav.register")}</Link>
               </Button>
 
@@ -78,7 +78,7 @@ export const Navigation = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="lg:hidden flex items-center">
+            <div className="xl:hidden flex items-center">
               <Button
                 variant="ghost"
                 size="icon"
@@ -98,9 +98,9 @@ export const Navigation = () => {
 
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="lg:hidden bg-background border-t border-border">
+            <div className="xl:hidden bg-background border-t border-border">
               <div className="px-2 pt-2 pb-3 space-y-1">
-                {(signedIn ? [{ href: "/home", label: tr("nav.about") }] : navItems).map((item) => (
+                {(signedIn ? [{ href: "/home", label: tr("nav.about") }] : [{ href: "/home", label: tr("nav.about") }, ...navItems]).map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
