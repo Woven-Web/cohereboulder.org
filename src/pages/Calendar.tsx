@@ -16,7 +16,7 @@ import { Link } from "react-router-dom";
 import { CalendarPlus, Loader2, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
@@ -39,6 +39,7 @@ export default function CalendarPage() {
   const hostingOn = config?.regenosLoginEnabled === true;
   const { data: session } = useRegenosSession(hostingOn);
   const signedIn = Boolean(session?.did);
+  const { data: registration } = useMyRegistration();
   const today = denverDateKey(new Date().toISOString())!;
   const tomorrow = denverDateKey(new Date(Date.now() + 86400000).toISOString());
   const todayEvents = today >= "2026-10-15" && today <= "2026-10-25"
@@ -209,7 +210,7 @@ export default function CalendarPage() {
               {signedIn ? (
                 <>
                   <div className="flex flex-wrap items-center gap-3">
-                    <RegistrationAction />
+                    {!registration?.registered && <RegistrationAction />}
                     {/* No collective DID means nothing to create an event
                         under — the form below would never render, so don't
                         offer a button that does nothing. */}

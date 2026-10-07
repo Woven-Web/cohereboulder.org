@@ -21,13 +21,35 @@ try {
         if (registered) {
           await page.locator('main [role="status"]').first().waitFor();
           assert.equal(await page.locator('a[href="/register"]').count(), 0);
+          for (const badge of await page.locator('[role="status"]').all()) {
+            const result = await badge.evaluate(el => {
+              const style = getComputedStyle(el);
+              const luminance = color => {
+                const c = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => {
+                  v /= 255;
+                  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+                });
+                return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
+              };
+              const a = luminance(style.color), b = luminance(style.backgroundColor);
+              return { contrast: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+                border: style.borderWidth, tabIndex: el.tabIndex, check: Boolean(el.querySelector('svg')) };
+            });
+            assert.ok(result.contrast >= 4.5, `Status contrast: ${result.contrast}`);
+            assert.equal(result.border, '0px');
+            assert.equal(result.tabIndex, -1);
+            assert.ok(result.check);
+          }
         } else {
           assert.ok(await page.locator('main a[href="/register"]').count());
         }
         if (shots && registered !== null) await page.screenshot({ path: `${shots}/home-${width}-${language}-${registered ? "registered" : "unregistered"}.png` });
         await page.goto(`${target}/events`, { waitUntil: "networkidle" });
         if (language === "es") await page.getByRole("button", { name: "En/Es", exact: true }).click();
-        if (registered) assert.equal(await page.locator('a[href="/register"]').count(), 0);
+        if (registered) {
+          assert.equal(await page.locator('a[href="/register"]').count(), 0);
+          assert.equal(await page.locator('main [role="status"]').count(), 0);
+        }
         else assert.ok(await page.locator('a[href="/register"]').count());
         if (shots && registered !== null) await page.screenshot({ fullPage: true, path: `${shots}/events-${width}-${language}-${registered ? "registered" : "unregistered"}.png` });
         await page.getByRole("link", { name: "[CO]here", exact: true }).click();

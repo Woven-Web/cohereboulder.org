@@ -8,7 +8,13 @@ import { RegistrationAction } from "./RegistrationAction";
 it.each([true, false, null])("renders registration state %s", registered => {
   state.registered = registered;
   const html = renderToStaticMarkup(<MemoryRouter><RegistrationAction className="button-style" /></MemoryRouter>);
-  if (registered !== null) expect(html).toContain('class="button-style"');
+  if (registered === false) expect(html).toContain('class="button-style"');
+  else if (registered) {
+    expect(html).toContain('role="status"');
+    expect(html).toContain("border-0");
+    expect(html).toContain("lucide-check");
+    expect(html).not.toContain("tabindex");
+  }
   else expect(html).toContain("text-muted-foreground");
   expect(html.includes('href="/register"')).toBe(registered !== true);
   expect(html).toContain(registered ? "app.registered" : registered === false ? "app.registerGathering" : "nav.register");
