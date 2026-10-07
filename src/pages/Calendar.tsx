@@ -1,3 +1,4 @@
+import { RegistrationAction } from "@/components/RegistrationAction";
 import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -208,6 +209,7 @@ export default function CalendarPage() {
               {signedIn ? (
                 <>
                   <div className="flex flex-wrap items-center gap-3">
+                    <RegistrationAction />
                     {/* No collective DID means nothing to create an event
                         under — the form below would never render, so don't
                         offer a button that does nothing. */}

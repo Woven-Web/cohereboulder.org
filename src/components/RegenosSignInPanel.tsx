@@ -1,3 +1,4 @@
+import { fetchMyRegistration } from "@/lib/api";
 // The COhere-account sign-in panel (regenOS magic link), shown on the
 // calendar page when the lane is on and the browser is anonymous.
 //
@@ -14,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, MailCheck } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { beginSignup } from "@/lib/regenos";
+import { beginSignup, fetchRegenosSession } from "@/lib/regenos";
 import { signInDestination } from "@/lib/appRouting";
 import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
 
@@ -47,7 +48,8 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
       if (result.stage === "login") {
         // Returning user whose session regenOS trusted immediately — no
         // inbox round-trip; the cookie just landed with the response.
-        const destination = signInDestination(localStorage.getItem("cohere:returnTo"));
+        const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
+        const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
         localStorage.removeItem("cohere:returnTo");
         navigate(destination, { replace: true });
         invalidateSession();
@@ -84,7 +86,15 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
               in the moment it's clicked, a new user's opens the wizard — this
               button just re-asks who we are for people who clicked elsewhere. */}
           <div className="flex flex-col gap-2">
-            <Button variant="community" onClick={() => invalidateSession()}>
+            <Button variant="community" onClick={async () => {
+              await invalidateSession();
+              const session = await fetchRegenosSession().catch(() => null);
+              if (!session?.did) return;
+              const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
+              const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
+              localStorage.removeItem("cohere:returnTo");
+              navigate(destination, { replace: true });
+            }}>
               {tr("calendar.host.checkEmailDone")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setStage("idle")}>

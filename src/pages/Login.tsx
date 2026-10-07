@@ -1,3 +1,4 @@
+import { fetchMyRegistration } from "@/lib/api";
 // /login — where a NEW user's emailed magic link lands (?token=…), and the
 // short wizard that follows: verifySignup (redeem the link) → setSignupProfile
 // (pick a handle) → createCustodialAccount (the account + session are minted).
@@ -86,7 +87,8 @@ export default function Login() {
       await createCustodialAccount();
       // The session cookie just landed; tell the rest of the app to re-ask.
       await invalidateSession();
-      const destination = signInDestination(params.get("returnTo") ?? localStorage.getItem("cohere:returnTo"));
+      const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
+      const destination = signInDestination(params.get("returnTo") ?? localStorage.getItem("cohere:returnTo"), registration.registered === true);
       localStorage.removeItem("cohere:returnTo");
       navigate(destination, { replace: true });
     } catch (err) {

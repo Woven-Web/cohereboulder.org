@@ -27,7 +27,7 @@ describe("XRPC proxy boundary", () => {
       } }));
       const response = await call();
       expect(response.status).toBe(302);
-      expect(response.headers.get("Location")).toBe(new URL(location, url).href);
+      expect(response.headers.get("Location")).toBe(new URL(location === "/" ? "/?signedIn=1" : location, url).href);
       expect(response.headers.getSetCookie()).toHaveLength(1);
       expect(response.headers.get("Cache-Control")).toBe("no-store");
       expect(upstreamFetch.mock.calls[0][1].redirect).toBe("manual");

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { activeAppTab, signInDestination, shouldRedirectToApp } from "./appRouting";
 describe("app routing", () => {
-  it("redirects signed-in home visitors only", () => {
-    expect(shouldRedirectToApp(true, "/")).toBe(true);
+  it("keeps normal signed-in home visits on home", () => {
+    expect(shouldRedirectToApp(true, "/")).toBe(false);
     expect(shouldRedirectToApp(true, "/register")).toBe(false);
     expect(shouldRedirectToApp(true, "/login")).toBe(false);
     expect(shouldRedirectToApp(false, "/")).toBe(false);
@@ -14,7 +14,7 @@ describe("app routing", () => {
     expect(signInDestination(path)).toBe(path);
   });
   it("redirects home sessions but leaves the handle wizard in control", () => {
-    expect(shouldRedirectToApp(true, "/")).toBe(true);
+    expect(shouldRedirectToApp(true, "/")).toBe(false);
     expect(shouldRedirectToApp(true, "/login")).toBe(false);
     expect(signInDestination("/join/abc?from=invite#details")).toBe("/join/abc?from=invite#details");
     expect(signInDestination(null)).toBe("/events");
@@ -29,4 +29,10 @@ describe("app routing", () => {
   it("defaults sign-ins and home landings to events", () => { expect(signInDestination(null)).toBe("/events"); expect(signInDestination("/")).toBe("/events"); });
   it("preserves explicit internal return paths and rejects external redirects", () => { expect(signInDestination("/events/did:plc:a/event?x=1")).toBe("/events/did:plc:a/event?x=1"); expect(signInDestination("//evil.test")).toBe("/events"); expect(signInDestination("https://evil.test")).toBe("/events"); });
   it("marks event details and the board under their tabs", () => { expect(activeAppTab("/events/a/b")).toBe("events"); expect(activeAppTab("/board")).toBe("board"); expect(activeAppTab("/about")).toBeNull(); });
+});
+
+it("redirects only an explicit sign-in landing", () => {
+  expect(shouldRedirectToApp(true, "/", "?signedIn=1")).toBe(true);
+  expect(signInDestination("/register", true)).toBe("/events");
+  expect(signInDestination("/register", false)).toBe("/register");
 });

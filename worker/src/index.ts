@@ -11,6 +11,7 @@
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
 import { handleAdminEventImage, handleEventImage } from "./event-images";
+import { handleMyRegistration } from "./registration";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
@@ -287,6 +288,8 @@ export default {
     // The regenOS door is checked before everything, including the OPTIONS
     // handler — "inert when off" means every method on /xrpc/* is a 404, with
     // nothing (not even a preflight 204) hinting the surface exists.
+    if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env);
+
     if (path === "/xrpc" || path.startsWith("/xrpc/")) {
       return handleXrpcProxy(request, env, url);
     }

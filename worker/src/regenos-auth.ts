@@ -247,7 +247,10 @@ export async function handleXrpcProxy(
     if (STRIP_RESPONSE.has(lower) || lower.startsWith(STRIP_RESPONSE_PREFIX)) return;
     out.headers.set(key, value);
   });
-  if (redirect) out.headers.set("Location", redirect.href);
+  if (redirect) {
+    if (nsid === "social.scenius.verifyEmail" && upstream.status >= 300 && upstream.status < 400 && redirect.pathname === "/") redirect.searchParams.set("signedIn", "1");
+    out.headers.set("Location", redirect.href);
+  }
   // Auth responses must never be cached by anything between here and the tab.
   out.headers.set("Cache-Control", "no-store");
   // getSetCookie() preserves multiple Set-Cookie headers where a flat copy
@@ -259,4 +262,24 @@ export async function handleXrpcProxy(
     if (isRelayableSetCookie(line)) out.headers.append("Set-Cookie", line);
   }
   return out;
+}
+
+/** Owner-only read for the registration lookup; never expose contact data through the proxy. */
+export async function readVerifiedSessionEmail(request: Request, env: RegenosAuthEnv): Promise<string | null> {
+  const base = env.REGENOS_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!isRegenosLoginEnabled(env) || !base) return null;
+  const headers = new Headers();
+  const cookie = relayableCookies(request.headers.get("Cookie"));
+  if (cookie) headers.set("Cookie", cookie);
+  for (const name of ["Origin", "Sec-Fetch-Site"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  const response = await fetch(`${base}/xrpc/social.scenius.getMyContactPref`, {
+    headers, redirect: "manual", signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error("Contact read unavailable");
+  const data = await response.json() as { channels?: { kind?: string; address?: string; verified?: boolean }[] };
+  const email = data.channels?.find(channel => channel.kind === "email" && channel.verified === true && typeof channel.address === "string")?.address;
+  return email?.trim().toLowerCase() || null;
 }

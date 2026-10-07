@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,7 @@ interface DynamicFormProps {
 }
 
 export const DynamicForm = ({ slug, intro, successTitle, successMessage }: DynamicFormProps) => {
+  const queryClient = useQueryClient();
   const { language } = useLanguage();
   const spanish = language === "es";
 
@@ -166,6 +168,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
     try {
       await submitForm(slug, { ...person, email: person.email, website, answers, subscribed });
+      await queryClient.invalidateQueries({ queryKey: ["my-registration"] });
       setStatus("success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {

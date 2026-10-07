@@ -149,7 +149,7 @@ try {
   // ── 3. Back on the calendar, the session cookie must have stuck ───────────
   step = "session";
   await page.goto(new URL("/", target).href, { waitUntil: "networkidle" });
-  await page.waitForURL("**/events");
+  if (new URL(page.url()).pathname !== "/") fail("normal signed-in home visit redirected");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId("bottom-tabs").getByRole("link", { name: "Board" }).click();
   await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
@@ -158,7 +158,7 @@ try {
   await page.waitForURL("**/events");
   await page.setViewportSize({ width: 1280, height: 800 });
   await checkHeaderLayout(true);
-  ok("sign-in and home land on events; phone tabs switch to the signed-in Board; header tabs remain visible from 768px");
+  ok("sign-in completes and normal home visits stay on home; phone tabs switch to the signed-in Board; header tabs remain visible from 768px");
   await page.getByTestId("nav-handle").first().waitFor({ timeout: 10_000 });
   await page.getByText("tester.mock.test").first().waitFor();
   // The nav's account control shows the same handle once signed in.
