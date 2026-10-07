@@ -82,17 +82,17 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="gap-1.5 max-w-[12rem]" aria-label={tr("nav.accountMenu")}>
+          <Button variant="ghost" size="sm" className="gap-1.5 min-h-11" aria-label={who} title={who}>
             <UserRound className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate" data-testid="nav-handle">{who}</span>
+            <span className="hidden xl:inline-block max-w-[24ch] truncate" data-testid="nav-handle">{who}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)]">
           <DropdownMenuLabel className="font-normal text-muted-foreground">
-            {tr("nav.signedInAs")} <span className="font-medium text-foreground">{who}</span>
+            {tr("nav.signedInAs")} <span className="font-medium text-foreground break-all">{who}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleSignOut} className="gap-2">
+          <DropdownMenuItem onSelect={handleSignOut} className="gap-2 min-h-12">
             <LogOut className="h-4 w-4" aria-hidden />
             {tr("nav.signOut")}
           </DropdownMenuItem>
@@ -114,7 +114,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
         {tr("nav.signIn")}
       </Button>
     ) : (
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={openSignInDialog}>
         {tr("nav.signIn")}
       </Button>
     );
@@ -125,9 +125,9 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     <>
       {trigger}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent closeLabel={tr("nav.closeDialog")} className="max-w-md w-[calc(100%-2rem)] rounded-lg [&>button]:min-h-12 [&>button]:min-w-12 [&>button]:right-0 [&>button]:top-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
           <DialogHeader>
-            <DialogTitle>{tr("nav.signInDialogTitle")}</DialogTitle>
+            <DialogTitle className="px-5 sm:pl-0">{tr("nav.signInDialogTitle")}</DialogTitle>
             <DialogDescription>{tr("nav.signInDialogBody")}</DialogDescription>
           </DialogHeader>
           <RegenosSignInPanel embedded />

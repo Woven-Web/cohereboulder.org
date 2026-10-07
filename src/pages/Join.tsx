@@ -15,6 +15,8 @@ import { ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSiteConfig } from "@/hooks/useRegenos";
 
+import { openSignInDialog } from "@/lib/signin";
+
 const ORGANIZER_EMAIL = "cohere@wovenweb.org";
 
 export default function Join() {
@@ -42,11 +44,9 @@ export default function Join() {
 
               <div className="flex flex-wrap justify-center gap-3 pt-4">
                 {loginOn && (
-                  <Button asChild variant="community" className="gap-2">
-                    <Link to="/login">
-                      {tr("joinInvite.signInButton")}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
+                  <Button variant="community" className="gap-2" onClick={openSignInDialog}>
+                    {tr("joinInvite.signInButton")}
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 )}
                 <Button asChild variant={loginOn ? "outline" : "community"} className="gap-2">
