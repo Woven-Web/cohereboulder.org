@@ -2085,6 +2085,7 @@ export const translations = {
       en: "This becomes your address in the community network — lowercase letters and numbers, like a username.",
       es: "Este será tu dirección en la red comunitaria — letras minúsculas y números, como un nombre de usuario.",
     },
+    handlePreview: { en: "Your handle will be:", es: "Tu nombre de usuario será:" },
     handleLabel: {
       en: "Handle",
       es: "Nombre de usuario",

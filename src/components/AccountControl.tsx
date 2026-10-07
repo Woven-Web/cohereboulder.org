@@ -1,3 +1,4 @@
+import { displayHandle } from "@/lib/handles";
 // The "Sign in" / account control in the top navigation. Renders nothing
 // unless /api/config says the regenOS lane is on. Anonymous: a button that
 // opens the existing regenOS email sign-in (RegenosSignInPanel) in a dialog.
@@ -63,16 +64,16 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     }
   }
 
-  const who = session?.handle ?? session?.did ?? "";
+  const who = displayHandle(session?.handle) || session?.did || "";
 
   if (signedIn) {
     if (variant === "mobile") {
       return (
         <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
-          <span className="truncate text-sm text-muted-foreground">
-            {tr("nav.signedInAs")} <span className="font-medium text-foreground" data-testid="nav-handle">{who}</span>
+          <span className="min-w-0 text-sm text-muted-foreground">
+            {tr("nav.signedInAs")} <span className="font-medium text-foreground break-all" data-testid="nav-handle">{who}</span>
           </span>
-          <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1">
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1 shrink-0">
             <LogOut className="h-4 w-4" aria-hidden />
             {tr("nav.signOut")}
           </Button>
