@@ -1,3 +1,4 @@
+import { RegistrationAction } from "@/components/RegistrationAction";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,7 +302,7 @@ const CoCreate = () => {
                       Help with setup, facilitation, or support during events
                     </p>
                     <Button variant="outline" size="sm" asChild>
-                      <Link to="/register">Sign Up to Volunteer</Link>
+                      <RegistrationAction anonymousKey="coCreate.volunteerSignup" />
                     </Button>
                   </CardContent>
                 </Card>

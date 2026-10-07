@@ -57,8 +57,17 @@ try {
         await page.getByRole("link", { name: "[CO]here", exact: true }).click();
         await page.waitForURL(`${target}/`);
         if (width === 390) await page.getByRole("button", { name: /Open menu|Abrir menú/ }).click();
-        await page.locator('nav a[href="/"]:visible').filter({ hasText: /Home|Inicio/ }).click();
+        await page.locator('nav a[href="/"]:visible').filter({ hasText: /Home|Inicio/ }).first().click();
         await page.waitForURL(`${target}/`);
+      }
+    }
+    for (const path of ["/about", "/co-create"]) {
+      await page.goto(`${target}${path}`, { waitUntil: "networkidle" });
+      if (registered) {
+        await page.locator('main [role="status"]').first().waitFor();
+        assert.equal(await page.locator('a[href="/register"]').count(), 0);
+      } else {
+        assert.ok(await page.locator('main a[href="/register"]').count());
       }
     }
     await page.goto(`${target}/?signedIn=1`, { waitUntil: "networkidle" });

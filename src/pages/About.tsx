@@ -1,9 +1,9 @@
-import { Link } from "react-router-dom";
+import { RegistrationAction } from "@/components/RegistrationAction";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Heart, Users, Sparkles } from "lucide-react";
+import { Heart, Users, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const About = () => {
@@ -328,12 +328,9 @@ const About = () => {
             </div>
 
             <div className="mt-12 text-center">
-              <Link to="/register">
-                <Button variant="community" size="lg">
-                  {tr("about.joinNextCycle")}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              <Button variant="community" size="lg" asChild>
+                <RegistrationAction anonymousKey="about.joinNextCycle" />
+              </Button>
             </div>
           </div>
         </section>
