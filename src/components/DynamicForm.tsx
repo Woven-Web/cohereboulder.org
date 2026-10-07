@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchForm, submitForm, type FormField, type FormDefinition } from "@/lib/api";
+import { formTitle } from "@/lib/formTitle";
 
 // The questions live in the database, not in this file. An organizer can
 // reword a label or add a question from the admin portal and it appears here
@@ -241,7 +242,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   return (
     <Card className="max-w-2xl mx-auto shadow-warm">
       <CardHeader>
-        <CardTitle>{definition.title}</CardTitle>
+        <CardTitle>{formTitle(definition, language)}</CardTitle>
         {intro}
       </CardHeader>
       <CardContent>

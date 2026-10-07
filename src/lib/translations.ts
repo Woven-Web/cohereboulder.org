@@ -2,6 +2,12 @@
 // Add new translations here and use them throughout the app
 
 export const translations = {
+  formTitles: {
+    "register-2026": {
+      en: "Register for COhere Boulder 2026",
+      es: "Regístrate para COhere Boulder 2026",
+    },
+  },
   app: {
     tabs: { en: "COhere app", es: "Aplicación COhere" },
     events: { en: "Events", es: "Eventos" },
