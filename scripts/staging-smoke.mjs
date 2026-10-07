@@ -22,7 +22,7 @@ try {
       await page.getByText(spanish[path], { exact: false }).filter({ visible: true }).first().waitFor();
       assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /scenius\.social/i, `${width} ${path} es: hosted suffix`);
       assert.deepEqual(errors, [], `${width} ${path} es: page errors`);
-      await page.getByRole("button", { name: "En/Es", exact: true }).click();
+      await page.getByRole("button", { name: "Es/En", exact: true }).click();
       console.log(`ok ${width} ${path}: en/es rendered, 0 page errors, no hosted suffix`);
     }
     await page.close();
