@@ -1,3 +1,4 @@
+import { displayHandle } from "@/lib/handles";
 import { ShareEvent } from "@/components/ShareEvent";
 import { EventRsvp } from "@/components/EventRsvp";
 import { Navigation } from "@/components/Navigation";
@@ -176,7 +177,7 @@ export default function EventDetail() {
                   )}
                   {event.hostName && (
                     <p className="text-muted-foreground text-sm">
-                      {tr("calendar.events.hostedBy")} {event.hostName}
+                      {tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}
                     </p>
                   )}
                 </div>

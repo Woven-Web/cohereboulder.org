@@ -1,3 +1,4 @@
+import { displayHandle } from "@/lib/handles";
 import { fetchMyRegistration } from "@/lib/api";
 // /login — where a NEW user's emailed magic link lands (?token=…), and the
 // short wizard that follows: verifySignup (redeem the link) → setSignupProfile
@@ -166,7 +167,7 @@ export default function Login() {
                       required
                     />
                   </div>
-                  <p id="handle-preview" aria-live="polite" className="font-semibold break-all">@{handle || "firefly"}.scenius.social</p>
+                  <p id="handle-preview" aria-live="polite" className="font-semibold break-all">{tr("login.handlePreview")} {displayHandle(handle || "firefly")}</p>
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <Button
                     type="submit"

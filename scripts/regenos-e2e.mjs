@@ -16,6 +16,7 @@
 //   node scripts/regenos-e2e.mjs http://127.0.0.1:8789
 
 import { chromium } from "playwright";
+import { mkdir } from "node:fs/promises";
 
 const target = process.argv[2];
 if (!target) {
@@ -34,7 +35,13 @@ function fail(message) {
 }
 
 const browser = await chromium.launch();
-const context = await browser.newContext();
+async function localContext() {
+  const ctx = await browser.newContext();
+  // The home page embeds films; external video loading is not under test.
+  await ctx.route("https://www.youtube.com/**", route => route.fulfill({ contentType: "text/html", body: "" }));
+  return ctx;
+}
+const context = await localContext();
 const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
@@ -61,10 +68,60 @@ async function checkHeaderLayout(signedIn) {
 }
 
 try {
+  // Presentation checks stub reads only, including a hosted event host.
+  // Real sign-in/cookie behavior remains covered by the mock wizard below.
+  const shots = process.env.HANDLES_SHOTS_DIR;
+  if (shots) await mkdir(shots, { recursive: true });
+  const displayContext = await localContext();
+  try {
+    const displayPage = await displayContext.newPage();
+    await displayPage.route("**/xrpc/social.scenius.getSession", route => route.fulfill({
+      json: { did: "did:plc:display", handle: "aaron.scenius.social", kind: "user" },
+    }));
+    await displayPage.route("**/api/me/registration", route => route.fulfill({ json: { registered: null } }));
+    await displayPage.route("**/api/events/*/ev-seed1", async route => {
+      const response = await route.fetch();
+      const data = await response.json();
+      data.event.hostName = "host.scenius.social";
+      await route.fulfill({ json: data });
+    });
+    for (const path of ["/", "/events", "/board", "/register", "/events/did:plc:mockscene/ev-seed1", "/login"]) {
+      await displayPage.goto(new URL(path, target).href, { waitUntil: "networkidle" });
+      if (path === "/login") await displayPage.getByLabel("Handle", { exact: true }).fill("aaron");
+      for (const language of ["en", "es"]) {
+        if (language === "es") await displayPage.getByRole("button", { name: "En/Es", exact: true }).click();
+        if (path.includes("ev-seed1")) await displayPage.getByText(language === "en" ? "Hosted by host" : "Organizado por host", { exact: true }).waitFor();
+        for (const width of [390, 1280]) {
+          await displayPage.setViewportSize({ width, height: 844 });
+          if (/scenius\.social/i.test(await displayPage.evaluate(() => document.body.innerText))) throw new Error(`Hosted suffix visible on ${path}, ${language}, ${width}`);
+          if (path === "/login" && !await displayPage.locator("#handle-preview").textContent().then(text => text.endsWith("aaron"))) throw new Error("Handle preview did not show the short handle");
+          if (path === "/" || path === "/login") {
+            if (path === "/") {
+              if (width === 390) await displayPage.getByRole("button", { name: language === "en" ? "Open menu" : "Abrir menú", exact: true }).click();
+              else {
+                const account = displayPage.getByRole("button", { name: "aaron", exact: true });
+                if (await account.getAttribute("title") !== "aaron") throw new Error("Account tooltip contains full handle");
+                await account.click();
+              }
+              if (/scenius\.social/i.test(await displayPage.evaluate(() => document.body.innerText))) throw new Error("Hosted suffix visible in account menu");
+            }
+            if (shots) await displayPage.screenshot({ path: `${shots}/${path === "/" ? "header" : "handle-choice"}-${language}-${width}.png`, animations: "disabled" });
+            if (path === "/") {
+              if (width === 390) await displayPage.getByRole("button", { name: language === "en" ? "Close menu" : "Cerrar menú", exact: true }).click();
+              else await displayPage.keyboard.press("Escape");
+            }
+          }
+        }
+      }
+    }
+    ok("hosted handles stay short on signed-in pages and signup, en/es, phone/desktop");
+  } finally {
+    await displayContext.close();
+  }
   // Session appearance must preserve the page where the dialog opened.
   // Stub only the session read: these routing checks make no auth writes.
   for (const path of ["/register", "/join/abc", "/board", "/"]) {
-    const routingContext = await browser.newContext();
+    const routingContext = await localContext();
     try {
       const routingPage = await routingContext.newPage();
       let signedIn = false;
