@@ -401,6 +401,7 @@ try {
   await linkTab.close();
   ok("an explicit event return path survives opening the email link in a new tab");
 } catch (error) {
+  console.error(error);
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();

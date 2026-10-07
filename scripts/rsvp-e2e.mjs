@@ -174,6 +174,7 @@ try {
   if (probe.status() !== 404) fail(`an unknown token answered ${probe.status()}`);
   ok("cancel link: plain GET is harmless; browser auto-POSTs; repeats and unknown tokens are harmless");
 } catch (error) {
+  console.error(error);
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();
