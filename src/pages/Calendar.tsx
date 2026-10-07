@@ -92,8 +92,8 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="py-12 [&_button]:min-h-11">
+        <div className="max-w-[800px] mx-auto px-4">
           {/* Eileen, 2026-09-30: events come first. Only the title and the
               subscribe button sit above them; propose + hosting live below. */}
           <div className="text-center mb-8 space-y-4">
@@ -106,7 +106,7 @@ export default function CalendarPage() {
           </div>
 
           {/* A host's create/edit form stays on top: Edit scrolls here. */}
-          {hostingOn && signedIn && (
+          {hostingOn && signedIn && (panel === "create" || editing) && (
             <div className="mb-10 space-y-4">
               {panel === "create" && config?.collectiveDid && canHostCollective && (
                 <CommunityEventForm
@@ -134,22 +134,21 @@ export default function CalendarPage() {
           ) : data?.source === "regenos" ? (
             <>
               <Tabs defaultValue="upcoming" className="max-w-3xl mx-auto">
-                <TabsList className="mx-auto mb-6 grid w-full max-w-xs grid-cols-2">
-                  <TabsTrigger value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
-                  <TabsTrigger value="month">{tr("calendar.events.tabMonth")}</TabsTrigger>
+                <TabsList className="mx-auto mb-6 grid h-auto w-full grid-cols-2 gap-1 p-1 border border-slate-400">
+                  <TabsTrigger className="min-h-11 text-slate-600 data-[state=active]:font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
+                  <TabsTrigger className="min-h-11 text-slate-600 data-[state=active]:font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" value="month">{tr("calendar.events.tabMonth")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="upcoming">
                   <div className="space-y-6">
                     {data.events.map((event) => (
                       <div key={`${event.did}/${event.rkey}`}>
-                        <EventCard event={event} />
-                        {canManage(event) && (
-                          <div className="flex justify-end gap-2 mt-2">
+                        <EventCard event={event} hostControls={canManage(event) && (
+                          <>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-2"
+                              className="min-h-11 gap-2"
                               onClick={() => {
                                 setPanel("none");
                                 setEditing(event);
@@ -162,7 +161,7 @@ export default function CalendarPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-2 text-destructive"
+                              className="min-h-11 gap-2 text-destructive"
                               disabled={deletingRkey === event.rkey}
                               onClick={() => handleDelete(event)}
                             >
@@ -173,8 +172,8 @@ export default function CalendarPage() {
                               )}
                               {tr("calendar.host.deleteButton")}
                             </Button>
-                          </div>
-                        )}
+                          </>
+                        )} />
                       </div>
                     ))}
                   </div>
@@ -191,19 +190,19 @@ export default function CalendarPage() {
 
           {/* Propose an event: no account needed, lands in the organizers'
               approval queue. */}
-          <Card className="max-w-2xl mx-auto mt-12 border-dashed">
+          {!signedIn && <Card className="w-full mx-auto mt-12">
             <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
               <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
               <p className="text-sm text-muted-foreground flex-1">{tr("calendar.proposeCallout.text")}</p>
-              <Button asChild variant="outline" size="sm" className="shrink-0">
+              <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
                 <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
               </Button>
             </CardContent>
-          </Card>
+          </Card>}
 
           {/* Hosting — only exists when the regenOS lane is enabled. */}
           {hostingOn && (
-            <div className="mt-12 space-y-4">
+            <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
               {signedIn ? (
                 <>
                   <div className="flex flex-wrap items-center justify-center gap-3">
@@ -220,7 +219,7 @@ export default function CalendarPage() {
                       <Button
                         variant="community"
                         size="sm"
-                        className="gap-2"
+                        className="min-h-11 gap-2"
                         onClick={() => {
                           setEditing(null);
                           setPanel("create");
@@ -230,7 +229,7 @@ export default function CalendarPage() {
                         {tr("calendar.host.addEvent")}
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="gap-2" onClick={handleSignOut}>
+                    <Button variant="ghost" size="sm" className="min-h-11 gap-2" onClick={handleSignOut}>
                       <LogOut className="h-4 w-4" />
                       {tr("calendar.host.signOut")}
                     </Button>
@@ -243,11 +242,9 @@ export default function CalendarPage() {
                 <RegenosSignInPanel />
               ) : (
                 <div className="text-center space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    {tr("calendar.host.signInPrompt")}
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => setPanel("signIn")}>
-                    {tr("calendar.host.signInButton")}
+                  <span className="text-sm">{tr("calendar.proposeCallout.accountPrompt")}</span>{" "}
+                  <Button variant="link" size="sm" className="min-h-11 px-1 underline font-semibold" onClick={() => setPanel("signIn")}>
+                    {tr("calendar.proposeCallout.signIn")}
                   </Button>
                 </div>
               )}

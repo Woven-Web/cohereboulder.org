@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, CheckCircle2, Loader2 } from "lucide-react";
+import { BellRing, Check, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,10 +93,10 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
     <div className="space-y-3">
       {active ? (
         <>
-          <p className="flex items-center gap-2 font-medium text-foreground" data-testid="rsvp-state">
-            <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
-            {statusLine}
-          </p>
+          <Button variant="going" title={tr("calendar.events.cancelHint")} aria-label={`${seat === "confirmed" ? tr("calendar.events.cardGoing") : statusLine}. ${tr("calendar.events.cancelHint")}`} className="h-11 min-w-[88px] px-4 w-full lg:w-auto shadow-none" data-testid="rsvp-state" disabled={mutation.isPending} onClick={() => mutation.mutate("notgoing")}>
+            {seat === "confirmed" && <Check className="h-4 w-4" aria-hidden />}
+            {seat === "confirmed" ? tr("calendar.events.cardGoing").replace(/^✓ /, "") : statusLine}
+          </Button>
           <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.reminderNote")}</p>
           <Button
             variant="outline"
@@ -112,12 +112,12 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
         <>
           <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.reminderNote")}</p>
           <Button
-            variant="community"
-            className="gap-2"
+            variant="rsvp"
+            className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2"
             disabled={mutation.isPending || isError}
             onClick={() => mutation.mutate("going")}
           >
-            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}
+            {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             {tr("calendar.rsvp.button")}
           </Button>
         </>
@@ -185,11 +185,11 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
 
   if (!open) {
     return (
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Button variant="community" className="gap-2" onClick={() => setOpen(true)}>
-          <BellRing className="h-4 w-4" />
+      <div className="space-y-2">
+        <Button variant="rsvp" className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2" onClick={() => setOpen(true)}>
           {tr("calendar.rsvp.button")}
         </Button>
+        <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.emailHint")}</p>
         {signInLink}
       </div>
     );
@@ -230,7 +230,7 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" variant="community" disabled={busy} className="gap-2">
+        <Button type="submit" variant="rsvp" disabled={busy} className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           {busy ? tr("calendar.rsvp.sending") : tr("calendar.rsvp.submit")}
         </Button>

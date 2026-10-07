@@ -1,4 +1,4 @@
-// End-to-end proof of "RSVP · remind me" without an account, in a real
+// End-to-end proof of "RSVP" without an account, in a real
 // browser against a local wrangler dev + the mock AppView. Never touches
 // scenius.social, and never sends real mail: local wrangler's send_email
 // binding only writes .eml files and logs them.
@@ -69,7 +69,7 @@ try {
   // ── 1. The form, from an event card's RSVP button ────────────────────────
   step = "email rsvp";
   await page.goto("/calendar", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "RSVP · remind me" }).first().click();
+  await page.getByRole("button", { name: "RSVP", exact: true }).first().click();
   await page.waitForURL(/\/events\/.+#rsvp$/, { timeout: 10_000 });
   await page.getByTestId("rsvp-form").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Add to calendar" }).click();
@@ -78,7 +78,7 @@ try {
   if (!href?.startsWith("https://calendar.google.com/calendar/r/eventedit?")) fail(`Google Calendar link missing: ${href}`);
   await page.getByRole("menuitem", { name: "Apple / other calendars (.ics)" }).waitFor();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Subscribe to Calendar" }).click();
+  await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
   await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar" }).waitFor();
   await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
   const feedUrl = await page.getByRole("textbox", { name: "Calendar feed URL" }).inputValue();

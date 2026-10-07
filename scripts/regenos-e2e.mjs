@@ -72,7 +72,7 @@ try {
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("nav Sign in opens the sign-in dialog");
-  await page.getByRole("button", { name: "Sign in to host events" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
   // The footer's newsletter form also labels an "Email" input — target by id.
   await page.locator("#regenos-email").fill("new@example.com");
   await page.getByRole("button", { name: "Continue" }).click();
@@ -140,20 +140,20 @@ try {
   step = "signed-in rsvp";
   await page.goto(new URL("/events/did:plc:mockscene/ev-seed1", target).toString(), { waitUntil: "networkidle" });
   const rsvpPanel = page.getByTestId("event-rsvp");
-  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).click();
-  await rsvpPanel.getByTestId("rsvp-state").getByText("You're going").waitFor({ timeout: 10_000 });
+  await rsvpPanel.getByRole("button", { name: "RSVP", exact: true }).click();
+  await rsvpPanel.getByTestId("rsvp-state").getByText("Going", { exact: true }).waitFor({ timeout: 10_000 });
   await page.reload({ waitUntil: "networkidle" });
   await rsvpPanel.getByTestId("rsvp-state").waitFor({ timeout: 10_000 });
   ok("rsvp going → getEventAttendance.mySeat reads back 'You're going' after a reload");
   await rsvpPanel.getByRole("button", { name: "Cancel my RSVP" }).click();
-  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).waitFor({ timeout: 10_000 });
+  await rsvpPanel.getByRole("button", { name: "RSVP", exact: true }).waitFor({ timeout: 10_000 });
   if (await rsvpPanel.getByTestId("rsvp-form").count()) fail("signed-in visitor was shown the email form");
   ok("notgoing withdraws; no email form for a signed-in visitor");
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
 
   // ── 3d. One-click RSVP from a calendar card when signed in ───────────────
   step = "one-click card rsvp";
-  const seedCard = page.locator("a", { hasText: "Seed Gathering" }).first();
+  const seedCard = page.getByTestId("event-card").filter({ hasText: "Seed Gathering" }).first();
   // Slow the write so a second click lands while the first is in flight: it
   // must neither navigate (fall through to the card link) nor RSVP twice.
   let rsvpWrites = 0;
@@ -163,6 +163,23 @@ try {
     await route.continue();
   });
   const cardButton = seedCard.getByTestId("card-rsvp");
+  await page.setViewportSize({ width: 390, height: 844 });
+  if ((await cardButton.boundingBox()).height < 44) fail("card RSVP is shorter than 44px");
+  for (const label of ["RSVP", "Confirmar"]) {
+    await cardButton.getByText(label, { exact: true }).waitFor();
+    const addButton = seedCard.getByRole("button", { name: /^(Add to calendar|Añadir al calendario)$/ });
+    const [rsvpBox, addBox] = await Promise.all([cardButton.boundingBox(), addButton.boundingBox()]);
+    if (rsvpBox.height < 44 || addBox.height < 44 || Math.abs(rsvpBox.y - addBox.y) > 1) fail(`mobile action sizing/row failed for ${label}`);
+    if (await addButton.evaluate((el) => getComputedStyle(el).whiteSpace !== "nowrap" || el.scrollWidth > el.clientWidth)) fail("calendar label wraps or overflows");
+    await page.getByRole("button", { name: label === "RSVP" ? "En/Es" : "Es/En" }).filter({ visible: true }).click();
+  }
+  const preview = seedCard.getByTestId("card-description");
+  const clamped = await preview.evaluate((el) => ({
+    clamp: getComputedStyle(el).webkitLineClamp,
+    children: el.children.length,
+    text: el.textContent,
+  }));
+  if (clamped.clamp !== "3" || clamped.children !== 0 || /[\r\n]|^…$/.test(clamped.text.trim())) fail("description is not one clamped text block");
   await cardButton.click();
   // Prove the second click lands WHILE busy: wait for the spinner, then
   // force it (a normal click would wait for the button to free up).
@@ -170,16 +187,27 @@ try {
   await cardButton.click({ force: true });
   await page.waitForTimeout(300);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`a busy click navigated to ${page.url()}`);
-  await cardButton.getByText("You're going").waitFor({ timeout: 10_000 });
+  await cardButton.getByText("Going", { exact: true }).waitFor({ timeout: 10_000 });
   await page.unroute("**/xrpc/social.scenius.rsvp");
   if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
   await page.goto(new URL("/events/did:plc:mockscene/ev-seed1", target).toString(), { waitUntil: "networkidle" });
-  await rsvpPanel.getByTestId("rsvp-state").getByText("You're going").waitFor({ timeout: 10_000 });
+  await rsvpPanel.getByTestId("rsvp-state").getByText("Going", { exact: true }).waitFor({ timeout: 10_000 });
+  const banner = page.getByTestId("event-banner");
+  const untinted = await banner.evaluate((img) =>
+    img.parentElement.children.length === 1 && getComputedStyle(img).filter === "none" && getComputedStyle(img).mixBlendMode === "normal");
+  if (!untinted) fail("banner has an overlay sibling or image filter/blend");
   ok("a signed-in card click RSVPs in place, and the detail page agrees");
   await rsvpPanel.getByRole("button", { name: "Cancel my RSVP" }).click();
-  await rsvpPanel.getByRole("button", { name: "RSVP · remind me" }).waitFor({ timeout: 10_000 });
+  await rsvpPanel.getByRole("button", { name: "RSVP", exact: true }).waitFor({ timeout: 10_000 });
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
+
+  await page.getByTestId("card-rsvp").first().click();
+  await page.getByTestId("card-rsvp").first().getByText("Going", { exact: true }).waitFor();
+  await page.getByTestId("card-rsvp").first().click();
+  await page.getByTestId("card-rsvp").first().getByText("RSVP", { exact: true }).waitFor();
+  ok("a second card click withdraws the RSVP");
+  await page.setViewportSize({ width: 1280, height: 800 });
 
   // A signed-in member is not a collective builder: direct event controls
   // must not be offered. The public proposal form stays available.
@@ -256,7 +284,7 @@ try {
   // ── 8. Sign out ───────────────────────────────────────────────────────────
   step = "sign out";
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
-  await page.getByRole("button", { name: "Inicia sesión para organizar eventos" }).waitFor({
+  await page.getByRole("button", { name: "Inicia sesión", exact: true }).waitFor({
     timeout: 10_000,
   });
   ok("logout cleared the session; the panel is back");
