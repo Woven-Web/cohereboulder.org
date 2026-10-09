@@ -173,6 +173,9 @@ try {
       await page.goto(new URL("/xrpc/social.scenius.verifyEmail?token=tok-return", target).href);
       await page.waitForURL((u) => u.pathname === "/admin", { timeout: 15000 });
       await page.locator("#app:not(.hidden)").waitFor({ timeout: 15000 });
+      // #app is revealed before /api/auth/me answers; whoami and the Access tab
+      // are only settled once applyMe has run, so wait for that, not for #app.
+      await page.locator("#whoami:not(:empty)").waitFor({ timeout: 15000 });
       const who = await page.locator("#whoami").textContent();
       expect(/@tester\.mock\.test \(builder\)/.test(who ?? ""), `back on the portal, signed in (${who})`);
       expect(await page.locator('[data-tab="access"]').isHidden(), "a builder doesn't see the Access tab");
