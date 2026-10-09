@@ -84,7 +84,7 @@ page.on("dialog", (d) => {
 async function apiAdmin(method, path, data) {
   const res = await context.request.fetch(path, {
     method,
-    headers: { Cookie: `cohere_session=${sessionToken}` },
+    headers: { Cookie: `cohere_session=${sessionToken}`, Origin: target },
     ...(data ? { data } : {}),
   });
   return { status: res.status(), body: res.headers()["content-type"]?.includes("json") ? await res.json() : await res.text() };
@@ -105,7 +105,7 @@ try {
     ["GET", `${EVENT_PATH}/export.csv`],
   ];
   for (const [method, path] of anonChecks) {
-    const res = await context.request.fetch(path, { method, data: method === "POST" ? { id: "abcdefgh", source: "walkin", name: "x" } : undefined });
+    const res = await context.request.fetch(path, { method, headers: { Origin: target }, data: method === "POST" ? { id: "abcdefgh", source: "walkin", name: "x" } : undefined });
     if (res.status() !== 401) fail(`${method} ${path} answered ${res.status()} anonymously`);
   }
   ok("every check-in API route answers 401 without a session");

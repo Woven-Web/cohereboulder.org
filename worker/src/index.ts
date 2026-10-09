@@ -10,6 +10,7 @@
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
+import { crossSiteRefusal } from "./csrf";
 import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { ADMIN_PAGE } from "./admin-page";
@@ -437,6 +438,8 @@ export default {
       }
 
       if (request.method === "POST" && path === "/api/auth/logout") {
+        const refused = crossSiteRefusal(request, url);
+        if (refused) return refused;
         await endSession(env, request);
         return json({ ok: true }, 200, { "Set-Cookie": clearedCookie(secure) });
       }
@@ -447,6 +450,8 @@ export default {
     // --------------------------------------------------------------- admin API
 
     if (path.startsWith("/api/admin/") || path === "/list") {
+      const refused = crossSiteRefusal(request, url);
+      if (refused) return refused;
       const access: AdminAccess = await resolveAdminAccess(env, request);
       if (access.state === "signedOut") return json({ error: "unauthorized" }, 401);
       if (access.state === "notOrganizer") {

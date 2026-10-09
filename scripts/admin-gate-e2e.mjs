@@ -46,8 +46,8 @@ function expect(condition, message) {
 const rs = (token) => `__Host-rs_session=${token}`;
 const get = (base, path, cookie, init = {}) =>
   fetch(new URL(path, base), { redirect: "manual", ...init, headers: { ...(cookie ? { Cookie: cookie } : {}), ...(init.headers ?? {}) } });
-const post = (base, path, cookie, body) =>
-  get(base, path, cookie, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
+const post = (base, path, cookie, body, headers = { Origin: new URL(base).origin }) =>
+  get(base, path, cookie, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body ?? {}) });
 
 try {
   step = "signed out";
@@ -77,6 +77,18 @@ try {
     expect(noTo.status === 400 && /address/i.test((await noTo.json()).error), "test send with no mailbox asks for an address");
     const stranger = await post(target, `/api/admin/newsletters/${id}/test`, c, { to: "stranger@elsewhere.test" });
     expect(stranger.status === 400, "…and refuses one that isn't an organizer notification address");
+  }
+
+  step = "cross-site writes";
+  {
+    const c = rs("sess-steward");
+    const foreign = await post(target, "/api/admin/access/role", c, { did: "did:plc:mockmember", role: "builder" }, { Origin: "https://evil.example" });
+    expect(foreign.status === 403, "a foreign Origin is refused on an admin write");
+    const bare = await post(target, "/api/admin/access/role", c, { did: "did:plc:mockmember", role: "builder" }, {});
+    expect(bare.status === 403, "a write with no Origin is refused");
+    const logout = await post(target, "/api/auth/logout", c, {}, { Origin: "https://evil.example" });
+    expect(logout.status === 403, "a foreign Origin cannot log the organizer out");
+    expect((await get(target, "/api/admin/people", c, { headers: { Origin: "https://evil.example" } })).status === 200, "reads are not affected");
   }
 
   step = "builder";
@@ -140,6 +152,10 @@ try {
     step = "rollback (ADMIN_EMAIL_LOGIN=true)";
     expect((await get(rollbackUrl, "/api/admin/people", `cohere_session=${legacyToken}`)).status === 200, "the old email session still works behind the flag");
     expect((await get(rollbackUrl, "/api/admin/people", rs("sess-builder"))).status === 200, "…and regenOS organizers still work beside it");
+    const both = `${rs("sess-member")}; cohere_session=${legacyToken}`;
+    expect((await get(rollbackUrl, "/api/admin/people", both)).status === 200, "a regenOS member who also holds the old session is let in (rollback)");
+    expect((await get(rollbackUrl, "/admin", both)).status === 200, "…and /admin opens for them");
+    expect((await get(target, "/api/admin/people", both)).status === 403, "…but not once the flag is off");
   }
 
   step = "real browser round trip";
