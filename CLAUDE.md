@@ -148,7 +148,8 @@ role in the COhere scene (`REGENOS_COLLECTIVE_DID`) is **builder or higher**
 the visitor's relayed `__Host-rs_session` cookie goes to `getSession` for who
 they are, and the site's service token reads `getSceneMembers` for their role
 (`worker/src/admin-gate.ts`). The answer is cached in KV for **60 seconds**,
-so a revoked role or ended session stops working within a minute. Stewards
+so a revoked role or ended session stops working in about one to two minutes
+(KV is eventually consistent). Stewards
 alone can use the **Access** tab and edit the notification list; builders and
 facilitators get everything else.
 
