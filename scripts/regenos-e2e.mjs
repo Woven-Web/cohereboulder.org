@@ -44,6 +44,16 @@ async function localContext() {
 const context = await localContext();
 const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
+// Record navigation requests so CI failures identify the resource that stalled.
+const pendingRequests = new Set();
+page.on("request", request => {
+  pendingRequests.add(request.url());
+  if (step === "event return path across email-link tabs") console.log("navigation request", request.url());
+});
+for (const event of ["requestfinished", "requestfailed"]) page.on(event, request => {
+  pendingRequests.delete(request.url());
+  if (step === "event return path across email-link tabs") console.log(event, request.url(), request.failure());
+});
 const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 
 async function checkHeaderLayout(signedIn) {
@@ -461,6 +471,8 @@ try {
   ok("an explicit event return path survives opening the email link in a new tab");
 } catch (error) {
   console.error(error);
+  console.error("Pending browser requests:", [...pendingRequests]);
+  console.error("Current URL:", page.url());
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();
