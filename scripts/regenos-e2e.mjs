@@ -36,9 +36,13 @@ function fail(message) {
 
 const browser = await chromium.launch();
 async function localContext() {
-  const ctx = await browser.newContext();
-  // The home page embeds films; external video loading is not under test.
-  await ctx.route("https://www.youtube.com/**", route => route.fulfill({ contentType: "text/html", body: "" }));
+  const ctx = await browser.newContext({ timezoneId: "UTC" });
+  // All browser API traffic belongs on the local Worker. External media is
+  // not under test and must never make this lane depend on third-party hosts.
+  await ctx.route("**/*", route => {
+    if (new URL(route.request().url()).origin === new URL(target).origin) return route.continue();
+    return route.fulfill({ contentType: "text/html", body: "" });
+  });
   return ctx;
 }
 const context = await localContext();
@@ -395,8 +399,12 @@ try {
   step = "create event";
   await page.getByRole("button", { name: "Add an event" }).click();
   await page.getByLabel("Event name").fill(eventName);
-  await page.getByLabel("Starts").fill("2026-10-16T18:00");
-  await page.getByLabel("Ends").fill("2026-10-16T20:00");
+  // Put this event BEFORE the seven-day seed. This exercises the ordering
+  // that broke the old .last() Edit/Cancel locators as the clock advanced.
+  const starts = new Date(Date.now() + 2 * 24 * 3600 * 1000);
+  const ends = new Date(starts.getTime() + 2 * 3600 * 1000);
+  await page.getByLabel("Starts").fill(starts.toISOString().slice(0, 16));
+  await page.getByLabel("Ends").fill(ends.toISOString().slice(0, 16));
   await page.getByLabel("Description").fill("Created by the e2e test.");
   await page.getByLabel("Place name").fill("Mock Hall");
   await page.getByLabel("Street address").fill("100 Mock St");
@@ -406,23 +414,28 @@ try {
 
   // ── 5. Edit it ────────────────────────────────────────────────────────────
   step = "edit event";
-  const card = page.locator("div").filter({ has: page.getByText(eventName) });
-  await page.getByRole("button", { name: "Edit", exact: true }).last().click();
+  const cardFor = name => page.getByTestId("event-card").filter({
+    has: page.getByRole("link", { name, exact: true }),
+  });
+  await cardFor(eventName).getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Event name").waitFor();
+  if (await page.getByLabel("Event name").inputValue() !== eventName) throw new Error("Edit opened the wrong event");
   await page.getByLabel("Event name").fill(`${eventName} (edited)`);
   await page.getByRole("button", { name: "Save changes" }).click();
   await page.getByText(`${eventName} (edited)`).waitFor({ timeout: 10_000 });
   ok("updateEvent round-tripped (prefill + rename visible)");
-  void card;
 
   // ── 6. Cancel (delete) it ─────────────────────────────────────────────────
   step = "delete event";
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Cancel event" }).last().click();
+  await cardFor(`${eventName} (edited)`).getByRole("button", { name: "Cancel event", exact: true }).click();
   await page
     .getByText(`${eventName} (edited)`)
     .waitFor({ state: "detached", timeout: 10_000 });
-  ok("deleteEvent removed it from the calendar");
+  await cardFor("Seed Gathering").waitFor();
+  const seedResponse = await context.request.get(new URL("/api/events/did:plc:mockscene/ev-seed1", target).href);
+  if (!seedResponse.ok() || (await seedResponse.json()).event?.name !== "Seed Gathering") throw new Error("Edit/delete changed the seed event");
+  ok("deleteEvent removed only the created event; the seed is still readable");
 
   // ── 7. Spanish ────────────────────────────────────────────────────────────
   step = "spanish";
@@ -449,7 +462,8 @@ try {
   step = "event return path across email-link tabs";
   await context.request.post(new URL("/xrpc/social.scenius.logout", target).href, { data: {} });
   const eventReturnPath = "/events/did:plc:mockscene/ev-seed1";
-  await page.goto(new URL(eventReturnPath, target).href, { waitUntil: "networkidle" });
+  await page.goto(new URL(eventReturnPath, target).href, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Seed Gathering", exact: true }).waitFor();
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   await page.locator("#regenos-email-dialog").fill("returning@example.test");
   await page.getByRole("button", { name: "Email me a link" }).click();
@@ -457,10 +471,13 @@ try {
   const linkTab = await context.newPage();
   await linkTab.goto(new URL("/xrpc/social.scenius.verifyEmail?token=tok-return", target).href);
   await linkTab.waitForURL(url => decodeURIComponent(url.pathname) === eventReturnPath);
+  await linkTab.getByRole("heading", { name: "Seed Gathering", exact: true }).waitFor();
+  await linkTab.getByTestId("nav-handle").first().waitFor();
   await linkTab.close();
   ok("an explicit event return path survives opening the email link in a new tab");
 } catch (error) {
   console.error(error);
+  console.error("Current URL:", page.url());
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();

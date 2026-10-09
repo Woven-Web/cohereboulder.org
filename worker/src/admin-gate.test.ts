@@ -142,6 +142,39 @@ describe("portal gate from the regenOS scene role", () => {
   });
 });
 
+describe("roster pagination", () => {
+  it("follows the cursor to find an organizer beyond the first page", async () => {
+    const pages = [
+      { members: [{ did: "did:plc:x1", role: "member" }], cursor: "c2" },
+      { members: [{ did: "did:plc:x2", role: "member" }], cursor: "c3" },
+      { members: [{ did: "did:plc:bu", handle: "rosa.mock.test", role: "builder", kind: "person" }] },
+    ];
+    const seen: (string | null)[] = [];
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+      if (url.pathname.endsWith("getSceneMembers")) {
+        const cursor = url.searchParams.get("cursor");
+        seen.push(cursor);
+        const page = pages[cursor === "c3" ? 2 : cursor === "c2" ? 1 : 0];
+        return Promise.resolve(new Response(JSON.stringify(page)));
+      }
+      return fakeRegenos(input, init);
+    }));
+    const result = await resolveAdminAccess(makeEnv(), req(rs("bu")));
+    expect(result.state).toBe("organizer");
+    expect(seen).toEqual([null, "c2", "c3"]);
+  });
+
+  it("fails closed rather than loop forever on a cursor that never ends", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+      if (url.pathname.endsWith("getSceneMembers")) return Promise.resolve(new Response(JSON.stringify({ members: [], cursor: "same" })));
+      return fakeRegenos(input, init);
+    }));
+    expect((await resolveAdminAccess(makeEnv(), req(rs("bu")))).state).not.toBe("organizer");
+  });
+});
+
 describe("caching", () => {
   it("asks regenOS once per 60 seconds, then re-checks the role", async () => {
     const env = makeEnv();
@@ -218,6 +251,24 @@ describe("the email-code login is retired behind ADMIN_EMAIL_LOGIN", () => {
     if (result.state !== "organizer") return;
     expect(result.session).toMatchObject({ email: "old@cohere.test", source: "email" });
     expect(canManageAccess(result.session)).toBe(true);
+  });
+
+  it.each(["me", "out"])("rollback also works for someone with a below-builder regenOS session (%s)", async (who) => {
+    const env = await withLegacySession("true");
+    const result = await resolveAdminAccess(env, req(`${rs(who)}; cohere_session=tok`));
+    expect(result.state).toBe("organizer");
+    if (result.state !== "organizer") return;
+    expect(result.session).toMatchObject({ source: "email", email: "old@cohere.test" });
+  });
+
+  it("a below-builder regenOS session with no legacy session is still notOrganizer under the flag", async () => {
+    const env = await withLegacySession("true");
+    expect(await resolveAdminAccess(env, req(rs("me")))).toMatchObject({ state: "notOrganizer", role: "member" });
+  });
+
+  it("a below-builder regenOS session plus a cohere_session is refused when the flag is off", async () => {
+    const env = await withLegacySession("false");
+    expect(await resolveAdminAccess(env, req(`${rs("me")}; cohere_session=tok`))).toMatchObject({ state: "notOrganizer" });
   });
 });
 

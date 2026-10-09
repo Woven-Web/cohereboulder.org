@@ -168,7 +168,7 @@ try {
   step = "idempotent approve";
   const secondApprove = await fetch(new URL(`/api/admin/proposals/${published.id}/approve`, target), {
     method: "POST",
-    headers: { cookie: `cohere_session=${sessionToken}` },
+    headers: { cookie: `cohere_session=${sessionToken}`, Origin: new URL(target).origin },
   });
   const secondBody = await secondApprove.json();
   expect(secondApprove.status === 200 && secondBody.ok === true, "a second approve still answers 200 ok");
@@ -248,7 +248,7 @@ try {
     if (noTokenRow) {
       const approve = await fetch(new URL(`/api/admin/proposals/${noTokenRow.id}/approve`, noTokenTarget), {
         method: "POST",
-        headers: { cookie },
+        headers: { cookie, Origin: new URL(noTokenTarget).origin },
       });
       const approveBody = await approve.json();
       expect(approve.status === 503, `approve answers 503, not a crash (got ${approve.status})`);

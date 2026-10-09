@@ -6,9 +6,10 @@
 // (worker/src/regenos-auth.ts). Two upstream reads decide the answer:
 //   * getSession (the visitor's own cookie, no bearer) → who they are;
 //   * getSceneMembers (the site's service token, no cookie) → their role.
-// The result is cached in KV for a minute, keyed by a hash of the cookie, so
+// The result is cached in KV for 60 seconds, keyed by a hash of the cookie, so
 // a page that fires a dozen API calls asks regenOS once — and a revoked role
-// or expired session stops working within that minute.
+// or expired session stops working in about one to two minutes (KV is
+// eventually consistent, so another edge can serve the entry a little past expiry).
 //
 // The old email-code login survives behind ADMIN_EMAIL_LOGIN="true" for one
 // release, as a rollback. Anything but that exact string leaves a
@@ -113,9 +114,9 @@ function sessionFor(resolved: Resolved, rank: number): Session {
 
 export async function resolveAdminAccess(env: AdminGateEnv, request: Request): Promise<AdminAccess> {
   const cookie = relayableCookies(request.headers.get("Cookie"));
+  let resolved: Resolved | null | undefined;
   if (cookie) {
     const key = `orgsess:${await sha256(cookie)}`;
-    let resolved: Resolved | null | undefined;
     const cached = await env.COHERE_AUTH.get(key);
     if (cached) {
       resolved = JSON.parse(cached) as Resolved;
@@ -131,15 +132,16 @@ export async function resolveAdminAccess(env: AdminGateEnv, request: Request): P
     if (resolved) {
       const rank = ROLE_RANK[resolved.role ?? ""] ?? 0;
       if (rank >= BUILDER_RANK) return { state: "organizer", session: sessionFor(resolved, rank) };
-      return { state: "notOrganizer", handle: resolved.handle, role: resolved.role };
     }
   }
 
-  // Rollback path: the retired email-code session.
+  // Rollback path: the retired email-code session. Checked even for someone
+  // holding a below-builder regenOS session, or the rollback locks them out.
   if (emailLoginEnabled(env)) {
     const legacy = await currentSession(env, request);
     if (legacy) return { state: "organizer", session: { ...legacy, source: "email", rank: STEWARD_RANK } };
   }
+  if (resolved) return { state: "notOrganizer", handle: resolved.handle, role: resolved.role };
   return { state: "signedOut" };
 }
 

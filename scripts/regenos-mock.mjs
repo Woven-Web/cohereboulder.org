@@ -291,6 +291,15 @@ const server = http.createServer(async (req, res) => {
       const viewerMembers = req.headers.cookie?.includes(`${SESSION_COOKIE}=mock-member`)
         ? [...members.values()].map((m) => m.did === USER_DID ? { ...m, role: "member" } : m)
         : [...members.values()];
+      // MOCK_ROSTER_PAGE_SIZE=n pages the roster n at a time with an opaque
+      // `cursor`, as a real AppView might; unset, one page holds everyone.
+      const pageSize = Number(process.env.MOCK_ROSTER_PAGE_SIZE) || 0;
+      if (pageSize > 0) {
+        const start = Number(url.searchParams.get("cursor") ?? 0) || 0;
+        const slice = viewerMembers.slice(start, start + pageSize);
+        const next = start + pageSize < viewerMembers.length ? String(start + pageSize) : undefined;
+        return json(res, 200, { members: slice, steward: asService, ...(next ? { cursor: next } : {}) });
+      }
       return json(res, 200, {
         members: viewerMembers,
         steward: asService,
