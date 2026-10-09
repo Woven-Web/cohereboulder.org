@@ -200,6 +200,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="funnel">Funnel</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
@@ -289,6 +290,25 @@ export const ADMIN_PAGE = `<!doctype html>
         and <code>options</code> for the choice types.
       </p>
       <div id="forms"></div>
+    </section>
+
+    <section id="tab-funnel" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Where people stop on a form. Counts only: each number is an event total, not a cohort of people,
+        so optional questions, lost events and repeat submissions blur the gaps. No answers, emails or visitor identifiers are stored. Days are UTC.
+      </p>
+      <div class="toolbar">
+        <select id="funnel-form" aria-label="Form"></select>
+        <label class="muted">From <input type="date" id="funnel-from"></label>
+        <label class="muted">To <input type="date" id="funnel-to"></label>
+        <span class="muted" id="funnelmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Step</th><th>Events</th><th>Fewer than previous step</th></tr></thead>
+          <tbody id="funnel-rows"></tbody>
+        </table>
+      </div>
     </section>
 
     <section id="tab-access" class="hidden" style="flex-direction:column;gap:1rem;">
@@ -1363,6 +1383,45 @@ export const ADMIN_PAGE = `<!doctype html>
   var ROLES = [["member", "Member"], ["builder", "Builder"],
                ["facilitator", "Facilitator"], ["steward", "Steward"]];
 
+  // Funnel: counts per form question (worker/src/funnel.ts). Day inputs are
+  // UTC dates; left blank, the Worker answers with the last 14 days.
+  function openFunnel() {
+    var select = el("funnel-form");
+    if (!select.options.length) {
+      select.innerHTML = forms.map(function (f) {
+        return '<option value="' + esc(f.slug) + '">' + esc(f.title) + " (" + esc(f.slug) + ")</option>";
+      }).join("");
+    }
+    return loadFunnel();
+  }
+
+  function loadFunnel() {
+    var slug = el("funnel-form").value;
+    if (!slug) { el("funnel-rows").innerHTML = '<tr><td colspan="3" class="muted">No forms.</td></tr>'; return Promise.resolve(); }
+    var query = [];
+    if (el("funnel-from").value) query.push("from=" + encodeURIComponent(el("funnel-from").value));
+    if (el("funnel-to").value) query.push("to=" + encodeURIComponent(el("funnel-to").value));
+    el("funnelmsg").textContent = "Loading…";
+    return api("/api/admin/funnel/" + encodeURIComponent(slug) + (query.length ? "?" + query.join("&") : ""))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        el("funnel-from").value = data.from;
+        el("funnel-to").value = data.to;
+        el("funnelmsg").textContent = data.from + " to " + data.to;
+        el("funnel-rows").innerHTML = data.steps.map(function (step) {
+          return "<tr><td>" + esc(step.label) + "</td><td>" + step.count + "</td><td>" +
+            (step.drop === null ? "" : step.drop) + "</td></tr>";
+        }).join("");
+      }).catch(function (e) {
+        el("funnelmsg").textContent = e.message;
+        el("funnel-rows").innerHTML = '<tr><td colspan="3" class="muted">Could not load the funnel.</td></tr>';
+      });
+  }
+
+  ["funnel-form", "funnel-from", "funnel-to"].forEach(function (id) {
+    el(id).addEventListener("change", loadFunnel);
+  });
+
   function loadAccess() {
     return api("/api/admin/access").then(function (r) { return r.json(); }).then(function (data) {
       accessMembers = data.members || [];
@@ -1996,7 +2055,7 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "newsletter", "access", "admins"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "funnel", "newsletter", "access", "admins"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -2005,6 +2064,7 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "events") loadEvents();
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
+      if (name === "funnel") openFunnel();
       if (name === "newsletter") loadNewsletters();
     });
   });

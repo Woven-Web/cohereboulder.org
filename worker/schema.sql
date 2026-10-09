@@ -205,3 +205,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_event_checkins_guest
   ON event_checkins(event_did, event_rkey, guest_did) WHERE guest_did IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_event_checkins_event ON event_checkins(event_did, event_rkey);
 CREATE INDEX IF NOT EXISTS idx_event_checkins_starts ON event_checkins(event_starts_at);
+
+-- Registration funnel counts, worker/migrations/0009_form_funnel.sql. Counters
+-- only — no visitor, IP, user agent or answer is ever stored here.
+CREATE TABLE IF NOT EXISTS form_funnel (
+  form_slug TEXT NOT NULL,
+  day       TEXT NOT NULL,             -- YYYY-MM-DD, UTC
+  event     TEXT NOT NULL,
+  count     INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (form_slug, day, event)
+);

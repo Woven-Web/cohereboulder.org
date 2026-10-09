@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { fetchForm, submitForm, type FormField, type FormDefinition } from "@/lib/api";
+import { fetchForm, sendFunnelEvent, submitForm, type FormField, type FormDefinition } from "@/lib/api";
+import { REACHED_RATIO, countsAsReached } from "@/lib/funnel";
 import { formTitle } from "@/lib/formTitle";
 
 // The questions live in the database, not in this file. An organizer can
@@ -121,6 +122,33 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
       cancelled = true;
     };
   }, [slug, spanish]);
+
+  // Funnel counts (counts only, see worker/src/funnel.ts): one `view` when the
+  // open form renders, then `reached:<key>` the first time a question is
+  // focused or scrolled into view. sendFunnelEvent dedupes per page load.
+  const formRef = useRef<HTMLFormElement>(null);
+  const open = Boolean(definition?.active) && status !== "success";
+  useEffect(() => {
+    if (open) sendFunnelEvent(slug, "view");
+  }, [open, slug]);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!open || !form || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const key = (entry.target as HTMLElement).dataset.fieldKey;
+          if (countsAsReached(entry) && key) {
+            sendFunnelEvent(slug, `reached:${key}`);
+            observer.unobserve(entry.target);
+          }
+        }
+      },
+      { threshold: REACHED_RATIO },
+    );
+    form.querySelectorAll("[data-field-key]").forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [open, slug, definition]);
 
   const labelFor = (field: FormField) => (spanish && field.label_es ? field.label_es : field.label);
   const introFor = (field: FormField) => (spanish && field.intro_es ? field.intro_es : field.intro);
@@ -249,7 +277,15 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
         {intro}
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-7">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onFocusCapture={(event) => {
+            const key = (event.target as HTMLElement).closest<HTMLElement>("[data-field-key]")?.dataset.fieldKey;
+            if (key) sendFunnelEvent(slug, `reached:${key}`);
+          }}
+          className="space-y-7"
+        >
           {definition.fields.map((field) => {
             const id = `field-${field.key}`;
             const fieldIntro = introFor(field);
@@ -265,7 +301,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
             if (field.type === "checkbox") {
               return (
-                <div key={field.key} className="space-y-2">
+                <div key={field.key} data-field-key={field.key} className="space-y-2">
                   {fieldPreamble}
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -285,7 +321,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
             }
 
             return (
-              <div key={field.key} className="space-y-2">
+              <div key={field.key} data-field-key={field.key} className="space-y-2">
                 {fieldPreamble}
                 <Label htmlFor={id} className="leading-snug">
                   {labelFor(field)}
@@ -396,7 +432,14 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
           {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
-          <Button type="submit" size="lg" variant="community" disabled={status === "submitting"}>
+          {/* Counted on click, not on submit: native validation can stop the form before onSubmit ever runs. */}
+          <Button
+            type="submit"
+            size="lg"
+            variant="community"
+            disabled={status === "submitting"}
+            onClick={() => sendFunnelEvent(slug, "submit_attempt")}
+          >
             {status === "submitting"
               ? spanish
                 ? "Enviando…"

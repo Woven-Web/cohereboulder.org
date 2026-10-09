@@ -106,7 +106,7 @@ Read these before "verifying" anything.
 
 ## The data model — read this before changing any form
 
-Four tables (`worker/schema.sql`), designed so **the questions are data, not
+Five tables (`worker/schema.sql`), designed so **the questions are data, not
 code**:
 
 | Table | Holds |
@@ -115,11 +115,19 @@ code**:
 | `forms` | Each form's questions as a JSON array, plus optional confirmation-email subject and body |
 | `submissions` | One row per person per form; answers as a JSON object |
 | `admins` | Who may sign in to the portal |
+| `form_funnel` | Registration funnel counters: one row per form, UTC day and event |
 
 **Changing a question, or the confirmation email, is a database edit — not a
 deploy.** Use the admin portal's Forms tab or `PUT /api/admin/forms/:slug`.
 `src/components/DynamicForm.tsx` renders whatever the API returns, in English or
 Spanish. **Never hard-code form fields in the frontend.**
+
+**Funnel counts** (`worker/src/funnel.ts`, migration `0009_form_funnel.sql`):
+`DynamicForm` beacons `view`, `reached:<field key>` and `submit_attempt` to
+`POST /api/funnel/:slug`, the submit path counts `submitted`, and /admin's
+**Funnel** tab reads them back in form order. *Privacy: counts only — no
+answers, emails, IPs, user agents, cookies or visitor ids are stored or sent.*
+Don't add a column that could identify a visitor.
 
 Current forms: `register-2026` (the main one, with a confirmation email),
 `signup-2026` (email-only capture), `map-suggestion` (ecosystem map additions),

@@ -82,6 +82,35 @@ export async function submitForm(slug: string, payload: SubmitPayload): Promise<
   if (!response.ok) throw new Error(await readError(response));
 }
 
+const funnelSent = new Set<string>();
+
+/**
+ * Counts-only funnel beacon (worker/src/funnel.ts): `view`, `reached:<key>`,
+ * `submit_attempt`. Sends an event name and nothing else — no answers, no
+ * identifier, no credentials — and at most once per event per page load.
+ * Fire-and-forget: a failed beacon must never touch the form.
+ */
+export function sendFunnelEvent(slug: string, event: string): void {
+  const id = `${slug}:${event}`;
+  if (funnelSent.has(id)) return;
+  funnelSent.add(id);
+  const url = `${API_BASE}/api/funnel/${encodeURIComponent(slug)}`;
+  // Plain fetch, not sendBeacon: a beacon always carries credentials, and the
+  // admin session cookie is Path=/, so a signed-in organizer would send it here.
+  try {
+    void fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ event }),
+      headers: { "Content-Type": "text/plain" },
+      keepalive: true,
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    }).catch(() => {});
+  } catch {
+    // Measurement is best-effort.
+  }
+}
+
 /** The lightweight "stay in the loop" capture — email only. */
 export async function subscribeEmail(input: {
   email: string;
