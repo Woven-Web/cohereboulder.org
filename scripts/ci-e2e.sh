@@ -228,6 +228,11 @@ ADMIN_LOGIN_FLAG=true start_worker $((28901 + E2E_PORT_OFFSET)) $((28239 + E2E_P
   --var REGENOS_BASE_URL:http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token
+# The header's Organizer link, and the portal wearing the site's chrome. Runs
+# first: the gate script below demotes the mock's builder to test the cache.
+if ! node scripts/admin-ui-e2e.mjs http://127.0.0.1:$((28900 + E2E_PORT_OFFSET)); then
+  fail=1
+fi
 if ! node scripts/admin-gate-e2e.mjs http://127.0.0.1:$((28900 + E2E_PORT_OFFSET)) http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28901 + E2E_PORT_OFFSET)); then
   fail=1
 fi
