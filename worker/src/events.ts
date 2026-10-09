@@ -325,10 +325,12 @@ export async function handleEventDetail(
   upstream.searchParams.set("uri", atUri);
 
   try {
+    console.log("DETAIL before fetch", did, rkey);
     const res = await fetch(upstream.toString(), {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
+    console.log("DETAIL after fetch", res.status);
     if (!res.ok) {
       if (res.status === 404 || res.status === 401) {
         return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
@@ -343,6 +345,7 @@ export async function handleEventDetail(
       visibility?: string;
       hostName?: string;
     };
+    console.log("DETAIL after json", did, rkey);
     const v = data.value;
     if (!v?.name) return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
     if (data.visibility !== undefined && data.visibility !== "public") {
@@ -352,7 +355,9 @@ export async function handleEventDetail(
     const core = toCommunityEvent({ uri: data.uri ?? atUri, value: v });
     if (!core) return json({ error: "not found" }, 404, { ...cors, ...NO_STORE });
 
+    console.log("DETAIL before KV", did, rkey);
     core.imageUrl = eventImageUrl(await imageVersions(env), core.did, core.rkey);
+    console.log("DETAIL after KV", did, rkey);
 
     // `uris` has carried both bare strings and { uri, name } objects; take
     // either, but only on a safe scheme — see SAFE_URI_SCHEMES.
