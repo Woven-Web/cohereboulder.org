@@ -27,7 +27,7 @@ beforeEach(() => {
       getWithMetadata: async (key: string) => store.get(key) ?? { value: null, metadata: null },
       list: async () => ({ keys: [...store].map(([name, entry]) => ({ name, metadata: entry.metadata })), list_complete: true }),
     },
-    REGENOS_COLLECTIVE_DID: did, REGENOS_BASE_URL: "https://upstream.test",
+    ADMIN_EMAIL_LOGIN: "true", REGENOS_COLLECTIVE_DID: did, REGENOS_BASE_URL: "https://upstream.test",
   } as unknown as typeof env;
   const row = { uri: `at://${did}/community.lexicon.calendar.event/ev1`, value: { name: "Test event", startsAt: "2099-01-01T00:00:00Z" } };
   vi.stubGlobal("fetch", vi.fn(async (input: string) => Response.json(input.includes("getEvents") ? { events: [row] } : row)));

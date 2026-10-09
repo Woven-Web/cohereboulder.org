@@ -684,7 +684,7 @@ interface SceneMember {
   role?: string;
 }
 
-async function fetchRoster(
+export async function fetchRoster(
   base: string,
   token: string,
   scene: string,

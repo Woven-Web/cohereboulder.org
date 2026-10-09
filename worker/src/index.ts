@@ -13,6 +13,16 @@
 import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { ADMIN_PAGE } from "./admin-page";
+import {
+  canManageAccess,
+  emailLoginEnabled,
+  notOrganizerPage,
+  resolveAdminAccess,
+  sessionMailbox,
+  signInUnavailablePage,
+  type AdminAccess,
+  type AdminGateEnv,
+} from "./admin-gate";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
 import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
@@ -60,7 +70,6 @@ import { handleResendWebhook, purgeWebhookEvents, type ResendWebhookEnv } from "
 import {
   clearedCookie,
   consumeLinkToken,
-  currentSession,
   endSession,
   mailShell,
   normalizeEmail,
@@ -71,7 +80,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
+interface Env extends AuthEnv, AdminGateEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -107,10 +116,7 @@ function json(data: unknown, status: number, extra: Record<string, string> = {})
   });
 }
 
-/** The only way in is a signed-in session from an emailed link or code. */
-async function isAdmin(request: Request, env: Env): Promise<boolean> {
-  return (await currentSession(env, request)) !== null;
-}
+const ACCESS_REFUSED = "Managing who can host is for stewards of the COhere scene.";
 
 function str(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
@@ -308,13 +314,27 @@ export default {
     // ---------------------------------------------------------------- admin UI
 
     if (request.method === "GET" && (path === "/admin" || path === "/admin/")) {
-      return new Response(ADMIN_PAGE, {
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "X-Robots-Tag": "noindex, nofollow",
-          "Cache-Control": "no-store",
-        },
-      });
+      const access = await resolveAdminAccess(env, request);
+      const pageHeaders = {
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Robots-Tag": "noindex, nofollow",
+        "Cache-Control": "no-store",
+      };
+      if (access.state === "organizer") {
+        const mode = access.session.source === "email" ? "email" : "regenos";
+        return new Response(ADMIN_PAGE.replace("__ADMIN_LOGIN_MODE__", mode), { headers: pageHeaders });
+      }
+      if (access.state === "notOrganizer") {
+        return new Response(notOrganizerPage(access.handle), { status: 403, headers: pageHeaders });
+      }
+      // Signed out. Rollback mode keeps the old email-code form on this page.
+      if (emailLoginEnabled(env)) {
+        return new Response(ADMIN_PAGE.replace("__ADMIN_LOGIN_MODE__", "email"), { headers: pageHeaders });
+      }
+      if (isRegenosLoginEnabled(env)) {
+        return new Response(null, { status: 302, headers: { Location: "/login?returnTo=%2Fadmin", "Cache-Control": "no-store" } });
+      }
+      return new Response(signInUnavailablePage(), { status: 503, headers: pageHeaders });
     }
 
     // Door check-in, phone-first (worker/src/checkin-page.ts). The page is
@@ -335,6 +355,16 @@ export default {
     if (path.startsWith("/api/auth/")) {
       const secure = url.protocol === "https:";
       const baseUrl = env.PUBLIC_BASE_URL || url.origin;
+
+      // The email-code login is retired behind ADMIN_EMAIL_LOGIN. Off, these
+      // three do nothing — no mail is sent and no session is minted.
+      if (
+        !emailLoginEnabled(env) &&
+        ((request.method === "POST" && (path === "/api/auth/request" || path === "/api/auth/verify")) ||
+          (request.method === "GET" && path === "/api/auth/callback"))
+      ) {
+        return json({ error: "Email sign-in is turned off. Sign in with your regenOS account." }, 404);
+      }
 
       if (request.method === "POST" && path === "/api/auth/request") {
         let body: Record<string, unknown>;
@@ -389,9 +419,21 @@ export default {
       }
 
       if (request.method === "GET" && path === "/api/auth/me") {
-        const session = await currentSession(env, request);
-        if (!session) return json({ error: "unauthorized" }, 401);
-        return json({ email: session.email, name: session.name }, 200);
+        const access = await resolveAdminAccess(env, request);
+        if (access.state !== "organizer") return json({ error: "unauthorized" }, 401);
+        const { session } = access;
+        return json(
+          {
+            email: session.email,
+            name: session.name,
+            handle: session.handle ?? null,
+            role: session.role ?? null,
+            source: session.source ?? "email",
+            canManageAccess: canManageAccess(session),
+            hasMailbox: sessionMailbox(session) !== null,
+          },
+          200,
+        );
       }
 
       if (request.method === "POST" && path === "/api/auth/logout") {
@@ -405,9 +447,12 @@ export default {
     // --------------------------------------------------------------- admin API
 
     if (path.startsWith("/api/admin/") || path === "/list") {
-      if (!(await isAdmin(request, env))) {
-        return json({ error: "unauthorized" }, 401);
+      const access: AdminAccess = await resolveAdminAccess(env, request);
+      if (access.state === "signedOut") return json({ error: "unauthorized" }, 401);
+      if (access.state === "notOrganizer") {
+        return json({ error: "You're not an organizer of COhere's scene.", handle: access.handle }, 403);
       }
+      const session = access.session;
 
       // Everyone, with their submissions attached.
       if (request.method === "GET" && path === "/api/admin/people") {
@@ -442,6 +487,12 @@ export default {
         return json({ admins: results }, 200);
       }
 
+      if ((request.method === "POST" && path === "/api/admin/admins") || (request.method === "DELETE" && path.startsWith("/api/admin/admins/"))) {
+        // This list only decides who is emailed about newsletters (and, in
+        // rollback mode, who may sign in by email) — stewards manage it.
+        if (!canManageAccess(session)) return json({ error: ACCESS_REFUSED }, 403);
+      }
+
       if (request.method === "POST" && path === "/api/admin/admins") {
         let body: Record<string, unknown>;
         try {
@@ -451,21 +502,19 @@ export default {
         }
         const email = normalizeEmail(body.email);
         if (!email || !email.includes("@")) return json({ error: "invalid email" }, 400);
-        const session = await currentSession(env, request);
         await env.cohere
           .prepare(
             `INSERT INTO admins (email, name, added_by, created_at) VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(email) DO UPDATE SET name = COALESCE(excluded.name, admins.name)`,
           )
-          .bind(email, str(body.name, 200), session?.email ?? "unknown", new Date().toISOString())
+          .bind(email, str(body.name, 200), session.email, new Date().toISOString())
           .run();
         return json({ ok: true }, 200);
       }
 
       if (request.method === "DELETE" && path.startsWith("/api/admin/admins/")) {
         const email = normalizeEmail(decodeURIComponent(path.slice("/api/admin/admins/".length)));
-        const session = await currentSession(env, request);
-        if (session && session.email === email) {
+        if (session.email === email) {
           return json({ error: "you can't remove your own access" }, 400);
         }
         const remaining = await env.cohere
@@ -677,6 +726,9 @@ export default {
         return json({ error: "not found" }, 404);
       }
 
+      if (path === "/api/admin/access" || path.startsWith("/api/admin/access/")) {
+        if (!canManageAccess(session)) return json({ error: ACCESS_REFUSED }, 403);
+      }
       if (request.method === "GET" && path === "/api/admin/access") {
         return handleAdminAccessList(env);
       }
@@ -710,15 +762,11 @@ export default {
       // Newsletters + the Beehiiv subscriber import (worker/src/newsletter.ts).
       // Any signed-in admin may use them; the safeguards live in that file.
       if (path.startsWith("/api/admin/newsletters") || path === "/api/admin/import/beehiiv") {
-        const session = await currentSession(env, request);
-        if (!session) return json({ error: "unauthorized" }, 401);
         return handleNewsletterAdmin(request, env, url, session);
       }
 
       // Door check-in (worker/src/checkins.ts): who arrived, per event.
       if (path === "/api/admin/checkin" || path.startsWith("/api/admin/checkin/")) {
-        const session = await currentSession(env, request);
-        if (!session) return json({ error: "unauthorized" }, 401);
         return routeCheckin(request, env, url, session.email);
       }
 
@@ -739,12 +787,10 @@ export default {
           return handleAdminProposalsList(env, url.searchParams.get("status"));
         }
         if (parts.length === 2 && parts[1] === "approve" && request.method === "POST") {
-          const session = await currentSession(env, request);
-          return handleAdminProposalApprove(env, url, parts[0], session?.email ?? null);
+          return handleAdminProposalApprove(env, url, parts[0], session.email);
         }
         if (parts.length === 2 && parts[1] === "reject" && request.method === "POST") {
-          const session = await currentSession(env, request);
-          return handleAdminProposalReject(request, env, parts[0], session?.email ?? null);
+          return handleAdminProposalReject(request, env, parts[0], session.email);
         }
         return json({ error: "not found" }, 404);
       }

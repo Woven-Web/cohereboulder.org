@@ -8,6 +8,7 @@ export const ADMIN_PAGE = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="admin-login" content="__ADMIN_LOGIN_MODE__">
 <link rel="icon" href="data:,">
 <title>COhere — member portal</title>
 <style>
@@ -202,7 +203,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="admins">Organizers</button>
     </div>
 
     <section id="tab-people" style="display:flex;flex-direction:column;gap:1rem;">
@@ -435,11 +436,21 @@ export const ADMIN_PAGE = `<!doctype html>
     </section>
 
     <section id="tab-admins" class="hidden" style="flex-direction:column;gap:1rem;">
-      <p class="muted">
-        Anyone listed here can sign in with their email — no password, no account to create.
-        They get a one-time code and a magic link, both good for ten minutes.
+      <p class="muted" id="admins-info-regenos">
+        This portal opens with your regenOS account. Anyone who is a <b>builder</b>, <b>facilitator</b>
+        or <b>steward</b> of the COhere scene can get in; only stewards can change who. Roles are managed
+        in the <b>Access</b> tab.
       </p>
-      <div class="toolbar">
+      <p class="muted hidden" id="admins-info-email">
+        Rollback mode: anyone listed here can also sign in with their email — a one-time code and a magic
+        link, both good for ten minutes.
+      </p>
+      <h3 style="margin:0">Organizer notification emails</h3>
+      <p class="muted" style="margin:0">
+        These addresses are emailed whenever a newsletter is confirmed, with a link to cancel it.
+        Being listed here does not give anyone portal access.
+      </p>
+      <div class="toolbar" id="adminadd">
         <input type="email" id="newadmin" placeholder="their@email.com"
                style="flex:1 1 14rem;padding:0.45rem 0.7rem;border:1px solid var(--hair-strong);border-radius:3px;background:var(--surface)">
         <input type="text" id="newadminname" placeholder="Name (optional)"
@@ -466,6 +477,9 @@ export const ADMIN_PAGE = `<!doctype html>
   var events = [], eventWhen = "upcoming", rsvpCache = {}, emailRsvpCounts = {}, accessMembers = [];
   var proposals = [], proposalStatus = "pending";
 
+  var LOGIN_MODE = (document.querySelector('meta[name="admin-login"]') || {}).content === "email" ? "email" : "regenos";
+  var ME = null;
+  function canManage() { return !ME || ME.canManageAccess; }
   function el(id) { return document.getElementById(id); }
   function show(id, visible) { el(id).classList.toggle("hidden", !visible); }
   function esc(s) {
@@ -500,6 +514,9 @@ export const ADMIN_PAGE = `<!doctype html>
   }
 
   function signOut(message) {
+    // regenOS mode has no login form here: the server sends a signed-out
+    // visitor to the site's own sign-in and brings them back.
+    if (LOGIN_MODE === "regenos") { window.location.assign("/admin"); return; }
     el("app").classList.add("hidden");
     el("login").classList.remove("hidden");
     show("step-email", true);
@@ -566,12 +583,20 @@ export const ADMIN_PAGE = `<!doctype html>
       fetch("/api/auth/me", { credentials: "same-origin" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (me) {
-          if (me) el("whoami").textContent = "Signed in as " + (me.name || me.email);
+          if (me) applyMe(me);
         })
         .catch(function () { /* signed in with the key, no session to describe */ });
     }).catch(function (e) {
       if (e.message !== "unauthorized") el("loginerr").textContent = e.message;
     });
+  }
+
+  function applyMe(me) {
+    ME = me;
+    el("whoami").textContent = "Signed in as " + (me.handle ? "@" + me.handle : (me.name || me.email)) + (me.role ? " (" + me.role + ")" : "");
+    document.querySelector('[data-tab="access"]').classList.toggle("hidden", !me.canManageAccess);
+    show("adminadd", me.canManageAccess);
+    show("admins-info-email", me.source === "email");
   }
 
   function submissionOf(person, slug) {
@@ -1454,7 +1479,7 @@ export const ADMIN_PAGE = `<!doctype html>
           "<td>" + esc(a.name || "—") + "</td>" +
           "<td>" + esc(a.added_by || "—") + "</td>" +
           "<td>" + esc((a.created_at || "").slice(0, 10)) + "</td>" +
-          '<td><button class="btn" data-remove="' + esc(a.email) + '">Remove</button></td>' +
+          "<td>" + (canManage() ? '<button class="btn" data-remove="' + esc(a.email) + '">Remove</button>' : "") + "</td>" +
           "</tr>";
       }).join("");
       Array.prototype.forEach.call(el("adminrows").querySelectorAll("[data-remove]"), function (btn) {
@@ -1823,7 +1848,17 @@ export const ADMIN_PAGE = `<!doctype html>
     nlAction(el("nltest"), function () {
       var save = nlDirty || !nlCurrent ? saveNewsletter() : Promise.resolve(nlCurrent);
       return save.then(function (n) {
-        return api("/api/admin/newsletters/" + encodeURIComponent(n.id) + "/test", { method: "POST" });
+        var body = {};
+        if (ME && ME.hasMailbox === false) {
+          // regenOS holds no email for this account: the test must go to an
+          // organizer notification address, which the server checks.
+          var to = window.prompt("Your regenOS account has no email we can use. Send the test to which organizer notification address?", "");
+          if (!to) throw new Error("Test not sent.");
+          body.to = to.trim();
+        }
+        return api("/api/admin/newsletters/" + encodeURIComponent(n.id) + "/test", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
       }).then(function (r) { return r.json(); }).then(function (d) {
         showNewsletter(d.newsletter);
         el("nlmsg").textContent = "Test sent to " + d.newsletter.test_sent_to + ". Check it, then send.";
@@ -1937,6 +1972,13 @@ export const ADMIN_PAGE = `<!doctype html>
     show("step-code", false); show("step-email", true); el("loginerr").textContent = "";
   });
   el("signout").addEventListener("click", function () {
+    if (LOGIN_MODE === "regenos") {
+      // Signing out of the portal is signing out of regenOS on this site.
+      fetch("/xrpc/social.scenius.logout", { method: "POST", credentials: "same-origin" })
+        .catch(function () {})
+        .then(function () { window.location.assign("/"); });
+      return;
+    }
     fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
       .catch(function () {})
       .then(function () { signOut(""); });
@@ -2022,6 +2064,8 @@ export const ADMIN_PAGE = `<!doctype html>
       return loadAdmins();
     }).catch(function (e) { el("adminmsg").textContent = e.message; });
   });
+
+  if (LOGIN_MODE === "regenos") show("login", false);
 
   // A magic-link callback lands here already carrying a session cookie.
   if (new URLSearchParams(location.search).get("error") === "expired") {

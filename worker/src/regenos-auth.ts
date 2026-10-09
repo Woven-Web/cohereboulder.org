@@ -139,7 +139,7 @@ const STRIP_RESPONSE_PREFIX = "access-control-";
 const RELAY_COOKIE_PREFIX = "__Host-rs_";
 
 /** The subset of the browser's Cookie header the AppView is allowed to see. */
-function relayableCookies(header: string | null): string | null {
+export function relayableCookies(header: string | null): string | null {
   if (!header) return null;
   const kept = header
     .split(";")
