@@ -89,7 +89,7 @@ export const CHECKIN_PAGE = `<!doctype html>
 <section id="signedout" class="signin hidden">
   <h1>Door check-in</h1>
   <p class="muted">Organizers only. Sign in to the member portal, then come back to this page.</p>
-  <a href="/admin">Sign in</a>
+  <a href="/login?returnTo=%2Fadmin%2Fcheckin">Sign in</a>
 </section>
 
 <div id="app" class="hidden">
