@@ -64,7 +64,7 @@ wait_for() {
 
 start_mock() {
   local port="$1" logfile="$2"
-  PORT="$port" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
+  PORT="$port" MOCK_ROSTER_PAGE_SIZE="${MOCK_ROSTER_PAGE_SIZE:-0}" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/xrpc/social.scenius.getEvents" "regenOS mock on :$port"
 }
@@ -217,7 +217,8 @@ echo "::endgroup::"
 # the flag on proves the rollback path. Waits ~65s for the 60s role cache.
 echo "::group::admin-gate-e2e (regenOS role gate)"
 seed_d1_and_kv
-start_mock $((28954 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-7.log
+# Page the roster one member at a time so the gate follows the cursor.
+MOCK_ROSTER_PAGE_SIZE=1 start_mock $((28954 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-7.log
 ADMIN_LOGIN_FLAG=false start_worker $((28900 + E2E_PORT_OFFSET)) $((28238 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-7-main.log \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) \
