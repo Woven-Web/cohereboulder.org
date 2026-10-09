@@ -175,7 +175,7 @@ try {
   let r = await adminPost(`/api/admin/newsletters/${id}/send`, { confirm_count: 1 });
   expect(r.status === 409 && r.body.locked === true, `API refuses an untested send (${r.status})`);
 
-  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  // The preview is live (debounced fetch of the server renderer); no button.
   const frame = page.frameLocator("#nlframe");
   await frame.getByText("Hello <b>friends</b>,").waitFor({ timeout: 10_000 });
   expect((await frame.locator("b").count()) === 0, "organizer HTML is shown as text in the preview, not rendered");
