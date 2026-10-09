@@ -13,6 +13,7 @@
 import { crossSiteRefusal } from "./csrf";
 import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
+import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { ADMIN_PAGE } from "./admin-page";
 import {
   canManageAccess,
@@ -288,7 +289,7 @@ function csvCell(value: unknown): string {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const cors = corsHeaders(request.headers.get("Origin"));
     const url = new URL(request.url);
     const path = url.pathname;
@@ -551,6 +552,11 @@ export default {
           };
         });
         return json({ forms }, 200);
+      }
+
+      // Funnel counts for one form: reached per question, in form order.
+      if (request.method === "GET" && path.startsWith("/api/admin/funnel/")) {
+        return handleAdminFunnel(env, url, decodeURIComponent(path.slice("/api/admin/funnel/".length)));
       }
 
       // Replace a form's questions without a deploy.
@@ -933,6 +939,11 @@ export default {
 
     // ------------------------------------------------------------ public forms
 
+    // Counts-only registration funnel beacons (worker/src/funnel.ts).
+    if (path.startsWith("/api/funnel/")) {
+      return handleFunnelEvent(request, env, decodeURIComponent(path.slice("/api/funnel/".length)));
+    }
+
     // The questions for a form, so the site can render whatever the admin defines.
     if (request.method === "GET" && path.startsWith("/api/form/")) {
       const formSlug = decodeURIComponent(path.slice("/api/form/".length));
@@ -1001,6 +1012,8 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
+      // Off the request path: a slow counter must never delay a registration.
+      ctx.waitUntil(recordSubmitted(env, formSlug));
 
       // Confirmation mail, if this form defines one. Copy lives in the
       // database alongside the questions, so it is editable without a deploy.
