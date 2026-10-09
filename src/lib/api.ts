@@ -14,6 +14,9 @@ export interface FormField {
   /** Framing copy shown above the label. Blank lines separate paragraphs. */
   intro?: string;
   intro_es?: string;
+  /** Optional section heading above the intro (or label when there is no intro). */
+  intro_heading?: string;
+  intro_heading_es?: string;
   help?: string;
   help_es?: string;
   type: "text" | "email" | "tel" | "textarea" | "radio" | "checkbox" | "checkboxes";

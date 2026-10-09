@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchForm, submitForm, type FormField, type FormDefinition } from "@/lib/api";
@@ -245,7 +245,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   return (
     <Card className="max-w-2xl mx-auto shadow-warm">
       <CardHeader>
-        <CardTitle>{formTitle(definition, language)}</CardTitle>
+        <h2 className="text-2xl font-semibold leading-none tracking-tight">{formTitle(definition, language)}</h2>
         {intro}
       </CardHeader>
       <CardContent>
@@ -253,22 +253,32 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
           {definition.fields.map((field) => {
             const id = `field-${field.key}`;
             const fieldIntro = introFor(field);
+            const introHeading = spanish && field.intro_heading_es ? field.intro_heading_es : field.intro_heading;
+            const fieldPreamble = (introHeading || fieldIntro) && (
+              <div className="space-y-2 pb-1">
+                {introHeading && <h3 className="text-xl font-semibold text-foreground leading-tight">{introHeading}</h3>}
+                {fieldIntro && paragraphs(fieldIntro, "text-sm leading-relaxed text-foreground/90")}
+              </div>
+            );
             const help = helpFor(field);
             const value = values[field.key];
 
             if (field.type === "checkbox") {
               return (
-                <div key={field.key} className="flex items-start gap-3">
-                  <Checkbox
-                    id={id}
-                    checked={Boolean(value)}
-                    onCheckedChange={(checked) => setValue(field.key, checked === true)}
-                  />
-                  <div className="space-y-1">
-                    <Label htmlFor={id} className="font-medium leading-snug">
-                      {labelFor(field)}
-                    </Label>
-                    {help && <p className="text-sm text-muted-foreground">{help}</p>}
+                <div key={field.key} className="space-y-2">
+                  {fieldPreamble}
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id={id}
+                      checked={Boolean(value)}
+                      onCheckedChange={(checked) => setValue(field.key, checked === true)}
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor={id} className="font-medium leading-snug">
+                        {labelFor(field)}
+                      </Label>
+                      {help && <p className="text-sm text-muted-foreground">{help}</p>}
+                    </div>
                   </div>
                 </div>
               );
@@ -276,11 +286,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
 
             return (
               <div key={field.key} className="space-y-2">
-                {fieldIntro && (
-                  <div className="space-y-2 pb-1">
-                    {paragraphs(fieldIntro, "text-sm leading-relaxed text-foreground/90")}
-                  </div>
-                )}
+                {fieldPreamble}
                 <Label htmlFor={id} className="leading-snug">
                   {labelFor(field)}
                   {field.required && <span className="text-destructive"> *</span>}
