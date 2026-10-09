@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the regenOS-hosting, RSVP and newsletter e2e scripts hermetically,
+# Runs the regenOS-hosting, RSVP, newsletter and funnel e2e scripts hermetically,
 # against a local wrangler dev + the mock AppView (scripts/regenos-mock.mjs) —
 # never scenius.social — and the mock Resend API (scripts/resend-mock.mjs) —
 # never a real inbox. Used by .github/workflows/deploy-worker.yml as a gate
@@ -200,6 +200,20 @@ start_worker $((28890 + E2E_PORT_OFFSET)) $((28237 + E2E_PORT_OFFSET)) /tmp/ci-e
   --var REGENOS_BASE_URL:http://127.0.0.1:$((28952 + E2E_PORT_OFFSET)) \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
 if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/checkin-e2e.mjs http://127.0.0.1:$((28890 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28952 + E2E_PORT_OFFSET)); then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
+# --- 7. funnel-e2e.mjs: registration funnel counts, beacon -> admin view --
+# Counts only: the lane checks the beacons carry nothing but an event name.
+# Reuses the admin + session seed (same --persist-to dir).
+echo "::group::funnel-e2e (registration funnel counts lane)"
+seed_d1_and_kv
+start_worker $((28895 + E2E_PORT_OFFSET)) $((28238 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-7.log \
+  --var REGENOS_LOGIN_ENABLED:false
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/funnel-e2e.mjs http://127.0.0.1:$((28895 + E2E_PORT_OFFSET)) "$SESSION_TOKEN"; then
   fail=1
 fi
 cleanup
