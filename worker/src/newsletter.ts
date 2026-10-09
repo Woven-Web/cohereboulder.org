@@ -155,7 +155,42 @@ export function mergeTags(existing: string | null | undefined, add: string[]): s
 
 // -------------------------------------------------------------- audience
 
-export type Audience = { kind: "all" } | { kind: "form"; form: string } | { kind: "tag"; tag: string };
+export type SegmentTerm = { form: string } | { tag: string };
+export type Audience =
+  | { kind: "all" }
+  | { kind: "form"; form: string }
+  | { kind: "tag"; tag: string }
+  | { kind: "segment"; include: SegmentTerm[]; exclude: SegmentTerm[] };
+
+const MAX_SEGMENT_TERMS = 20;
+
+function parseTerm(raw: unknown): SegmentTerm | null {
+  if (!raw || typeof raw !== "object") return null;
+  const t = raw as Record<string, unknown>;
+  const hasForm = typeof t.form === "string";
+  const hasTag = typeof t.tag === "string";
+  if (hasForm === hasTag) return null;
+  if (hasForm) return FORM_RE.test(t.form as string) ? { form: t.form as string } : null;
+  const tag = tagKey(t.tag as string);
+  return AUDIENCE_TAG_RE.test(tag) && tag !== UNDELIVERABLE_TAG ? { tag } : null;
+}
+
+function parseTerms(raw: unknown): SegmentTerm[] | null {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.length > MAX_SEGMENT_TERMS) return null;
+  const out: SegmentTerm[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const term = parseTerm(item);
+    if (!term) return null;
+    const key = JSON.stringify(term);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(term);
+    }
+  }
+  return out;
+}
 
 export function parseAudience(raw: unknown): Audience | null {
   let value = raw;
@@ -174,13 +209,22 @@ export function parseAudience(raw: unknown): Audience | null {
     const tag = tagKey(a.tag);
     if (AUDIENCE_TAG_RE.test(tag) && tag !== UNDELIVERABLE_TAG) return { kind: "tag", tag };
   }
+  if (a.kind === "segment") {
+    const include = parseTerms(a.include);
+    const exclude = parseTerms(a.exclude);
+    if (include && exclude) return { kind: "segment", include, exclude };
+  }
   return null;
 }
+
+const termText = (t: SegmentTerm) => ("form" in t ? t.form : `tag ${t.tag}`);
 
 export function describeAudience(a: Audience): string {
   if (a.kind === "all") return "everyone on the list";
   if (a.kind === "form") return `registrants of ${a.form}`;
-  return `people tagged ${a.tag}`;
+  if (a.kind === "tag") return `people tagged ${a.tag}`;
+  const inc = a.include.length ? a.include.map(termText).join(" or ") : "everyone";
+  return a.exclude.length ? `${inc}, not ${a.exclude.map(termText).join(" or ")}` : inc;
 }
 
 /** How a stored tag is compared: trimmed and lowercased. */
@@ -209,7 +253,85 @@ export function audienceWhere(a: Audience, first = 1): { sql: string; params: un
   if (a.kind === "tag") {
     return { sql: `${base} AND instr(${TAGS_EXPR}, ',' || ?${first} || ',') > 0`, params: [a.tag] };
   }
+  if (a.kind === "segment") {
+    const params: unknown[] = [];
+    const clause = (t: SegmentTerm) => {
+      params.push("form" in t ? t.form : t.tag);
+      const n = first + params.length - 1;
+      return "form" in t
+        ? `EXISTS (SELECT 1 FROM submissions s WHERE s.person_id = p.id AND s.form_slug = ?${n})`
+        : `instr(${TAGS_EXPR}, ',' || ?${n} || ',') > 0`;
+    };
+    let sql = base;
+    if (a.include.length) sql += ` AND (${a.include.map(clause).join(" OR ")})`;
+    if (a.exclude.length) sql += ` AND NOT (${a.exclude.map(clause).join(" OR ")})`;
+    return { sql, params };
+  }
   return { sql: base, params: [] };
+}
+
+/** `jane@gmail.com` → `j***@gmail.com`, for on-screen recipient lists. */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  return at < 1 ? "***" : `${email[0]}***${email.slice(at)}`;
+}
+
+const PREVIEW_RECIPIENTS = 20;
+
+function csvCell(value: string): string {
+  // A leading = + - @ makes a spreadsheet run the cell as a formula.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+async function recipientRows(env: NewsletterEnv, a: Audience, limit: number) {
+  const where = audienceWhere(a);
+  const { results } = await env.cohere
+    .prepare(`SELECT p.name, p.email FROM people p WHERE ${where.sql} ORDER BY p.created_at DESC, p.email LIMIT ${Math.trunc(limit)}`)
+    .bind(...where.params)
+    .all<{ name: string | null; email: string }>();
+  return results;
+}
+
+/**
+ * Bulk add/remove tags on people (People view). Tags go through normalizeTag /
+ * mergeTags like every other tag write. `undeliverable` may be added but never
+ * removed here — that tag is the bounce safeguard.
+ */
+export async function bulkTags(env: NewsletterEnv, raw: unknown, at = new Date()): Promise<Response> {
+  const body = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const strings = (v: unknown) => (Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]) : null);
+  const ids = strings(body.ids);
+  const add = body.add === undefined ? [] : strings(body.add);
+  const remove = body.remove === undefined ? [] : strings(body.remove);
+  if (!ids || !ids.length || ids.length > 500) return json({ error: "choose between 1 and 500 people" }, 400);
+  if (!add || !remove || add.length + remove.length === 0 || add.length > 20 || remove.length > 20) {
+    return json({ error: "give at least one tag to add or remove" }, 400);
+  }
+  const adds = add.map(normalizeTag);
+  const removes = remove.map(normalizeTag);
+  if ([...adds, ...removes].some((t) => !TAG_RE.test(t))) return json({ error: "tags use letters, numbers, - : . _" }, 400);
+  if (removes.includes(UNDELIVERABLE_TAG)) return json({ error: "the undeliverable tag can't be removed here" }, 400);
+
+  let updated = 0;
+  const stamp = at.toISOString();
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const marks = chunk.map((_, j) => `?${j + 1}`).join(",");
+    const { results } = await env.cohere
+      .prepare(`SELECT id, tags FROM people WHERE id IN (${marks})`)
+      .bind(...chunk)
+      .all<{ id: string; tags: string | null }>();
+    const statements = results.map((row) => {
+      const kept = splitTags(row.tags).filter((t) => !removes.includes(normalizeTag(t))).join(",");
+      return env.cohere
+        .prepare(`UPDATE people SET tags = ?2, updated_at = ?3 WHERE id = ?1`)
+        .bind(row.id, mergeTags(kept, adds), stamp);
+    });
+    if (statements.length) await env.cohere.batch(statements);
+    updated += statements.length;
+  }
+  return json({ ok: true, updated }, 200);
 }
 
 export async function countAudience(env: NewsletterEnv, a: Audience): Promise<number> {
@@ -251,10 +373,11 @@ function renderInline(raw: string): string {
 }
 
 const P = `style="margin:0 0 14px;line-height:1.6"`;
+const BUTTON = /^\[\[([^\]\n]{1,100})\]\]\(([^)\s]{1,2000})\)$/;
 
 /**
  * The organizer's body → email HTML. Deliberately tiny: paragraphs (blank
- * line), `## heading`, `- list`, `![alt](https://image)`, links, bold,
+ * line), `## heading`, `---` rule, `[[Button]](url)`, `- list`, `![alt](https://image)`, links, bold,
  * italic. Everything is escaped first; only https images and http(s)/mailto
  * links are emitted. No raw HTML passes through.
  */
@@ -267,6 +390,15 @@ export function renderNewsletterBody(text: string): string {
   return blocks
     .map((block) => {
       const lines = block.split("\n");
+      if (/^-{3,}$/.test(block)) {
+        return `<hr style="border:0;border-top:1px solid #d9d9d9;margin:22px 0">`;
+      }
+      const button = block.match(BUTTON);
+      if (button) {
+        return SAFE_HREF.test(button[2])
+          ? `<p style="margin:0 0 14px;text-align:center"><a href="${escapeHtml(button[2])}" style="display:inline-block;background:#36558F;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:6px">${escapeHtml(button[1])}</a></p>`
+          : `<p ${P}>${escapeHtml(block)}</p>`;
+      }
       const heading = block.match(/^#{1,3}\s+(.+)$/);
       if (heading && lines.length === 1) {
         return `<h2 style="font-size:18px;line-height:1.3;margin:22px 0 10px">${renderInline(heading[1])}</h2>`;
@@ -564,6 +696,46 @@ export async function handleNewsletterAdmin(
       },
       200,
     );
+  }
+
+  if (parts.length === 1 && parts[0] === "preview" && method === "POST") {
+    const body = await readJson(request);
+    const subject = typeof body?.subject === "string" ? body.subject.slice(0, MAX_SUBJECT) : "";
+    const text = typeof body?.text === "string" ? body.text.slice(0, MAX_TEXT) : "";
+    const message = newsletterMessage(
+      { subject, html: renderNewsletterBody(text), text },
+      unsubscribeUrl(baseUrl(env, url), "preview"),
+    );
+    return json({ subject: message.subject, html: message.html, text: message.text }, 200);
+  }
+
+  if (parts.length === 1 && parts[0] === "recipients" && method === "POST") {
+    const body = await readJson(request);
+    const audience = parseAudience(body?.audience);
+    if (!audience) return json({ error: "invalid audience" }, 400);
+    const rows = await recipientRows(env, audience, PREVIEW_RECIPIENTS);
+    return json(
+      {
+        count: await countAudience(env, audience),
+        recipients: rows.map((r) => ({ name: r.name ?? "", email: maskEmail(r.email) })),
+      },
+      200,
+    );
+  }
+
+  if (parts.length === 1 && parts[0] === "recipients.csv" && method === "GET") {
+    const audience = parseAudience(url.searchParams.get("audience"));
+    if (!audience) return json({ error: "invalid audience" }, 400);
+    const rows = await recipientRows(env, audience, 100_000);
+    const csv = ["name,email", ...rows.map((r) => `${csvCell(r.name ?? "")},${csvCell(r.email)}`)].join("\n") + "\n";
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="recipients.csv"',
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   if (parts.length === 1 && parts[0] === "count" && method === "POST") {

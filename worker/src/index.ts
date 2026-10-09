@@ -50,6 +50,7 @@ import {
 import { routeCheckin, runCheckinRetention, type CheckinEnv } from "./checkins";
 import { CHECKIN_PAGE } from "./checkin-page";
 import {
+  bulkTags,
   handleNewsletterAdmin,
   handleNewsletterCancelLink,
   runNewsletterCron,
@@ -561,6 +562,17 @@ export default {
           )
           .run();
         return json({ ok: true }, 200);
+      }
+
+      // Bulk add/remove tags on the selected people (People view).
+      if (request.method === "POST" && path === "/api/admin/people/tags") {
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "invalid JSON" }, 400);
+        }
+        return bulkTags(env, body);
       }
 
       // Organizer-only fields: tags, notes, subscribe state.
