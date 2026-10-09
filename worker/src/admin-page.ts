@@ -364,7 +364,7 @@ export const ADMIN_PAGE = `<!doctype html>
           <label for="nlaudience">Audience</label>
           <div class="row">
             <select id="nlaudience"></select>
-            <button class="btn" id="nlpreset" type="button">Came in 2024 or 2025, not registered for 2026</button>
+            <button class="btn" id="nlpreset" type="button">Everyone except people registered for 2026</button>
           </div>
           <div class="field hidden" id="nlsegment" data-testid="nl-segment">
             <span class="muted">For each form or tag choose <b>Include</b> (anyone matching any included item) or
@@ -1854,7 +1854,7 @@ export const ADMIN_PAGE = `<!doctype html>
   });
 
   el("nlpreset").addEventListener("click", function () {
-    fillAudienceSelect({ kind: "segment", include: [{ form: "register-2025" }, { tag: "cohere-2024" }], exclude: [{ form: "register-2026" }] });
+    fillAudienceSelect({ kind: "segment", include: [], exclude: [{ form: "register-2026" }] });
     audienceChanged();
   });
   el("nlcsv").addEventListener("click", function () {

@@ -102,6 +102,8 @@ if ! node scripts/share-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); t
   fail=1
 fi
 if ! node scripts/regenos-e2e.mjs http://127.0.0.1:$((28789 + E2E_PORT_OFFSET)); then
+  tail -150 /tmp/ci-e2e-worker-1.log
+  tail -80 /tmp/ci-e2e-mock-1.log
   fail=1
 fi
 cleanup
