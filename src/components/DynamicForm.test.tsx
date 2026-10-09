@@ -49,7 +49,43 @@ describe("field intro heading", () => {
 
   it("omits the field heading when unset", () => {
     const html = render();
-    expect(html.match(/<h3/g)).toHaveLength(1); // Only the card title.
+    expect(html.match(/<h2\b/g)).toHaveLength(1);
+    expect(html.match(/<h3\b/g) ?? []).toHaveLength(0);
     expect(html).toContain("First paragraph.");
+  });
+
+  it("renders the form h2 before field h3s", () => {
+    Object.assign(state.definition!.fields[0], { intro_heading: "First section" });
+    state.definition!.fields.push({ key: "second", type: "text", label: "Second answer", intro_heading: "Second section" });
+    const html = render();
+    expect(html.match(/<h[23]\b[^>]*>[^<]*<\/h[23]>/g)).toEqual([
+      '<h2 class="text-2xl font-semibold leading-none tracking-tight">Test form</h2>',
+      '<h3 class="text-xl font-semibold text-foreground leading-tight">First section</h3>',
+      '<h3 class="text-xl font-semibold text-foreground leading-tight">Second section</h3>',
+    ]);
+  });
+
+  it("renders a checkbox heading then intro paragraphs then its label", () => {
+    Object.assign(state.definition!.fields[0], { type: "checkbox", intro_heading: "Donation (optional)" });
+    const html = render();
+    expect(html).toMatch(/<h3[^>]*>Donation \(optional\)<\/h3>/);
+    expect(html).toMatch(/<p[^>]*>First paragraph\.<\/p>/);
+    expect(html).toMatch(/<p[^>]*>Second paragraph\.<\/p>/);
+    expect(html).toMatch(/<label[^>]*for="field-donation"[^>]*>Amount<\/label>/);
+    expect(html.indexOf("Donation (optional)")).toBeLessThan(html.indexOf("First paragraph."));
+    expect(html.indexOf("First paragraph.")).toBeLessThan(html.indexOf("Second paragraph."));
+    expect(html.indexOf("Second paragraph.")).toBeLessThan(html.indexOf("<label"));
+  });
+
+  it.each(["en", "es"])("escapes markup-like heading text in %s", (language) => {
+    state.language = language;
+    Object.assign(state.definition!.fields[0], {
+      intro_heading: '<em data-injected="heading">Donation & support</em>',
+      intro_heading_es: '<em data-injected="heading">Donación & apoyo</em>',
+    });
+    const html = render();
+    const text = language === "es" ? "Donación &amp; apoyo" : "Donation &amp; support";
+    expect(html).toContain(`&lt;em data-injected=&quot;heading&quot;&gt;${text}&lt;/em&gt;</h3>`);
+    expect(html).not.toMatch(/<em\b/);
   });
 });

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchForm, submitForm, type FormField, type FormDefinition } from "@/lib/api";
@@ -245,7 +245,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   return (
     <Card className="max-w-2xl mx-auto shadow-warm">
       <CardHeader>
-        <CardTitle>{formTitle(definition, language)}</CardTitle>
+        <h2 className="text-2xl font-semibold leading-none tracking-tight">{formTitle(definition, language)}</h2>
         {intro}
       </CardHeader>
       <CardContent>
