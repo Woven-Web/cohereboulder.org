@@ -294,8 +294,8 @@ export const ADMIN_PAGE = `<!doctype html>
 
     <section id="tab-funnel" class="hidden" style="flex-direction:column;gap:1rem;">
       <p class="muted">
-        Where people stop on a form. Counts only: each number is how many page loads got that far.
-        No answers, emails or visitor identifiers are stored. Days are UTC.
+        Where people stop on a form. Counts only: each number is an event total, not a cohort of people,
+        so optional questions, lost events and repeat submissions blur the gaps. No answers, emails or visitor identifiers are stored. Days are UTC.
       </p>
       <div class="toolbar">
         <select id="funnel-form" aria-label="Form"></select>
@@ -305,7 +305,7 @@ export const ADMIN_PAGE = `<!doctype html>
       </div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Step</th><th>Reached</th><th>Lost since previous step</th></tr></thead>
+          <thead><tr><th>Step</th><th>Events</th><th>Fewer than previous step</th></tr></thead>
           <tbody id="funnel-rows"></tbody>
         </table>
       </div>

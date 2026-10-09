@@ -206,3 +206,62 @@ describe("GET /api/admin/funnel/:slug", () => {
     expect((await handleAdminFunnel(env, get(), "nope", NOW)).status).toBe(404);
   });
 });
+
+describe("body size cap is enforced on bytes while reading", () => {
+  it("rejects a multibyte body that is under 512 characters but over 512 bytes", async () => {
+    const env = makeEnv();
+    const body = JSON.stringify({ event: "view", pad: "🌿".repeat(200) });
+    expect(body.length).toBeLessThan(512);
+    expect(new TextEncoder().encode(body).length).toBeGreaterThan(512);
+    const res = await handleFunnelEvent(post(body, {}, true), env, "open-form", NOW);
+    expect(res.status).toBe(413);
+    expect(await rows(env)).toEqual([]);
+  });
+
+  it("stops reading a never-ending stream once the cap is passed", async () => {
+    const env = makeEnv();
+    let pulls = 0;
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        if (pulls > 1000) controller.error(new Error("kept reading forever"));
+        else controller.enqueue(new Uint8Array(100).fill(120));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const request = new Request("https://cohereboulder.org/api/funnel/open-form", {
+      method: "POST",
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+    const res = await handleFunnelEvent(request, env, "open-form", NOW);
+    expect(res.status).toBe(413);
+    expect(cancelled).toBe(true);
+    expect(pulls).toBeLessThan(20);
+  });
+
+  it("refuses a large Content-Length without reading the body", async () => {
+    const env = makeEnv();
+    const stream = new ReadableStream<Uint8Array>({ pull() {} });
+    const request = new Request("https://cohereboulder.org/api/funnel/open-form", {
+      method: "POST",
+      headers: { "Content-Length": "100000" },
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+    const res = await handleFunnelEvent(request, env, "open-form", NOW);
+    expect(res.status).toBe(413);
+    expect(request.body?.locked).toBe(false); // never even handed to a reader
+  });
+
+  it("still accepts a body of exactly 512 bytes", async () => {
+    const env = makeEnv();
+    const base = JSON.stringify({ event: "view", pad: "" });
+    const body = JSON.stringify({ event: "view", pad: "x".repeat(512 - base.length) });
+    expect(new TextEncoder().encode(body).length).toBe(512);
+    expect((await handleFunnelEvent(post(body, {}, true), env, "open-form", NOW)).status).toBe(204);
+  });
+});

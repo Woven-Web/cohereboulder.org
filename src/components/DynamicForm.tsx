@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchForm, sendFunnelEvent, submitForm, type FormField, type FormDefinition } from "@/lib/api";
+import { REACHED_RATIO, countsAsReached } from "@/lib/funnel";
 import { formTitle } from "@/lib/formTitle";
 
 // The questions live in the database, not in this file. An organizer can
@@ -137,13 +138,13 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
       (entries) => {
         for (const entry of entries) {
           const key = (entry.target as HTMLElement).dataset.fieldKey;
-          if (entry.isIntersecting && key) {
+          if (countsAsReached(entry) && key) {
             sendFunnelEvent(slug, `reached:${key}`);
             observer.unobserve(entry.target);
           }
         }
       },
-      { threshold: 0.6 },
+      { threshold: REACHED_RATIO },
     );
     form.querySelectorAll("[data-field-key]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();

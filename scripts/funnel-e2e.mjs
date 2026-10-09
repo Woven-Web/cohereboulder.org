@@ -77,6 +77,8 @@ const counts = () => {
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({ baseURL: target, viewport: { width: 390, height: 700 } });
+  // An organizer's session cookie (Path=/) is present throughout: no beacon may carry it.
+  await context.addCookies([{ name: "cohere_session", value: "must-not-leak", url: target }]);
   const page = await context.newPage();
   const beacons = [];
   await page.route("**/api/funnel/**", async (route) => {
@@ -153,7 +155,8 @@ try {
     const body = JSON.parse(b.body);
     expect(Object.keys(body).length === 1 && typeof body.event === "string", `beacon carried more than {event}: ${b.body}`);
     expect(!b.body.includes(stamp) && !b.body.includes("@"), "no answer or email in a beacon");
-    expect(!b.headers.cookie, "no cookie on a beacon");
+    expect(!b.headers.cookie, "no cookie on a beacon, even with a session cookie present");
+    expect(!b.headers.referer, "no referrer on a beacon");
   }
   const columns = d1(`PRAGMA table_info(form_funnel)`).map((r) => r.name).join(",");
   expect(columns === "form_slug,day,event,count", `table holds only counters, has ${columns}`);

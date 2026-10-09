@@ -282,7 +282,7 @@ function csvCell(value: unknown): string {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const cors = corsHeaders(request.headers.get("Origin"));
     const url = new URL(request.url);
     const path = url.pathname;
@@ -961,7 +961,8 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
-      await recordSubmitted(env, formSlug);
+      // Off the request path: a slow counter must never delay a registration.
+      ctx.waitUntil(recordSubmitted(env, formSlug));
 
       // Confirmation mail, if this form defines one. Copy lives in the
       // database alongside the questions, so it is editable without a deploy.

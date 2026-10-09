@@ -92,11 +92,17 @@ export function sendFunnelEvent(slug: string, event: string): void {
   if (funnelSent.has(id)) return;
   funnelSent.add(id);
   const url = `${API_BASE}/api/funnel/${encodeURIComponent(slug)}`;
-  // text/plain keeps this a "simple" request (no preflight), as sendBeacon requires.
-  const body = JSON.stringify({ event });
+  // Plain fetch, not sendBeacon: a beacon always carries credentials, and the
+  // admin session cookie is Path=/, so a signed-in organizer would send it here.
   try {
-    if (navigator.sendBeacon?.(url, new Blob([body], { type: "text/plain" }))) return;
-    void fetch(url, { method: "POST", body, headers: { "Content-Type": "text/plain" }, keepalive: true, credentials: "omit" }).catch(() => {});
+    void fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ event }),
+      headers: { "Content-Type": "text/plain" },
+      keepalive: true,
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    }).catch(() => {});
   } catch {
     // Measurement is best-effort.
   }

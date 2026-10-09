@@ -62,6 +62,35 @@ async function bump(env: FunnelEnv, slug: string, event: string, now: Date): Pro
   return (result.results?.length ?? 0) > 0;
 }
 
+/**
+ * Reads at most `max` bytes of the body, cancelling the stream the moment one
+ * more arrives. Null when the body is larger. Counting bytes while streaming,
+ * not characters after buffering, is what bounds the memory a client can cost.
+ */
+async function readCapped(request: Request, max: number): Promise<Uint8Array | null> {
+  if (!request.body) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
 /** POST /api/funnel/:slug — body `{event}` and nothing else of interest. */
 export async function handleFunnelEvent(
   request: Request,
@@ -77,10 +106,13 @@ export async function handleFunnelEvent(
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) return respond(403, "forbidden");
 
-  // sendBeacon posts text/plain to stay a "simple" request, so the body is
+  // The browser posts text/plain to stay a "simple" request, so the body is
   // read as text whatever the content type says.
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) return respond(413, "too large");
+  const declared = Number(request.headers.get("Content-Length"));
+  if (declared > MAX_BODY_BYTES) return respond(413, "too large");
+  const bytes = await readCapped(request, MAX_BODY_BYTES);
+  if (!bytes) return respond(413, "too large");
+  const text = new TextDecoder().decode(bytes);
   let event: unknown;
   try {
     event = (JSON.parse(text) as { event?: unknown }).event;
