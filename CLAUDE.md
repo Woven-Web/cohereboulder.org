@@ -36,7 +36,7 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /api/submit/:slug    a submission + confirmation   (public)
         ├── /  (POST)            legacy email-only capture     (public)
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
-        ├── /api/auth/*          magic link + one-time code sign-in
+        ├── /api/auth/*          portal identity (me); email-code sign-in only if ADMIN_EMAIL_LOGIN
         ├── /api/admin/*         admin JSON, behind the session cookie
         │     ├── …/events[/:did/:rkey[/attendance]]   the community calendar
         │     └── …/access[/invite|role|revoke]        who may host on it
@@ -114,7 +114,7 @@ code**:
 | `people` | Identity that persists across years — email (unique), name, phone, orgs, subscribe state, tags, internal notes, unsubscribe token |
 | `forms` | Each form's questions as a JSON array, plus optional confirmation-email subject and body |
 | `submissions` | One row per person per form; answers as a JSON object |
-| `admins` | Who may sign in to the portal |
+| `admins` | Organizer notification emails (newsletter confirmations); no access rights |
 | `form_funnel` | Registration funnel counters: one row per form, UTC day and event |
 
 **Changing a question, or the confirmation email, is a database edit — not a
@@ -150,14 +150,39 @@ columns; everything else lands in the answers JSON.
 
 ## Admin access
 
-No passwords and no shared key. Organizers sign in at `/admin` with their email
-and get both a magic link and a 6-digit code, valid ten minutes. Sessions are
-HttpOnly cookies lasting 30 days, revoked on sign-out or when an address is
-removed from `admins`. Manage who can sign in from the portal's "Who can sign
-in" tab.
+**Admins are regenOS users.** The portal at `/admin` opens for anyone whose
+role in the COhere scene (`REGENOS_COLLECTIVE_DID`) is **builder or higher**
+(builder 20 · facilitator 30 · steward 40). There is no separate admin login:
+the visitor's relayed `__Host-rs_session` cookie goes to `getSession` for who
+they are, and the site's service token reads `getSceneMembers` for their role
+(`worker/src/admin-gate.ts`). The answer is cached in KV for **60 seconds**,
+so a revoked role or ended session stops working in about one to two minutes
+(KV is eventually consistent). Stewards
+alone can use the **Access** tab and edit the notification list; builders and
+facilitators get everything else.
 
-If email delivery ever breaks, the backstop is Cloudflare account access:
-`wrangler d1 execute cohere --remote --command "INSERT ... INTO admins ..."`.
+- Signed out → `/admin` redirects to `/login?returnTo=/admin`. Signed in below
+  builder → a plain page naming their handle and asking them to get the
+  builder role. Failure to reach regenOS fails closed.
+- Identity for `created_by` / `confirmed_by` / audit columns is the verified
+  contact email regenOS holds for the account (`getMyContactPref`) if any,
+  else `@handle`. `getSession` itself returns only `{did, handle, kind}`.
+- A newsletter test send goes to that email; with none on file the organizer
+  types an address that must be on the notification list (`admins` table), and
+  the test counts only for the person who asked for it.
+- The `admins` table is now just the **Organizer notification emails** — who
+  hears when a newsletter is confirmed. It grants no access.
+- **`ADMIN_EMAIL_LOGIN`** (default `"false"`, never `"true"` in config) brings
+  back the old emailed code/link login and its `cohere_session` cookie, as a
+  one-release rollback. Off, `/api/auth/request|verify|callback` answer 404 and
+  a `cohere_session` cookie opens nothing. Staging does not set it, so the
+  portal there needs a regenOS session (login is off on staging).
+- Test locally with `scripts/regenos-mock.mjs` personas (`sess-steward`,
+  `sess-builder`, `sess-member`, `sess-outsider`, `sess-expired`) and
+  `scripts/admin-gate-e2e.mjs`; `scripts/ci-e2e.sh` lane 7 runs it.
+
+If regenOS or the service token is down, the backstop is `ADMIN_EMAIL_LOGIN=true`
+plus an `admins` row via `wrangler d1 execute cohere --remote`.
 
 ## Email
 
@@ -275,7 +300,7 @@ repository secret, and re-run the deploy workflow — the wrangler-action
 
 ```bash
 PORT=9945 node scripts/regenos-mock.mjs          # start it FRESH each run
-npx wrangler dev --port 8795 \
+npx wrangler dev --port 8795 --var ADMIN_EMAIL_LOGIN:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:9945 \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var REGENOS_SERVICE_TOKEN:mock-token

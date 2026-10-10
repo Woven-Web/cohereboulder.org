@@ -64,16 +64,21 @@ wait_for() {
 
 start_mock() {
   local port="$1" logfile="$2"
-  PORT="$port" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
+  PORT="$port" MOCK_ROSTER_PAGE_SIZE="${MOCK_ROSTER_PAGE_SIZE:-0}" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/xrpc/social.scenius.getEvents" "regenOS mock on :$port"
 }
 
-# $1 worker port, $2 inspector port, $3 logfile, remaining args: --var flags
+# $1 worker port, $2 inspector port, $3 logfile, remaining args: --var flags.
+# ADMIN_EMAIL_LOGIN defaults to "true" here: lanes 2-6 seed a cohere_session
+# in KV rather than signing in, and those lanes test the calendar, RSVP,
+# newsletter and check-in features, not the gate. Lane 7 tests the gate itself
+# and starts its main Worker with ADMIN_LOGIN_FLAG=false (the production default).
 start_worker() {
   local port="$1" inspector="$2" logfile="$3"
   shift 3
-  setsid node node_modules/wrangler/bin/wrangler.js dev --port "$port" --inspector-port "$inspector" "${WRANGLER_LOCAL_ARGS[@]}" "$@" >"$logfile" 2>&1 &
+  setsid node node_modules/wrangler/bin/wrangler.js dev --port "$port" --inspector-port "$inspector" "${WRANGLER_LOCAL_ARGS[@]}" \
+    --var "ADMIN_EMAIL_LOGIN:${ADMIN_LOGIN_FLAG:-true}" "$@" >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/" "wrangler dev on :$port"
 }
@@ -208,12 +213,42 @@ cleanup
 PIDS=()
 echo "::endgroup::"
 
-# --- 7. funnel-e2e.mjs: registration funnel counts, beacon -> admin view --
+# --- 7. admin-gate-e2e.mjs: the portal opens for regenOS builders+ only ---
+# The retired email-code login is OFF (the production default) on the main
+# Worker, so the seeded cohere_session must be refused; a second Worker with
+# the flag on proves the rollback path. Waits ~65s for the 60s role cache.
+echo "::group::admin-gate-e2e (regenOS role gate)"
+seed_d1_and_kv
+# Page the roster one member at a time so the gate follows the cursor.
+MOCK_ROSTER_PAGE_SIZE=1 start_mock $((28954 + E2E_PORT_OFFSET)) /tmp/ci-e2e-mock-7.log
+ADMIN_LOGIN_FLAG=false start_worker $((28900 + E2E_PORT_OFFSET)) $((28238 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-7-main.log \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var REGENOS_SERVICE_TOKEN:mock-token
+ADMIN_LOGIN_FLAG=true start_worker $((28901 + E2E_PORT_OFFSET)) $((28239 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-7-rollback.log \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var REGENOS_SERVICE_TOKEN:mock-token
+# The header's Organizer link, and the portal wearing the site's chrome. Runs
+# first: the gate script below demotes the mock's builder to test the cache.
+if ! node scripts/admin-ui-e2e.mjs http://127.0.0.1:$((28900 + E2E_PORT_OFFSET)); then
+  fail=1
+fi
+if ! node scripts/admin-gate-e2e.mjs http://127.0.0.1:$((28900 + E2E_PORT_OFFSET)) http://127.0.0.1:$((28954 + E2E_PORT_OFFSET)) "$SESSION_TOKEN" http://127.0.0.1:$((28901 + E2E_PORT_OFFSET)); then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
+# --- 8. funnel-e2e.mjs: registration funnel counts, beacon -> admin view --
 # Counts only: the lane checks the beacons carry nothing but an event name.
 # Reuses the admin + session seed (same --persist-to dir).
 echo "::group::funnel-e2e (registration funnel counts lane)"
 seed_d1_and_kv
-start_worker $((28895 + E2E_PORT_OFFSET)) $((28238 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-7.log \
+start_worker $((28895 + E2E_PORT_OFFSET)) $((28240 + E2E_PORT_OFFSET)) /tmp/ci-e2e-worker-8.log \
   --var REGENOS_LOGIN_ENABLED:false
 if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/funnel-e2e.mjs http://127.0.0.1:$((28895 + E2E_PORT_OFFSET)) "$SESSION_TOKEN"; then
   fail=1

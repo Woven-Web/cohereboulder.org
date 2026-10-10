@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, MailCheck } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { beginSignup, fetchRegenosSession } from "@/lib/regenos";
-import { signInDestination } from "@/lib/appRouting";
+import { isWorkerPage, signInDestination } from "@/lib/appRouting";
 import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
 
 /** Which view is on screen. `busy` is tracked separately so an in-flight
@@ -24,7 +24,7 @@ import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
 type Stage = "idle" | "checkEmail";
 
 /** `embedded`: inside a dialog that already has its own title and frame. */
-export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } = {}) {
+export function RegenosSignInPanel({ embedded = false, returnTo }: { embedded?: boolean; returnTo?: string } = {}) {
   const { tr } = useLanguage();
   const navigate = useNavigate();
   const invalidateSession = useInvalidateRegenosSession();
@@ -42,7 +42,7 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setError(null);
     try {
-      const path = window.location.pathname + window.location.search + window.location.hash;
+      const path = returnTo ?? window.location.pathname + window.location.search + window.location.hash;
       localStorage.setItem("cohere:returnTo", path);
       const result = await beginSignup(email);
       if (result.stage === "login") {
@@ -51,6 +51,10 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
         const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
         const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
         localStorage.removeItem("cohere:returnTo");
+        if (isWorkerPage(destination)) {
+          window.location.replace(destination);
+          return;
+        }
         navigate(destination, { replace: true });
         invalidateSession();
       } else if (result.stage === "chooseHandle") {
@@ -93,7 +97,8 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
               const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
               const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
               localStorage.removeItem("cohere:returnTo");
-              navigate(destination, { replace: true });
+              if (isWorkerPage(destination)) window.location.replace(destination);
+              else navigate(destination, { replace: true });
             }}>
               {tr("calendar.host.checkEmailDone")}
             </Button>

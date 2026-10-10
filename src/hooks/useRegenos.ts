@@ -1,4 +1,4 @@
-import { fetchMyRegistration } from "@/lib/api";
+import { fetchMe, fetchMyRegistration } from "@/lib/api";
 // React-query hooks for the regenOS account lane. Both are read-only polls;
 // every mutation lives with the component that makes it.
 
@@ -48,4 +48,11 @@ export function useMyRegistration() {
   const { data: config } = useSiteConfig();
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   return useQuery({ queryKey: ["my-registration", session?.did], queryFn: fetchMyRegistration, enabled: Boolean(session?.did), staleTime: 0, retry: 1 });
+}
+
+/** Whether the signed-in visitor is an organizer (gets the header's Organizer link). */
+export function useMe() {
+  const { data: config } = useSiteConfig();
+  const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
+  return useQuery({ queryKey: ["me", session?.did], queryFn: fetchMe, enabled: Boolean(session?.did), staleTime: 60 * 1000, retry: 1 });
 }

@@ -1,6 +1,6 @@
 import { RegistrationAction } from "@/components/RegistrationAction";
 import { AppTabs } from "@/components/AppTabs";
-import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { useMe, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,9 @@ export const Navigation = () => {
   const { data: config } = useSiteConfig();
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   const signedIn = Boolean(session?.did);
+  const { data: me } = useMe();
+  // A real page, not a SPA route: /admin is served by the Worker.
+  const organizerLink = me?.organizer === true;
 
   const navItems = [
     { href: "/calendar", label: tr("nav.calendar") },
@@ -58,6 +61,12 @@ export const Navigation = () => {
                   {item.label}
                 </Link>
               ))}
+
+              {organizerLink && (
+                <a href="/admin" className="hidden xl:flex min-h-11 items-center font-medium text-muted-foreground hover:text-foreground transition-colors duration-300">
+                  {tr("nav.organizer")}
+                </a>
+              )}
 
               {/* Register - the primary action for anyone new */}
               <Button asChild variant={signedIn ? "outline" : "community"} size="sm" className="hidden xl:inline-flex min-h-11">
@@ -116,6 +125,12 @@ export const Navigation = () => {
                   </Link>
                 ))}
                 
+                {organizerLink && (
+                  <a href="/admin" className="flex min-h-11 items-center px-3 py-2 font-medium text-muted-foreground hover:text-foreground">
+                    {tr("nav.organizer")}
+                  </a>
+                )}
+
                 {/* Register - Mobile */}
                 <Button asChild variant={signedIn ? "outline" : "community"} className="min-h-11 mx-3 mt-2">
                   <RegistrationAction onClick={() => setIsMenuOpen(false)} />

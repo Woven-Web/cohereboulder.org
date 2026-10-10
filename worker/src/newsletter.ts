@@ -47,6 +47,7 @@
 
 import type { AuthEnv, Session } from "./auth";
 import { mailShell, rateLimited } from "./auth";
+import { isOwnTest, sessionMailbox, testSentLabel } from "./admin-identity";
 
 export interface NewsletterEnv extends AuthEnv {
   cohere: D1Database;
@@ -561,10 +562,10 @@ async function sendCounts(env: NewsletterEnv, id: string): Promise<Record<string
 }
 
 /** The JSON the admin page sees. Never includes the cancel token. */
-async function publicView(env: NewsletterEnv, row: NewsletterRow, viewer: string) {
+async function publicView(env: NewsletterEnv, row: NewsletterRow, viewer: Session) {
   const hash = await contentHash(row.subject, row.text);
   const tested = row.test_sent_hash === hash;
-  const testedByViewer = tested && row.test_sent_to === viewer;
+  const testedByViewer = tested && isOwnTest(viewer, row.test_sent_to);
   const { cancel_token: _omit, ...rest } = row;
   void _omit;
   return {
@@ -672,7 +673,7 @@ export async function handleNewsletterAdmin(
       .bind(id, fields.subject, renderNewsletterBody(fields.text), fields.text, JSON.stringify(audience), session.email, at)
       .run();
     const row = await getNewsletter(env, id);
-    return json({ newsletter: await publicView(env, row!, session.email) }, 200);
+    return json({ newsletter: await publicView(env, row!, session) }, 200);
   }
 
   if (parts.length === 1 && parts[0] === "audiences" && method === "GET") {
@@ -751,7 +752,7 @@ export async function handleNewsletterAdmin(
   const action = parts[1];
 
   if (!action && method === "GET") {
-    return json({ newsletter: await publicView(env, row, session.email) }, 200);
+    return json({ newsletter: await publicView(env, row, session) }, 200);
   }
 
   if (!action && method === "PUT") {
@@ -770,7 +771,7 @@ export async function handleNewsletterAdmin(
       .bind(row.id, fields.subject, renderNewsletterBody(fields.text), fields.text, JSON.stringify(audience), now().toISOString())
       .run();
     if (!result.meta?.changes) return json({ error: "this newsletter is no longer a draft" }, 409);
-    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session.email) }, 200);
+    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session) }, 200);
   }
 
   if (!action && method === "DELETE") {
@@ -794,13 +795,27 @@ export async function handleNewsletterAdmin(
     if (await rateLimited(env, `newsletter-test:${session.email}`, 10, 15 * 60)) {
       return json({ error: "too many test sends — wait a few minutes" }, 429);
     }
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    // Where the test goes: the organizer's own mailbox if we have one. A
+    // regenOS account with no email on file must type an organizer
+    // notification address instead — we won't mail an arbitrary address.
+    let to = sessionMailbox(session);
+    if (!to) {
+      const typed = typeof body.to === "string" ? body.to.trim().toLowerCase() : "";
+      if (!typed) {
+        return json({ error: "Your regenOS account has no email we can use. Type an organizer notification address to send the test to." }, 400);
+      }
+      const listed = await env.cohere.prepare(`SELECT email FROM admins WHERE lower(email) = ?1`).bind(typed).first<{ email: string }>();
+      if (!listed) return json({ error: "That address isn't on the organizer notification list. Pick one that is." }, 400);
+      to = typed;
+    }
     const person = await env.cohere
       .prepare(`SELECT unsubscribe_token FROM people WHERE email = ?1`)
-      .bind(session.email)
+      .bind(to)
       .first<{ unsubscribe_token: string }>();
     const message = newsletterMessage(row, unsubscribeUrl(baseUrl(env, url), person?.unsubscribe_token ?? "test"), true);
     try {
-      await send(env, { to: session.email, message });
+      await send(env, { to, message });
     } catch (error) {
       console.error("newsletter test send failed:", redactEmails(error instanceof Error ? error.message : "unknown"));
       return json(
@@ -819,14 +834,14 @@ export async function handleNewsletterAdmin(
         `UPDATE newsletters SET test_sent_hash = ?2, test_sent_to = ?3, test_sent_at = ?4, updated_at = ?4
          WHERE id = ?1 AND status = 'draft' AND subject = ?5 AND text = ?6`,
       )
-      .bind(row.id, await contentHash(row.subject, row.text), session.email, at, row.subject, row.text)
+      .bind(row.id, await contentHash(row.subject, row.text), testSentLabel(session, to), at, row.subject, row.text)
       .run();
-    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session.email) }, 200);
+    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session) }, 200);
   }
 
   if (action === "send" && method === "POST") {
     if (row.status !== "draft") return json({ error: `this newsletter is already ${row.status}` }, 409);
-    const view = await publicView(env, row, session.email);
+    const view = await publicView(env, row, session);
     if (!view.send_unlocked) return json({ error: view.lock_reason, locked: true }, 409);
     const audience = parseAudience(row.audience);
     if (!audience) return json({ error: "invalid audience" }, 400);
@@ -852,7 +867,7 @@ export async function handleNewsletterAdmin(
     if (!result.meta?.changes) return json({ error: "this newsletter changed while you were confirming — reload" }, 409);
     const notified = await notifyAdmins(env, send, row, audience, count, scheduledFor, session.email, `${baseUrl(env, url)}/newsletter/cancel?token=${token}`);
     return json(
-      { newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session.email), notified },
+      { newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session), notified },
       200,
     );
   }
@@ -860,7 +875,7 @@ export async function handleNewsletterAdmin(
   if (action === "cancel" && method === "POST") {
     const ok = await cancelNewsletter(env, row.id, session.email, now());
     if (!ok) return json({ error: `a ${row.status} newsletter can't be cancelled` }, 409);
-    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session.email) }, 200);
+    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session) }, 200);
   }
 
   if (action === "reopen" && method === "POST") {
@@ -874,7 +889,7 @@ export async function handleNewsletterAdmin(
       .bind(row.id, now().toISOString())
       .run();
     if (!result.meta?.changes) return json({ error: "only a cancelled newsletter can be reopened" }, 409);
-    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session.email) }, 200);
+    return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session) }, 200);
   }
 
   return json({ error: "not found" }, 404);
@@ -908,7 +923,7 @@ async function notifyAdmins(
      )}). It sends at ${escapeHtml(when)} Boulder time, ${HOLD_MINUTES} minutes after confirming.</p>
      <p style="margin:0 0 14px;line-height:1.6">If it shouldn't go out, cancel it — any organizer can, no sign-in needed:</p>
      <p style="margin:0 0 24px"><a href="${escapeHtml(cancelLink)}" style="display:inline-block;background:#c2562a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:4px">Cancel this send</a></p>`,
-    "Sent to every COhere admin whenever a newsletter is confirmed.",
+    "Sent to every organizer notification address whenever a newsletter is confirmed.",
   );
   const text = `${by} confirmed "${row.subject}" for ${count} people (${describeAudience(audience)}).\nIt sends at ${when} Boulder time.\n\nCancel it (no sign-in needed): ${cancelLink}\n`;
   let told = 0;

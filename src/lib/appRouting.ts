@@ -5,6 +5,10 @@ export function safeReturnPath(path: string | null): string | null {
   if (url.origin !== base || ["/", "/login"].includes(url.pathname)) return null;
   return url.pathname + url.search + url.hash;
 }
+/** Pages the Worker serves itself (the admin portal): reaching one needs a real page load, not a client-side navigate. */
+export function isWorkerPage(path: string): boolean {
+  return /^\/admin(?:[/?#]|$)/.test(path);
+}
 export function signInDestination(path: string | null, registered = false): string {
   const safe = safeReturnPath(path);
   return registered && safe?.split(/[?#]/)[0] === "/register" ? "/events" : safe ?? "/events";
