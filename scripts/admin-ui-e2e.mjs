@@ -2,14 +2,16 @@
 // a builder sees "Organizer" in the header (desktop and phone menu) and gets to
 // /admin; a plain member and a signed-out visitor see no such link; /admin has
 // no horizontal overflow at 360px. Saves screenshots of /admin (desktop and
-// phone) to $E2E_SHOT_DIR (default /home/uni/.hermes/cache/scratch/adminui).
+// phone) to $E2E_SHOT_DIR (default: a fresh OS temp directory).
 // Runs against the mock AppView (scripts/regenos-mock.mjs), never scenius.social.
 //
 // Usage (scripts/ci-e2e.sh lane 7 runs exactly this; needs `npm run build` first):
 //   node scripts/admin-ui-e2e.mjs <worker-url>
 // The Worker must have REGENOS_LOGIN_ENABLED:true and the mock's scene/token vars.
 
-import { mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium } from "playwright";
 
 const [target] = process.argv.slice(2);
@@ -17,7 +19,7 @@ if (!target) {
   console.error("usage: node scripts/admin-ui-e2e.mjs <worker-url>");
   process.exit(2);
 }
-const shots = process.env.E2E_SHOT_DIR || "/home/uni/.hermes/cache/scratch/adminui";
+const shots = process.env.E2E_SHOT_DIR || mkdtempSync(join(tmpdir(), "adminui-"));
 mkdirSync(shots, { recursive: true });
 
 const failures = [];
