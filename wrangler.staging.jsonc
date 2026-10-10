@@ -30,6 +30,9 @@
   ],
   "vars": {
     "RSVP_REMINDERS_PAUSED": "true",
+    // "true" stops every scheduled companion push (worker/src/companion.ts).
+    // Aaron flips it to "false" at launch.
+    "COMPANION_PUSH_PAUSED": "true",
     "PUBLIC_BASE_URL": "https://cohere-signup-staging.unforced.workers.dev",
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",

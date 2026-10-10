@@ -9,8 +9,8 @@ export function signInDestination(path: string | null, registered = false): stri
   const safe = safeReturnPath(path);
   return registered && safe?.split(/[?#]/)[0] === "/register" ? "/events" : safe ?? "/events";
 }
-export function activeAppTab(path: string): "events" | "board" | null {
-  return path === "/board" ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" ? "events" : null;
+export function activeAppTab(path: string): "today" | "events" | "board" | null {
+  return ["/today", "/quests", "/more"].includes(path) ? "today" : path === "/board" ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" ? "events" : null;
 }
 
 // The /login wizard navigates only after completing the handle step.

@@ -1,3 +1,5 @@
+import Companion from "./pages/Companion";
+import { StandaloneMode } from "./components/StandaloneMode";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,6 +42,9 @@ const App = () => (
           <ScrollToTop />
           <AppSession />
           <Routes>
+            <Route path="/today" element={<Companion />} />
+            <Route path="/quests" element={<Companion />} />
+            <Route path="/more" element={<Companion />} />
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />
@@ -68,6 +73,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <StandaloneMode />
         </BrowserRouter>
       </TooltipProvider>
     </LanguageProvider>

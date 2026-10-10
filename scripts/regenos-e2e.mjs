@@ -168,10 +168,10 @@ try {
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   const headerLinks = await page.locator("nav").first().getByRole("link").allTextContents();
-  if (!headerLinks[1]?.includes("Events") || !headerLinks[2]?.includes("Board")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
+  if (!headerLinks[1]?.includes("Today") || !headerLinks[2]?.includes("Events") || !headerLinks[3]?.includes("Board")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
   await checkHeaderLayout(false);
   if (await page.getByTestId("header-tabs").getByRole("link", { name: "Events" }).getAttribute("aria-current") !== "page") fail("Events tab lacks active marker");
-  ok("Events and Board follow the logo and remain visible from 768px");
+  ok("Today, Events and Board follow the logo and remain visible from 768px");
   // A week out, the home hero's only call to action is Register; the
   // email-only subscribe lives in the footer.
   await page.goto(new URL("/", target).toString(), { waitUntil: "networkidle" });

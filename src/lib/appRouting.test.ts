@@ -29,6 +29,7 @@ describe("app routing", () => {
   it("defaults sign-ins and home landings to events", () => { expect(signInDestination(null)).toBe("/events"); expect(signInDestination("/")).toBe("/events"); });
   it("preserves explicit internal return paths and rejects external redirects", () => { expect(signInDestination("/events/did:plc:a/event?x=1")).toBe("/events/did:plc:a/event?x=1"); expect(signInDestination("//evil.test")).toBe("/events"); expect(signInDestination("https://evil.test")).toBe("/events"); });
   it("marks event details and the board under their tabs", () => { expect(activeAppTab("/events/a/b")).toBe("events"); expect(activeAppTab("/board")).toBe("board"); expect(activeAppTab("/about")).toBeNull(); });
+  it("keeps Today lit across the companion pages", () => { for (const path of ["/today", "/quests", "/more"]) expect(activeAppTab(path)).toBe("today"); });
 });
 
 it("redirects only an explicit sign-in landing", () => {
