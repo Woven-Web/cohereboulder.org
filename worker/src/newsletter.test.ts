@@ -6,6 +6,8 @@ vi.mock("cloudflare:email", () => ({ EmailMessage: class {} }));
 import type { Session } from "./auth";
 import {
   audienceWhere,
+  bulkTags as bulkTagsHandler,
+  maskEmail,
   cancelNewsletter,
   contentHash,
   handleNewsletterAdmin,
@@ -132,6 +134,178 @@ describe("audience selection", () => {
   });
 });
 
+// ------------------------------------------------------------- segments
+
+describe("segment audiences", () => {
+  let env: Env;
+  beforeEach(() => {
+    env = makeEnv();
+    person(env, "old@x.org", { forms: ["register-2025"], name: "Old Timer" });
+    person(env, "both@x.org", { forms: ["register-2025", "register-2026"] });
+    person(env, "new@x.org", { forms: ["register-2026"], tags: "Volunteer" });
+    person(env, "vol@x.org", { tags: "volunteer, host" });
+    person(env, "bounced@x.org", { forms: ["register-2025"], tags: "undeliverable" });
+    person(env, "gone@x.org", { forms: ["register-2025"], subscribed: 0 });
+    person(env, "plain@x.org");
+  });
+  const seg = (include: unknown[], exclude: unknown[] = []) => ({ kind: "segment", include, exclude });
+
+  it("came before, not registered for 2026", () => {
+    expect(audienceIds(env, seg([{ form: "register-2025" }], [{ form: "register-2026" }]))).toEqual(["old@x.org"]);
+  });
+  it("include is any-of", () => {
+    expect(audienceIds(env, seg([{ form: "register-2026" }, { tag: "host" }]))).toEqual(["both@x.org", "new@x.org", "vol@x.org"]);
+  });
+  it("exclude is none-of, tags and forms mixed", () => {
+    expect(audienceIds(env, seg([{ form: "register-2026" }, { tag: "host" }], [{ tag: "VOLUNTEER" }]))).toEqual(["both@x.org"]);
+  });
+  it("empty include means everyone subscribed and deliverable", () => {
+    expect(audienceIds(env, seg([]))).toEqual(["both@x.org", "new@x.org", "old@x.org", "plain@x.org", "vol@x.org"]);
+    expect(audienceIds(env, seg([], [{ form: "register-2026" }]))).toEqual(["old@x.org", "plain@x.org", "vol@x.org"]);
+  });
+  it("undeliverable and unsubscribed are never included", () => {
+    const all = audienceIds(env, seg([{ form: "register-2025" }]));
+    expect(all).not.toContain("bounced@x.org");
+    expect(all).not.toContain("gone@x.org");
+  });
+  it("numbers parameters from `first` and never inlines values", () => {
+    const where = audienceWhere(parseAudience(seg([{ form: "register-2025" }, { tag: "a b" }], [{ form: "register-2026" }]))!, 3);
+    expect(where.params).toEqual(["register-2025", "a b", "register-2026"]);
+    expect(where.sql).toContain("?3");
+    expect(where.sql).toContain("?5");
+    expect(where.sql).not.toContain("register-2025");
+  });
+  it("is safe against injection in tags and forms", () => {
+    expect(parseAudience(seg([{ form: "x'; DROP TABLE people;--" }]))).toBeNull();
+    const evil = parseAudience(seg([{ tag: "x') OR 1=1 --" }]))!;
+    expect(audienceIds(env, evil)).toEqual([]);
+    expect(env.cohere.raw.prepare("SELECT COUNT(*) AS n FROM people").all()[0].n).toBe(7);
+  });
+  it("rejects malformed segments", () => {
+    expect(parseAudience(seg([{ tag: "undeliverable" }]))).toBeNull();
+    expect(parseAudience(seg([{ tag: "a,b" }]))).toBeNull();
+    expect(parseAudience(seg([{ form: "f", tag: "t" }]))).toBeNull();
+    expect(parseAudience(seg([{}]))).toBeNull();
+    expect(parseAudience({ kind: "segment", include: "x", exclude: [] })).toBeNull();
+    expect(parseAudience(seg(Array.from({ length: 21 }, (_, i) => ({ tag: `t${i}` }))))).toBeNull();
+  });
+  it("missing include/exclude default to empty; duplicates collapse", () => {
+    expect(parseAudience({ kind: "segment" })).toEqual({ kind: "segment", include: [], exclude: [] });
+    expect(parseAudience(seg([{ tag: "Host" }, { tag: "host" }]))).toEqual(seg([{ tag: "host" }]));
+  });
+  it("old stored audiences still parse and select the same people", () => {
+    expect(parseAudience('{"kind":"all"}')).toEqual({ kind: "all" });
+    expect(parseAudience('{"kind":"form","form":"register-2026"}')).toEqual({ kind: "form", form: "register-2026" });
+    expect(audienceIds(env, '{"kind":"tag","tag":"host"}')).toEqual(["vol@x.org"]);
+  });
+  it("the count endpoint counts segments", async () => {
+    const r = await call(env, "POST", "/api/admin/newsletters/count", {
+      audience: seg([{ form: "register-2025" }], [{ form: "register-2026" }]),
+    });
+    expect(r.body.count).toBe(1);
+  });
+  it("a draft stores a segment and a cron send snapshots it", async () => {
+    const r = await call(env, "POST", "/api/admin/newsletters", {
+      subject: "Register", text: "Hi", audience: seg([{ form: "register-2025" }], [{ form: "register-2026" }]),
+    });
+    expect(r.body.newsletter.audience.kind).toBe("segment");
+  });
+});
+
+describe("recipient preview + csv", () => {
+  let env: Env;
+  beforeEach(() => {
+    env = makeEnv();
+    for (let i = 0; i < 25; i++) person(env, `user${String(i).padStart(2, "0")}@example.org`, { name: i === 0 ? 'Ann, "A"' : `User ${i}` });
+    person(env, "off@example.org", { subscribed: 0 });
+  });
+  it("masks addresses", () => {
+    expect(maskEmail("jane.doe@gmail.com")).toBe("j***@gmail.com");
+    expect(maskEmail("a@b.co")).toBe("a***@b.co");
+  });
+  it("lists the first 20 with the full count, masked", async () => {
+    const r = await call(env, "POST", "/api/admin/newsletters/recipients", { audience: { kind: "all" } });
+    expect(r.status).toBe(200);
+    expect(r.body.count).toBe(25);
+    expect(r.body.recipients).toHaveLength(20);
+    expect(r.body.recipients[0]).toEqual({ name: 'Ann, "A"', email: "u***@example.org" });
+    expect(JSON.stringify(r.body)).not.toContain("user00@");
+  });
+  it("400s on a bad audience", async () => {
+    expect((await call(env, "POST", "/api/admin/newsletters/recipients", { audience: { kind: "x" } })).status).toBe(400);
+  });
+  it("csv carries every recipient with full email, escaped, as an attachment", async () => {
+    const audience = encodeURIComponent(JSON.stringify({ kind: "all" }));
+    const r = req("GET", `/api/admin/newsletters/recipients.csv?audience=${audience}`);
+    const res = await handleNewsletterAdmin(r, env, new URL(r.url), ADMIN, { now: () => T0 });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/csv");
+    expect(res.headers.get("Content-Disposition")).toContain("attachment");
+    const lines = (await res.text()).trim().split("\n");
+    expect(lines[0]).toBe("name,email");
+    expect(lines).toHaveLength(26);
+    expect(lines[1]).toBe('"Ann, ""A""",user00@example.org');
+    expect(lines.join("\n")).not.toContain("off@example.org");
+  });
+  it("csv neutralizes spreadsheet formulas", async () => {
+    person(env, "f@example.org", { name: "=HYPERLINK(1)" });
+    const audience = encodeURIComponent(JSON.stringify({ kind: "all" }));
+    const r = req("GET", `/api/admin/newsletters/recipients.csv?audience=${audience}`);
+    const res = await handleNewsletterAdmin(r, env, new URL(r.url), ADMIN, { now: () => T0 });
+    expect(await res.text()).toContain("'=HYPERLINK(1)");
+  });
+});
+
+describe("bulk tags", () => {
+  let env: Env;
+  let a: string, b: string, c: string;
+  beforeEach(() => {
+    env = makeEnv();
+    a = person(env, "a@x.org", { tags: "Volunteer" });
+    b = person(env, "b@x.org", { tags: null });
+    c = person(env, "c@x.org", { tags: "host,undeliverable" });
+  });
+  const tagsOf = (id: string) => env.cohere.raw.prepare("SELECT tags FROM people WHERE id = ?").all(id)[0].tags;
+
+  it("adds normalized tags via mergeTags, keeping existing spelling", async () => {
+    const r = await bulkTags(env, { ids: [a, b], add: ["Volunteer", "Came Before!"] });
+    expect(r.status).toBe(200);
+    expect(r.body.updated).toBe(2);
+    expect(tagsOf(a)).toBe("Volunteer,came-before");
+    expect(tagsOf(b)).toBe("volunteer,came-before");
+  });
+  it("removes tags, leaving null when empty", async () => {
+    await bulkTags(env, { ids: [a, c], remove: ["VOLUNTEER", "host"] });
+    expect(tagsOf(a)).toBeNull();
+    expect(tagsOf(c)).toBe("undeliverable");
+  });
+  it("will not remove undeliverable", async () => {
+    const r = await bulkTags(env, { ids: [c], remove: ["undeliverable"] });
+    expect(r.status).toBe(400);
+    expect(tagsOf(c)).toBe("host,undeliverable");
+  });
+  it("validates input", async () => {
+    expect((await bulkTags(env, { ids: [], add: ["x"] })).status).toBe(400);
+    expect((await bulkTags(env, { ids: [a] })).status).toBe(400);
+    expect((await bulkTags(env, { ids: [a], add: ["!!!"] })).status).toBe(400);
+    expect((await bulkTags(env, { ids: "nope", add: ["x"] })).status).toBe(400);
+    expect((await bulkTags(env, { ids: Array.from({ length: 501 }, (_, i) => `i${i}`), add: ["x"] })).status).toBe(400);
+  });
+  it("ignores unknown ids", async () => {
+    const r = await bulkTags(env, { ids: [a, "ghost"], add: ["x"] });
+    expect(r.body.updated).toBe(1);
+  });
+  it("the tag then works as a segment", async () => {
+    await bulkTags(env, { ids: [a, b], add: ["came-before"] });
+    expect(audienceIds(env, { kind: "segment", include: [{ tag: "came-before" }], exclude: [{ tag: "volunteer" }] })).toEqual(["b@x.org"]);
+  });
+});
+
+async function bulkTags(env: Env, body: unknown) {
+  const res = await bulkTagsHandler(env, body);
+  return { status: res.status, body: (await res.json()) as Record<string, any> }; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
 // ------------------------------------------------------------- rendering
 
 describe("rendering", () => {
@@ -156,6 +330,28 @@ describe("rendering", () => {
     expect(html).toContain('href="mailto:x@y.org"');
     expect(html).toContain('<img src="https://example.org/p.jpg" alt="photo"');
     expect(html).not.toContain("onerror=\"");
+  });
+
+  it("renders --- as a rule and [[label]](url) as a button, safely", () => {
+    const html = renderNewsletterBody("Before\n\n---\n\n[[Register now]](https://cohereboulder.org/register?a=1&b=2)\n\n[[Bad]](javascript:alert(1))\n\n[[<b>x</b>]](https://x.org)");
+    expect(html).toContain("<hr");
+    expect(html).toMatch(/<a href="https:\/\/cohereboulder.org\/register\?a=1&amp;b=2"[^>]*>Register now<\/a>/);
+    expect(html).toContain("background:#36558F");
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain("&lt;b&gt;x&lt;/b&gt;");
+    expect(html).not.toContain("<b>x</b>");
+  });
+  it("--- inside a paragraph stays text; lists and headings unchanged", () => {
+    expect(renderNewsletterBody("a\n---\nb")).not.toContain("<hr");
+    expect(renderNewsletterBody("- a\n- b")).toContain("<ul");
+  });
+  it("POST /preview renders unsaved text with the server renderer", async () => {
+    const env = makeEnv();
+    const r = await call(env, "POST", "/api/admin/newsletters/preview", { subject: "Hi", text: "**x**\n\n---" });
+    expect(r.status).toBe(200);
+    expect(r.body.html).toContain("<strong>x</strong>");
+    expect(r.body.html).toContain("<hr");
+    expect(r.body.html).toContain("/unsubscribe?token=preview");
   });
 
   it("log lines never carry an address", () => {

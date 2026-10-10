@@ -156,10 +156,10 @@ try{
  const disabled=await context.newPage();await disabled.route('**/api/companion/today',route=>route.fulfill({json:{date,daily:null,quests:[],pushKey:null,start:date,end:date}}));await disabled.goto(base+'/more');await disabled.getByText('Notifications are unavailable while organizers configure delivery.',{exact:true}).waitFor();await disabled.close();
  // Standalone nav safe area; desktop remains hidden.
  await page.addInitScript(()=>{const original=window.matchMedia.bind(window);window.matchMedia=query=>query==='(display-mode: standalone)'?{matches:true,media:query,addEventListener(){},removeEventListener(){}}:original(query);});
- await page.goto(base+'/today');await page.locator('.companion-bottom').waitFor({state:'visible'});
+ await page.goto(base+'/today');await page.getByTestId('bottom-tabs').waitFor({state:'visible'});assert.equal(await page.getByTestId('bottom-tabs').getByRole('link',{name:'Today'}).getAttribute('aria-current'),'page');assert.equal(await page.locator('.companion-bottom').count(),0);
  assert.equal(await page.evaluate(()=>getComputedStyle(document.body).overscrollBehavior),'none');
  // CSS display-mode is browser-managed; verify desktop nav is hidden separately.
- const desktop=await browser.newPage({viewport:{width:1280,height:900}});await desktop.goto(base+'/today');assert.equal(await desktop.locator('.companion-bottom').isVisible(),false);await desktop.close();
+ const desktop=await browser.newPage({viewport:{width:1280,height:900}});await desktop.goto(base+'/today');assert.equal(await desktop.getByTestId('bottom-tabs').isVisible(),false);assert.equal(await desktop.getByTestId('header-tabs').getByRole('link',{name:'Today'}).isVisible(),true);await desktop.close();
  // Authenticated operator portal uses its desktop layout.
  const adminContext=await browser.newContext({viewport:{width:1280,height:900}});
  await adminContext.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());

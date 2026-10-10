@@ -1,3 +1,4 @@
+import { displayHandle } from "@/lib/handles";
 // The "Sign in" / account control in the top navigation. Renders nothing
 // unless /api/config says the regenOS lane is on. Anonymous: a button that
 // opens the existing regenOS email sign-in (RegenosSignInPanel) in a dialog.
@@ -63,16 +64,16 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     }
   }
 
-  const who = session?.handle ?? session?.did ?? "";
+  const who = displayHandle(session?.handle) || session?.did || "";
 
   if (signedIn) {
     if (variant === "mobile") {
       return (
         <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
-          <span className="truncate text-sm text-muted-foreground">
-            {tr("nav.signedInAs")} <span className="font-medium text-foreground" data-testid="nav-handle">{who}</span>
+          <span className="min-w-0 text-sm text-muted-foreground">
+            {tr("nav.signedInAs")} <span className="inline-block max-w-full font-medium text-foreground break-all" data-testid="nav-handle">{who}</span>
           </span>
-          <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1">
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1 shrink-0">
             <LogOut className="h-4 w-4" aria-hidden />
             {tr("nav.signOut")}
           </Button>
@@ -82,17 +83,17 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="gap-1.5 max-w-[12rem]" aria-label={tr("nav.accountMenu")}>
+          <Button variant="ghost" size="sm" className="gap-1.5 min-h-11" aria-label={who} title={who}>
             <UserRound className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate" data-testid="nav-handle">{who}</span>
+            <span className="hidden xl:inline-block max-w-[24ch] truncate" data-testid="nav-handle">{who}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)]">
           <DropdownMenuLabel className="font-normal text-muted-foreground">
-            {tr("nav.signedInAs")} <span className="font-medium text-foreground">{who}</span>
+            {tr("nav.signedInAs")} <span className="font-medium text-foreground break-all">{who}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleSignOut} className="gap-2">
+          <DropdownMenuItem onSelect={handleSignOut} className="gap-2 min-h-12">
             <LogOut className="h-4 w-4" aria-hidden />
             {tr("nav.signOut")}
           </DropdownMenuItem>
@@ -114,7 +115,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
         {tr("nav.signIn")}
       </Button>
     ) : (
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={openSignInDialog}>
         {tr("nav.signIn")}
       </Button>
     );
@@ -125,9 +126,9 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     <>
       {trigger}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent closeLabel={tr("nav.closeDialog")} className="max-w-md w-[calc(100%-2rem)] rounded-lg [&>button]:min-h-12 [&>button]:min-w-12 [&>button]:right-0 [&>button]:top-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
           <DialogHeader>
-            <DialogTitle>{tr("nav.signInDialogTitle")}</DialogTitle>
+            <DialogTitle className="px-5 sm:pl-0">{tr("nav.signInDialogTitle")}</DialogTitle>
             <DialogDescription>{tr("nav.signInDialogBody")}</DialogDescription>
           </DialogHeader>
           <RegenosSignInPanel embedded />

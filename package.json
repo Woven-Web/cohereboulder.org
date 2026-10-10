@@ -14,7 +14,8 @@
     "worker:dev": "wrangler dev",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "smoke": "node scripts/smoke-test.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:staging": "npm run typecheck && npm run build && wrangler deploy --config wrangler.staging.jsonc"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

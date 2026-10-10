@@ -78,14 +78,36 @@ export const translations = {
     back: { en: "COhere home", es: "Inicio de COhere" },
   },
 
+  formTitles: {
+    "register-2026": {
+      en: "Register for COhere Boulder 2026",
+      es: "Regístrate para COhere Boulder 2026",
+    },
+  },
+  app: {
+    tabs: { en: "COhere app", es: "Aplicación COhere" },
+    events: { en: "Events", es: "Eventos" },
+    board: { en: "Board", es: "Tablón" },
+    today: { en: "Today", es: "Hoy" },
+    todayBody: { en: "Today and tomorrow in our community", es: "Hoy y mañana en nuestra comunidad" },
+    membersOnly: { en: "Members only", es: "Solo para miembros" },
+    boardTitle: { en: "The COhere Board opens soon", es: "El tablón de COhere abre pronto" },
+    boardBody: { en: "A members-only space for today's practice, today's question, event threads, rides & offers.", es: "Un espacio para miembros con la práctica y la pregunta del día, conversaciones sobre eventos, viajes compartidos y ofrecimientos." },
+    boardGate: { en: "Join COhere to be ready when the Board opens.", es: "Únete a COhere para estar listo cuando abra el tablón." },
+    alreadyJoined: { en: "Already joined?", es: "¿Ya te uniste?" },
+    registered: { en: "You’re registered", es: "Ya estás registrado/a" },
+    registerGathering: { en: "Register for the gathering", es: "Regístrate para el encuentro" },
+    handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
+  },
   // Navigation & Common
   nav: {
-    about: { en: "About", es: "Acerca de" },
-    register: { en: "Register", es: "Registrar" },
+    home: { en: "Home", es: "Inicio" },
+    about: { en: "About", es: "Quiénes somos" },
+    register: { en: "Join COhere", es: "Únete a COhere" },
     join2025: { en: "Join 2025", es: "Únete 2025" },
-    participate: { en: "Co-Create", es: "Co-Crear" },
+    participate: { en: "Co-create", es: "Co-crear" },
     calendar: { en: "Calendar", es: "Calendario" },
-    proposeEvent: { en: "Propose an Event", es: "Proponer un Evento" },
+    proposeEvent: { en: "Propose an event", es: "Proponer un evento" },
     archive: { en: "Archive", es: "Archivo" },
     donateNow: { en: "Donate Now", es: "Donar Ahora" },
     supportCohere: { en: "Support COhere", es: "Apoyar COhere" },
@@ -94,11 +116,12 @@ export const translations = {
     signIn: { en: "Sign in", es: "Iniciar sesión" },
     signOut: { en: "Sign out", es: "Cerrar sesión" },
     signedInAs: { en: "Signed in as", es: "Sesión iniciada como" },
+    closeDialog: { en: "Close dialog", es: "Cerrar diálogo" },
     accountMenu: { en: "Your account", es: "Tu cuenta" },
-    signInDialogTitle: { en: "Sign in to COhere", es: "Inicia sesión en COhere" },
+    signInDialogTitle: { en: "Sign in or join COhere", es: "Inicia sesión o únete a COhere" },
     signInDialogBody: {
-      en: "One account for RSVPs, reminders, and hosting events on the community calendar.",
-      es: "Una cuenta para confirmar asistencia, recibir recordatorios y organizar eventos en el calendario comunitario.",
+      en: "A new email creates your free COhere account. Your sign-in link comes from noreply@cohereboulder.org.",
+      es: "Un correo nuevo crea tu cuenta gratuita de COhere. Tu enlace para iniciar sesión llega de noreply@cohereboulder.org.",
     },
     announcement: {
       en: "COhere continues weaving Boulder's resilient community. Join our newsletter to stay connected!",
@@ -129,8 +152,8 @@ export const translations = {
       es: "COhere Boulder 2026",
     },
     dates: {
-      en: "October 15-25, 2026",
-      es: "15-25 de Octubre, 2026",
+      en: "October 15–25, 2026",
+      es: "15–25 de octubre de 2026",
     },
     tenDayContainer: {
       en: "A 10-day event series for community connection that supports our collective wellbeing and belonging to place.",
@@ -141,8 +164,8 @@ export const translations = {
       es: "Este año comenzaremos con un encuentro más profundo e inmersivo durante el primer fin de semana.",
     },
     registerHere: {
-      en: "Register for COhere 2026",
-      es: "Regístrate para COhere 2026",
+      en: "Join COhere",
+      es: "Únete a COhere",
     },
   },
 
@@ -150,7 +173,7 @@ export const translations = {
   communityCalendar: {
     title: {
       en: "The Community Calendar",
-      es: "El Calendario Comunitario",
+      es: "El calendario comunitario",
     },
     subtitle: {
       en: "Co-created by everyone who shows up",
@@ -403,6 +426,7 @@ export const translations = {
 
   // Footer
   footer: {
+    tagline: { en: "Connecting local community to create a regenerative, resilient future.", es: "Conectando a la comunidad local para crear un futuro regenerativo y resiliente." },
     description: {
       en: "An ongoing community weaving process creating resilience through connection.",
       es: "Un proceso continuo de tejido comunitario creando resiliencia a través de la conexión.",
@@ -422,14 +446,14 @@ export const translations = {
     registration2025: { en: "2025 Registration", es: "Registro 2025" },
     learnMore: { en: "Learn More", es: "Aprende Más" },
     dates2025: { en: "October 16-26, 2025", es: "16-26 de Octubre, 2025" },
-    dates2026: { en: "October 15-25, 2026", es: "15-25 de Octubre, 2026" },
+    dates2026: { en: "October 15–25, 2026", es: "15–25 de octubre de 2026" },
     stayInLoop: {
       en: "Sign up to hear about COhere Boulder 2026 as plans take shape.",
       es: "Regístrate para recibir noticias de COhere Boulder 2026 mientras los planes toman forma.",
     },
     wovenWeb: {
       en: "A Woven Web Initiative",
-      es: "Una Iniciativa de Red Tejida",
+      es: "Una iniciativa de Red Tejida",
     },
   },
 
@@ -673,17 +697,23 @@ export const translations = {
   calendar: {
     // The live community calendar (regenOS-backed, Luma as fallback)
     events: {
+      cardRsvp: { en: "RSVP", es: "Confirmar" },
+      cardGoing: { en: "✓ Going", es: "✓ Vas a ir" },
+      cancelHint: { en: "Tap to cancel your RSVP", es: "Toca para cancelar" },
+      cardMoreAbout: { en: "More about", es: "Más sobre" },
+      subscribeShort: { en: "Subscribe", es: "Suscríbete" },
+      cardMore: { en: "More", es: "Más" },
       title: {
         en: "Community Calendar",
-        es: "Calendario Comunitario",
+        es: "Calendario comunitario",
       },
       subtitle: {
         en: "Join us for events and gatherings throughout Boulder's regenerative journey.",
         es: "Acompáñanos en eventos y encuentros a lo largo del camino regenerativo de Boulder.",
       },
       subscribe: {
-        en: "Subscribe to Calendar",
-        es: "Suscríbete al Calendario",
+        en: "Subscribe to calendar",
+        es: "Suscribirse al calendario",
       },
       subscribeCaption: {
         en: "Get the whole community calendar in your own calendar app — new events included automatically.",
@@ -813,9 +843,10 @@ export const translations = {
         },
       },
     },
-    // "RSVP · remind me" on each event (src/components/EventRsvp.tsx).
+    // "RSVP" on each event (src/components/EventRsvp.tsx).
     rsvp: {
-      button: { en: "RSVP · remind me", es: "Confirmar · recuérdame" },
+      emailHint: { en: "No account needed: we'll email you a confirmation and a reminder the day before.", es: "No necesitas cuenta: te enviaremos una confirmación y un recordatorio el día anterior." },
+      button: { en: "RSVP", es: "Confirmar" },
       title: { en: "Coming?", es: "¿Vienes?" },
       emailIntro: {
         en: "Leave your email and we'll send a reminder the morning before (around 9am Boulder time). It doesn't add you to our mailing list.",
@@ -868,20 +899,20 @@ export const translations = {
         es: "Inicia sesión para organizar eventos",
       },
       panelTitle: {
-        en: "Sign in with your COhere account",
-        es: "Inicia sesión con tu cuenta COhere",
+        en: "Sign in or join COhere",
+        es: "Inicia sesión o únete a COhere",
       },
       emailLabel: {
         en: "Email",
         es: "Correo electrónico",
       },
       emailHelp: {
-        en: "We'll email you a sign-in link — no password needed.",
-        es: "Te enviaremos un enlace de acceso por correo — sin contraseña.",
+        en: "A new email creates your free account. Your link comes from noreply@cohereboulder.org.",
+        es: "Un correo nuevo crea tu cuenta gratuita. Tu enlace llega de noreply@cohereboulder.org.",
       },
       continue: {
-        en: "Continue",
-        es: "Continuar",
+        en: "Email me a link",
+        es: "Envíame un enlace",
       },
       checking: {
         en: "Checking…",
@@ -1146,6 +1177,12 @@ export const translations = {
     // the header area, not the subscribe/CTA button block another change is
     // touching at the same time.
     proposeCallout: {
+      signedInText: {
+        en: "Hosting something during COhere? Propose it for the calendar.",
+        es: "¿Organizas algo durante COhere? Proponlo para el calendario.",
+      },
+      accountPrompt: { en: "Already have an account?", es: "¿Ya tienes cuenta?" },
+      signIn: { en: "Sign in", es: "Inicia sesión" },
       text: {
         en: "Hosting something during COhere? You don't need an account to put it on this calendar.",
         es: "¿Vas a organizar algo durante COhere? No necesitas una cuenta para ponerlo en este calendario.",
@@ -1261,6 +1298,7 @@ export const translations = {
 
   // Co-Create Page
   coCreate: {
+    volunteerSignup: { en: "Sign Up to Volunteer", es: "Inscríbete para ser voluntario/a" },
     title: {
       en: "Co-Create With Us",
       es: "Co-Crea Con Nosotros",
@@ -1497,19 +1535,19 @@ export const translations = {
     },
   },
 
-  // Stay in the Loop signup
+  // Stay in the loop signup
   signup: {
-    title: { en: "Stay in the Loop", es: "Mantente al Tanto" },
+    title: { en: "Stay in the loop", es: "Mantente al tanto" },
     orJustEmail: {
       en: "Not ready to register? Just leave your email.",
       es: "¿Aún no quieres registrarte? Déjanos tu correo.",
     },
     description: {
-      en: "COhere Boulder returns October 15-25, 2026. Leave your email and we'll keep you posted as plans take shape.",
+      en: "COhere Boulder returns October 15–25, 2026. Leave your email and we'll keep you posted as plans take shape.",
       es: "COhere Boulder regresa del 15 al 25 de octubre de 2026. Déjanos tu correo y te mantendremos al tanto mientras los planes toman forma.",
     },
     placeholder: { en: "Your email address", es: "Tu correo electrónico" },
-    button: { en: "Keep Me Posted", es: "Mantenme Informado" },
+    button: { en: "Keep me posted", es: "Mantenme informado" },
     submitting: { en: "Signing up…", es: "Registrando…" },
     success: {
       en: "You're on the list — we'll be in touch!",
@@ -2124,6 +2162,7 @@ export const translations = {
       en: "This becomes your address in the community network — lowercase letters and numbers, like a username.",
       es: "Este será tu dirección en la red comunitaria — letras minúsculas y números, como un nombre de usuario.",
     },
+    handlePreview: { en: "Your handle will be:", es: "Tu nombre de usuario será:" },
     handleLabel: {
       en: "Handle",
       es: "Nombre de usuario",

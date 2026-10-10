@@ -14,6 +14,9 @@ export interface FormField {
   /** Framing copy shown above the label. Blank lines separate paragraphs. */
   intro?: string;
   intro_es?: string;
+  /** Optional section heading above the intro (or label when there is no intro). */
+  intro_heading?: string;
+  intro_heading_es?: string;
   help?: string;
   help_es?: string;
   type: "text" | "email" | "tel" | "textarea" | "radio" | "checkbox" | "checkboxes";
@@ -77,6 +80,35 @@ export async function submitForm(slug: string, payload: SubmitPayload): Promise<
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(await readError(response));
+}
+
+const funnelSent = new Set<string>();
+
+/**
+ * Counts-only funnel beacon (worker/src/funnel.ts): `view`, `reached:<key>`,
+ * `submit_attempt`. Sends an event name and nothing else — no answers, no
+ * identifier, no credentials — and at most once per event per page load.
+ * Fire-and-forget: a failed beacon must never touch the form.
+ */
+export function sendFunnelEvent(slug: string, event: string): void {
+  const id = `${slug}:${event}`;
+  if (funnelSent.has(id)) return;
+  funnelSent.add(id);
+  const url = `${API_BASE}/api/funnel/${encodeURIComponent(slug)}`;
+  // Plain fetch, not sendBeacon: a beacon always carries credentials, and the
+  // admin session cookie is Path=/, so a signed-in organizer would send it here.
+  try {
+    void fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ event }),
+      headers: { "Content-Type": "text/plain" },
+      keepalive: true,
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    }).catch(() => {});
+  } catch {
+    // Measurement is best-effort.
+  }
 }
 
 /** The lightweight "stay in the loop" capture — email only. */
@@ -165,4 +197,10 @@ export async function companionRequest<T = {ok:boolean}>(path:string,body?:unkno
 export async function companionEvents():Promise<import('./events').CommunityEvent[]>{
  const response=await fetch(`${API_BASE}/api/events`);if(!response.ok)throw new Error('events unavailable');
  const data=await response.json() as {events?:import('./events').CommunityEvent[]};return data.events??[];
+}
+
+export async function fetchMyRegistration(): Promise<{ registered: boolean | null }> {
+  const response = await fetch(`${API_BASE}/api/me/registration`, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) throw new Error("Registration status unavailable");
+  return response.json();
 }

@@ -4,7 +4,7 @@ import { companionRoute, denverDate, slotFor, runCompanionCron } from './compani
 vi.hoisted(() => { globalThis.caches = { default: { match: async () => undefined, put: async () => { } } } as unknown as CacheStorage; });
 let env: Parameters<typeof companionRoute>[1];
 afterEach(() => vi.useRealTimers());
-beforeEach(() => { vi.useFakeTimers({toFake:['Date']}); vi.setSystemTime(new Date('2026-10-15T12:00:00Z')); env = { cohere: testD1(['../migrations/0008_companion.sql']) as unknown as D1Database }; });
+beforeEach(() => { vi.useFakeTimers({toFake:['Date']}); vi.setSystemTime(new Date('2026-10-15T12:00:00Z')); env = { cohere: testD1(['../migrations/0010_companion.sql']) as unknown as D1Database }; });
 const device = '00000000-0000-4000-8000-000000000001';
 function req(path: string, body?: unknown, method = body ? 'POST' : 'GET', origin = 'https://cohereboulder.org') { return new Request('https://cohereboulder.org/api/companion/' + path, { method, headers: { 'Content-Type': 'application/json', Origin: origin }, body: body ? JSON.stringify(body) : undefined }); }
 it('uses Denver dates and inclusive schedule boundaries; never sends late', () => {
@@ -95,6 +95,7 @@ it('event slot uses anonymous existing calendar reads, Denver today/tomorrow and
     const receiver = createPushReceiver('http://127.0.0.1:10049'), keys = receiver.fixture;
     Object.assign(env, { VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject, COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049', REGENOS_BASE_URL: 'http://127.0.0.1:10048', REGENOS_COLLECTIVE_DID: 'did:plc:mockscene' });
     await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)').bind(device, keys.endpoint, keys.p256dh, keys.auth, '2026-10-15').run();
+    await env.cohere.prepare('INSERT INTO companion_daily(date,title) VALUES (?1,?2)').bind('2026-10-15', 'Practice').run();
     const received: Record<string, string>[] = [];
     const mock = vi.fn(async (url: string, init?: RequestInit) => {
         if (url.includes('/xrpc/')) {

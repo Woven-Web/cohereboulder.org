@@ -1,3 +1,4 @@
+import { fetchMyRegistration } from "@/lib/api";
 // The COhere-account sign-in panel (regenOS magic link), shown on the
 // calendar page when the lane is on and the browser is anonymous.
 //
@@ -14,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, MailCheck } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { beginSignup } from "@/lib/regenos";
+import { beginSignup, fetchRegenosSession } from "@/lib/regenos";
+import { signInDestination } from "@/lib/appRouting";
 import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
 
 /** Which view is on screen. `busy` is tracked separately so an in-flight
@@ -40,10 +42,16 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setError(null);
     try {
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      localStorage.setItem("cohere:returnTo", path);
       const result = await beginSignup(email);
       if (result.stage === "login") {
         // Returning user whose session regenOS trusted immediately — no
         // inbox round-trip; the cookie just landed with the response.
+        const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
+        const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
+        localStorage.removeItem("cohere:returnTo");
+        navigate(destination, { replace: true });
         invalidateSession();
       } else if (result.stage === "chooseHandle") {
         // Ownership already proven (beta mode) — straight to the wizard's
@@ -78,7 +86,15 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
               in the moment it's clicked, a new user's opens the wizard — this
               button just re-asks who we are for people who clicked elsewhere. */}
           <div className="flex flex-col gap-2">
-            <Button variant="community" onClick={() => invalidateSession()}>
+            <Button variant="community" onClick={async () => {
+              await invalidateSession();
+              const session = await fetchRegenosSession().catch(() => null);
+              if (!session?.did) return;
+              const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
+              const destination = signInDestination(localStorage.getItem("cohere:returnTo"), registration.registered === true);
+              localStorage.removeItem("cohere:returnTo");
+              navigate(destination, { replace: true });
+            }}>
               {tr("calendar.host.checkEmailDone")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setStage("idle")}>
@@ -104,15 +120,16 @@ export function RegenosSignInPanel({ embedded = false }: { embedded?: boolean } 
             <Input
               id={embedded ? "regenos-email-dialog" : "regenos-email"}
               type="email"
+              className="min-h-12"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
             />
-            <p className="text-xs text-muted-foreground">{tr("calendar.host.emailHelp")}</p>
+            {!embedded && <p className="text-xs text-muted-foreground">{tr("calendar.host.emailHelp")}</p>}
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" variant="community" disabled={busy} className="w-full gap-2">
+          <Button type="submit" variant="community" disabled={busy} className="w-full min-h-12 gap-2">
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {busy ? tr("calendar.host.checking") : tr("calendar.host.continue")}
           </Button>

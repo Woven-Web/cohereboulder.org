@@ -42,8 +42,8 @@ it('anonymous identity survives unavailable local storage without requiring PII'
             Reflect.deleteProperty(globalThis, 'localStorage');
     }
 });
-it('standalone nav supports iOS standalone flag and mobile-only layout', () => {
-    const nav = readFileSync('src/components/CompanionNav.tsx', 'utf8');
+it('standalone mode supports the iOS standalone flag', () => {
+    const nav = readFileSync('src/components/StandaloneMode.tsx', 'utf8');
     expect(nav.includes('standalone')).toBe(true);
     const css = readFileSync('src/index.css', 'utf8');
     expect(css.includes('.companion-standalone')).toBe(true);

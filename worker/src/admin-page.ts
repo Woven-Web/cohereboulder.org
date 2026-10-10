@@ -133,6 +133,31 @@ export const ADMIN_PAGE = `<!doctype html>
   .guests { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   td select { padding: 0.3rem 0.5rem; border: 1px solid var(--hair-strong);
               border-radius: 3px; background: var(--ground); font-size: 0.85rem; }
+  .nl-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; align-items: start; }
+  .nl-edit .nl-pane { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+  .nl-edit textarea { min-height: 28rem; font-family: var(--mono); font-size: 0.82rem; }
+  .nl-edit iframe { width: 100%; height: 28rem; border: 1px solid var(--hair); background: #fff; }
+  .nl-tools { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  .nl-tools .btn { padding: 0.25rem 0.6rem; min-width: 2.2rem; }
+  .nl-toggle { display: none; gap: 0.4rem; }
+  .nl-terms { display: grid; grid-template-columns: 1fr auto; gap: 0.3rem 0.8rem; align-items: center;
+              max-height: 14rem; overflow-y: auto; border: 1px solid var(--hair); padding: 0.5rem; }
+  .nl-terms select { width: auto; }
+  .nl-recips { font-size: 0.85rem; }
+  .nl-recips ul { margin: 0.4rem 0 0; padding-left: 1.1rem; columns: 2; }
+  .bulkbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.5rem 0.7rem;
+             border: 1px solid var(--teal); background: var(--teal-soft); }
+  .bulkbar input[type="text"] { padding: 0.35rem 0.55rem; border: 1px solid var(--hair-strong);
+                                border-radius: 3px; background: var(--surface); }
+  th.sel, td.sel { width: 1.6rem; }
+  @media (max-width: 860px) {
+    .nl-edit { grid-template-columns: 1fr; }
+    .nl-toggle { display: flex; }
+    .nl-edit[data-view="write"] .nl-previewpane { display: none; }
+    .nl-edit[data-view="preview"] .nl-writepane { display: none; }
+    .nl-edit textarea, .nl-edit iframe { height: 22rem; min-height: 22rem; }
+    .nl-recips ul { columns: 1; }
+  }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -178,6 +203,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="companion">${companionCopy("tab")}</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="funnel">Funnel</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
@@ -208,10 +234,19 @@ export const ADMIN_PAGE = `<!doctype html>
         <button class="btn" id="exportall">Export CSV</button>
       </div>
       <div class="muted" id="count"></div>
+      <div class="bulkbar hidden" id="bulkbar" data-testid="bulk-tags">
+        <b id="bulkcount"></b>
+        <input type="text" id="bulktag" placeholder="tag, e.g. came-before" maxlength="64" aria-label="Tag to add or remove" list="bulktaglist">
+        <datalist id="bulktaglist"></datalist>
+        <button class="btn primary" id="bulkadd">Add tag</button>
+        <button class="btn" id="bulkremove">Remove tag</button>
+        <button class="btn" id="bulkclear">Clear selection</button>
+        <span class="muted" id="bulkmsg" role="status"></span>
+      </div>
       <div class="table-scroll">
         <table>
           <thead><tr>
-            <th>Name</th><th>Email</th><th>Phone</th><th>Organizations</th>
+            <th class="sel"><input type="checkbox" id="selall" aria-label="Select everyone shown"></th><th>Name</th><th>Email</th><th>Phone</th><th>Organizations</th>
             <th>Forms</th><th>Tags</th><th>Email list</th><th>Joined</th>
           </tr></thead>
           <tbody id="rows"></tbody>
@@ -274,6 +309,25 @@ export const ADMIN_PAGE = `<!doctype html>
       <div id="forms"></div>
     </section>
 
+    <section id="tab-funnel" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        Where people stop on a form. Counts only: each number is an event total, not a cohort of people,
+        so optional questions, lost events and repeat submissions blur the gaps. No answers, emails or visitor identifiers are stored. Days are UTC.
+      </p>
+      <div class="toolbar">
+        <select id="funnel-form" aria-label="Form"></select>
+        <label class="muted">From <input type="date" id="funnel-from"></label>
+        <label class="muted">To <input type="date" id="funnel-to"></label>
+        <span class="muted" id="funnelmsg"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Step</th><th>Events</th><th>Fewer than previous step</th></tr></thead>
+          <tbody id="funnel-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="tab-access" class="hidden" style="flex-direction:column;gap:1rem;">
       <p class="muted">
         Builders and up can add and edit events on the calendar; stewards can also manage access.
@@ -325,19 +379,63 @@ export const ADMIN_PAGE = `<!doctype html>
         <div class="field"><label for="nlsubject">Subject</label><input type="text" id="nlsubject" maxlength="200"></div>
         <div class="field">
           <label for="nlaudience">Audience</label>
-          <select id="nlaudience"></select>
-          <span class="muted" id="nlcount"></span>
+          <div class="row">
+            <select id="nlaudience"></select>
+            <button class="btn" id="nlpreset" type="button">Everyone except people registered for 2026</button>
+          </div>
+          <div class="field hidden" id="nlsegment" data-testid="nl-segment">
+            <span class="muted">For each form or tag choose <b>Include</b> (anyone matching any included item) or
+              <b>Exclude</b> (drop anyone matching an excluded item). Nothing included means everyone subscribed.</span>
+            <div class="nl-terms" id="nlterms"></div>
+          </div>
+          <span class="muted" id="nlcount" data-testid="nl-count"></span>
+          <details class="nl-recips" id="nlrecips">
+            <summary>Who gets it (first 20)</summary>
+            <ul id="nlrecipslist"></ul>
+            <button class="btn" id="nlcsv" type="button">Download full list (CSV)</button>
+          </details>
         </div>
         <div class="field">
           <label for="nlbody">Body</label>
-          <textarea id="nlbody" style="min-height:16rem;font-family:var(--sans);font-size:0.9rem"></textarea>
-          <span class="muted">Blank line = new paragraph. <code>## Heading</code>, <code>- list item</code>,
-            <code>**bold**</code>, <code>*italic*</code>, <code>[link text](https://…)</code>, and an image on its own line:
-            <code>![description](https://…/photo.jpg)</code>. Each email gets the person's own unsubscribe link at the bottom.</span>
+          <div class="nl-toggle" id="nltoggle">
+            <button class="chip" type="button" data-nlview="write" aria-pressed="true">Write</button>
+            <button class="chip" type="button" data-nlview="preview" aria-pressed="false">Preview</button>
+          </div>
+          <div class="nl-edit" id="nledit" data-view="write">
+            <div class="nl-pane nl-writepane">
+              <div class="nl-tools" id="nltools" role="toolbar" aria-label="Formatting">
+                <button class="btn" type="button" data-md="bold" title="Bold"><b>B</b></button>
+                <button class="btn" type="button" data-md="italic" title="Italic"><i>I</i></button>
+                <button class="btn" type="button" data-md="link" title="Link">Link</button>
+                <button class="btn" type="button" data-md="heading" title="Heading">H</button>
+                <button class="btn" type="button" data-md="list" title="List">&bull; List</button>
+                <button class="btn" type="button" data-md="image" title="Image">Image</button>
+                <button class="btn" type="button" data-md="button" title="Button link">Button</button>
+                <button class="btn" type="button" data-md="rule" title="Horizontal rule">&mdash;</button>
+              </div>
+              <textarea id="nlbody" spellcheck="true"></textarea>
+            </div>
+            <div class="nl-pane nl-previewpane">
+              <iframe id="nlframe" title="Newsletter preview" sandbox=""></iframe>
+            </div>
+          </div>
+          <details class="muted" data-testid="nl-syntax">
+            <summary>Formatting help</summary>
+            <p style="margin:0.4rem 0">Blank line = new paragraph. A single line break stays a line break.</p>
+            <ul style="margin:0;padding-left:1.1rem;line-height:1.6">
+              <li><code>## Heading</code></li>
+              <li><code>**bold**</code> &middot; <code>*italic*</code></li>
+              <li><code>[link text](https://…)</code> &mdash; http, https or mailto only</li>
+              <li><code>- list item</code> (one per line, no blank lines between)</li>
+              <li><code>![description](https://…/photo.jpg)</code> alone on its line (https images only)</li>
+              <li><code>[[Register now]](https://…)</code> alone on its line &rarr; a button</li>
+              <li><code>---</code> alone on its line &rarr; a horizontal rule</li>
+            </ul>
+            <p style="margin:0.4rem 0">The preview is the server's own renderer, so it is exactly what is sent. Each email gets the person's own unsubscribe link at the bottom.</p>
+          </details>
         </div>
         <div class="row">
           <button class="btn" id="nlsave">Save draft</button>
-          <button class="btn" id="nlpreview">Preview</button>
           <button class="btn" id="nltest">Send me a test</button>
           <button class="btn primary" id="nlsend" disabled>Send…</button>
           <button class="btn hidden" id="nlcancel">Cancel send</button>
@@ -357,8 +455,6 @@ export const ADMIN_PAGE = `<!doctype html>
             <button class="btn" id="nlconfirmback">Back</button>
           </div>
         </div>
-        <iframe id="nlframe" class="hidden" title="Newsletter preview" sandbox=""
-                style="width:100%;height:32rem;border:1px solid var(--hair);background:#fff"></iframe>
       </div>
 
       <div class="form-card" data-testid="nl-import">
@@ -403,7 +499,7 @@ export const ADMIN_PAGE = `<!doctype html>
 
 <script>
 (function () {
-  var people = [], forms = [], filter = "all", query = "";
+  var people = [], forms = [], filter = "all", query = "", selected = {};
   var events = [], eventWhen = "upcoming", rsvpCache = {}, emailRsvpCounts = {}, accessMembers = [];
   var proposals = [], proposalStatus = "pending";
 
@@ -567,6 +663,8 @@ export const ADMIN_PAGE = `<!doctype html>
         return '<span class="pill">' + esc(s.form_slug) + "</span>";
       }).join(" ");
       return '<tr data-email="' + esc(p.email) + '">' +
+        '<td class="sel"><input type="checkbox" data-sel="' + esc(p.id) + '" aria-label="Select ' + esc(p.email) + '"' +
+          (selected[p.id] ? " checked" : "") + "></td>" +
         "<td>" + esc(p.name || "—") + "</td>" +
         "<td>" + esc(p.email) + "</td>" +
         "<td>" + esc(p.phone || "") + "</td>" +
@@ -583,7 +681,57 @@ export const ADMIN_PAGE = `<!doctype html>
     Array.prototype.forEach.call(el("rows").querySelectorAll("tr"), function (tr) {
       tr.addEventListener("click", function () { openDrawer(tr.getAttribute("data-email")); });
     });
+    Array.prototype.forEach.call(el("rows").querySelectorAll("[data-sel]"), function (box) {
+      box.addEventListener("click", function (ev) { ev.stopPropagation(); });
+      box.addEventListener("change", function () {
+        if (box.checked) selected[box.getAttribute("data-sel")] = true; else delete selected[box.getAttribute("data-sel")];
+        renderBulk();
+      });
+    });
+    el("selall").checked = shown.length > 0 && shown.every(function (p) { return selected[p.id]; });
+    renderBulk();
   }
+
+  // ---- bulk tags: select rows, add or remove one tag on all of them.
+  function selectedIds() { return Object.keys(selected); }
+  function renderBulk() {
+    var n = selectedIds().length;
+    show("bulkbar", n > 0);
+    el("bulkcount").textContent = n + " selected";
+    var seen = {};
+    people.forEach(function (p) {
+      (p.tags || "").split(",").forEach(function (t) { t = t.trim().toLowerCase(); if (t) seen[t] = true; });
+    });
+    el("bulktaglist").innerHTML = Object.keys(seen).sort().map(function (t) {
+      return '<option value="' + esc(t) + '">';
+    }).join("");
+  }
+  function bulkTag(kind) {
+    var tag = el("bulktag").value.trim();
+    var ids = selectedIds();
+    if (!tag || !ids.length) { el("bulkmsg").textContent = "Pick people and type a tag."; return; }
+    if (!window.confirm((kind === "add" ? "Add" : "Remove") + " tag \u201c" + tag + "\u201d " +
+        (kind === "add" ? "to " : "from ") + ids.length + " people?")) return;
+    var body = { ids: ids };
+    body[kind] = [tag];
+    el("bulkmsg").textContent = "Working…";
+    api("/api/admin/people/tags", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      el("bulkmsg").textContent = "Updated " + d.updated + " people.";
+      selected = {};
+      nlAudiences = null;
+      return load();
+    }).catch(function (e) { el("bulkmsg").textContent = e.message; });
+  }
+  el("bulkadd").addEventListener("click", function () { bulkTag("add"); });
+  el("bulkremove").addEventListener("click", function () { bulkTag("remove"); });
+  el("bulkclear").addEventListener("click", function () { selected = {}; render(); });
+  el("selall").addEventListener("change", function () {
+    var on = el("selall").checked;
+    people.filter(matches).forEach(function (p) { if (on) selected[p.id] = true; else delete selected[p.id]; });
+    render();
+  });
 
   function fieldLabel(slug, fieldKey) {
     for (var i = 0; i < forms.length; i++) {
@@ -850,6 +998,13 @@ export const ADMIN_PAGE = `<!doctype html>
             '" target="_blank" rel="noopener">View the public page</a></dd>' +
         "</dl>") +
       (isNew ? "" :
+        '<div class="sub"><label for="evphoto">Event photo</label>' +
+        '<div id="evphotopreview"></div>' +
+        '<input id="evphoto" type="file" accept="image/jpeg,image/png,image/webp">' +
+        '<div class="row"><button class="btn" id="evphotoupload">Upload</button>' +
+        '<button class="btn" id="evphotoremove">Remove photo</button></div>' +
+        '<div id="evphotomsg" role="status"></div></div>') +
+      (isNew ? "" :
         '<div class="sub" id="rsvppanel">' +
           '<div class="label">RSVPs</div>' +
           '<div id="rsvpbody" class="muted">Loading\u2026</div>' +
@@ -999,6 +1154,54 @@ export const ADMIN_PAGE = `<!doctype html>
       var cached = rsvpCache[eventKey(e)];
       if (cached) { renderSeats(cached); applySeats(cached); } else { loadSeats(); }
       el("refreshrsvp").addEventListener("click", function () { loadSeats(); loadEmailRsvps(); });
+    }
+
+    if (!isNew) {
+      function renderPhoto() {
+        el("evphotopreview").innerHTML = e.imageUrl
+          ? '<img src="' + esc(e.imageUrl) + '" alt="' + esc(e.name) + '" style="max-width:240px;max-height:160px">'
+          : '<p class="muted">Using an automatic photo</p>';
+        el("evphotoremove").disabled = !e.imageUrl;
+      }
+      renderPhoto();
+      async function changePhoto(remove) {
+        var msg = el("evphotomsg");
+        var upload = el("evphotoupload");
+        var removeButton = el("evphotoremove");
+        upload.disabled = removeButton.disabled = true;
+        msg.textContent = remove ? "Removing photo…" : "Preparing photo…";
+        try {
+          var body;
+          if (!remove) {
+            var file = el("evphoto").files[0];
+            if (!file) throw new Error("Choose a photo first.");
+            if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("Use a JPEG, PNG, or WebP image.");
+            var bitmap = await createImageBitmap(file);
+            try {
+              var scale = Math.min(1, 1600 / bitmap.width, 1600 / bitmap.height);
+              var canvas = document.createElement("canvas");
+              canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+              canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+              canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+              body = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/webp", 0.85); });
+            } finally { bitmap.close(); }
+            if (!body || body.type !== "image/webp") throw new Error("Couldn't prepare this photo. Try another image.");
+            if (body.size > 2 * 1024 * 1024) throw new Error("This photo is still over 2 MB. Choose a smaller image.");
+            msg.textContent = "Uploading photo…";
+          }
+          var response = await api("/api/admin/events/" + encodeURIComponent(e.did) + "/" + encodeURIComponent(e.rkey) + "/image", {
+            method: remove ? "DELETE" : "PUT", headers: remove ? {} : { "Content-Type": "image/webp" }, body: body
+          });
+          var data = await response.json();
+          e.imageUrl = data.imageUrl;
+          renderPhoto();
+          el("evphoto").value = "";
+          msg.textContent = remove ? "Photo removed. Using an automatic photo." : "Photo uploaded.";
+        } catch (err) { msg.textContent = err.message || "Couldn't update the photo."; }
+        finally { upload.disabled = false; removeButton.disabled = !e.imageUrl; }
+      }
+      el("evphotoupload").addEventListener("click", function () { changePhoto(false); });
+      el("evphotoremove").addEventListener("click", function () { changePhoto(true); });
     }
 
     el("closedrawer").addEventListener("click", closeDrawer);
@@ -1197,6 +1400,45 @@ export const ADMIN_PAGE = `<!doctype html>
   var ROLES = [["member", "Member"], ["builder", "Builder"],
                ["facilitator", "Facilitator"], ["steward", "Steward"]];
 
+  // Funnel: counts per form question (worker/src/funnel.ts). Day inputs are
+  // UTC dates; left blank, the Worker answers with the last 14 days.
+  function openFunnel() {
+    var select = el("funnel-form");
+    if (!select.options.length) {
+      select.innerHTML = forms.map(function (f) {
+        return '<option value="' + esc(f.slug) + '">' + esc(f.title) + " (" + esc(f.slug) + ")</option>";
+      }).join("");
+    }
+    return loadFunnel();
+  }
+
+  function loadFunnel() {
+    var slug = el("funnel-form").value;
+    if (!slug) { el("funnel-rows").innerHTML = '<tr><td colspan="3" class="muted">No forms.</td></tr>'; return Promise.resolve(); }
+    var query = [];
+    if (el("funnel-from").value) query.push("from=" + encodeURIComponent(el("funnel-from").value));
+    if (el("funnel-to").value) query.push("to=" + encodeURIComponent(el("funnel-to").value));
+    el("funnelmsg").textContent = "Loading…";
+    return api("/api/admin/funnel/" + encodeURIComponent(slug) + (query.length ? "?" + query.join("&") : ""))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        el("funnel-from").value = data.from;
+        el("funnel-to").value = data.to;
+        el("funnelmsg").textContent = data.from + " to " + data.to;
+        el("funnel-rows").innerHTML = data.steps.map(function (step) {
+          return "<tr><td>" + esc(step.label) + "</td><td>" + step.count + "</td><td>" +
+            (step.drop === null ? "" : step.drop) + "</td></tr>";
+        }).join("");
+      }).catch(function (e) {
+        el("funnelmsg").textContent = e.message;
+        el("funnel-rows").innerHTML = '<tr><td colspan="3" class="muted">Could not load the funnel.</td></tr>';
+      });
+  }
+
+  ["funnel-form", "funnel-from", "funnel-to"].forEach(function (id) {
+    el(id).addEventListener("change", loadFunnel);
+  });
+
   function loadAccess() {
     return api("/api/admin/access").then(function (r) { return r.json(); }).then(function (data) {
       accessMembers = data.members || [];
@@ -1362,17 +1604,62 @@ export const ADMIN_PAGE = `<!doctype html>
   // mirrors the state so the buttons say what will happen.
   var newsletters = [], nlCurrent = null, nlDirty = false, nlAudiences = null, bhCsv = null;
 
+  // The picker's value: all | form:<slug> | tag:<tag> | segment. A segment's
+  // include/exclude choices live in the #nlterms selects, one per form or tag.
   function audienceValue(a) {
     if (!a) return "all";
-    return a.kind === "form" ? "form:" + a.form : a.kind === "tag" ? "tag:" + a.tag : "all";
+    return a.kind === "form" ? "form:" + a.form : a.kind === "tag" ? "tag:" + a.tag : a.kind === "segment" ? "segment" : "all";
   }
-  function audienceFromValue(v) {
+  function termKey(t) { return t.form ? "form:" + t.form : "tag:" + t.tag; }
+  function termFromKey(k) { return k.indexOf("form:") === 0 ? { form: k.slice(5) } : { tag: k.slice(4) }; }
+  function termLabel(k) { return k.indexOf("form:") === 0 ? "Registered: " + k.slice(5) : "Tagged: " + k.slice(4); }
+  function currentAudience() {
+    var v = el("nlaudience").value;
     if (v.indexOf("form:") === 0) return { kind: "form", form: v.slice(5) };
     if (v.indexOf("tag:") === 0) return { kind: "tag", tag: v.slice(4) };
+    if (v === "segment") {
+      var include = [], exclude = [];
+      Array.prototype.forEach.call(el("nlterms").querySelectorAll("select[data-term]"), function (sel) {
+        if (sel.value === "include") include.push(termFromKey(sel.getAttribute("data-term")));
+        if (sel.value === "exclude") exclude.push(termFromKey(sel.getAttribute("data-term")));
+      });
+      return { kind: "segment", include: include, exclude: exclude };
+    }
     return { kind: "all" };
+  }
+  // Rows for every known form and tag, plus any term the stored audience uses
+  // that has since vanished from the lists, so opening a draft never drops one.
+  function fillTerms(a) {
+    if (!nlAudiences) return;
+    var keys = [];
+    nlAudiences.forms.forEach(function (f) { keys.push("form:" + f.slug); });
+    nlAudiences.tags.forEach(function (t) { keys.push("tag:" + t.tag); });
+    var chosen = {};
+    if (a && a.kind === "segment") {
+      a.include.forEach(function (t) { chosen[termKey(t)] = "include"; });
+      a.exclude.forEach(function (t) { chosen[termKey(t)] = "exclude"; });
+    } else {
+      Array.prototype.forEach.call(el("nlterms").querySelectorAll("select[data-term]"), function (sel) {
+        if (sel.value) chosen[sel.getAttribute("data-term")] = sel.value;
+      });
+    }
+    Object.keys(chosen).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+    el("nlterms").innerHTML = keys.map(function (k) {
+      return "<span>" + esc(termLabel(k)) + '</span><select data-term="' + esc(k) + '" aria-label="' + esc(termLabel(k)) + '">' +
+        '<option value="">—</option>' +
+        '<option value="include"' + (chosen[k] === "include" ? " selected" : "") + ">Include</option>" +
+        '<option value="exclude"' + (chosen[k] === "exclude" ? " selected" : "") + ">Exclude</option></select>";
+    }).join("");
+    Array.prototype.forEach.call(el("nlterms").querySelectorAll("select"), function (sel) {
+      sel.addEventListener("change", audienceChanged);
+    });
   }
   function audienceText(a) {
     if (!a) return "—";
+    if (a.kind === "segment") {
+      var inc = a.include.length ? a.include.map(function (t) { return t.form || t.tag; }).join(" or ") : "everyone subscribed";
+      return a.exclude.length ? inc + ", not " + a.exclude.map(function (t) { return t.form || t.tag; }).join(" or ") : inc;
+    }
     return a.kind === "form" ? "registrants of " + a.form : a.kind === "tag" ? "tagged " + a.tag : "everyone subscribed";
   }
   function nlTime(iso) { return iso ? new Date(iso).toLocaleString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"; }
@@ -1413,9 +1700,9 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   }
 
-  function fillAudienceSelect() {
+  function fillAudienceSelect(a) {
     if (!nlAudiences) return;
-    var current = el("nlaudience").value || "all";
+    var current = a ? audienceValue(a) : (el("nlaudience").value || "all");
     var opts = ['<option value="all">Everyone subscribed</option>'];
     nlAudiences.forms.forEach(function (f) {
       opts.push('<option value="form:' + esc(f.slug) + '">Registrants: ' + esc(f.title) + " (" + esc(f.slug) + ")</option>");
@@ -1423,32 +1710,48 @@ export const ADMIN_PAGE = `<!doctype html>
     nlAudiences.tags.forEach(function (t) {
       opts.push('<option value="tag:' + esc(t.tag) + '">Tagged: ' + esc(t.tag) + " (" + esc(t.people) + ")</option>");
     });
+    opts.push('<option value="segment">Custom segment (include / exclude)…</option>');
     el("nlaudience").innerHTML = opts.join("");
     el("nlaudience").value = current;
     if (el("nlaudience").value !== current) el("nlaudience").value = "all";
+    fillTerms(a);
+    show("nlsegment", el("nlaudience").value === "segment");
   }
 
+  function audienceChanged() {
+    nlDirty = true; show("nlconfirm", false);
+    show("nlsegment", el("nlaudience").value === "segment");
+    updateLock(); refreshCount();
+  }
+
+  // Count + first 20 recipients (masked), newest request wins.
+  var nlCountSeq = 0;
   function refreshCount() {
+    var seq = ++nlCountSeq;
     el("nlcount").textContent = "Counting…";
-    api("/api/admin/newsletters/count", {
+    api("/api/admin/newsletters/recipients", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audience: audienceFromValue(el("nlaudience").value) })
+      body: JSON.stringify({ audience: currentAudience() })
     }).then(function (r) { return r.json(); }).then(function (d) {
+      if (seq !== nlCountSeq) return;
       el("nlcount").textContent = d.count + " people would receive it right now.";
-    }).catch(function (e) { el("nlcount").textContent = e.message; });
+      el("nlrecipslist").innerHTML = d.recipients.length ? d.recipients.map(function (r) {
+        return "<li>" + esc(r.name || "(no name)") + " &middot; " + esc(r.email) + "</li>";
+      }).join("") : "<li>Nobody.</li>";
+    }).catch(function (e) { if (seq === nlCountSeq) el("nlcount").textContent = e.message; });
   }
 
   function showNewsletter(n) {
     nlCurrent = n; nlDirty = false;
-    show("nleditor", true); show("nlconfirm", false); show("nlframe", false);
+    show("nleditor", true); show("nlconfirm", false);
     el("nlmsg").textContent = "";
     el("nltitle").textContent = n ? "Newsletter" : "New newsletter";
     el("nlsubject").value = n ? n.subject : "";
     el("nlbody").value = n ? n.text : "";
-    if (n) el("nlaudience").value = audienceValue(n.audience);
-    if (el("nlaudience").value === "" ) el("nlaudience").value = "all";
+    fillAudienceSelect(n ? n.audience : { kind: "all" });
     var draft = !n || n.status === "draft";
-    ["nlsubject", "nlbody", "nlaudience"].forEach(function (id) { el(id).disabled = !draft; });
+    ["nlsubject", "nlbody", "nlaudience", "nlpreset"].forEach(function (id) { el(id).disabled = !draft; });
+    Array.prototype.forEach.call(document.querySelectorAll("#nlterms select, #nltools button"), function (b) { b.disabled = !draft; });
     el("nlstatus").textContent = n ? n.status + (n.status === "scheduled" ? " · goes out " + nlTime(n.scheduled_for) : "") +
       (n.counts && (n.counts.sent || n.counts.failed) ? " · " + n.counts.sent + " sent, " + n.counts.failed + " failed" : "") +
       (n.counts && deliveryText(n.counts.delivered, n.counts.bounced, n.counts.complained)
@@ -1457,7 +1760,7 @@ export const ADMIN_PAGE = `<!doctype html>
     show("nlcancel", !!n && (n.status === "scheduled" || n.status === "sending"));
     show("nlreopen", !!n && n.status === "cancelled");
     show("nldelete", !!n && (n.status === "draft" || n.status === "cancelled"));
-    el("nlpreview").disabled = !n;
+    refreshPreview();
     updateLock();
     refreshCount();
   }
@@ -1480,7 +1783,7 @@ export const ADMIN_PAGE = `<!doctype html>
   }
 
   function saveNewsletter() {
-    var payload = JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value, audience: audienceFromValue(el("nlaudience").value) });
+    var payload = JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value, audience: currentAudience() });
     var req = nlCurrent
       ? api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id), { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload })
       : api("/api/admin/newsletters", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
@@ -1498,29 +1801,98 @@ export const ADMIN_PAGE = `<!doctype html>
       .then(function () { button.disabled = false; updateLock(); });
   }
 
+  // Live preview: the server's own renderer, so what is shown is what is sent.
+  // Debounced; a newer request makes older answers irrelevant.
+  var nlPreviewTimer = null, nlPreviewSeq = 0;
+  function refreshPreview() {
+    var seq = ++nlPreviewSeq;
+    api("/api/admin/newsletters/preview", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      // Sandboxed with no permissions: the server escapes the body, and even
+      // so nothing in the preview can run script or reach this page.
+      if (seq === nlPreviewSeq) el("nlframe").srcdoc = d.html;
+    }).catch(function (e) { if (seq === nlPreviewSeq) el("nlmsg").textContent = e.message; });
+  }
+  function schedulePreview() {
+    clearTimeout(nlPreviewTimer);
+    nlPreviewTimer = setTimeout(refreshPreview, 350);
+  }
+
+  // Toolbar: wraps the selection (or inserts a placeholder) in markdown.
+  function mdEdit(kind) {
+    var ta = el("nlbody");
+    if (ta.disabled) return;
+    var start = ta.selectionStart, end = ta.selectionEnd, value = ta.value;
+    var sel = value.slice(start, end);
+    var before = "", after = "", fill = sel, block = false;
+    if (kind === "bold") { before = "**"; after = "**"; fill = sel || "bold text"; }
+    else if (kind === "italic") { before = "*"; after = "*"; fill = sel || "italic text"; }
+    else if (kind === "link") { before = "["; after = "](https://)"; fill = sel || "link text"; }
+    else if (kind === "button") { before = "[["; after = "]](https://)"; fill = sel || "Register now"; block = true; }
+    else if (kind === "image") { before = "![" ; after = "](https://)"; fill = sel || "description"; block = true; }
+    else if (kind === "heading") { before = "## "; fill = sel || "Heading"; block = true; }
+    else if (kind === "list") {
+      fill = (sel || "item").split("\\n").map(function (l) { return "- " + l.replace(/^[-*]\\s+/, ""); }).join("\\n");
+      block = true;
+    }
+    else if (kind === "rule") {
+      // Goes after the paragraph the cursor is in; never replaces a selection.
+      var gap = value.indexOf("\\n\\n", end);
+      start = end = gap === -1 ? value.length : gap;
+      fill = "---"; block = true;
+    }
+    // Block elements need a blank line either side to be recognized.
+    var lead = "", trail = "";
+    if (block) {
+      var pre = value.slice(0, start), post = value.slice(end);
+      lead = !pre ? "" : /\\n\\n$/.test(pre) ? "" : /\\n$/.test(pre) ? "\\n" : "\\n\\n";
+      trail = !post ? "\\n\\n" : /^\\n\\n/.test(post) ? "" : /^\\n/.test(post) ? "\\n" : "\\n\\n";
+    }
+    var inserted = lead + before + fill + after + trail;
+    ta.focus();
+    ta.setRangeText(inserted, start, end, "end");
+    var from = start + lead.length + before.length;
+    ta.setSelectionRange(from, from + fill.length);
+    nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#nltools [data-md]"), function (b) {
+    b.addEventListener("click", function () { mdEdit(b.getAttribute("data-md")); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-nlview]"), function (b) {
+    b.addEventListener("click", function () {
+      el("nledit").setAttribute("data-view", b.getAttribute("data-nlview"));
+      Array.prototype.forEach.call(document.querySelectorAll("[data-nlview]"), function (o) {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      if (b.getAttribute("data-nlview") === "preview") refreshPreview();
+    });
+  });
+
+  el("nlpreset").addEventListener("click", function () {
+    fillAudienceSelect({ kind: "segment", include: [], exclude: [{ form: "register-2026" }] });
+    audienceChanged();
+  });
+  el("nlcsv").addEventListener("click", function () {
+    api("/api/admin/newsletters/recipients.csv?audience=" + encodeURIComponent(JSON.stringify(currentAudience())))
+      .then(function (r) { return r.blob(); }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = "newsletter-recipients.csv";
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }).catch(function (e) { el("nlcount").textContent = e.message; });
+  });
+
   el("nlnew").addEventListener("click", function () { showNewsletter(null); el("nlsubject").focus(); });
   ["nlsubject", "nlbody"].forEach(function (id) {
-    el(id).addEventListener("input", function () { nlDirty = true; show("nlconfirm", false); updateLock(); });
+    el(id).addEventListener("input", function () { nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview(); });
   });
-  el("nlaudience").addEventListener("change", function () { nlDirty = true; show("nlconfirm", false); updateLock(); refreshCount(); });
+  el("nlaudience").addEventListener("change", audienceChanged);
 
   el("nlsave").addEventListener("click", function () {
     nlAction(el("nlsave"), function () { return saveNewsletter().then(function () { el("nlmsg").textContent = "Saved."; }); });
-  });
-
-  el("nlpreview").addEventListener("click", function () {
-    if (!nlCurrent) return;
-    nlAction(el("nlpreview"), function () {
-      var save = nlDirty ? saveNewsletter() : Promise.resolve(nlCurrent);
-      return save.then(function (n) {
-        return api("/api/admin/newsletters/" + encodeURIComponent(n.id) + "/preview").then(function (r) { return r.json(); });
-      }).then(function (d) {
-        // Sandboxed with no permissions: the server escapes the body, and even
-        // so nothing in the preview can run script or reach this page.
-        el("nlframe").srcdoc = d.html;
-        show("nlframe", true);
-      });
-    });
   });
 
   el("nltest").addEventListener("click", function () {
@@ -1739,7 +2111,7 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "newsletter", "access", "admins", "companion"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "funnel", "newsletter", "access", "admins", "companion"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -1748,6 +2120,7 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "events") loadEvents();
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
+      if (name === "funnel") openFunnel();
       if (name === "newsletter") loadNewsletters();
       if (name === "companion") loadCompanion();
     });

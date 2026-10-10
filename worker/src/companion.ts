@@ -8,6 +8,7 @@ export interface CompanionEnv extends EventsEnv {
     VAPID_SUBJECT?: string;
     COMPANION_START_DATE?: string;
     COMPANION_END_DATE?: string;
+    /** "true" stops every scheduled push (like RSVP_REMINDERS_PAUSED). Flipped at launch. */ COMPANION_PUSH_PAUSED?: string;
     /** Set only in local hermetic tests. Exact loopback origin. */ COMPANION_LOCAL_PUSH_MOCK?: string;
 }
 export const denverDate = (date: Date) => {
@@ -206,7 +207,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
         }
         return;
     }
-    if (!enabled(env) || date < start(env) || date > end(env) || now.getUTCMinutes() >= 5)
+    if (env.COMPANION_PUSH_PAUSED === 'true' || !enabled(env) || date < start(env) || date > end(env) || now.getUTCMinutes() >= 5)
         return;
     const slot = ({ 12: 'practice', 15: 'events', 21: 'question' } as const)[now.getUTCHours() as 12 | 15 | 21];
     if (!slot)
@@ -228,6 +229,9 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
         if (!slotFor(now, env))
             return;
         const daily = await db.prepare('SELECT * FROM companion_daily WHERE date=?1').bind(date).first<Record<string, string>>();
+        // No organizer-written content for today means nothing goes out, in any slot.
+        if (!daily)
+            return;
         let eventsBody = '';
         if (slot === 'events') {
             const response = await handleEventsList(new Request('https://cohereboulder.org/api/events'), env, {});
@@ -246,7 +250,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
             if (!eventsBody)
                 return;
         }
-        else if (!daily || (slot === 'question' ? !daily.question : !daily.title))
+        else if (slot === 'question' ? !daily.question : !daily.title)
             return;
         const payload = (language: 'en' | 'es') => {
             const es = language === 'es';

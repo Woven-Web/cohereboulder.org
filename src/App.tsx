@@ -1,5 +1,5 @@
 import Companion from "./pages/Companion";
-import { CompanionNav } from "./components/CompanionNav";
+import { StandaloneMode } from "./components/StandaloneMode";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { AppSession } from "@/components/AppSession";
+import Board from "./pages/Board";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import CoCreate from "./pages/CoCreate";
@@ -38,6 +40,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
+          <AppSession />
           <Routes>
             <Route path="/today" element={<Companion />} />
             <Route path="/quests" element={<Companion />} />
@@ -45,6 +48,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />
+            <Route path="/events" element={<Calendar />} />
+            <Route path="/board" element={<Board />} />
+            <Route path="/home" element={<Index />} />
             <Route path="/calendar" element={<Calendar />} />
             {/* Accountless — anyone can suggest an event; an organizer
                 approves it from /admin's Proposals tab. */}
@@ -67,7 +73,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <CompanionNav />
+          <StandaloneMode />
         </BrowserRouter>
       </TooltipProvider>
     </LanguageProvider>

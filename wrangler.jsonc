@@ -41,6 +41,10 @@
   // by the cron string, so keep these in step with index.ts.
   "triggers": { "crons": ["0 12 * * *", "0 15 * * *", "0 21 * * *", "* * * * *"] },
   "vars": {
+    "RSVP_REMINDERS_PAUSED": "true",
+    // "true" stops every scheduled companion push (worker/src/companion.ts).
+    // Aaron flips it to "false" at launch.
+    "COMPANION_PUSH_PAUSED": "true",
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",

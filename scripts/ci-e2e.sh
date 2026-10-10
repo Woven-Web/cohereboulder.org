@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the regenOS-hosting, RSVP and newsletter e2e scripts hermetically,
+# Runs the regenOS-hosting, RSVP, newsletter and funnel e2e scripts hermetically,
 # against a local wrangler dev + the mock AppView (scripts/regenos-mock.mjs) —
 # never scenius.social — and the mock Resend API (scripts/resend-mock.mjs) —
 # never a real inbox. Used by .github/workflows/deploy-worker.yml as a gate
@@ -17,6 +17,8 @@
 # Usage: bash scripts/ci-e2e.sh
 
 set -euo pipefail
+E2E_PORT_OFFSET=${E2E_PORT_OFFSET:-0}
+[[ "$E2E_PORT_OFFSET" =~ ^[0-9]+$ ]] || { echo "E2E_PORT_OFFSET must be a nonnegative integer"; exit 2; }
 cd "$(dirname "$0")/.."
 
 # A dedicated, wiped-at-start local state dir — never the default
@@ -40,6 +42,7 @@ P28234=$(( 28234 + E2E_PORT_OFFSET ))
 P28235=$(( 28235 + E2E_PORT_OFFSET ))
 P28236=$(( 28236 + E2E_PORT_OFFSET ))
 P28237=$(( 28237 + E2E_PORT_OFFSET ))
+P28238=$(( 28238 + E2E_PORT_OFFSET ))
 P28789=$(( 28789 + E2E_PORT_OFFSET ))
 P28850=$(( 28850 + E2E_PORT_OFFSET ))
 P28851=$(( 28851 + E2E_PORT_OFFSET ))
@@ -49,6 +52,7 @@ P28861=$(( 28861 + E2E_PORT_OFFSET ))
 P28870=$(( 28870 + E2E_PORT_OFFSET ))
 P28880=$(( 28880 + E2E_PORT_OFFSET ))
 P28890=$(( 28890 + E2E_PORT_OFFSET ))
+P28895=$(( 28895 + E2E_PORT_OFFSET ))
 P28944=$(( 28944 + E2E_PORT_OFFSET ))
 P28946=$(( 28946 + E2E_PORT_OFFSET ))
 P28948=$(( 28948 + E2E_PORT_OFFSET ))
@@ -127,10 +131,15 @@ start_worker ${P28789} ${P28229} "$PWA_SCRATCH/pwa-merge-worker-1.log" \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:${P28944} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/home-registration-e2e.mjs http://127.0.0.1:${P28789}; then
+  fail=1
+fi
 if ! node scripts/share-e2e.mjs http://127.0.0.1:${P28789}; then
   fail=1
 fi
 if ! node scripts/regenos-e2e.mjs http://127.0.0.1:${P28789}; then
+  tail -150 "$PWA_SCRATCH/pwa-merge-worker-1.log"
+  tail -80 "$PWA_SCRATCH/pwa-merge-mock-1.log"
   fail=1
 fi
 cleanup
@@ -179,10 +188,12 @@ echo "::endgroup::"
 
 # --- 4. rsvp-e2e.mjs: email RSVP, admin list, reminder cron, cancel -------
 # --test-scheduled exposes /cdn-cgi/local/scheduled; local send_email only
-# writes .eml files, so nothing is ever delivered.
+# writes .eml files, so nothing is ever delivered. Explicitly unpause this
+# lane to keep testing reminder delivery while deployed reminders are paused.
 echo "::group::rsvp-e2e (email RSVP + reminder cron lane)"
 start_mock ${P28948} "$PWA_SCRATCH/pwa-merge-mock-4.log"
 start_worker ${P28870} ${P28235} "$PWA_SCRATCH/pwa-merge-worker-4.log" --test-scheduled \
+  --var RSVP_REMINDERS_PAUSED:false \
   --var REGENOS_LOGIN_ENABLED:false \
   --var REGENOS_SERVICE_TOKEN:mock-token \
   --var REGENOS_BASE_URL:http://127.0.0.1:${P28948} \
@@ -235,7 +246,21 @@ cleanup
 PIDS=()
 echo "::endgroup::"
 
-# --- 7. Companion: real crypto, loopback-only push and mobile browser ---
+# --- 7. funnel-e2e.mjs: registration funnel counts, beacon -> admin view --
+# Counts only: the lane checks the beacons carry nothing but an event name.
+# Reuses the admin + session seed (same --persist-to dir).
+echo "::group::funnel-e2e (registration funnel counts lane)"
+seed_d1_and_kv
+start_worker ${P28895} ${P28238} "$PWA_SCRATCH/pwa-merge-worker-7.log" \
+  --var REGENOS_LOGIN_ENABLED:false
+if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/funnel-e2e.mjs http://127.0.0.1:${P28895} "$SESSION_TOKEN"; then
+  fail=1
+fi
+cleanup
+PIDS=()
+echo "::endgroup::"
+
+# --- 8. Companion: real crypto, loopback-only push and mobile browser ---
 echo "::group::companion-e2e"
 start_mock "$PWA_MOCK_PORT" "$PWA_SCRATCH/pwa-merge-companion-events.log"
 PWA_KEYS_FILE="$PWA_SCRATCH/pwa-merge-push-keys.json"
@@ -252,6 +277,7 @@ start_worker "$PWA_WORKER_PORT" "$PWA_INSPECTOR_PORT" "$PWA_SCRATCH/pwa-merge-co
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var "VAPID_PUBLIC_KEY:$PWA_PUBLIC_KEY" --var "VAPID_PRIVATE_KEY:$PWA_PRIVATE_KEY" \
   --var VAPID_SUBJECT:mailto:test@example.test \
+  --var COMPANION_PUSH_PAUSED:false \
   --var "COMPANION_LOCAL_PUSH_MOCK:http://127.0.0.1:$PWA_PUSH_PORT" \
   --var "COMPANION_START_DATE:$PWA_DATE" --var "COMPANION_END_DATE:$PWA_DATE"
 if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/companion-e2e.mjs "http://127.0.0.1:$PWA_WORKER_PORT" "$SESSION_TOKEN" "http://127.0.0.1:$PWA_PUSH_PORT" "$PWA_KEYS_FILE" "http://127.0.0.1:$PWA_MOCK_PORT"; then

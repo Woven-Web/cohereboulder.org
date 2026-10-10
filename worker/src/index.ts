@@ -11,6 +11,9 @@ import { companionRoute, runCompanionCron, type CompanionEnv } from "./companion
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
+import { handleAdminEventImage, handleEventImage } from "./event-images";
+import { handleMyRegistration } from "./registration";
+import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
@@ -49,6 +52,7 @@ import {
 import { routeCheckin, runCheckinRetention, type CheckinEnv } from "./checkins";
 import { CHECKIN_PAGE } from "./checkin-page";
 import {
+  bulkTags,
   handleNewsletterAdmin,
   handleNewsletterCancelLink,
   runNewsletterCron,
@@ -279,7 +283,7 @@ function csvCell(value: unknown): string {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const cors = corsHeaders(request.headers.get("Origin"));
     const url = new URL(request.url);
     const path = url.pathname;
@@ -287,6 +291,8 @@ export default {
     // The regenOS door is checked before everything, including the OPTIONS
     // handler — "inert when off" means every method on /xrpc/* is a 404, with
     // nothing (not even a preflight 204) hinting the surface exists.
+    if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env);
+
     if (path === "/xrpc" || path.startsWith("/xrpc/")) {
       return handleXrpcProxy(request, env, url);
     }
@@ -498,6 +504,11 @@ export default {
         return json({ forms }, 200);
       }
 
+      // Funnel counts for one form: reached per question, in form order.
+      if (request.method === "GET" && path.startsWith("/api/admin/funnel/")) {
+        return handleAdminFunnel(env, url, decodeURIComponent(path.slice("/api/admin/funnel/".length)));
+      }
+
       // Replace a form's questions without a deploy.
       if (request.method === "PUT" && path.startsWith("/api/admin/forms/")) {
         const slug = decodeURIComponent(path.slice("/api/admin/forms/".length));
@@ -561,6 +572,17 @@ export default {
           )
           .run();
         return json({ ok: true }, 200);
+      }
+
+      // Bulk add/remove tags on the selected people (People view).
+      if (request.method === "POST" && path === "/api/admin/people/tags") {
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "invalid JSON" }, 400);
+        }
+        return bulkTags(env, body);
       }
 
       // Organizer-only fields: tags, notes, subscribe state.
@@ -650,6 +672,9 @@ export default {
         if (parts.length === 0) {
           if (request.method === "GET") return handleAdminEventsList(env);
           if (request.method === "POST") return handleAdminEventCreate(request, env, url);
+        }
+        if (parts.length === 3 && parts[2] === "image" && ["PUT", "DELETE"].includes(request.method)) {
+          return handleAdminEventImage(request, env, parts[0], parts[1]);
         }
         if (parts.length === 2) {
           const [did, rkey] = parts;
@@ -829,6 +854,13 @@ export default {
     // Read-only proxy to the regenOS commons calendar (see events.ts) — the
     // AppView has no CORS, so the browser can't reach it directly. Same-origin
     // GETs only; no credentials are forwarded either way.
+    if (request.method === "GET" && path.startsWith("/api/event-image/")) {
+      const parts = path.slice("/api/event-image/".length).split("/");
+      try {
+        if (parts.length === 2) return await handleEventImage(request, env, decodeURIComponent(parts[0]), decodeURIComponent(parts[1]));
+      } catch { /* malformed path */ }
+      return json({ error: "not found" }, 404);
+    }
     if (request.method === "GET" && path === "/api/events") {
       return handleEventsList(request, env, cors);
     }
@@ -859,6 +891,11 @@ export default {
     // ============ end propose an event ============
 
     // ------------------------------------------------------------ public forms
+
+    // Counts-only registration funnel beacons (worker/src/funnel.ts).
+    if (path.startsWith("/api/funnel/")) {
+      return handleFunnelEvent(request, env, decodeURIComponent(path.slice("/api/funnel/".length)));
+    }
 
     // The questions for a form, so the site can render whatever the admin defines.
     if (request.method === "GET" && path.startsWith("/api/form/")) {
@@ -928,6 +965,8 @@ export default {
         source: `form:${formSlug}`,
       });
       await recordSubmission(env, personId, formSlug, form.event, answers);
+      // Off the request path: a slow counter must never delay a registration.
+      ctx.waitUntil(recordSubmitted(env, formSlug));
 
       // Confirmation mail, if this form defines one. Copy lives in the
       // database alongside the questions, so it is editable without a deploy.

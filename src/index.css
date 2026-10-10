@@ -33,7 +33,7 @@ All colors MUST be HSL.
     --secondary-foreground: 219 40% 14%;
 
     --muted: 130 30% 94%;
-    --muted-foreground: 219 14% 40%;
+    --muted-foreground: 215 19% 35%;
 
     --accent: var(--brand-sun);
     --accent-foreground: 30 45% 14%;
@@ -41,8 +41,8 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 140 30% 98%;
 
-    --border: 150 18% 88%;
-    --input: 150 18% 88%;
+    --border: 215 20% 65%;
+    --input: 215 20% 65%;
     --ring: var(--brand-water);
 
     --radius: 0.75rem;
@@ -152,8 +152,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
-.companion-bottom { display:none; }
-.companion-page { max-width:48rem; margin:0 auto; padding:2rem 1rem 6rem; color:hsl(var(--foreground)); }
+.companion-page { min-height:60vh; padding:2rem max(1rem, calc((100% - 48rem) / 2)) 6rem; background:hsl(var(--background)); color:hsl(var(--foreground)); }
 .companion-page header, .companion-links { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
 .companion-page h1 { font-size:2rem; font-weight:700; }
 .companion-page h2 { font-size:1.4rem; font-weight:600; margin-bottom:1rem; }
@@ -182,8 +181,28 @@ All colors MUST be HSL.
 @keyframes companion-pop { from { transform:scale(.8); } to { transform:scale(1); } }
 @media (max-width:767px) {
  html.companion-standalone, .companion-standalone body { overscroll-behavior:none; }
- .companion-standalone body { padding-bottom:calc(4.5rem + env(safe-area-inset-bottom)); }
- .companion-standalone .companion-bottom { display:flex; position:fixed; bottom:0; left:0; right:0; z-index:50; justify-content:space-around; padding:.5rem .5rem calc(.5rem + env(safe-area-inset-bottom)); background:hsl(var(--background)); border-top:1px solid hsl(var(--border)); }
- .companion-standalone .companion-bottom a { display:flex; flex-direction:column; align-items:center; gap:.2rem; font-size:.8rem; color:hsl(var(--muted-foreground)); }
- .companion-standalone .companion-bottom a.active { color:var(--brand-deep); font-weight:700; }
+}
+
+.app-bottom-tabs {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-bottom-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: hsl(var(--background));
+    border-top: 2px solid hsl(var(--border));
+    padding: 4px 12px calc(4px + env(safe-area-inset-bottom));
+  }
+
+  body:has(.app-bottom-tabs) {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    background: hsl(var(--earth-warm));
+  }
 }

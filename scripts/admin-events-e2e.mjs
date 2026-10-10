@@ -147,6 +147,35 @@ try {
     "the new event is on the public /api/events feed",
   );
 
+  step = "event photo";
+  const createdEvent = publicFeed.events.find((e) => e.name === eventName);
+  await page.locator("#eventrows tr", { hasText: eventName }).click();
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 16;
+    canvas.getContext("2d").fillRect(0, 0, 16, 16);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await page.locator("#evphoto").setInputFiles({ name: "event.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+  await page.locator("#evphotoupload").click();
+  await page.locator("#evphotomsg", { hasText: "Photo uploaded." }).waitFor();
+  await page.locator('#evphotopreview img[src^="/api/event-image/"]').waitFor();
+  ok("uploaded PNG is converted to WebP and shown in the drawer");
+  const detail = await context.newPage();
+  const detailPath = `/events/${encodeURIComponent(createdEvent.did)}/${encodeURIComponent(createdEvent.rkey)}`;
+  await detail.goto(detailPath);
+  await detail.locator('article img[src^="/api/event-image/"]').waitFor();
+  expect(await detail.locator('article img').getAttribute("alt") === eventName, "public photo uses the event name as alt text");
+  expect(await detail.getByTestId("event-banner").evaluate((img) => img.parentElement.children.length === 1 && getComputedStyle(img).filter === "none" && getComputedStyle(img).mixBlendMode === "normal"), "uploaded banner has no overlay, filter or blend");
+  await page.locator("#evphotoremove").click();
+  await page.locator("#evphotomsg", { hasText: "Photo removed." }).waitFor();
+  expect((await page.locator("#evphotopreview").innerText()).includes("Using an automatic photo"), "drawer returns to the automatic photo");
+  await detail.reload();
+  await detail.locator("article img").waitFor();
+  expect(!(await detail.locator("article img").getAttribute("src")).includes("/api/event-image/"), "public detail returns to the fallback photo");
+  await detail.close();
+  await page.locator("#closedrawer").click();
+
   // ── 5. The RSVP panel ─────────────────────────────────────────────────────
   step = "rsvp panel";
   await page.locator("#eventrows tr", { hasText: "Seed Gathering" }).click();

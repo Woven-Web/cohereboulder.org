@@ -25,6 +25,13 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # The Azure HTTP mirror has stalled until the job's 15-minute timeout.
+      # Select Ubuntu's HTTPS archive before Playwright installs system packages.
+      - name: Select reliable Ubuntu package mirror
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          fi
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: bash scripts/ci-e2e.sh

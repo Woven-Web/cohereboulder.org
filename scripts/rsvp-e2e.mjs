@@ -1,4 +1,4 @@
-// End-to-end proof of "RSVP · remind me" without an account, in a real
+// End-to-end proof of "RSVP" without an account, in a real
 // browser against a local wrangler dev + the mock AppView. Never touches
 // scenius.social, and never sends real mail: local wrangler's send_email
 // binding only writes .eml files and logs them.
@@ -69,7 +69,7 @@ try {
   // ── 1. The form, from an event card's RSVP button ────────────────────────
   step = "email rsvp";
   await page.goto("/calendar", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "RSVP · remind me" }).first().click();
+  await page.getByRole("button", { name: "RSVP", exact: true }).first().click();
   await page.waitForURL(/\/events\/.+#rsvp$/, { timeout: 10_000 });
   await page.getByTestId("rsvp-form").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Add to calendar" }).click();
@@ -77,13 +77,16 @@ try {
   const href = await google.getAttribute("href");
   if (!href?.startsWith("https://calendar.google.com/calendar/r/eventedit?")) fail(`Google Calendar link missing: ${href}`);
   await page.getByRole("menuitem", { name: "Apple / other calendars (.ics)" }).waitFor();
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Subscribe to Calendar" }).click();
+  await google.press("Escape");
+  await google.waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
   await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar" }).waitFor();
   await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
   const feedUrl = await page.getByRole("textbox", { name: "Calendar feed URL" }).inputValue();
   if (!feedUrl.endsWith("/calendar.ics")) fail(`subscription feed missing: ${feedUrl}`);
-  await page.keyboard.press("Escape");
+  // Finish dismissing the modal before interacting with the RSVP form.
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("calendar subscription explains Apple and Google feed setup");
   // This lane explicitly switches sign-in off; the anonymous email form
   // remains available and offers no dead sign-in control.
@@ -174,6 +177,7 @@ try {
   if (probe.status() !== 404) fail(`an unknown token answered ${probe.status()}`);
   ok("cancel link: plain GET is harmless; browser auto-POSTs; repeats and unknown tokens are harmless");
 } catch (error) {
+  console.error(error);
   fail(error.message.split("\n")[0]);
 } finally {
   await browser.close();

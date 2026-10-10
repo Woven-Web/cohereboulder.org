@@ -1,3 +1,5 @@
+import { useSiteConfig } from "@/hooks/useRegenos";
+import { openSignInDialog } from "@/lib/signin";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { DynamicForm } from "@/components/DynamicForm";
@@ -5,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const Registration = () => {
   const { tr, language } = useLanguage();
+  const { data: config } = useSiteConfig();
   const spanish = language === "es";
 
   return (
@@ -23,6 +26,8 @@ const Registration = () => {
             <p className="text-lg font-medium text-primary">{tr("hero.dates")}</p>
           </div>
 
+          {/* TODO: regenOS getSession exposes only DID/handle; prefill name/email when available. */}
+          {config?.regenosLoginEnabled === true && <p className="text-center">{tr("app.alreadyJoined")} <button className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>{tr("nav.signIn")}</button></p>}
           <DynamicForm
             slug="register-2026"
             successTitle={spanish ? "¡Estás dentro!" : "You're woven in!"}

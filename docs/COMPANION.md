@@ -10,8 +10,8 @@ overscroll. Desktop navigation is unchanged.
 
 ## Local verification and schema
 
-Migration **0008_companion.sql** intentionally leaves 0006 and 0007 reserved
-for PR36 and PR37. `worker/schema.sql` includes the same tables and indexes.
+Migration **0010_companion.sql** is add-only (`CREATE TABLE IF NOT EXISTS`); 0008 is
+reserved for another open PR and 0009 (funnel) is already live. `worker/schema.sql` includes the same tables and indexes.
 There is no seeded gathering content, subscription, operational private key or member data.
 The RFC8291 unit test contains only the published reference-vector private scalar;
 all VAPID/mock delivery keys are generated at runtime and never stored in source.
@@ -213,7 +213,7 @@ assets trigger installation of a fresh offline shell automatically. Asset reques
 
 Review this branch and all verification output; run the full hermetic runner in
 an environment with loopback sockets and Playwright support. Apply migration
-0008 through the established migration process, configure VAPID securely,
+0010 through the established migration process, configure VAPID securely,
 review organizer-authored English/Spanish content and configured date window,
 and check an actual installed iPhone and Android device before announcing
 `/today`. Follow the established release process for deployment and migrations.
@@ -229,3 +229,29 @@ and check an actual installed iPhone and Android device before announcing
 - [Chrome: deferred install prompts and user gestures](https://developer.chrome.com/blog/a2hs-updates/).
 - [Cloudflare: Cron Triggers and UTC schedules](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
+
+## Launch controls and content import
+
+**Pause flag.** `COMPANION_PUSH_PAUSED` (`"true"` in `wrangler.jsonc` and
+`wrangler.staging.jsonc`) stops every scheduled push, the same way
+`RSVP_REMINDERS_PAUSED` does for reminders. Aaron sets it to `"false"` at
+launch. Retention cleanup still runs while paused. Independently of the flag,
+the scheduled job sends nothing when push is unconfigured, before 2026-10-15
+(America/Denver), outside the gathering window, or when `companion_daily` has
+no row for that Denver date (this holds for all three slots, including the
+events slot). Tests: `worker/src/companion-guards.test.ts`.
+
+**Navigation.** Today, Events and Board share the site's one tab bar
+(`AppTabs`: header on desktop, bottom bar on phones and in the installed app).
+Today stays lit on `/today`, `/quests` and `/more`; Quests and More are
+reached from the Today page's sub-links.
+
+**Content import.** Organizers can edit content in `/admin` → Companion.
+For a bulk load, write `{daily:[…], quests:[…]}` JSON and run
+
+```bash
+node scripts/companion-import.mjs content.json [--staging] > content.sql
+```
+
+It validates, prints idempotent upserts and makes no network calls. Review the
+file and apply it with the `wrangler d1 execute` command in its header.

@@ -298,6 +298,30 @@ describe("runRsvpCron", () => {
     return { env, lookup, send };
   }
 
+  it("pauses reminders without writing claims, still purges, and resumes once", async () => {
+    const { env, lookup, send } = setup();
+    env.RSVP_REMINDERS_PAUSED = "true";
+    const prepare = vi.spyOn(env.cohere, "prepare");
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      const result = await runRsvpCron(env, NOW, { lookup, send });
+      expect(result).toMatchObject({ deleted: 1, claimed: 0, emailsSent: 0 });
+      expect(send).not.toHaveBeenCalled();
+      expect(prepare.mock.calls.some(([sql]) => /UPDATE event_rsvps SET reminder_sent_at/.test(sql))).toBe(false);
+      expect(env.cohere.raw.prepare("SELECT id FROM event_rsvps WHERE reminder_sent_at IS NOT NULL").all()).toEqual([{ id: "keep" }]);
+      expect(env.cohere.raw.prepare("SELECT id FROM event_rsvps WHERE id = 'old'").all()).toEqual([]);
+      expect(log).toHaveBeenCalledWith("rsvp reminders paused");
+
+      env.RSVP_REMINDERS_PAUSED = "false";
+      expect(await runRsvpCron(env, NOW, { lookup, send })).toMatchObject({ claimed: 3, emailsSent: 2 });
+      expect(await runRsvpCron(env, NOW, { lookup, send })).toMatchObject({ claimed: 0, emailsSent: 0 });
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      log.mockRestore();
+      prepare.mockRestore();
+    }
+  });
+
   it("sends one email per person for tomorrow's events (Denver day), skipping deleted/cancelled", async () => {
     const { env, lookup, send } = setup();
     const result = await runRsvpCron(env, NOW, { lookup, send });

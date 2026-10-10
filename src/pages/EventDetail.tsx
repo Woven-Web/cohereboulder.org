@@ -1,3 +1,4 @@
+import { displayHandle } from "@/lib/handles";
 import { ShareEvent } from "@/components/ShareEvent";
 import { EventRsvp } from "@/components/EventRsvp";
 import { Navigation } from "@/components/Navigation";
@@ -87,11 +88,11 @@ export default function EventDetail() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="py-12">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="py-12 [&_button]:min-h-11">
+        <div className="max-w-[800px] mx-auto px-4">
           <Link
             to="/calendar"
-            className="inline-flex items-center gap-2 text-sm text-primary hover:underline mb-6"
+            className="inline-flex min-h-11 items-center gap-2 text-sm text-primary hover:underline mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             {tr("calendar.events.backToCalendar")}
@@ -129,11 +130,11 @@ export default function EventDetail() {
             <article>
               <div className="relative rounded-lg overflow-hidden shadow-warm mb-8">
                 <img
-                  src={bannerFor(`${event.did}/${event.rkey}`)}
-                  alt={tr("calendar.events.bannerAlt")}
-                  className="h-48 sm:h-64 w-full object-cover"
+                  src={event.imageUrl || bannerFor(`${event.did}/${event.rkey}`)}
+                  alt={event.imageUrl ? event.name : tr("calendar.events.bannerAlt")}
+                  data-testid="event-banner"
+                  className="aspect-video md:aspect-[21/9] w-full object-cover object-[center_30%]"
                 />
-                <div className="absolute inset-0 bg-gradient-canopy" aria-hidden="true" />
               </div>
 
               <header className="mb-8">
@@ -147,12 +148,12 @@ export default function EventDetail() {
                     {event.name}
                   </h1>
                   {badged && (
-                    <Badge variant={cancelled ? "destructive" : "secondary"}>
+                    <Badge className="text-sm" variant={cancelled ? "destructive" : "secondary"}>
                       {tr(`calendar.events.status.${event.status}`)}
                     </Badge>
                   )}
                   {event.mode && KNOWN_MODES.has(event.mode) && (
-                    <Badge variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
+                    <Badge className="text-sm" variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
                   )}
                 </div>
 
@@ -176,14 +177,14 @@ export default function EventDetail() {
                   )}
                   {event.hostName && (
                     <p className="text-muted-foreground text-sm">
-                      {tr("calendar.events.hostedBy")} {event.hostName}
+                      {tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}
                     </p>
                   )}
                 </div>
               </header>
 
               {event.description && (
-                <p className="text-foreground leading-relaxed whitespace-pre-line mb-8">
+                <p className="text-foreground leading-relaxed whitespace-pre-line max-w-[65ch] mb-8">
                   {event.description}
                 </p>
               )}
@@ -202,7 +203,7 @@ export default function EventDetail() {
                           href={link.uri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-primary hover:underline break-all"
+                          className="inline-flex min-h-11 items-center gap-2 text-primary hover:underline break-all"
                         >
                           {link.name || link.uri}
                           <ExternalLink className="h-4 w-4 shrink-0" />
@@ -213,31 +214,31 @@ export default function EventDetail() {
                 </div>
               )}
 
-              <div className="border-t pt-6 flex flex-wrap gap-3">
+              <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
                 {event.startsAt && !Number.isNaN(Date.parse(event.startsAt)) && !cancelled && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="community" className="gap-2">
+                      <Button variant="outline" className="h-11 w-full gap-2">
                         <CalendarPlus className="h-4 w-4" />
                         {tr("calendar.events.addToCalendar")}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                       {googleCalendarEventUrl(event) && (
-                        <DropdownMenuItem asChild>
+                        <DropdownMenuItem className="min-h-11" asChild>
                           <a href={googleCalendarEventUrl(event)!} target="_blank" rel="noopener noreferrer">
                             {tr("calendar.events.googleCalendar")}
                           </a>
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onSelect={handleAddToCalendar}>
+                      <DropdownMenuItem className="min-h-11" onSelect={handleAddToCalendar}>
                         {tr("calendar.events.appleOtherCalendar")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                {data?.icsUrl && <CalendarSubscribe feedUrl={data.icsUrl} />}
+                {data?.icsUrl && <div className="min-w-0"><CalendarSubscribe feedUrl={data.icsUrl} compact /></div>}
               </div>
             </article>
           )}
