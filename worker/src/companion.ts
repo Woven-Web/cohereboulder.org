@@ -224,13 +224,15 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
         payload_en: string | null;
         payload_es: string | null;
     }>();
+    // No organizer-written content for today means nothing goes out, in any
+    // slot, claimed or not: deleting the day's content withdraws it.
+    const daily = await db.prepare('SELECT * FROM companion_daily WHERE date=?1').bind(date).first<Record<string, string>>();
+    if (!daily)
+        return;
+    const withdrawn = async () => !await db.prepare('SELECT 1 FROM companion_daily WHERE date=?1').bind(date).first();
     if (!marker) {
         // Minute ticks may continue a claimed slot, but cannot create late content.
         if (!slotFor(now, env))
-            return;
-        const daily = await db.prepare('SELECT * FROM companion_daily WHERE date=?1').bind(date).first<Record<string, string>>();
-        // No organizer-written content for today means nothing goes out, in any slot.
-        if (!daily)
             return;
         let eventsBody = '';
         if (slot === 'events') {
@@ -286,7 +288,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
             language: string;
         }>();
         for (const sub of rows.results) {
-            if (stale())
+            if (stale() || await withdrawn())
                 return;
             after = sub.device_id;
             const claimed = await db.prepare('INSERT OR IGNORE INTO companion_ledger(date,slot,recipient,claimed_at) VALUES (?1,?2,?3,?4)')
@@ -299,7 +301,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
                 const encrypted = await encryptPush(sub.language === 'es' ? marker.payload_es : marker.payload_en, sub.p256dh, sub.auth);
                 const token = await vapid(sub.endpoint, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!, env.VAPID_SUBJECT!);
                 // Check deadline again after crypto; do not start any stale delivery.
-                if (stale())
+                if (stale() || await withdrawn())
                     return;
                 const res = await fetch(sub.endpoint, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(8000),
                     headers: { Authorization: `vapid t=${token}, k=${env.VAPID_PUBLIC_KEY}`, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '300' }, body: encrypted });
