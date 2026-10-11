@@ -149,7 +149,7 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
         return json({ error: 'push disabled' }, 503);
     if (!deviceOK(body.device_id))
         return json({ error: 'invalid anonymous device id' }, 400);
-    if (method === 'POST' && ['subscriptions', 'replies', 'completions'].includes(path) && !await rateAllowed(request, env, path, path === 'replies' ? 20 : path === 'subscriptions' ? 30 : 100))
+    if (['subscriptions', 'replies', 'completions'].includes(path) && (method === 'POST' || (path === 'subscriptions' && (method === 'PATCH' || method === 'DELETE'))) && !await rateAllowed(request, env, path, path === 'replies' ? 20 : path === 'subscriptions' ? 30 : 100))
         return json({ error: 'rate limit' }, 429);
     if (path === 'subscriptions') {
         if (method === 'DELETE') {
