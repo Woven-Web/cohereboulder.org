@@ -39,6 +39,7 @@ export const translations = {
     closeMenu: { en: "Close menu", es: "Cerrar menú" },
     signIn: { en: "Sign in", es: "Iniciar sesión" },
     signOut: { en: "Sign out", es: "Cerrar sesión" },
+    organizer: { en: "Organizer", es: "Organizadores" },
     signedInAs: { en: "Signed in as", es: "Sesión iniciada como" },
     closeDialog: { en: "Close dialog", es: "Cerrar diálogo" },
     accountMenu: { en: "Your account", es: "Tu cuenta" },

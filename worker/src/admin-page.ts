@@ -2,6 +2,8 @@
 // No build step and no framework: it fetches the admin API with the key the
 // organizer types in, held in sessionStorage for the tab's lifetime only.
 
+import { BRAND_TOKEN_CSS } from "./brand-tokens.generated";
+
 export const ADMIN_PAGE = `<!doctype html>
 <html lang="en">
 <head>
@@ -12,70 +14,89 @@ export const ADMIN_PAGE = `<!doctype html>
 <link rel="icon" href="data:,">
 <title>COhere — member portal</title>
 <style>
+  ${BRAND_TOKEN_CSS}
+  /* The portal's own names, mapped onto the site's tokens (src/index.css). */
   :root {
-    --ground: #f4f4f1; --surface: #fff; --surface-2: #edeee9;
-    --ink: #1c2723; --ink-2: #4a5854; --ink-3: #78847f;
-    --hair: #dcdcd4; --hair-strong: #c3c5bb;
-    --teal: #16776f; --teal-soft: #d3e7e3; --clay: #c2562a; --clay-soft: #f2ded3;
+    --ground: hsl(var(--background)); --surface: hsl(var(--card)); --surface-2: hsl(var(--muted));
+    --ink: hsl(var(--foreground)); --ink-2: hsl(var(--muted-foreground)); --ink-3: hsl(var(--muted-foreground));
+    --hair: hsl(var(--border) / 0.45); --hair-strong: hsl(var(--border));
+    --teal: hsl(var(--primary)); --on-teal: hsl(var(--primary-foreground)); --teal-soft: hsl(var(--brand-deep) / 0.12);
+    --clay: hsl(var(--brand-berry)); --clay-soft: hsl(var(--brand-berry) / 0.1);
+    --r-md: calc(var(--radius) - 2px);
     --sans: ui-sans-serif, system-ui, "Avenir Next", "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground: #14181a; --surface: #1a1f21; --surface-2: #232a2b;
-      --ink: #e7eae7; --ink-2: #a9b4b0; --ink-3: #7d8a86;
-      --hair: #2c3436; --hair-strong: #3d4749;
-      --teal: #4cbfb1; --teal-soft: #1e3b39; --clay: #e08b60; --clay-soft: #3a2820;
-    }
-  }
   * { box-sizing: border-box; }
+  html { scroll-padding-top: 4.5rem; }
   body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--sans);
          font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
   h1 { font-size: 1.15rem; margin: 0; letter-spacing: -0.02em; font-weight: 650; }
   button { font: inherit; cursor: pointer; }
   input, select, textarea { font: inherit; color: inherit; }
 
-  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
-           padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--hair); background: var(--surface); }
-  header .brand { display: flex; align-items: baseline; gap: 0.6rem; }
-  header .brand span { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.12em;
-                       text-transform: uppercase; color: var(--teal); }
-  .btn { background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair-strong);
-         border-radius: 3px; padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+  /* The site header, as on every public page: logo, links back, who you are. */
+  .site-nav { position: sticky; top: 0; z-index: 50; background: hsl(var(--background) / 0.95);
+              backdrop-filter: blur(4px); border-bottom: 1px solid hsl(var(--border)); }
+  .site-nav .bar { max-width: 80rem; margin: 0 auto; padding: 0 1rem; min-height: 4rem;
+                   display: flex; flex-wrap: wrap; align-items: center; gap: 0 1rem; }
+  .logo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; min-height: 2.75rem; }
+  .logo .mark { display: block; width: 3rem; height: 2.5rem; overflow: hidden; }
+  .logo img { display: block; width: 3rem; max-width: none; }
+  .logo .word { display: none; font-size: 1.25rem; font-weight: 700; color: var(--teal); }
+  .site-links { display: flex; align-items: center; gap: 0 1.1rem; }
+  .site-links a { white-space: nowrap; display: flex; align-items: center; min-height: 2.75rem; color: var(--ink-2);
+                  font-weight: 500; text-decoration: none; border-bottom: 2px solid transparent; }
+  .site-links a:hover { color: var(--ink); }
+  .site-links a[aria-current="page"] { color: var(--teal); border-bottom-color: var(--teal); }
+  .site-right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+  #whoami { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem; font-size: 0.85rem; }
+  .portal-bar { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between;
+                max-width: 84rem; margin: 0 auto; padding: 1.25rem 1.25rem 0; }
+  .portal-bar .brand { display: flex; align-items: baseline; gap: 0.6rem; }
+  .portal-bar .brand span { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.12em;
+                            text-transform: uppercase; color: var(--teal); }
+  @media (min-width: 900px) { .logo .word { display: inline; } }
+  @media (max-width: 640px) {
+    .site-links { order: 3; flex-basis: 100%; overflow-x: auto; gap: 0 0.9rem; }
+    #whoami { max-width: 9rem; }
+  }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.5rem; background: var(--surface);
+         color: var(--ink); border: 1px solid var(--hair-strong); border-radius: var(--r-md);
+         padding: 0.4rem 0.9rem; font-size: 0.875rem; font-weight: 500; text-decoration: none; }
   .btn:hover { border-color: var(--teal); color: var(--teal); }
-  .btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
-  .btn.primary:hover { opacity: 0.9; color: #fff; }
+  .btn.primary { background: var(--teal); border-color: var(--teal); color: var(--on-teal); }
+  .btn.primary:hover { opacity: 0.9; color: var(--on-teal); }
   a { color: var(--teal); }
 
   .wrap { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; max-width: 84rem; margin: 0 auto; }
 
   /* login */
-  .login { max-width: 25rem; margin: 5rem auto; background: var(--surface); border: 1px solid var(--hair);
+  .login { border-radius: var(--radius); max-width: 25rem; margin: 5rem auto; background: var(--surface); border: 1px solid var(--hair);
            padding: 1.5rem; display: flex; flex-direction: column; gap: 0.9rem; }
   .login input { width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--hair-strong);
-                 border-radius: 3px; background: var(--ground); }
+                 border-radius: var(--r-md); background: var(--ground); }
   .login p { margin: 0; color: var(--ink-3); font-size: 0.85rem; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 1px;
-           background: var(--hair); border: 1px solid var(--hair); }
-  .stat { background: var(--surface); padding: 0.85rem 1rem; }
+  .stats { border-radius: var(--radius); overflow: hidden; display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0;
+           background: var(--surface); border: 1px solid var(--hair); }
+  .stat { background: var(--surface); box-shadow: 0 0 0 0.5px var(--hair); padding: 0.85rem 1rem; }
   .stat .n { font-family: var(--mono); font-size: 1.5rem; font-variant-numeric: tabular-nums;
              letter-spacing: -0.03em; display: block; }
   .stat .k { font-size: 0.75rem; color: var(--ink-3); }
 
-  .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--hair); }
-  .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem;
+  .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--hair); overflow-x: auto; }
+  .tab { flex-shrink: 0; white-space: nowrap; min-height: 2.75rem; background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem;
          color: var(--ink-3); font-size: 0.9rem; }
   .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); font-weight: 600; }
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
   .toolbar input[type="search"] { flex: 1 1 16rem; padding: 0.45rem 0.7rem; border: 1px solid var(--hair-strong);
-                                  border-radius: 3px; background: var(--surface); }
+                                  border-radius: var(--r-md); background: var(--surface); }
   .chip { background: var(--surface); border: 1px solid var(--hair-strong); border-radius: 999px;
           padding: 0.25rem 0.7rem; font-size: 0.8rem; color: var(--ink-2); }
   .chip[aria-pressed="true"] { background: var(--teal-soft); border-color: var(--teal); color: var(--teal); font-weight: 600; }
 
-  .table-scroll { overflow-x: auto; border: 1px solid var(--hair); background: var(--surface); }
+  .table-scroll { border-radius: var(--radius); overflow-x: auto; border: 1px solid var(--hair); background: var(--surface); }
   table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
   th, td { text-align: left; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--hair); white-space: nowrap; }
   th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.09em; text-transform: uppercase;
@@ -91,9 +112,9 @@ export const ADMIN_PAGE = `<!doctype html>
   .needs { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--clay); }
 
   /* detail drawer */
-  .drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; }
+  .drawer-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.35); display: none; }
   .drawer-bg.open { display: block; }
-  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(34rem, 100%); background: var(--surface);
+  .drawer { z-index: 61; position: fixed; top: 0; right: 0; bottom: 0; width: min(34rem, 100%); background: var(--surface);
             border-left: 1px solid var(--hair); overflow-y: auto; padding: 1.25rem; display: none;
             flex-direction: column; gap: 1rem; }
   .drawer.open { display: flex; }
@@ -102,19 +123,19 @@ export const ADMIN_PAGE = `<!doctype html>
   .kv dt { color: var(--ink-3); font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em;
            text-transform: uppercase; padding-top: 0.15rem; }
   .kv dd { margin: 0; overflow-wrap: anywhere; }
-  .sub { border: 1px solid var(--hair); padding: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .sub { border-radius: var(--radius); border: 1px solid var(--hair); padding: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .sub .label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
                 color: var(--teal); }
   .answer { font-size: 0.88rem; }
   .answer b { display: block; color: var(--ink-3); font-weight: 500; font-size: 0.78rem; }
   .drawer textarea, .drawer input[type="text"] { width: 100%; padding: 0.4rem 0.55rem; border: 1px solid var(--hair-strong);
-            border-radius: 3px; background: var(--ground); }
+            border-radius: var(--r-md); background: var(--ground); }
   .row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 
-  .form-card { border: 1px solid var(--hair); background: var(--surface); padding: 1rem;
+  .form-card { border-radius: var(--radius); border: 1px solid var(--hair); background: var(--surface); padding: 1rem;
                display: flex; flex-direction: column; gap: 0.7rem; }
   .form-card textarea { width: 100%; min-height: 14rem; font-family: var(--mono); font-size: 0.78rem;
-                        padding: 0.6rem; border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--ground); }
+                        padding: 0.6rem; border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--ground); }
   .muted { color: var(--ink-3); font-size: 0.85rem; }
   .err { color: var(--clay); font-size: 0.85rem; }
   /* event + access forms */
@@ -122,20 +143,20 @@ export const ADMIN_PAGE = `<!doctype html>
   .field > label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em;
                    text-transform: uppercase; color: var(--ink-3); }
   .field input, .field select, .field textarea { width: 100%; padding: 0.4rem 0.55rem;
-            border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--ground); }
+            border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--ground); }
   .field input:disabled, .field select:disabled { opacity: 0.55; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
   .toolbar select, .toolbar input[type="email"] { padding: 0.45rem 0.7rem;
-            border: 1px solid var(--hair-strong); border-radius: 3px; background: var(--surface); }
+            border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--surface); }
   .note { font-size: 0.8rem; color: var(--ink-3); border-left: 2px solid var(--hair-strong);
           padding-left: 0.6rem; }
   .guests { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   td select { padding: 0.3rem 0.5rem; border: 1px solid var(--hair-strong);
-              border-radius: 3px; background: var(--ground); font-size: 0.85rem; }
+              border-radius: var(--r-md); background: var(--ground); font-size: 0.85rem; }
   .nl-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; align-items: start; }
   .nl-edit .nl-pane { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
   .nl-edit textarea { min-height: 28rem; font-family: var(--mono); font-size: 0.82rem; }
-  .nl-edit iframe { width: 100%; height: 28rem; border: 1px solid var(--hair); background: #fff; }
+  .nl-edit iframe { width: 100%; height: 28rem; border: 1px solid var(--hair); background: var(--surface); }
   .nl-tools { display: flex; gap: 0.3rem; flex-wrap: wrap; }
   .nl-tools .btn { padding: 0.25rem 0.6rem; min-width: 2.2rem; }
   .nl-toggle { display: none; gap: 0.4rem; }
@@ -147,7 +168,7 @@ export const ADMIN_PAGE = `<!doctype html>
   .bulkbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.5rem 0.7rem;
              border: 1px solid var(--teal); background: var(--teal-soft); }
   .bulkbar input[type="text"] { padding: 0.35rem 0.55rem; border: 1px solid var(--hair-strong);
-                                border-radius: 3px; background: var(--surface); }
+                                border-radius: var(--r-md); background: var(--surface); }
   th.sel, td.sel { width: 1.6rem; }
   @media (max-width: 860px) {
     .nl-edit { grid-template-columns: 1fr; }
@@ -183,15 +204,32 @@ export const ADMIN_PAGE = `<!doctype html>
 </div>
 
 <div id="app" class="hidden">
-  <header>
+  <nav class="site-nav">
+    <div class="bar">
+      <a class="logo" href="/" aria-label="[CO]here">
+        <span class="mark"><img src="/COHERE-Logo-Branding-2.webp" alt="[CO]here logo"></span>
+        <span class="word">[CO]here</span>
+      </a>
+      <div class="site-links">
+        <a href="/">Home</a>
+        <a href="/calendar">Calendar</a>
+        <a href="/co-create">Co-create</a>
+        <a href="/archive">Archive</a>
+        <a href="/admin" aria-current="page">Organizer</a>
+      </div>
+      <div class="site-right">
+        <span class="muted" id="whoami"></span>
+        <button class="btn" id="signout">Sign out</button>
+      </div>
+    </div>
+  </nav>
+  <div class="portal-bar">
     <div class="brand"><h1>COhere member portal</h1><span id="dbnote">loading</span></div>
     <div class="row">
-      <span class="muted" id="whoami"></span>
-      <a class="btn" href="/admin/checkin" id="checkinlink" style="text-decoration:none">Door check-in</a>
+      <a class="btn" href="/admin/checkin" id="checkinlink">Door check-in</a>
       <button class="btn" id="refresh">Refresh</button>
-      <button class="btn" id="signout">Sign out</button>
     </div>
-  </header>
+  </div>
 
   <div class="wrap">
     <div class="stats" id="stats"></div>

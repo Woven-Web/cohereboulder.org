@@ -15,6 +15,7 @@ import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { ADMIN_PAGE } from "./admin-page";
+import { handleMe } from "./me";
 import {
   canManageAccess,
   emailLoginEnabled,
@@ -297,6 +298,7 @@ export default {
     // The regenOS door is checked before everything, including the OPTIONS
     // handler — "inert when off" means every method on /xrpc/* is a 404, with
     // nothing (not even a preflight 204) hinting the surface exists.
+    if (url.pathname === "/api/me") return handleMe(env, request);
     if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env);
 
     if (path === "/xrpc" || path.startsWith("/xrpc/")) {
