@@ -38,6 +38,17 @@
 //   * proposeInvite answers with a raw invite token, so an end-to-end test can
 //     prove the Worker never passes it back to the browser.
 //
+// Organizer-gate personas (worker/src/admin-gate.ts) — set the
+// `__Host-rs_session` cookie to one of these values:
+//   sess-steward  sam.mock.test   steward  (no contact email on file)
+//   sess-builder  rosa.mock.test  builder  (verified contact email rosa@cohere.test)
+//   sess-member   mel.mock.test   member
+//   sess-outsider otto.mock.test  signed in, not on the roster at all
+//   sess-expired  getSession answers {} (a lapsed session)
+// Peepholes (not AppView methods): /__setRole?did=…&role=… changes a roster
+// role (role=none removes it), /__expire?token=…&on=1|0 expires or restores a
+// session, and /__sawCookies lists every Cookie header the mock was sent.
+//
 // Fixed tokens: /login?token=tok-good (new user), verifyEmail?token=tok-return,
 // and `mock-token` as the site's service credential.
 
@@ -62,7 +73,29 @@ const members = new Map([
   ["did:plc:mockji", { did: "did:plc:mockji", handle: "claudeji.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockbuilder", { did: "did:plc:mockbuilder", handle: "rosa.mock.test", kind: "person", name: "Rosa Mock", role: "builder" }],
   [USER_DID, { did: USER_DID, handle: USER_HANDLE, kind: "person", name: null, role: "builder" }],
+  ["did:plc:mocksteward", { did: "did:plc:mocksteward", handle: "sam.mock.test", kind: "person", name: "Sam Mock", role: "steward" }],
+  ["did:plc:mockmember", { did: "did:plc:mockmember", handle: "mel.mock.test", kind: "person", name: "Mel Mock", role: "member" }],
 ]);
+
+/** Session cookie value → who it is. Anything else is the default mock user. */
+const PERSONAS = {
+  "sess-steward": { did: "did:plc:mocksteward", handle: "sam.mock.test" },
+  "sess-builder": { did: "did:plc:mockbuilder", handle: "rosa.mock.test", email: "rosa@cohere.test" },
+  "sess-member": { did: "did:plc:mockmember", handle: "mel.mock.test" },
+  "sess-outsider": { did: "did:plc:mockoutsider", handle: "otto.mock.test" },
+};
+const expiredSessions = new Set(["sess-expired"]);
+const sawCookies = [];
+
+function sessionToken(req) {
+  const m = /(?:^|;\s*)__Host-rs_session=([^;]*)/.exec(req.headers.cookie ?? "");
+  return m ? m[1] : null;
+}
+function personaOf(req) {
+  const token = sessionToken(req);
+  if (!token || expiredSessions.has(token)) return null;
+  return PERSONAS[token] ?? { did: USER_DID, handle: USER_HANDLE };
+}
 
 /** Seeded RSVPs, keyed by rkey. Counts plus CONFIRMED guests, as production. */
 const attendance = new Map();
@@ -227,6 +260,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 403, SCOPE_ERROR);
   }
   const asService = token === SERVICE_TOKEN;
+  if (req.headers.cookie) sawCookies.push(req.headers.cookie);
   console.log(`${req.method} ${url.pathname}${url.search} signedIn=${signedIn} pending=${pending}`);
 
   switch (nsid) {
@@ -257,6 +291,15 @@ const server = http.createServer(async (req, res) => {
       const viewerMembers = req.headers.cookie?.includes(`${SESSION_COOKIE}=mock-member`)
         ? [...members.values()].map((m) => m.did === USER_DID ? { ...m, role: "member" } : m)
         : [...members.values()];
+      // MOCK_ROSTER_PAGE_SIZE=n pages the roster n at a time with an opaque
+      // `cursor`, as a real AppView might; unset, one page holds everyone.
+      const pageSize = Number(process.env.MOCK_ROSTER_PAGE_SIZE) || 0;
+      if (pageSize > 0) {
+        const start = Number(url.searchParams.get("cursor") ?? 0) || 0;
+        const slice = viewerMembers.slice(start, start + pageSize);
+        const next = start + pageSize < viewerMembers.length ? String(start + pageSize) : undefined;
+        return json(res, 200, { members: slice, steward: asService, ...(next ? { cursor: next } : {}) });
+      }
       return json(res, 200, {
         members: viewerMembers,
         steward: asService,
@@ -302,7 +345,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     case "social.scenius.getMyContactPref": {
-      return json(res, signedIn ? 200 : 401, { channels: [] });
+      const who = personaOf(req);
+      const channels = who?.email ? [{ kind: "email", address: who.email, verified: true }] : [];
+      return json(res, who ? 200 : 401, { channels });
     }
 
     case "social.scenius.getSession": {
@@ -317,7 +362,8 @@ const server = http.createServer(async (req, res) => {
         // calling origin. The proxy must drop anything that isn't `__Host-rs_`.
         ["set-cookie", `cohere_session=mock-hijack; ${COOKIE_ATTRS}`],
       ];
-      if (signedIn) return json(res, 200, { did: USER_DID, handle: USER_HANDLE, kind: "user" }, headers);
+      const who = personaOf(req);
+      if (who) return json(res, 200, { did: who.did, handle: who.handle, kind: "user" }, headers);
       return json(res, 200, {}, headers);
     }
 
@@ -445,6 +491,27 @@ const server = http.createServer(async (req, res) => {
 
     // A peephole for the e2e script: what the last proposeInvite actually
     // carried upstream. Not an AppView method — deliberately outside /xrpc.
+    case "/__setRole": {
+      const did = url.searchParams.get("did") ?? "";
+      const role = url.searchParams.get("role") ?? "";
+      const existing = members.get(did);
+      if (!existing) return json(res, 404, { error: "NotFound" });
+      if (role === "none") members.delete(did);
+      else members.set(did, { ...existing, role });
+      return json(res, 200, { ok: true });
+    }
+
+    case "/__expire": {
+      const token = url.searchParams.get("token") ?? "";
+      if (url.searchParams.get("on") === "0") expiredSessions.delete(token);
+      else expiredSessions.add(token);
+      return json(res, 200, { ok: true });
+    }
+
+    case "/__sawCookies": {
+      return json(res, 200, { cookies: sawCookies });
+    }
+
     case "/__lastInvite": {
       return json(res, 200, lastInvite ?? {});
     }

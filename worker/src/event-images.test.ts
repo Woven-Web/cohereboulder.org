@@ -15,7 +15,7 @@ const publicPath = `/api/event-image/${encodeURIComponent(did)}/ev1`;
 const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
 let env: Parameters<typeof worker.fetch>[1];
 let store: Map<string, { value: ArrayBuffer; metadata: { contentType: string; updated: string } }>;
-const call = (path: string, method = "GET", body?: BodyInit, type = "image/png", extra = {}) => worker.fetch(new Request(`https://cohere.test${path}`, { method, body, headers: { "Content-Type": type, ...extra } }), env);
+const call = (path: string, method = "GET", body?: BodyInit, type = "image/png", extra = {}) => worker.fetch(new Request(`https://cohere.test${path}`, { method, body, headers: { "Content-Type": type, Origin: "https://cohere.test", ...extra } }), env);
 beforeEach(() => {
   store = new Map();
   session.mockResolvedValue({ email: "admin@test" });
@@ -27,7 +27,7 @@ beforeEach(() => {
       getWithMetadata: async (key: string) => store.get(key) ?? { value: null, metadata: null },
       list: async () => ({ keys: [...store].map(([name, entry]) => ({ name, metadata: entry.metadata })), list_complete: true }),
     },
-    REGENOS_COLLECTIVE_DID: did, REGENOS_BASE_URL: "https://upstream.test",
+    ADMIN_EMAIL_LOGIN: "true", REGENOS_COLLECTIVE_DID: did, REGENOS_BASE_URL: "https://upstream.test",
   } as unknown as typeof env;
   const row = { uri: `at://${did}/community.lexicon.calendar.event/ev1`, value: { name: "Test event", startsAt: "2099-01-01T00:00:00Z" } };
   vi.stubGlobal("fetch", vi.fn(async (input: string) => Response.json(input.includes("getEvents") ? { events: [row] } : row)));
@@ -72,4 +72,12 @@ it("never serves metadata with a non-image type", async () => {
   await call(imagePath, "PUT", png);
   [...store.values()][0].metadata.contentType = "text/html";
   expect((await call(publicPath)).status).toBe(404);
+});
+
+it("refuses a cross-site or origin-less image write before it reaches auth", async () => {
+  const path = "/api/admin/events/did:plc:a/b/image";
+  const foreign = await call(path, "PUT", "x", "image/png", { Origin: "https://evil.example" });
+  expect(foreign.status).toBe(403);
+  const bare = await worker.fetch(new Request(`https://cohere.test${path}`, { method: "PUT", body: "x", headers: { "Content-Type": "image/png" } }), env);
+  expect(bare.status).toBe(403);
 });

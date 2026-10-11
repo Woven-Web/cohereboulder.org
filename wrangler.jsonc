@@ -58,7 +58,12 @@
     "REGENOS_WEB_URL": "https://scenius.social",
     // Personal regenOS sign-in + on-site hosting (worker/src/regenos-auth.ts).
     // Enabled 2026-09-28 on Aaron's go-ahead; cohereboulder.org is in regenOS ALLOWED_APP_ORIGINS.
-    "REGENOS_LOGIN_ENABLED": "true"
+    "REGENOS_LOGIN_ENABLED": "true",
+    // The /admin portal opens for regenOS users who are builder or higher in
+    // the COhere scene (worker/src/admin-gate.ts). The old emailed-code login
+    // is kept for one release as a rollback: set this to "true" to bring it
+    // back. Never "true" by default.
+    "ADMIN_EMAIL_LOGIN": "false"
   },
   "d1_databases": [
     {

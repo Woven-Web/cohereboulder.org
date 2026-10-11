@@ -684,18 +684,38 @@ interface SceneMember {
   role?: string;
 }
 
-async function fetchRoster(
+const ROSTER_MAX_PAGES = 25;
+
+/** The whole roster: follows `cursor` if the response carries one. A cursor that repeats, or runs past the page cap, is a failure — never a silently short roster. */
+export async function fetchRoster(
   base: string,
   token: string,
   scene: string,
 ): Promise<Upstream<{ members?: SceneMember[]; steward?: boolean }>> {
-  return readXrpcAs<{ members?: SceneMember[]; steward?: boolean }>(
-    base,
-    token,
-    "social.scenius.getSceneMembers",
-    { scene },
-    "getSceneMembers",
-  );
+  const members: SceneMember[] = [];
+  let steward: boolean | undefined;
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < ROSTER_MAX_PAGES; page++) {
+    const params: Record<string, string> = { scene };
+    if (cursor) params.cursor = cursor;
+    const result = await readXrpcAs<{ members?: SceneMember[]; steward?: boolean; cursor?: unknown }>(
+      base,
+      token,
+      "social.scenius.getSceneMembers",
+      params,
+      "getSceneMembers",
+    );
+    if (!result.ok) return result;
+    members.push(...(result.data.members ?? []));
+    if (page === 0) steward = result.data.steward;
+    const next = typeof result.data.cursor === "string" && result.data.cursor ? result.data.cursor : undefined;
+    if (!next) return { ok: true, data: { members, steward } };
+    if (seen.has(next)) break;
+    seen.add(next);
+    cursor = next;
+  }
+  return { ok: false, response: json({ error: UNREACHABLE }, 503) };
 }
 
 /**

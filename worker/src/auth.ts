@@ -23,12 +23,27 @@ const RATE_WINDOW_SECONDS = 15 * 60;
 const SESSION_COOKIE = "cohere_session";
 
 export interface Session {
+  /**
+   * Who did it, for created_by / confirmed_by / audit columns. An email for
+   * the legacy email-code login; for a regenOS organizer, their verified
+   * contact email if regenOS has one, else `@handle`.
+   */
   email: string;
   name: string | null;
   createdAt: string;
+  /** Absent on legacy sessions, which predate regenOS sign-in. */
+  source?: "regenos" | "email";
+  did?: string;
+  handle?: string | null;
+  /** Scene role (member/builder/facilitator/steward). */
+  role?: string;
+  /** Numeric role rank: builder 20, facilitator 30, steward 40. */
+  rank?: number;
+  /** A verified mailbox regenOS holds for this person, if any. */
+  contactEmail?: string | null;
 }
 
-async function sha256(value: string): Promise<string> {
+export async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

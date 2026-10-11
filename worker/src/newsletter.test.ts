@@ -426,6 +426,44 @@ describe("draft → test → confirm → scheduled", () => {
     expect(r.body.newsletter.lock_reason).toContain(ADMIN.email);
   });
 
+  describe("an organizer whose regenOS account has no email on file", () => {
+    const HANDLE_A: Session = { email: "@sam.mock.test", name: null, createdAt: "x", source: "regenos", handle: "sam.mock.test", rank: 40 };
+    const HANDLE_B: Session = { email: "@bo.mock.test", name: null, createdAt: "x", source: "regenos", handle: "bo.mock.test", rank: 20 };
+
+    it("must type a test address, and it must be an organizer notification address", async () => {
+      const id = await draft();
+      const path = `/api/admin/newsletters/${id}/test`;
+      let r = await call(env, "POST", path, {}, HANDLE_A, { send: mail.send });
+      expect(r.status).toBe(400);
+      expect(r.body.error).toMatch(/address/i);
+      r = await call(env, "POST", path, { to: "stranger@elsewhere.test" }, HANDLE_A, { send: mail.send });
+      expect(r.status).toBe(400);
+      expect(mail.sent).toHaveLength(0);
+
+      r = await call(env, "POST", path, { to: "Ana@Cohere.test" }, HANDLE_A, { send: mail.send });
+      expect(r.status).toBe(200);
+      expect(mail.sent.map((m) => m.to)).toEqual(["ana@cohere.test"]);
+      expect(r.body.newsletter.send_unlocked).toBe(true);
+    });
+
+    it("the test only unlocks the send for the organizer who asked for it", async () => {
+      const id = await draft();
+      await call(env, "POST", `/api/admin/newsletters/${id}/test`, { to: "ana@cohere.test" }, HANDLE_A, { send: mail.send });
+      const other = await call(env, "GET", `/api/admin/newsletters/${id}`, undefined, HANDLE_B);
+      expect(other.body.newsletter.send_unlocked).toBe(false);
+      const same = await call(env, "GET", `/api/admin/newsletters/${id}`, undefined, HANDLE_A);
+      expect(same.body.newsletter.send_unlocked).toBe(true);
+    });
+
+    it("an organizer with a mailbox is sent the test there and a typed address is ignored", async () => {
+      const id = await draft();
+      const withMail: Session = { ...HANDLE_A, email: "rosa@cohere.test", contactEmail: "rosa@cohere.test" };
+      const r = await call(env, "POST", `/api/admin/newsletters/${id}/test`, { to: "someone@else.test" }, withMail, { send: mail.send });
+      expect(r.status).toBe(200);
+      expect(mail.sent.map((m) => m.to)).toEqual(["rosa@cohere.test"]);
+    });
+  });
+
   it("a failed test send leaves it locked", async () => {
     const id = await draft();
     const failing = vi.fn(async () => {

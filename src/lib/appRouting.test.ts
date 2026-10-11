@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeAppTab, signInDestination, shouldRedirectToApp } from "./appRouting";
+import { activeAppTab, isWorkerPage, signInDestination, shouldRedirectToApp } from "./appRouting";
 describe("app routing", () => {
   it("keeps normal signed-in home visits on home", () => {
     expect(shouldRedirectToApp(true, "/")).toBe(false);
@@ -35,4 +35,13 @@ it("redirects only an explicit sign-in landing", () => {
   expect(shouldRedirectToApp(true, "/", "?signedIn=1")).toBe(true);
   expect(signInDestination("/register", true)).toBe("/events");
   expect(signInDestination("/register", false)).toBe("/register");
+});
+
+describe("the admin portal is a Worker page, not an SPA route", () => {
+  it("is returned to after sign-in", () => {
+    expect(signInDestination("/admin")).toBe("/admin");
+    expect(signInDestination("/admin/checkin")).toBe("/admin/checkin");
+  });
+  it.each(["/admin", "/admin/", "/admin/checkin", "/admin?x=1"])("%s needs a real page load", (path) => expect(isWorkerPage(path)).toBe(true));
+  it.each(["/events", "/administrators", "/adminx", "/register"])("%s stays in the SPA", (path) => expect(isWorkerPage(path)).toBe(false));
 });

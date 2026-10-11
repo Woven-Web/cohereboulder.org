@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
-import { signInDestination, shouldRedirectToApp } from "@/lib/appRouting";
+import { isWorkerPage, signInDestination, shouldRedirectToApp } from "@/lib/appRouting";
 
 // Keep the return path across tabs: email links often open a fresh tab.
 export function AppSession() {
@@ -20,7 +20,10 @@ export function AppSession() {
       // Only the magic-link landing consumes the path. The original tab
       // may discover the same session first when focus changes.
       localStorage.removeItem("cohere:returnTo");
-      navigate(signInDestination(explicit, registration.data?.registered === true), { replace: true });
+      const destination = signInDestination(explicit, registration.data?.registered === true);
+      // /admin is served by the Worker, not the SPA router.
+      if (isWorkerPage(destination)) window.location.replace(destination);
+      else navigate(destination, { replace: true });
     }
   }, [session, registration.isLoading, registration.data?.registered, location.pathname, location.search, navigate]);
   return null;
