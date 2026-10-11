@@ -9,13 +9,22 @@ export interface CompanionEnv extends EventsEnv {
     COMPANION_START_DATE?: string;
     COMPANION_END_DATE?: string;
     /** "true" stops every scheduled push (like RSVP_REMINDERS_PAUSED). Flipped at launch. */ COMPANION_PUSH_PAUSED?: string;
-    /** Set only in local hermetic tests. Exact loopback origin. */ COMPANION_LOCAL_PUSH_MOCK?: string;
+    /** Exact loopback origin for hermetic tests. Honoured only together with COMPANION_LOCAL_TEST_MODE. */ COMPANION_LOCAL_PUSH_MOCK?: string;
+    /** "true" only on a developer machine (`wrangler dev --var`). No wrangler config sets it. */ COMPANION_LOCAL_TEST_MODE?: string;
 }
 export const denverDate = (date: Date) => {
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
     return ['year','month','day'].map(type=>parts.find(part=>part.type===type)!.value).join('-');
 };
-const start = (env: CompanionEnv) => env.COMPANION_START_DATE || '2026-10-15';
+/** Gathering opens 2026-10-15 America/Denver; configuration cannot move this earlier. */
+export const LAUNCH_FLOOR = '2026-10-15';
+/** The validated local-test capability: the explicit flag AND an exact loopback origin, else nothing. */
+export function localMock(env: CompanionEnv): string | null {
+    const origin = env.COMPANION_LOCAL_PUSH_MOCK;
+    return env.COMPANION_LOCAL_TEST_MODE === 'true' && typeof origin === 'string' && /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(origin) ? origin : null;
+}
+const configuredStart = (env: CompanionEnv) => env.COMPANION_START_DATE || LAUNCH_FLOOR;
+const start = (env: CompanionEnv) => localMock(env) || configuredStart(env) >= LAUNCH_FLOOR ? configuredStart(env) : LAUNCH_FLOOR;
 const end = (env: CompanionEnv) => env.COMPANION_END_DATE || '2026-10-25';
 const enabled = (env: CompanionEnv) => !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
 export function slotFor(now: Date, env: CompanionEnv): 'practice' | 'events' | 'question' | null {
@@ -28,7 +37,7 @@ export function slotFor(now: Date, env: CompanionEnv): 'practice' | 'events' | '
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const dateOK = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 function validateDates(env: CompanionEnv) {
-    if (!dateOK(start(env)) || !dateOK(end(env)) || start(env) > end(env)) throw new Error('invalid companion dates');
+    if (!dateOK(configuredStart(env)) || !dateOK(end(env)) || configuredStart(env) > end(env)) throw new Error('invalid companion dates');
 }
 const deviceOK = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const text = (v: unknown, max: number, required = false) => typeof v === 'string' && v.length <= max && (!required || !!v.trim());
@@ -156,7 +165,7 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
             return result.meta.changes ? json({ok:true}) : json({error:'subscription missing'},404);
         }
         if (method === 'POST') {
-            if (typeof body.endpoint !== 'string' || !validEndpoint(body.endpoint, env.COMPANION_LOCAL_PUSH_MOCK))
+            if (typeof body.endpoint !== 'string' || !validEndpoint(body.endpoint, localMock(env) ?? undefined))
                 return json({ error: 'invalid push endpoint' }, 400);
             try {
                 if (typeof body.p256dh !== 'string' || typeof body.auth !== 'string' || decode(body.auth).length !== 16 || decode(body.p256dh).length !== 65)
@@ -215,7 +224,8 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
     const slotTime = new Date(now);
     slotTime.setUTCMinutes(0, 0, 0);
     const deadline = slotTime.getTime() + 5 * 60 * 1000;
-    const stale = () => !env.COMPANION_LOCAL_PUSH_MOCK && (Date.now() >= deadline || Date.now() < slotTime.getTime() - 60000);
+    const mock = localMock(env);
+    const stale = () => !mock && (Date.now() >= deadline || Date.now() < slotTime.getTime() - 60000);
     if (stale())
         return;
     let marker = await db.prepare("SELECT claimed_at,payload_en,payload_es FROM companion_ledger WHERE date=?1 AND slot=?2 AND recipient='*'")
@@ -296,7 +306,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
             if (!claimed.meta.changes)
                 continue;
             try {
-                if (!validEndpoint(sub.endpoint, env.COMPANION_LOCAL_PUSH_MOCK))
+                if (!validEndpoint(sub.endpoint, localMock(env) ?? undefined))
                     throw new Error('unsafe endpoint');
                 const encrypted = await encryptPush(sub.language === 'es' ? marker.payload_es : marker.payload_en, sub.p256dh, sub.auth);
                 const token = await vapid(sub.endpoint, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!, env.VAPID_SUBJECT!);

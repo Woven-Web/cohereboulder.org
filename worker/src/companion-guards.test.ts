@@ -17,7 +17,7 @@ beforeEach(async () => {
     env = {
         cohere: testD1(['../migrations/0010_companion.sql']) as unknown as D1Database,
         VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject,
-        COMPANION_LOCAL_PUSH_MOCK: mockOrigin, REGENOS_BASE_URL: 'http://127.0.0.1:10048', REGENOS_COLLECTIVE_DID: 'did:plc:mockscene',
+        COMPANION_LOCAL_TEST_MODE: 'true', COMPANION_LOCAL_PUSH_MOCK: mockOrigin, REGENOS_BASE_URL: 'http://127.0.0.1:10048', REGENOS_COLLECTIVE_DID: 'did:plc:mockscene',
     } as CompanionEnv;
     await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)')
         .bind(device, keys.endpoint, keys.p256dh, keys.auth, '2026-10-01T00:00:00Z').run();

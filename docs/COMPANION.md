@@ -75,8 +75,12 @@ JS
 
 Configure production values through the normal secret handling
 process. This implementation does not configure secrets or deploy anything.
-`COMPANION_LOCAL_PUSH_MOCK` is **only** for hermetic local tests; it must be an
-exact `http://127.0.0.1:<port>` origin. Never set it in production. Without this
+`COMPANION_LOCAL_PUSH_MOCK` is **only** for hermetic local tests. It is honoured
+only when `COMPANION_LOCAL_TEST_MODE` is exactly `"true"` (passed with
+`wrangler dev --var`; no checked-in config sets it) **and** the mock is an exact
+`http://127.0.0.1:<port>` origin. Otherwise it is ignored entirely, including
+`"false"` or junk values: endpoints stay allowlisted and the delivery deadline
+stays on. Never set either in production. Without this
 explicit configuration, only public HTTPS FCM, Mozilla, Apple, and Windows push
 service hosts are accepted. Arbitrary domains, credentials, private addresses,
 nonstandard ports, fragments and redirects are refused. Key points are checked
@@ -85,7 +89,9 @@ by WebCrypto when subscriptions are accepted and revalidated before sending.
 ## Schedule and delivery semantics
 
 `COMPANION_START_DATE` and `COMPANION_END_DATE` are inclusive ISO dates, default
-**2026-10-15..2026-10-25**. Configure valid `YYYY-MM-DD` dates with start on or before end. Invalid dates
+**2026-10-15..2026-10-25**. A hard launch floor of 2026-10-15 (America/Denver)
+applies: an earlier `COMPANION_START_DATE` is ignored unless the local-test
+capability above is active. Configure valid `YYYY-MM-DD` dates with start on or before end. Invalid dates
 stop companion work; companion failures are isolated from newsletter and RSVP jobs. Daily slots are:
 
 | UTC cron | During Boulder MDT | Content |

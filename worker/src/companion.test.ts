@@ -53,7 +53,7 @@ it('overlapping scheduler invocations claim slot and each recipient before I/O; 
     const vapidKeys = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
     const jwk = await crypto.subtle.exportKey('jwk', vapidKeys.privateKey);
     const { encode, decode } = await import('./push');
-    Object.assign(env, { VAPID_PUBLIC_KEY: encode(new Uint8Array([4, ...decode(jwk.x!), ...decode(jwk.y!)])), VAPID_PRIVATE_KEY: jwk.d, VAPID_SUBJECT: 'mailto:test@example.test', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
+    Object.assign(env, { VAPID_PUBLIC_KEY: encode(new Uint8Array([4, ...decode(jwk.x!), ...decode(jwk.y!)])), VAPID_PRIVATE_KEY: jwk.d, VAPID_SUBJECT: 'mailto:test@example.test', COMPANION_LOCAL_TEST_MODE: 'true', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
     const pub = encode(new Uint8Array(await crypto.subtle.exportKey('raw', push.publicKey)));
     await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)').bind(device, 'http://127.0.0.1:10049/push', pub, encode(crypto.getRandomValues(new Uint8Array(16))), '2026-10-15').run();
     await env.cohere.prepare('INSERT INTO companion_daily(date,title,body) VALUES (?1,?2,?3)').bind('2026-10-15', 'Practice', 'Body').run();
@@ -85,7 +85,7 @@ it('unsubscribing clears durable push ownership even with configuration disabled
     expect(await env.cohere.prepare('SELECT * FROM companion_subscriptions').first()).toBe(null);
 });
 it('missing daily content and off-slot invocations never create delivery claims', async () => {
-    Object.assign(env, { VAPID_PUBLIC_KEY: 'x', VAPID_PRIVATE_KEY: 'x', VAPID_SUBJECT: 'mailto:test@example.test', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
+    Object.assign(env, { VAPID_PUBLIC_KEY: 'x', VAPID_PRIVATE_KEY: 'x', VAPID_SUBJECT: 'mailto:test@example.test', COMPANION_LOCAL_TEST_MODE: 'true', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
     await runCompanionCron(env, new Date('2026-10-15T12:00:00Z'));
     await runCompanionCron(env, new Date('2026-10-15T21:00:00Z'));
     expect(await env.cohere.prepare('SELECT * FROM companion_ledger').first()).toBe(null);
@@ -93,7 +93,7 @@ it('missing daily content and off-slot invocations never create delivery claims'
 it('event slot uses anonymous existing calendar reads, Denver today/tomorrow and excludes cancelled', async () => {
     const { createPushReceiver } = await import('../../scripts/pwa-push-receiver.mjs');
     const receiver = createPushReceiver('http://127.0.0.1:10049'), keys = receiver.fixture;
-    Object.assign(env, { VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject, COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049', REGENOS_BASE_URL: 'http://127.0.0.1:10048', REGENOS_COLLECTIVE_DID: 'did:plc:mockscene' });
+    Object.assign(env, { VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject, COMPANION_LOCAL_TEST_MODE: 'true', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049', REGENOS_BASE_URL: 'http://127.0.0.1:10048', REGENOS_COLLECTIVE_DID: 'did:plc:mockscene' });
     await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)').bind(device, keys.endpoint, keys.p256dh, keys.auth, '2026-10-15').run();
     await env.cohere.prepare('INSERT INTO companion_daily(date,title) VALUES (?1,?2)').bind('2026-10-15', 'Practice').run();
     const received: Record<string, string>[] = [];
@@ -116,10 +116,11 @@ it('event slot uses anonymous existing calendar reads, Denver today/tomorrow and
         vi.unstubAllGlobals();
     }
 });
-it('resumes unclaimed recipients from a durable slot within five minutes without new content', async () => {
+it('resumes unclaimed recipients from a durable slot within five minutes from the stored snapshot, while the day\'s content still exists', async () => {
+    await env.cohere.prepare("INSERT OR IGNORE INTO companion_daily(date,title,body) VALUES ('2026-10-15','Edited later','Edited')").run();
     const { createPushReceiver } = await import('../../scripts/pwa-push-receiver.mjs');
     const receiver = createPushReceiver('http://127.0.0.1:10049'), keys = receiver.fixture;
-    Object.assign(env, { VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject, COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
+    Object.assign(env, { VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: keys.subject, COMPANION_LOCAL_TEST_MODE: 'true', COMPANION_LOCAL_PUSH_MOCK: 'http://127.0.0.1:10049' });
     await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)').bind(device, keys.endpoint, keys.p256dh, keys.auth, '2026-10-15T11:00:00Z').run();
     // Crash after slot claim, before any recipient claim.
     await env.cohere.prepare('INSERT INTO companion_ledger(date,slot,recipient,claimed_at,payload_en,payload_es) VALUES (?1,?2,?3,?4,?5,?5)').bind('2026-10-15', 'practice', '*', '2026-10-15T12:00:00.000Z', JSON.stringify({ title: 'Stored practice', body: 'Stored', url: '/today', tag: '2026-10-15-practice' })).run();
@@ -148,7 +149,7 @@ it('cancels oversized streamed requests before consuming the full body',async()=
 it.each([410,201,500])('stale delivery %s cannot mutate replacement keys at the same endpoint', async status => {
  const {createPushReceiver}=await import('../../scripts/pwa-push-receiver.mjs');
  const k=createPushReceiver('http://127.0.0.1:10049').fixture;
- Object.assign(env,{VAPID_PUBLIC_KEY:k.publicKey,VAPID_PRIVATE_KEY:k.privateKey,VAPID_SUBJECT:k.subject,COMPANION_LOCAL_PUSH_MOCK:'http://127.0.0.1:10049'});
+ Object.assign(env,{VAPID_PUBLIC_KEY:k.publicKey,VAPID_PRIVATE_KEY:k.privateKey,VAPID_SUBJECT:k.subject,COMPANION_LOCAL_TEST_MODE:'true',COMPANION_LOCAL_PUSH_MOCK:'http://127.0.0.1:10049'});
  await env.cohere.prepare('INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)').bind(device,k.endpoint,k.p256dh,k.auth,'2026-10-15').run();
  await env.cohere.prepare('INSERT INTO companion_daily(date,title) VALUES (?1,?2)').bind('2026-10-15','Practice').run();
  vi.stubGlobal('fetch',async()=>{await env.cohere.prepare("UPDATE companion_subscriptions SET auth='replacement',failure_count=7 WHERE device_id=?1").bind(device).run();return new Response(null,{status});});
@@ -173,7 +174,7 @@ it('persists language only with browser possession proof, including after device
  expect(await env.cohere.prepare('SELECT language,device_id FROM companion_subscriptions').first()).toMatchObject({language:'es',device_id:device});
 });
 it('cron truncation preserves Unicode at the body length boundary',async()=>{
- Object.assign(env,{VAPID_PUBLIC_KEY:'x',VAPID_PRIVATE_KEY:'x',VAPID_SUBJECT:'mailto:test@example.test',COMPANION_LOCAL_PUSH_MOCK:'http://127.0.0.1:10049'});
+ Object.assign(env,{VAPID_PUBLIC_KEY:'x',VAPID_PRIVATE_KEY:'x',VAPID_SUBJECT:'mailto:test@example.test',COMPANION_LOCAL_TEST_MODE:'true',COMPANION_LOCAL_PUSH_MOCK:'http://127.0.0.1:10049'});
  await env.cohere.prepare('INSERT INTO companion_daily(date,title,body) VALUES (?1,?2,?3)').bind('2026-10-15','Practice','x'.repeat(999)+'🌻').run();
  await runCompanionCron(env,new Date('2026-10-15T12:00:00Z'));
  const row=await env.cohere.prepare("SELECT payload_en FROM companion_ledger WHERE recipient='*'").first<{payload_en:string}>();
