@@ -30,6 +30,25 @@ describe('generateSql', () => {
         expect(await db.prepare('SELECT * FROM companion_quests').first()).toMatchObject({ id: 'water-walk', end_date: '2026-10-25' });
     });
 
+    const apply = async (db: D1Database, input: object) => { for (const s of generateSql(input).split(/;\n/).filter(x => x.replace(/--.*$/gm, '').trim())) await db.prepare(s).run(); };
+
+    it.each([['omitted', {}], ['empty', { text: '' }], ['null', { text: null }]])('required text columns take \'\' when %s, insert then update, applied twice', async (_name, blank) => {
+        const db = testD1(['../migrations/0010_companion.sql']) as unknown as D1Database;
+        const fill = (text: object) => ({
+            daily: [{ date: '2026-10-15', title: 'Practice', ...('text' in text ? { body: text.text } : {}) }],
+            quests: [{ id: 'walk', title: 'Walk', start_date: '2026-10-15', end_date: '2026-10-25', ...('text' in text ? { description: text.text } : {}) }],
+        });
+        for (let run = 0; run < 2; run++) await apply(db, fill(blank));
+        expect(await db.prepare('SELECT body,title_es,question FROM companion_daily').first()).toEqual({ body: '', title_es: null, question: null });
+        expect(await db.prepare('SELECT description,title_es FROM companion_quests').first()).toEqual({ description: '', title_es: null });
+        // Updating from real text back to blank clears it.
+        await apply(db, fill({ text: 'Text' }));
+        expect(await db.prepare('SELECT body FROM companion_daily').first()).toEqual({ body: 'Text' });
+        for (let run = 0; run < 2; run++) await apply(db, fill(blank));
+        expect(await db.prepare('SELECT body FROM companion_daily').first()).toEqual({ body: '' });
+        expect(await db.prepare('SELECT description FROM companion_quests').first()).toEqual({ description: '' });
+    });
+
     it('rewrites an existing row on a second import with edited text', async () => {
         const db = testD1(['../migrations/0010_companion.sql']) as unknown as D1Database;
         for (const title of ['First', 'Second']) for (const s of generateSql({ daily: [{ ...daily, title }] }).split(/;\n/).filter(x => x.replace(/--.*$/gm, '').trim())) await db.prepare(s).run();

@@ -22,6 +22,8 @@ const isDate = (value) => {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 };
 const quote = (value) => (value == null || value === "" ? "NULL" : `'${String(value).replaceAll("'", "''")}'`);
+// body and description are NOT NULL: blank means '', never NULL.
+const quoteRequired = (value) => `'${String(value ?? "").replaceAll("'", "''")}'`;
 
 function checkText(row, limits, where, required) {
   for (const key of Object.keys(row)) if (!(key in limits)) throw new Error(`${where}: unknown field "${key}"`);
@@ -53,7 +55,7 @@ export function generateSql(input, { staging = false } = {}) {
     seen.add(`d${row.date}`);
     checkText(row, DAILY, where, ["title"]);
     statements.push(
-      `INSERT INTO companion_daily(date,title,body,title_es,body_es,question,question_es) VALUES (${quote(row.date)},${quote(row.title)},${quote(row.body ?? "")},${quote(row.title_es)},${quote(row.body_es)},${quote(row.question)},${quote(row.question_es)})\n` +
+      `INSERT INTO companion_daily(date,title,body,title_es,body_es,question,question_es) VALUES (${quote(row.date)},${quote(row.title)},${quoteRequired(row.body)},${quote(row.title_es)},${quote(row.body_es)},${quote(row.question)},${quote(row.question_es)})\n` +
         "ON CONFLICT(date) DO UPDATE SET title=excluded.title,body=excluded.body,title_es=excluded.title_es,body_es=excluded.body_es,question=excluded.question,question_es=excluded.question_es;",
     );
   });
@@ -68,7 +70,7 @@ export function generateSql(input, { staging = false } = {}) {
     if (row.end_date < row.start_date) throw new Error(`${where}: end_date is before start_date (window)`);
     checkText(row, QUEST, where, ["title"]);
     statements.push(
-      `INSERT INTO companion_quests(id,title,description,title_es,description_es,start_date,end_date) VALUES (${quote(row.id)},${quote(row.title)},${quote(row.description ?? "")},${quote(row.title_es)},${quote(row.description_es)},${quote(row.start_date)},${quote(row.end_date)})\n` +
+      `INSERT INTO companion_quests(id,title,description,title_es,description_es,start_date,end_date) VALUES (${quote(row.id)},${quote(row.title)},${quoteRequired(row.description)},${quote(row.title_es)},${quote(row.description_es)},${quote(row.start_date)},${quote(row.end_date)})\n` +
         "ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,title_es=excluded.title_es,description_es=excluded.description_es,start_date=excluded.start_date,end_date=excluded.end_date;",
     );
   });
