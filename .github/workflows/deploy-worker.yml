@@ -124,10 +124,11 @@ jobs:
         run: |
           sleep 15
           base="https://cohereboulder.org"
-          for path in /api/form/register-2026 /admin; do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" "$base$path")
-            [ "$code" = "200" ] || { echo "::error::$path returned $code"; exit 1; }
-          done
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$base/api/form/register-2026")
+          [ "$code" = "200" ] || { echo "::error::/api/form/register-2026 returned $code"; exit 1; }
+          # Signed-out /admin must redirect to sign-in (unified sign-in, #51).
+          loc=$(curl -sS -o /dev/null -w "%{http_code} %{redirect_url}" "$base/admin")
+          case "$loc" in "302 $base/login?returnTo=%2Fadmin") ;; *) echo "::error::/admin gave '$loc'"; exit 1;; esac
           # The Worker serves the site too, so check that it renders.
           npm run smoke -- "$base"
           npm run smoke -- https://www.cohereboulder.org
