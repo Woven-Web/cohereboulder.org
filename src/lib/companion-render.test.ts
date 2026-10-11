@@ -35,3 +35,9 @@ it.each(['en','es'] as const)('celebration renders an accessible screen with a l
  expect(html).toContain(getTranslation('companion.continue',language));
  expect(html).toContain('<button');
 });
+
+it.each([['en','Only the COhere organizers can read replies, including the optional name.'],['es','Solo las organizadoras y organizadores de COhere pueden leer las respuestas, incluido el nombre opcional.']] as const)('reply form says who can read replies (%s)',async(language,line)=>{
+ const {getTranslation}=await import('./translations');
+ expect(getTranslation('companion.replyAudience',language)).toBe(line);
+ expect(render('/today')).toContain(getTranslation('companion.replyAudience','en'));
+});
