@@ -23,6 +23,7 @@ import { mailShell, rateLimited, sendMail } from "./auth";
 import type { EventsEnv } from "./events";
 import { handleEventDetail } from "./events";
 import { isPlaceholder } from "./event-completeness";
+import { icsEscape, icsJoin, icsTime } from "../../src/lib/icsCore";
 
 export interface RsvpEnv extends AuthEnv, EventsEnv {
   cohere: D1Database;
@@ -215,21 +216,6 @@ export async function lookupLiveEvent(env: EventsEnv, did: string, rkey: string)
 
 // ------------------------------------------------------------------- ics
 
-function icsEscape(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
-}
-
-function icsTime(iso: string): string {
-  return new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-}
-
-function fold(line: string): string {
-  if (line.length <= 75) return line;
-  const out = [line.slice(0, 75)];
-  for (let rest = line.slice(75); rest.length; rest = rest.slice(74)) out.push(rest.slice(0, 74));
-  return out.join("\r\n ");
-}
-
 export function eventIcs(event: LiveEvent, link: string): string | null {
   if (!event.startsAt || Number.isNaN(Date.parse(event.startsAt))) return null;
   const end =
@@ -253,7 +239,7 @@ export function eventIcs(event: LiveEvent, link: string): string | null {
     "END:VEVENT",
     "END:VCALENDAR",
   ];
-  return lines.map(fold).join("\r\n") + "\r\n";
+  return icsJoin(lines);
 }
 
 function googleCalendarLink(event: LiveEvent, link: string): string | null {

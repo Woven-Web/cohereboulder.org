@@ -20,6 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { createEmailRsvp } from "@/lib/api";
 import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
+import { MY_SEATS_QUERY_KEY, recordEmailRsvp, recordRegenosRsvp } from "@/lib/myEvents";
 import type { CommunityEvent } from "@/lib/events";
 
 export function EventRsvp({ event }: { event: CommunityEvent }) {
@@ -77,6 +78,8 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
     mutationFn: (intent: "going" | "notgoing") =>
       rsvpOnRegenos(event.did, event.rkey, intent, data?.attendance ?? "approval"),
     onSuccess: (state) => {
+      recordRegenosRsvp(event, state);
+      queryClient.invalidateQueries({ queryKey: [MY_SEATS_QUERY_KEY] });
       queryClient.setQueryData(key, { seat: state, attendance: data?.attendance ?? "approval" });
       queryClient.invalidateQueries({ queryKey: key });
     },
@@ -155,6 +158,7 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
         language,
         website,
       });
+      recordEmailRsvp(event);
       setResult(already ? "already" : "done");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : tr("calendar.rsvp.error"));

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Download, Clock, Loader2, MapPin } from "lucide-react";
+import { Check, Clock, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
@@ -14,9 +14,10 @@ import {
   locationLine,
   type CommunityEvent,
 } from "@/lib/events";
-import { downloadEventIcs } from "@/lib/ics";
+import { AddToCalendar } from "@/components/AddToCalendar";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
+import { MY_SEATS_QUERY_KEY, recordRegenosRsvp } from "@/lib/myEvents";
 
 /** The statuses worth a badge; anything else renders as a plain event. */
 const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
@@ -97,6 +98,8 @@ export function EventCard({ event, hostControls }: { event: CommunityEvent; host
       } else if (seat !== "confirmed" && seat !== "requested" && seat !== "waitlisted") {
         seat = await rsvpOnRegenos(event.did, event.rkey, "going", current.attendance);
       }
+      recordRegenosRsvp(event, seat);
+      queryClient.invalidateQueries({ queryKey: [MY_SEATS_QUERY_KEY] });
       queryClient.setQueryData(key, { seat, attendance: current.attendance });
       setRsvp(seat === "confirmed" ? "going" : seat === "requested" ? "requested" : seat === "waitlisted" ? "waitlisted" : seat === "declined" || seat === "none" ? "idle" : "error");
     } catch {
@@ -108,12 +111,6 @@ export function EventCard({ event, hostControls }: { event: CommunityEvent; host
   }
 
   const rsvpDone = rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted";
-
-  function handleAddToCalendar(e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    downloadEventIcs(event, `${window.location.origin}${eventPath(event)}`);
-  }
 
   return (
     <div className="block group" data-testid="event-card">
@@ -187,14 +184,7 @@ export function EventCard({ event, hostControls }: { event: CommunityEvent; host
                       : tr("calendar.events.cardRsvp")}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="min-h-11 px-3 gap-1.5"
-                onClick={handleAddToCalendar}
-              >
-                <Download className="h-3.5 w-3.5" />
-                {tr("calendar.events.addToCalendar")}
-              </Button>
+              <AddToCalendar event={event} className="px-3" />
             </div>
           )}
           {hostControls && <div className="mt-4 border-t pt-4 flex flex-wrap gap-2">{hostControls}</div>}

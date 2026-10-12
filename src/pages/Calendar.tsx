@@ -20,6 +20,7 @@ import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/use
 import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
+import { useMyEvents, removeMyEvent } from "@/lib/myEvents";
 import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 export default function CalendarPage() {
@@ -44,6 +45,11 @@ export default function CalendarPage() {
   const tomorrow = denverDateKey(new Date(Date.now() + 86400000).toISOString());
   const todayEvents = today >= "2026-10-15" && today <= "2026-10-25"
     ? (data?.events ?? []).filter(event => [today, tomorrow].includes(denverDateKey(event.startsAt))) : [];
+  const mine = useMyEvents(data?.events);
+  const [showAll, setShowAll] = useState(false);
+  // My events is the default view whenever there is anything in it.
+  const showingMine = mine.items.length > 0 && !showAll;
+  const listed = showingMine ? mine.items.map((i) => i.event) : (data?.events ?? []);
   const { data: roster } = useQuery({
     queryKey: ["scene-roster", config?.collectiveDid, session?.did],
     queryFn: () => fetchSceneRoster(config!.collectiveDid!),
@@ -144,8 +150,18 @@ export default function CalendarPage() {
                 </TabsList>
 
                 <TabsContent value="upcoming">
+                  {mine.items.length > 0 && (
+                    <div className="mb-6 space-y-2" data-testid="my-events-toggle">
+                      <div className="flex gap-2" role="group" aria-label={tr("calendar.events.myEventsFilter")}>
+                        <Button size="sm" variant={showingMine ? "default" : "outline"} aria-pressed={showingMine} onClick={() => setShowAll(false)}>{tr("calendar.events.myEventsFilter")} · {mine.items.length}</Button>
+                        <Button size="sm" variant={showingMine ? "outline" : "default"} aria-pressed={!showingMine} onClick={() => setShowAll(true)}>{tr("calendar.events.allEventsFilter")}</Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{tr("calendar.events.myEventsSource")}</p>
+                      {showingMine && <p className="text-sm text-muted-foreground">{tr("calendar.events.myEventsRemoveNote")}</p>}
+                    </div>
+                  )}
                   <div className="space-y-6">
-                    {data.events.map((event) => (
+                    {listed.map((event) => (
                       <div key={`${event.did}/${event.rkey}`}>
                         <EventCard event={event} hostControls={canManage(event) && (
                           <>
@@ -178,6 +194,11 @@ export default function CalendarPage() {
                             </Button>
                           </>
                         )} />
+                        {showingMine && mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did)?.source === "email" && (
+                          <Button variant="ghost" size="sm" className="mt-1 text-muted-foreground" onClick={() => removeMyEvent(event)} data-testid="my-events-remove">
+                            {tr("calendar.events.myEventsRemove")}
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

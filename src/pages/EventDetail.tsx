@@ -5,24 +5,20 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarPlus, Clock, ExternalLink, MapPin } from "lucide-react";
+import { ArrowLeft, Clock, ExternalLink, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
-  eventPath,
   fetchCommunityEvent,
   formatEventDate,
   formatEventEnd,
   formatEventTimeRange,
   locationLine,
 } from "@/lib/events";
-import { downloadEventIcs } from "@/lib/ics";
-import { googleCalendarEventUrl } from "@/lib/calendarLinks";
+import { AddToCalendar } from "@/components/AddToCalendar";
 // The event API doesn't carry a per-event image today, so a detail page
 // gets a tasteful COhere still as a banner instead of a blank header — real
 // footage, never AI/stock, per Eileen's rule. Picked deterministically per
@@ -78,11 +74,6 @@ export default function EventDetail() {
   const where = event ? locationLine(event.location) : null;
   const badged = event?.status && BADGED_STATUSES.has(event.status);
   const cancelled = event?.status === "cancelled";
-
-  function handleAddToCalendar() {
-    if (!event) return;
-    downloadEventIcs(event, `${window.location.origin}${eventPath(event)}`);
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -216,28 +207,7 @@ export default function EventDetail() {
 
               <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
-                {event.startsAt && !Number.isNaN(Date.parse(event.startsAt)) && !cancelled && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-11 w-full gap-2">
-                        <CalendarPlus className="h-4 w-4" />
-                        {tr("calendar.events.addToCalendar")}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {googleCalendarEventUrl(event) && (
-                        <DropdownMenuItem className="min-h-11" asChild>
-                          <a href={googleCalendarEventUrl(event)!} target="_blank" rel="noopener noreferrer">
-                            {tr("calendar.events.googleCalendar")}
-                          </a>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="min-h-11" onSelect={handleAddToCalendar}>
-                        {tr("calendar.events.appleOtherCalendar")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <AddToCalendar event={event} className="h-11 w-full" />
                 {data?.icsUrl && <div className="min-w-0"><CalendarSubscribe feedUrl={data.icsUrl} compact /></div>}
               </div>
             </article>

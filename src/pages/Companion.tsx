@@ -5,6 +5,8 @@ import { Dialog, DialogPortal } from '@/components/ui/dialog';
 import { QuestCelebration } from '@/components/QuestCelebration';
 import { Share, SquarePlus, Smartphone } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
+import { useMyEvents } from '@/lib/myEvents';
+import { eventPath, formatEventDate } from '@/lib/events';
 import { EventCard } from '@/components/EventCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { companionEvents, companionRequest, type CompanionToday } from '@/lib/api';
@@ -18,6 +20,7 @@ export default function Companion() {
     const { data, refetch, isLoading, isError } = useQuery({ queryKey: ['companion'], queryFn: () => companionRequest<CompanionToday>('today'), retry: 1 });
     const events = useQuery({ queryKey: ['companion-events'], queryFn: companionEvents, retry: 1 });
     const refetchEvents = events.refetch;
+    const mine = useMyEvents(events.data);
     const { prompt, installed } = useSyncExternalStore(subscribeInstall, getInstallState, getInstallState);
     const [notice, setNotice] = useState(''), [permission, setPermission] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission), [subscribed, setSubscribed] = useState(false), [busy, setBusy] = useState(false);
     const [reply, setReply] = useState(''), [name, setName] = useState(''), [answered, setAnswered] = useState(false);
@@ -161,6 +164,7 @@ export default function Companion() {
  {isLoading && <p>{tr('companion.loading')}</p>}{isError && <p role="status">{tr('companion.offline')}</p>}
  {notice && <p role="status">{tr('companion.' + notice)}</p>}
  {route === '/today' && <>
+ {mine.next && <p className="companion-next" data-testid="your-next">{tr('companion.yourNext')}: <Link to={eventPath(mine.next)}>{mine.next.name}</Link> · {formatEventDate(mine.next.startsAt, language)}<br/><small>{tr('calendar.events.myEventsSource')}</small></p>}
  <section><h2>{tr('companion.practice')}</h2>{daily ? <><h3>{localized(daily.title, daily.title_es)}</h3><p className="whitespace-pre-wrap">{localized(daily.body, daily.body_es)}</p></> : <p>{tr('companion.empty')}</p>}</section>
  <section><h2>{tr('companion.events')}</h2>{events.isError && <p>{tr('companion.offline')}</p>}{data && eventsForDays(events.data ?? [], data.date).filter(e => e.status !== 'cancelled').map(e => { const path = '/events/' + encodeURIComponent(e.did) + '/' + encodeURIComponent(e.rkey); return <div key={path} className="companion-event"><EventCard event={e} /><button onClick={() => void share(location.origin + path, e.name)}>{tr('companion.share')}</button></div>; })}
  {data && !eventsForDays(events.data ?? [], data.date).length && <p>{tr('companion.noEvents')}</p>}<Link to="/calendar">{tr('nav.calendar')}</Link></section>

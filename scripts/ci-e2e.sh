@@ -59,6 +59,9 @@ P28948=$(( 28948 + E2E_PORT_OFFSET ))
 P28950=$(( 28950 + E2E_PORT_OFFSET ))
 P28952=$(( 28952 + E2E_PORT_OFFSET ))
 P28962=$(( 28962 + E2E_PORT_OFFSET ))
+P28954=$(( 28954 + E2E_PORT_OFFSET ))
+P28955=$(( 28955 + E2E_PORT_OFFSET ))
+P28239=$(( 28239 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
 PWA_PUSH_PORT="${PWA_PUSH_PORT:-10049}"
@@ -289,6 +292,27 @@ PIDS=()
 rm -f "$PWA_KEYS_FILE"
 unset PWA_PRIVATE_KEY
 echo "::endgroup::"
+# --- 9. myevents-e2e.mjs: "My events" + Your next, from an email RSVP ------
+echo "::group::myevents-e2e (My events + Your next lane)"
+# Its own state dir: /api/events is edge-cached in the persisted Cache API, and
+# an earlier lane's events would otherwise be served here instead of this
+# lane's mock.
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-myevents")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+start_mock ${P28954} "$PWA_SCRATCH/pwa-merge-mock-9.log"
+start_worker ${P28955} ${P28239} "$PWA_SCRATCH/pwa-merge-worker-9.log" \
+  --var REGENOS_LOGIN_ENABLED:false \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28954} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/myevents-e2e.mjs http://127.0.0.1:${P28955}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-9.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-myevents"
+echo "::endgroup::"
+
 rm -rf "$PERSIST_DIR"
 
 if [ "$fail" -ne 0 ]; then

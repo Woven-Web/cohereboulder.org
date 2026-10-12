@@ -29,6 +29,7 @@ export const translations = {
   },
 
   companion: {
+    yourNext: { en: "Your next", es: "Tu próximo evento" },
     today: { en: "Today", es: "Hoy" },
     quests: { en: "Quests", es: "Misiones" },
     more: { en: "More", es: "Más" },
@@ -739,6 +740,18 @@ export const translations = {
         en: "For Google Calendar, copy the URL below, then choose Other calendars → From URL in Google Calendar.",
         es: "Para Google Calendar, copia la URL de abajo y elige Otros calendarios → Desde URL en Google Calendar.",
       },
+      myEventsFilter: { en: "My events", es: "Mis eventos" },
+      allEventsFilter: { en: "All", es: "Todos" },
+      myEventsSource: {
+        en: "Events you RSVP'd to on this device, and your scenius.social RSVPs when signed in.",
+        es: "Eventos a los que confirmaste en este dispositivo, y tus confirmaciones de scenius.social si iniciaste sesión.",
+      },
+      myEventsRemove: { en: "Remove from this list", es: "Quitar de esta lista" },
+      myEventsRemoveNote: {
+        en: "Removing only forgets it on this device. To cancel an email RSVP, use the link in your confirmation email.",
+        es: "Quitarlo solo lo olvida en este dispositivo. Para cancelar una confirmación por correo, usa el enlace de tu correo de confirmación.",
+      },
+      myEventsEmpty: { en: "Nothing here yet — RSVP to an event and it will show up.", es: "Aún no hay nada — confirma tu asistencia a un evento y aparecerá aquí." },
       tabUpcoming: {
         en: "Upcoming",
         es: "Próximos",
