@@ -7,9 +7,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { XrpcError } from "@/lib/regenos";
 import {
   BOARD_TAGS, POST_TEXT_MAX, POST_TITLE_MAX, REPORT_NOTE_MAX, REPORT_REASONS, createPost, deletePost, excerptOf, reportPost,
-  type BoardPost, type NewPost, type ReportReason,
+  tagLabel, type BoardPost, type NewPost, type ReportReason,
 } from "@/lib/board";
-import { tagLabel } from "./PostCard";
 
 interface SheetProps {
   open: boolean;

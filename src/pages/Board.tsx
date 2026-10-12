@@ -7,10 +7,9 @@ import { MembersGate } from "@/components/members/MembersGate";
 import { MembersNav } from "@/components/members/MembersNav";
 import { PostCard } from "@/components/members/PostCard";
 import { ComposeSheet, DeleteSheet, ReportSheet } from "@/components/members/BoardSheets";
-import { tagLabel } from "@/components/members/PostCard";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { BOARD_POSTS_QUERY_KEY, BOARD_TAGS, fetchPosts, groupByDay, splitFeed, tagCounts, type BoardPost } from "@/lib/board";
+import { BOARD_POSTS_QUERY_KEY, BOARD_TAGS, fetchPosts, groupByDay, splitFeed, tagCounts, tagLabel, type BoardPost } from "@/lib/board";
 import { currentDenverDate } from "@/lib/companion";
 import { formatDay } from "@/lib/festival";
 

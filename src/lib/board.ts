@@ -45,6 +45,14 @@ export const REPORT_NOTE_MAX = 500;
 export const POST_TEXT_MAX = 5000;
 export const POST_TITLE_MAX = 100;
 
+const TAG_ES: Record<string, string> = { rideshare: "aventón", offers: "ofertas", asks: "peticiones", harvest: "cosecha", gratitude: "gratitud" };
+
+export function tagLabel(tag: string, language: "en" | "es"): string {
+  return language === "es" ? TAG_ES[tag] ?? tag : tag;
+}
+
+export const postPath = (post: Pick<BoardPost, "author" | "uri">) => `/board/${encodeURIComponent(post.author)}/${encodeURIComponent(rkeyOf(post.uri))}`;
+
 export const rkeyOf = (uri: string) => uri.slice(uri.lastIndexOf("/") + 1);
 export const authorOfUri = (uri: string) => uri.slice("at://".length).split("/")[0];
 

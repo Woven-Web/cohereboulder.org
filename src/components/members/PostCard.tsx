@@ -1,18 +1,8 @@
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fill } from "@/components/almanac/format";
-import { rkeyOf, type BoardPost } from "@/lib/board";
+import { postPath, rkeyOf, tagLabel, type BoardPost } from "@/lib/board";
 import { Avatar } from "./Avatar";
-
-const TAG_ES: Record<string, string> = { rideshare: "aventón", offers: "ofertas", asks: "peticiones", harvest: "cosecha", gratitude: "gratitud" };
-
-export function tagLabel(tag: string, language: "en" | "es"): string {
-  return language === "es" ? TAG_ES[tag] ?? tag : tag;
-}
-
-export function postPath(post: BoardPost): string {
-  return `/board/${encodeURIComponent(post.author)}/${encodeURIComponent(rkeyOf(post.uri))}`;
-}
 
 function timeOf(iso: string, language: "en" | "es"): string {
   const d = new Date(iso);

@@ -39,7 +39,11 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /api/auth/*          magic link + one-time code sign-in
         ├── /api/admin/*         admin JSON, behind the session cookie
         │     ├── …/events[/:did/:rkey[/attendance]]   the community calendar
-        │     └── …/access[/invite|role|revoke]        who may host on it
+        │     ├── …/access[/invite|role|revoke]        who may host on it
+        │     └── …/board[/hide|unhide|remove|approve|settings|reports/:id/dismiss]
+        ├── /api/board/reports   a member reports a Board post     (regenOS session)
+        ├── /api/me/rsvp-visibility · /api/me/rsvps · /api/members/:did/rsvps
+        │                        who sees my RSVPs on my profile   (regenOS session)
         └── /admin               the admin portal, one self-contained HTML page
                ↓
         D1 `cohere`  +  KV: COHERE_AUTH (sessions), SIGNUPS (legacy mirror)
@@ -147,6 +151,32 @@ A field definition looks like:
 `type` is one of `text`, `textarea`, `email`, `tel`, `radio`, `checkbox`,
 `checkboxes`. Keys `full_name`, `email`, `phone`, `orgs` map onto `people`
 columns; everything else lands in the answers JSON.
+
+## Members area (Board · People · Profile)
+
+Signed-in festival members only. Posts and profiles are regenOS **circle
+records** (member-owned, `coop.lexicon.post` / `coop.lexicon.profile`), read and
+written through the `/xrpc` proxy (`worker/src/regenos-auth.ts`), which pins
+every circle call to `REGENOS_COLLECTIVE_DID` and refuses non-web links in a
+profile. regenOS answers a non-member with an **empty page**, so the gate is
+decided from the public roster (`src/hooks/useCircleAccess.ts`) — never render
+"no posts" for someone who simply isn't a member.
+
+Moderation is COhere-side (regenOS has no circle-post hide we can call): D1
+`board_reports` / `board_moderation` / `board_settings`, applied by
+`worker/src/board-moderation.ts` to every `listCirclePosts` / `getCircleThread`
+response as it passes the proxy. A hide does **not** remove the post from
+regenOS — only from this site. The `approval` setting (default off) holds new
+posts from non-stewards until approved. `/admin`'s Board tab drives it, behind
+the same gate as Access. `profile_rsvp_visibility` (D1, keyed by the owner's
+DID, written only from the verified session) is applied by
+`worker/src/rsvp-visibility.ts` to a profile's regenOS RSVP list; email RSVPs
+are never linked to a profile. All of it lives in migration `0011_members.sql`.
+
+Test it against `scripts/regenos-mock.mjs` (it models the circle XRPCs and four
+extra sessions: `mock-peer`, `mock-steward`, `mock-outsider`, `mock-builder`);
+lanes 10–12 of `scripts/ci-e2e.sh` are `board-e2e`, `people-e2e`,
+`rsvp-visibility-e2e`.
 
 ## Admin access
 
