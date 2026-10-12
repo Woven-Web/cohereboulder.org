@@ -43,22 +43,23 @@ export function RsvpVisibilityEditor({ did }: { did: string }) {
         <ul className="going-list" style={{ listStyle: "none", padding: 0 }}>
           {mine.data?.rsvps.map((rsvp) => {
             const day = denverDateKey(rsvp.startsAt);
+            const shown = !rsvp.hidden && !nobody;
             return (
               <li key={rsvp.uri} className="vis" data-testid="my-rsvp" data-hidden={rsvp.hidden}>
                 <div>
                   <b className="ev__title">{rsvp.name}</b>
                   {day && <p>{formatDay(day, language)}</p>}
+                  <p>{tr(nobody ? "members.rsvp.showOneNobody" : "members.rsvp.showOne")}</p>
                 </div>
                 <button
                   type="button"
-                  className="chip"
-                  aria-pressed={rsvp.hidden || nobody}
+                  role="switch"
+                  className={`switch${shown ? " is-on" : ""}`}
+                  aria-checked={shown}
                   disabled={nobody || setHidden.isPending}
-                  aria-label={fill(tr("members.rsvp.hideOneLabel"), { name: rsvp.name })}
-                  onClick={() => setHidden.mutate({ uri: rsvp.uri, hidden: !rsvp.hidden })}
-                >
-                  {tr(rsvp.hidden || nobody ? "members.rsvp.hiddenOne" : "members.rsvp.hideOne")}
-                </button>
+                  aria-label={fill(tr("members.rsvp.showOneLabel"), { name: rsvp.name })}
+                  onClick={() => setHidden.mutate({ uri: rsvp.uri, hidden: shown })}
+                />
               </li>
             );
           })}

@@ -48,7 +48,7 @@ function PersonView() {
     );
   } else {
     body = (
-      <article data-testid="person" className="profile">
+      <article data-testid="person" className="profile profile--page">
         <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginTop: "1rem" }}>
           <Avatar did={did} name={name} size="lg" ghost={entry.profileSource === "publicFallback"} />
           <div style={{ minWidth: 0 }}>

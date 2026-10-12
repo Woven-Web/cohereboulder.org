@@ -32,14 +32,18 @@ export function RsvpPrivacyControl({ event, inline = false }: { event: Community
     <div className={inline ? "mt-2 space-y-2 rounded-md border p-3" : "stack"} data-testid="rsvp-privacy-panel">
       <p className={inline ? "text-sm" : "lede"}>{sentence}</p>
       {!nobody && (
-        <button
-          type="button"
-          className={inline ? "rounded-md border px-3 py-2 text-sm font-medium" : "btn btn--primary btn--block"}
-          disabled={setHidden.isPending}
-          onClick={() => setHidden.mutate({ uri, hidden: !hidden }, { onError: () => toast(tr("members.rsvp.saveFailed")) })}
-        >
-          {tr(hidden ? "members.rsvp.sheetShow" : "members.rsvp.sheetHide")}
-        </button>
+        <label className={inline ? "flex items-center justify-between gap-3 text-sm font-medium" : "vis"} style={inline ? undefined : { borderTop: "none" }}>
+          <b style={inline ? { fontWeight: 500 } : undefined}>{tr("members.rsvp.showOne")}</b>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!hidden}
+            aria-label={tr("members.rsvp.showOne")}
+            className={`switch${hidden ? "" : " is-on"}`}
+            disabled={setHidden.isPending}
+            onClick={() => setHidden.mutate({ uri, hidden: !hidden }, { onError: () => toast(tr("members.rsvp.saveFailed")) })}
+          />
+        </label>
       )}
       <p><Link className={inline ? "text-sm underline" : "link"} to="/profile#rsvps">{tr("members.rsvp.sheetAll")}</Link></p>
       <button type="button" className={inline ? "text-sm underline" : "btn btn--quiet btn--block"} onClick={() => setOpen(false)}>{tr("members.rsvp.sheetDone")}</button>

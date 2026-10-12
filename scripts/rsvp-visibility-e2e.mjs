@@ -4,7 +4,7 @@
 //   1. an RSVP made on regenOS appears on the member's profile, for other members
 //   2. the control on the calendar row hides this one RSVP; members stop seeing it
 //   3. the control on the event page (inline) shows it again
-//   4. the profile editor: the setting, each RSVP's Hide toggle, the live
+//   4. the profile editor: the setting, each RSVP’s "Show on my profile" switch, the live
 //      "What members see" preview, and the two honest lines
 //   5. Nobody hides every RSVP; Members (the default) brings them back
 //   6. email RSVPs are never on a profile; the setting is owner-only server-side;
@@ -88,8 +88,8 @@ try {
   await row.getByTestId("rsvp-privacy").getByRole("button").click();
   const panel = mp.getByTestId("rsvp-privacy-panel");
   await panel.waitFor();
-  expect((await panel.innerText()).includes("Members of COhere will see you’re going to this on your profile."), "the sheet says plainly what members see");
-  await panel.getByRole("button", { name: "Hide it from my profile" }).click();
+  expect((await panel.innerText()).includes("COhere members can see on your profile that you’re going."), "the sheet says plainly what members see");
+  await panel.getByRole("switch", { name: "Show on my profile" }).click();
   await panel.getByText("Hidden from your profile.").waitFor({ timeout: 10_000 });
   await panel.getByRole("button", { name: "Done" }).click();
   expect((await row.getByTestId("rsvp-privacy").innerText()).includes("Hidden from your profile · change"), "the row now says 'Hidden from your profile · change'");
@@ -104,8 +104,8 @@ try {
   await control.waitFor({ timeout: 15_000 });
   expect((await control.innerText()).includes("Hidden from your profile · change"), "the event page shows the same state");
   await control.getByRole("button").click();
-  await mp.getByTestId("rsvp-privacy-panel").getByRole("button", { name: "Show it on my profile" }).click();
-  await mp.getByTestId("rsvp-privacy-panel").getByText("Members of COhere will see you’re going to this on your profile.").waitFor({ timeout: 10_000 });
+  await mp.getByTestId("rsvp-privacy-panel").getByRole("switch", { name: "Show on my profile" }).click();
+  await mp.getByTestId("rsvp-privacy-panel").getByText("COhere members can see on your profile that you’re going.").waitFor({ timeout: 10_000 });
   expect(seeEvent(await goingOnProfile(pp)), "members see it again");
 
   // ── 4. the editor ─────────────────────────────────────────────────────────
@@ -114,25 +114,25 @@ try {
   const section = mp.getByTestId("rsvp-visibility");
   await section.waitFor({ timeout: 15_000 });
   expect(await section.getByTestId("rsvp-mode-members").getAttribute("aria-pressed") === "true", "Members is the default");
-  expect((await section.innerText()).includes("stays public on scenius.social"), "the editor says the scenius.social RSVP stays public there");
-  expect((await section.innerText()).includes("never show on a profile"), "the editor says email RSVPs never show on a profile");
+  expect((await section.innerText()).includes("is public on scenius.social"), "the editor says the scenius.social RSVP stays public there");
+  expect((await section.innerText()).includes("never shown on a profile"), "the editor says email RSVPs never show on a profile");
   const mine = section.getByTestId("my-rsvp").filter({ hasText: EVENT });
   await mine.waitFor();
   expect((await section.getByTestId("rsvp-preview").innerText()).includes(EVENT), "the live preview lists the event");
-  await mine.getByRole("button", { name: /Hide Seed Gathering/ }).click();
-  await section.getByTestId("rsvp-preview").getByText("Nothing. Your profile shows no RSVPs.").waitFor({ timeout: 10_000 });
+  await mine.getByRole("switch", { name: /Show Seed Gathering/ }).click();
+  await section.getByTestId("rsvp-preview").getByText("Nothing. Your profile shows no events.").waitFor({ timeout: 10_000 });
   ok("hiding one in the editor updates the preview straight away");
   expect(!seeEvent(await goingOnProfile(pp)), "…and members stop seeing it");
   await mp.goto("/profile#rsvps", { waitUntil: "networkidle" });
-  await mp.getByTestId("my-rsvp").filter({ hasText: EVENT }).getByRole("button", { name: /Hide Seed Gathering/ }).click();
+  await mp.getByTestId("my-rsvp").filter({ hasText: EVENT }).getByRole("switch", { name: /Show Seed Gathering/ }).click();
   await mp.getByTestId("rsvp-preview").getByTestId("going-event").waitFor({ timeout: 10_000 });
   ok("toggling it back shows it again");
 
   // ── 5. Nobody / Members ───────────────────────────────────────────────────
   step = "nobody";
   await mp.getByTestId("rsvp-mode-nobody").click();
-  await mp.getByTestId("rsvp-preview").getByText("Nothing. Your profile shows no RSVPs.").waitFor({ timeout: 10_000 });
-  expect(await mp.getByTestId("my-rsvp").getByRole("button").first().isDisabled(), "with Nobody chosen, the per-event toggles are disabled");
+  await mp.getByTestId("rsvp-preview").getByText("Nothing. Your profile shows no events.").waitFor({ timeout: 10_000 });
+  expect(await mp.getByTestId("my-rsvp").getByRole("switch").first().isDisabled(), "with Nobody chosen, the per-event toggles are disabled");
   expect(!seeEvent(await goingOnProfile(pp)), "Nobody: members see no RSVPs");
   await mp.goto("/calendar", { waitUntil: "networkidle" });
   if (await everyDate.count()) await everyDate.click();

@@ -313,6 +313,7 @@
 .alm .profile{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-4);align-items:center;padding:var(--sp-4) 0;border-bottom:var(--rule-heavy)}
 .alm .profile__name{font-weight:600;font-size:var(--fs-h2);line-height:1.05}
 .alm .profile__line{font-style:italic;color:var(--ink-2);font-size:var(--fs-small);margin-top:3px}
+.alm .profile--page{display:block}
 .alm .badge{display:inline-flex;align-items:center;min-height:calc(1.5 * var(--u));padding:0 calc(.5 * var(--u));border:1.5px solid var(--ink);border-radius:var(--r-1);font:500 calc(.68 * var(--u))/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;background:var(--paper)}
 .alm .badge[data-tone=leaf]{background:var(--leaf)}
 .alm .badge[data-tone=sun]{background:var(--sun)}

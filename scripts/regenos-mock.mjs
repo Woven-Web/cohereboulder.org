@@ -291,6 +291,47 @@ function seedProfiles() {
 }
 seedProfiles();
 
+// MOCK_RICH_SEED=1 — a fuller roster for visual QA (never set by the e2e lanes).
+if (process.env.MOCK_RICH_SEED === "1") {
+  const people = [
+    ["did:plc:mockmara", "mara.mock.test", "Mara Okonkwo", "Mycologist and tea person. Ask me about the oyster logs behind the library.", "https://example.org/mara"],
+    ["did:plc:mockteo", "teo.mock.test", "Teo Ramírez", "Carpenter, cook, and keeper of the long table. Happy to lend tools and hands.", null],
+    ["did:plc:mocklin", "lin.mock.test", "Lin Aoki", "I run a small seed library out of a bicycle trailer.", "https://example.org/lin"],
+    ["did:plc:mockdev", "dev.mock.test", "Devika Rao", "Sound healer and watershed volunteer. Boulder Creek mornings.", null],
+    ["did:plc:mockwren", "wren.mock.test", "Wren Calloway", "New to the Front Range, here to listen and carry chairs.", null],
+  ];
+  for (const [did, handle, name, bio, link] of people) {
+    members.set(did, { did, handle, kind: "person", name, role: "member" });
+    circleProfiles.set(did, {
+      uri: `at://${did}/coop.lexicon.profile/${SCENE_DID}`, cid: `bafyprofile${handle}`, author: did,
+      spaceUri: `at://${did}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+      record: { displayName: name, bio, ...(link ? { links: [link] } : {}), createdAt: "2026-09-03T00:00:00.000Z" },
+    });
+  }
+  const soon = (days, name, description, place) => {
+    const startsAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
+    const rkey = `ev-rich${days}`;
+    events.set(rkey, {
+      uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
+      value: { name, description, createdAt: new Date().toISOString(), startsAt, mode: "community.lexicon.calendar.event#inperson",
+        locations: [{ $type: "community.lexicon.location.address", name: place, locality: "Boulder", region: "CO", country: "US" }] },
+    });
+    seedAttendance(rkey);
+    return rkey;
+  };
+  const eTable = soon(3, "Long Table Supper", "A shared meal under the cottonwoods. Bring a dish and a chair.", "Eben G. Fine Park");
+  const eCreek = soon(9, "Creek Walk and Listening Circle", "A slow walk along Boulder Creek, ending in a circle.", "Boulder Creek Path");
+  for (const did of ["did:plc:mockmara", "did:plc:mockteo", "did:plc:mocklin", "did:plc:mockdev", PEER_DID]) {
+    mySeats.set(`${did}|ev-seed1`, "confirmed");
+    mySeats.set(`${did}|${eTable}`, "confirmed");
+  }
+  mySeats.set(`did:plc:mockmara|${eCreek}`, "confirmed");
+  seedPost("did:plc:mockmara", "Anyone have a spare 10x10 canopy for the Saturday tea table? I can trade you a jar of reishi honey.", { title: "Canopy wanted", tags: ["requests"], langs: ["en"] }, 60 * 9);
+  seedPost("did:plc:mockteo", "Long table build day is Thursday at 3. Bring a drill if you have one, and gloves.", { title: "Long table build day", tags: ["offers", "building"], langs: ["en"] }, 60 * 14);
+  seedPost("did:plc:mocklin", "Seeds for the autumn swap are sorted into envelopes. Kale, calendula, three kinds of beans. Come early; the beans go fast.", { tags: ["harvest"], langs: ["en"] }, 60 * 3);
+  seedPost(STEWARD_DID, "Welcome, everyone. Be kind, stay curious, and tell us if a post doesn't feel right. Use Report on any post.", { title: "Welcome to the Board", tags: ["welcome"], langs: ["en"] }, 60 * 40);
+}
+
 function circleSubject(req, res, url) {
   const person = sessionPerson(req);
   if (!person) {

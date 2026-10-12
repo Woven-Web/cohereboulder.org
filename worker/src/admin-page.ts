@@ -64,7 +64,8 @@ export const ADMIN_PAGE = `<!doctype html>
              letter-spacing: -0.03em; display: block; }
   .stat .k { font-size: 0.75rem; color: var(--ink-3); }
 
-  .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--hair); }
+  .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--hair); overflow-x: auto; }
+  .tab { flex: none; white-space: nowrap; }
   .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem;
          color: var(--ink-3); font-size: 0.9rem; }
   .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); font-weight: 600; }
@@ -1469,7 +1470,7 @@ export const ADMIN_PAGE = `<!doctype html>
       return "<tr><td>" + boardPostCell(r.postUri, r.excerpt, r.authorDid) + "</td>" +
         "<td>" + r.reporters + (r.reporters === 1 ? " report" : " reports") + "<br>" + esc(why) + notes +
         '<div class="muted">' + esc(new Date(r.firstAt).toLocaleString()) + "</div></td>" +
-        '<td style="white-space:nowrap">' +
+        '<td style="min-width:11rem">' +
         '<button class="btn" data-board="hide" data-uri="' + esc(r.postUri) + '">Hide</button> ' +
         '<button class="btn" data-board="remove" data-uri="' + esc(r.postUri) + '">Remove</button> ' +
         '<button class="btn" data-board="dismiss" data-id="' + r.id + '">Dismiss</button></td></tr>';
@@ -1480,7 +1481,7 @@ export const ADMIN_PAGE = `<!doctype html>
     el("boardpending").innerHTML = boardData.pending.length ? boardData.pending.map(function (p) {
       return "<tr><td>" + boardPostCell(p.uri, p.excerpt, p.author_did) + "</td>" +
         "<td>" + esc(new Date(p.created_at).toLocaleString()) + "</td>" +
-        '<td style="white-space:nowrap"><button class="btn primary" data-board="approve" data-uri="' + esc(p.uri) + '">Approve</button> ' +
+        '<td style="min-width:9rem"><button class="btn primary" data-board="approve" data-uri="' + esc(p.uri) + '">Approve</button> ' +
         '<button class="btn" data-board="remove" data-uri="' + esc(p.uri) + '">Remove</button></td></tr>';
     }).join("") : '<tr><td colspan="3" class="muted">Nothing is waiting.</td></tr>';
     el("boardhidden").innerHTML = boardData.hidden.length ? boardData.hidden.map(function (h) {
