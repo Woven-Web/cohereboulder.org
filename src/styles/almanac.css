@@ -586,5 +586,7 @@
 .alm .mast__end>button,.alm .mast__end>div>button{min-height:44px}
 
 .alm .ev__acts .link{white-space:nowrap}
-.alm .ev__title a{display:inline-block;padding-block:.55rem;margin-block:-.55rem}
+.alm .ev__title a{display:inline-block;padding-block:.65rem;margin-block:-.65rem}
+.alm .ev__acts{column-gap:var(--sp-2)}
+.alm .ev__acts .btn{padding-inline:.7rem}
 .alm [aria-busy=true]{cursor:progress}

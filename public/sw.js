@@ -1,6 +1,6 @@
 /* Public shell only. No API, admin, auth, reply, subscription or private caching. */
 const CACHE = 'cohere-companion-v1';
-const SHELL = ['/today', '/manifest.webmanifest', '/cohere-icon-192.png', '/cohere-icon-512.png', '/cohere-icon-180.png'];
+const SHELL = ['/today', '/manifest.webmanifest', '/cohere-icon-192.png', '/cohere-icon-512.png', '/cohere-icon-180.png', '/fonts/newsreader-normal.woff2', '/fonts/newsreader-italic.woff2', '/fonts/ibm-plex-mono-normal.woff2'];
 self.addEventListener('install', event => {
  event.waitUntil((async () => {
   const cache = await caches.open(CACHE);

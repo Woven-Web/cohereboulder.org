@@ -121,12 +121,8 @@ export default function EventDetail() {
                     {event.mode && event.mode !== "inperson" && KNOWN_MODES.has(event.mode) && <Badge className="text-sm" variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>}
                   </p>
                 )}
-                {(where || event.hostName) && (
-                  <p className="ev__meta" style={{ fontSize: "1em" }}>
-                    {where}
-                    {event.hostName && <>{where ? " · " : ""}{tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}</>}
-                  </p>
-                )}
+                {where && <p className="ev__meta" style={{ fontSize: "1em" }}>{where}</p>}
+                {event.hostName && <p className="ev__meta">{tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}</p>}
                 {myItem && <p style={{ marginTop: ".6rem" }}><SeatBadge seat={seatOf(myItem)} /></p>}
               </header>
               <div className="o3">

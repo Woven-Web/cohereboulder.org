@@ -165,7 +165,7 @@ function TodayView() {
     const later = (
         <section className="sched" style={{ marginTop: '2rem' }} aria-labelledby="later-eyebrow">
             <div className="eyebrow" id="later-eyebrow">{tr(phase === 'before' ? 'almanac.thatDay' : 'almanac.laterToday')}</div>
-            {events.isError && <p className="small" role="status">{tr('companion.offline')}</p>}
+            {events.isError && !isError && <p className="small" role="status">{tr('companion.offline')}</p>}
             {laterEvents.map(e => <EventRow key={`${e.did}/${e.rkey}`} event={e} descLimit={112} />)}
             {phase !== 'before' && nowEvents.length > 0 && (
                 <p className="small" style={{ padding: '.6rem 0', borderTop: '1px solid var(--rule)' }}>
@@ -350,7 +350,8 @@ function MoreView() {
         if (!data?.pushKey || ios) return;
         await enableReminders(data.pushKey, language);
         // Turning reminders on is one of the two moments the install sheet may appear (once).
-        if (getReminderState().subscribed) offer('reminders');
+        // Only when there is an install to offer: the reminders themselves are already on.
+        if (getReminderState().subscribed && prompt) offer('reminders');
     }
     const status = tr('companion.' + (!supported ? 'unsupported' : !data?.pushKey ? 'disabled' : reminders.permission === 'denied' ? 'denied' : reminders.subscribed ? 'enabled' : 'off'));
 

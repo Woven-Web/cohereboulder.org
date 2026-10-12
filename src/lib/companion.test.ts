@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { installPlatform, safeNotificationPath, eventsForDays } from './companion';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 it('distinguishes iOS home screen requirement, installed, unsupported and browser prompt', () => {
     expect(installPlatform('iPhone', false, false)).toBe('ios');
     expect(installPlatform('iPad', true, false)).toBe('installed');
@@ -20,9 +20,16 @@ it('event dates use Denver including tomorrow across UTC midnight', () => {
 it('manifest, brand icons, Apple metadata and private-safe service worker exist', () => {
     const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8'));
     expect(manifest).toMatchObject({ name: 'COhere Boulder', start_url: '/today', display: 'standalone' });
-    expect(manifest.icons.map((i: {
-        sizes: string;
-    }) => i.sizes)).toEqual(['192x192', '512x512']);
+    type Icon = { sizes: string; purpose: string; src: string };
+    // "any" and "maskable" are separate files, never "any maskable" on one.
+    expect(manifest.icons.map((i: Icon) => `${i.sizes}:${i.purpose}`)).toEqual(['192x192:any', '512x512:any', '512x512:maskable']);
+    for (const icon of manifest.icons as Icon[]) expect(existsSync('public' + icon.src)).toBe(true);
+    expect(manifest.id).toBe('/today');
+    expect(manifest.description.length).toBeGreaterThan(20);
+    expect(manifest.theme_color).toBe('#F5F0E3');
+    expect(readFileSync('index.html', 'utf8')).toContain('content="#F5F0E3"');
+    expect((manifest.screenshots as { form_factor: string; src: string }[]).map(s => s.form_factor).sort()).toEqual(['narrow', 'narrow', 'wide']);
+    for (const shot of manifest.screenshots as { src: string }[]) expect(existsSync('public' + shot.src)).toBe(true);
     expect(readFileSync('index.html', 'utf8')).toContain('apple-touch-icon');
     expect(readFileSync('public/sw.js', 'utf8')).toContain('notificationclick');
 });

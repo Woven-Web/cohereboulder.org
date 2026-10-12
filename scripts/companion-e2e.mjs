@@ -182,7 +182,7 @@ try{
  // SW installed shell opens /today offline, and contains no API/admin entries.
  await page.goto(base+'/today');await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();
  const cacheKeys=await page.evaluate(async()=>{const name=(await caches.keys()).find(k=>k.startsWith('cohere-companion-'));if(!name)throw new Error('offline shell not installed');const cache=await caches.open(name);return (await cache.keys()).map(r=>new URL(r.url).pathname);});assert(cacheKeys.includes('/today'));assert(!cacheKeys.some(p=>/^\/(api|admin|xrpc)/.test(p)));
- await context.setOffline(true);await page.goto(base+'/today');await page.getByRole('status').filter({hasText:'You’re offline'}).waitFor();await context.setOffline(false);
+ await context.setOffline(true);await page.goto(base+'/today');await page.getByRole('status').filter({hasText:'You’re offline'}).first().waitFor();await context.setOffline(false);
  assert.deepEqual(errors,[]);await context.close();
 }finally{await browser.close();}
 assert.equal((await api('/api/companion/subscriptions',{device_id:device},'DELETE')).status,200);
