@@ -18,7 +18,7 @@ try {
       assert.deepEqual(errors, [], `${width} ${path}: page errors`);
       assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /scenius\.social/i, `${width} ${path} en: hosted suffix`);
       await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
-      const spanish = { "/": "Tejiendo Nuestra Resiliencia", "/events": "Hora de Boulder", "/register": "Regístrate para recibir novedades", "/board": "El tablón de COhere abre pronto" };
+      const spanish = { "/": "Tejiendo Nuestra Resiliencia", "/events": "Hora de Boulder", "/register": "Regístrate para recibir novedades", "/board": "El foro de COhere abre pronto" };
       await page.getByText(spanish[path], { exact: false }).filter({ visible: true }).first().waitFor();
       assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /scenius\.social/i, `${width} ${path} es: hosted suffix`);
       assert.deepEqual(errors, [], `${width} ${path} es: page errors`);
