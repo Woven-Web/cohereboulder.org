@@ -78,6 +78,13 @@ try {
   expect((await posts(mp).count()) === 3, "member sees the 3 seeded root posts (the reply is not a feed row)");
   expect(await mp.getByText("Spare squash").isVisible(), "seeded post text is shown");
   expect(await mp.getByText("1 reply").count() === 1, "the ride post shows its reply count");
+  const membersNav = mp.getByRole("navigation", { name: "Members area" });
+  expect((await membersNav.getByRole("link").allInnerTexts()).join("|") === "Board|People|My profile", "the Board links to People and My profile");
+  await membersNav.getByRole("link", { name: "People" }).click();
+  await mp.waitForURL(/\/people$/);
+  await mp.getByRole("navigation", { name: "Members area" }).getByRole("link", { name: "Board" }).click();
+  await mp.waitForURL(/\/board$/);
+  await posts(mp).first().waitFor();
   await mp.getByRole("button", { name: "#harvest" }).click();
   expect((await posts(mp).count()) === 1, "the #harvest filter narrows the feed");
   await mp.getByRole("button", { name: /^Everything/ }).click();

@@ -333,6 +333,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <p class="muted">
         The members Board lives on regenOS; these are COhere's own moderation tools. Hiding is reversible
         and the author still sees their post, marked. Removing is permanent (only the author can truly delete).
+        Both act only on cohereboulder.org: the post still exists on regenOS and can be seen in other apps.
       </p>
       <div class="toolbar">
         <label style="display:flex;align-items:center;gap:0.5rem">

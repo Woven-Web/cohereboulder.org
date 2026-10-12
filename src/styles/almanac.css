@@ -597,3 +597,5 @@
 @media (min-width:820px){.alm .only-wide{display:inline-flex}.alm .actionbar.phone-only{display:none}}
 .alm .board__side .only-wide.btn--block{display:none}
 @media (min-width:820px){.alm .board__side .only-wide.btn--block{display:flex}.alm .board__side p.only-wide{display:flex}}
+.alm a.chip{text-decoration:none}
+.alm .chip[aria-current=page]{border-color:var(--ink);background:var(--ink);color:var(--paper)}

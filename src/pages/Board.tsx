@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { useShell } from "@/components/almanac/shell-context";
 import { MembersGate } from "@/components/members/MembersGate";
+import { MembersNav } from "@/components/members/MembersNav";
 import { PostCard } from "@/components/members/PostCard";
 import { ComposeSheet, DeleteSheet, ReportSheet } from "@/components/members/BoardSheets";
 import { tagLabel } from "@/components/members/PostCard";
@@ -111,7 +112,9 @@ function BoardView() {
       {!member ? (
         <MembersGate status={access.status as Exclude<typeof access.status, "member">} onRetry={access.retry} />
       ) : (
-        <div className="board">
+        <>
+        <MembersNav current="board" />
+        <div className="board" style={{ marginTop: ".6rem" }}>
           <aside className="board__side" aria-label={tr("members.board.filter")}>
             <div className="eyebrow">{tr("members.board.filter")}</div>
             <div className="hscroll" role="group" aria-label={tr("members.board.filterByTag")}>
@@ -123,6 +126,7 @@ function BoardView() {
           </aside>
           <div className="board__feed" data-testid="board-feed">{body}</div>
         </div>
+        </>
       )}
       {member && (
         <>

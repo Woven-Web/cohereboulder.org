@@ -13,7 +13,7 @@ export function MembersNav({ current }: { current: (typeof ITEMS)[number]["id"] 
   return (
     <nav aria-label={tr("members.nav.label")} className="hscroll" style={{ marginTop: ".4rem" }}>
       {ITEMS.map((item) => (
-        <Link key={item.id} to={item.to} className="chip" aria-current={current === item.id ? "page" : undefined} aria-pressed={current === item.id}>
+        <Link key={item.id} to={item.to} className="chip" aria-current={current === item.id ? "page" : undefined}>
           {tr(item.key)}
         </Link>
       ))}
