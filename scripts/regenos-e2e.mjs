@@ -220,7 +220,8 @@ try {
   await page.getByRole("heading", { name: "Board", exact: true }).waitFor();
   await page.getByRole("button", { name: "Write a post" }).filter({ visible: true }).first().waitFor();
   if (await page.getByTestId("members-gate").count()) fail("signed-in member's Board still shows the gate");
-  await page.getByTestId("bottom-tabs").getByRole("link", { name: "Calendar" }).click();
+  // The Board is an Almanac screen now: its tab bar is app-tabs, not the old bottom-tabs.
+  await page.getByTestId("app-tabs").getByRole("link", { name: "Calendar" }).click();
   await page.waitForURL("**/calendar");
   await page.setViewportSize({ width: 1280, height: 800 });
   await checkHeaderLayout(true);

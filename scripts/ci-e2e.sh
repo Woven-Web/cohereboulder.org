@@ -138,6 +138,8 @@ fail=0
 
 # --- 1. regenos-e2e.mjs: the sign-in + on-site hosting lane ----------------
 echo "::group::regenos-e2e (sign-in lane)"
+# The members Board reads D1 (moderation state) once a member is signed in.
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
 start_mock ${P28944} "$PWA_SCRATCH/pwa-merge-mock-1.log"
 start_worker ${P28789} ${P28229} "$PWA_SCRATCH/pwa-merge-worker-1.log" \
   --var REGENOS_LOGIN_ENABLED:true \
@@ -346,6 +348,8 @@ echo "::endgroup::"
 
 # --- 11. people-e2e.mjs: the members directory + profiles ------------------
 echo "::group::people-e2e (members directory + profile lane)"
+# The Board's moderation filter and RSVP settings read D1.
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
 start_mock ${P28958} "$PWA_SCRATCH/pwa-merge-mock-11.log"
 start_worker ${P28959} ${P28241} "$PWA_SCRATCH/pwa-merge-worker-11.log" \
   --var REGENOS_LOGIN_ENABLED:true \
