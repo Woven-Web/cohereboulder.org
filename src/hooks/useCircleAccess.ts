@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { fetchSceneRoster } from "@/lib/regenos";
 import { shortDid } from "@/lib/board";
+import { PEOPLE_QUERY_KEY, fetchDirectory, type DirectoryEntry } from "@/lib/people";
 
 export type CircleStatus = "loading" | "off" | "signed-out" | "not-member" | "member" | "error";
 
@@ -37,11 +38,21 @@ export function useCircleAccess() {
   else if (roster.isError || !roster.data) status = "error";
   else status = roster.data.members.some((m) => m.did === did) ? "member" : "not-member";
 
-  /** The best name we have for a DID: roster name, then handle, then a short DID. */
+  // The directory is only asked for once the gate says "member"; regenOS
+  // would answer anyone else with an empty page anyway.
+  const directory = useQuery({
+    queryKey: [...PEOPLE_QUERY_KEY, collective],
+    queryFn: () => fetchDirectory(collective as string),
+    enabled: status === "member",
+    staleTime: 60_000,
+  });
+  const entryOf = (target: string): DirectoryEntry | undefined => directory.data?.find((e) => e.author === target);
+
+  /** The best name we have for a DID: their profile's name, then the roster's, then handle, then a short DID. */
   const nameOf = (target: string): string => {
     const member = roster.data?.members.find((m) => m.did === target);
-    return member?.name || member?.handle || shortDid(target);
+    return entryOf(target)?.record.displayName?.trim() || member?.name || member?.handle || shortDid(target);
   };
 
-  return { status, did, collective, roster: roster.data, nameOf, retry: () => roster.refetch() };
+  return { status, did, collective, roster: roster.data, directory, entryOf, nameOf, retry: () => roster.refetch() };
 }

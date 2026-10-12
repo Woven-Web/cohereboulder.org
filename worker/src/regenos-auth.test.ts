@@ -71,6 +71,36 @@ describe("XRPC proxy boundary", () => {
     // An RSVP is not an event write: the public listing cache stays put.
     expect(deleteCache).not.toHaveBeenCalled();
   });
+  describe("member profiles", () => {
+    const circleEnv = { ...env, REGENOS_COLLECTIVE_DID: "did:plc:mockscene" };
+    const profileCall = (nsid: string, body: unknown, search = "") => {
+      const target = new URL(`/xrpc/social.scenius.${nsid}${search}`, url);
+      return handleXrpcProxy(new Request(target, { method: body === undefined ? "GET" : "POST", ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), circleEnv, target);
+    };
+    beforeEach(() => upstreamFetch.mockResolvedValue(new Response(JSON.stringify({ records: [] }), { headers: { "Content-Type": "application/json" } })));
+
+    it("forwards listCircleProfiles, putCircleProfile and deleteCircleProfile for our collective", async () => {
+      expect((await profileCall("listCircleProfiles", undefined, "?collective=did:plc:mockscene")).status).toBe(200);
+      expect((await profileCall("putCircleProfile", { collective: "did:plc:mockscene", profile: { displayName: "Pia", links: ["https://example.org"], createdAt: "2026-10-12T00:00:00Z" } })).status).toBe(200);
+      expect((await profileCall("deleteCircleProfile", { collective: "did:plc:mockscene" })).status).toBe(200);
+      expect(upstreamFetch).toHaveBeenCalledTimes(3);
+    });
+    it("pins profiles to our collective too", async () => {
+      expect((await profileCall("listCircleProfiles", undefined, "?collective=did:plc:other")).status).toBe(400);
+      expect((await profileCall("putCircleProfile", { collective: "did:plc:other", profile: {} })).status).toBe(400);
+      expect((await profileCall("deleteCircleProfile", {})).status).toBe(400);
+      expect(upstreamFetch).not.toHaveBeenCalled();
+    });
+    it.each(["javascript:alert(1)", "data:text/html,x", "ftp://example.org", "not a url"])("refuses a profile link that is not a web link: %s", async (link) => {
+      const res = await profileCall("putCircleProfile", { collective: "did:plc:mockscene", profile: { links: ["https://ok.example", link] } });
+      expect(res.status).toBe(400);
+      expect(upstreamFetch).not.toHaveBeenCalled();
+    });
+    it("refuses a profile that is not an object, or links that are not a list", async () => {
+      expect((await profileCall("putCircleProfile", { collective: "did:plc:mockscene", profile: "x" })).status).toBe(400);
+      expect((await profileCall("putCircleProfile", { collective: "did:plc:mockscene", profile: { links: "https://a.example" } })).status).toBe(400);
+    });
+  });
   it("keeps the whole proxy off unless enabled", async () => {
     expect((await call(url, { ...env, REGENOS_LOGIN_ENABLED: "false" })).status).toBe(404);
     expect(upstreamFetch).not.toHaveBeenCalled();

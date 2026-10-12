@@ -64,6 +64,9 @@ P28955=$(( 28955 + E2E_PORT_OFFSET ))
 P28956=$(( 28956 + E2E_PORT_OFFSET ))
 P28957=$(( 28957 + E2E_PORT_OFFSET ))
 P28240=$(( 28240 + E2E_PORT_OFFSET ))
+P28958=$(( 28958 + E2E_PORT_OFFSET ))
+P28959=$(( 28959 + E2E_PORT_OFFSET ))
+P28241=$(( 28241 + E2E_PORT_OFFSET ))
 P28239=$(( 28239 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
@@ -331,6 +334,22 @@ start_worker ${P28957} ${P28240} "$PWA_SCRATCH/pwa-merge-worker-10.log" \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
 if ! node scripts/board-e2e.mjs http://127.0.0.1:${P28957} "$SESSION_TOKEN"; then
   tail -80 "$PWA_SCRATCH/pwa-merge-worker-10.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-board"
+echo "::endgroup::"
+
+# --- 11. people-e2e.mjs: the members directory + profiles ------------------
+echo "::group::people-e2e (members directory + profile lane)"
+start_mock ${P28958} "$PWA_SCRATCH/pwa-merge-mock-11.log"
+start_worker ${P28959} ${P28241} "$PWA_SCRATCH/pwa-merge-worker-11.log" \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28958} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/people-e2e.mjs http://127.0.0.1:${P28959}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-11.log"
   fail=1
 fi
 cleanup

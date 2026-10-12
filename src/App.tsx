@@ -10,6 +10,9 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppSession } from "@/components/AppSession";
 import Board from "./pages/Board";
 import BoardThread from "./pages/BoardThread";
+import People from "./pages/People";
+import Person from "./pages/Person";
+import ProfileEdit from "./pages/ProfileEdit";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import CoCreate from "./pages/CoCreate";
@@ -52,6 +55,9 @@ const App = () => (
             <Route path="/events" element={<Calendar />} />
             <Route path="/board" element={<Board />} />
             <Route path="/board/:did/:rkey" element={<BoardThread />} />
+            <Route path="/people" element={<People />} />
+            <Route path="/people/:did" element={<Person />} />
+            <Route path="/profile" element={<ProfileEdit />} />
             <Route path="/home" element={<Index />} />
             <Route path="/calendar" element={<Calendar />} />
             {/* Accountless — anyone can suggest an event; an organizer

@@ -91,6 +91,9 @@ const ALLOWED_NSIDS = new Set([
   "social.scenius.deleteCirclePost",
   "social.scenius.listCirclePosts",
   "social.scenius.getCircleThread",
+  "social.scenius.putCircleProfile",
+  "social.scenius.deleteCircleProfile",
+  "social.scenius.listCircleProfiles",
 ]);
 
 /** Circle methods carry a `collective`; the proxy only lends us ours. */
@@ -99,6 +102,9 @@ const CIRCLE_NSIDS = new Set([
   "social.scenius.deleteCirclePost",
   "social.scenius.listCirclePosts",
   "social.scenius.getCircleThread",
+  "social.scenius.putCircleProfile",
+  "social.scenius.deleteCircleProfile",
+  "social.scenius.listCircleProfiles",
 ]);
 
 /** Responses whose `records` pass through the Board's moderation filter. */
@@ -187,6 +193,28 @@ export function isRegenosLoginEnabled(env: RegenosAuthEnv): boolean {
   return env.REGENOS_LOGIN_ENABLED?.trim() === "true";
 }
 
+/** Why a putCircleProfile body can't be forwarded, or null if it can. */
+function profileProblem(body: ArrayBuffer | undefined): string | null {
+  let profile: unknown;
+  try {
+    profile = (JSON.parse(new TextDecoder().decode(body)) as { profile?: unknown }).profile;
+  } catch {
+    return "That isn't a profile.";
+  }
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) return "That isn't a profile.";
+  const links = (profile as { links?: unknown }).links;
+  if (links === undefined) return null;
+  if (!Array.isArray(links)) return "Links must be a list.";
+  for (const link of links) {
+    try {
+      if (typeof link !== "string" || !["http:", "https:"].includes(new URL(link).protocol)) throw new Error("scheme");
+    } catch {
+      return "Profile links must be web links (https).";
+    }
+  }
+  return null;
+}
+
 /** The Cache API's default namespace (workers-types aren't wired in this repo). */
 const edgeCache = (caches as unknown as { default: Cache }).default;
 
@@ -220,6 +248,7 @@ export async function handleXrpcProxy(
   const cookie = relayableCookies(request.headers.get("Cookie"));
   if (cookie) headers.set("Cookie", cookie);
 
+  const PROFILE_PUT = "social.scenius.putCircleProfile";
   let postBody: ArrayBuffer | undefined;
   if (request.method === "POST") postBody = await request.arrayBuffer();
 
@@ -237,6 +266,13 @@ export async function handleXrpcProxy(
     }
     if (!pinned) return json({ error: "NotConfigured", message: "The members area isn't set up yet." }, 503);
     if (asked !== pinned) return json({ error: "InvalidRequest", message: "That isn't our collective." }, 400);
+  }
+
+  if (nsid === PROFILE_PUT) {
+    // regenOS accepts any URI in `links`; members see these as clickable links,
+    // so nothing but http(s) goes in (a `javascript:` link would run on click).
+    const problem = profileProblem(postBody);
+    if (problem) return json({ error: "InvalidRequest", message: problem }, 400);
   }
 
   const init: RequestInit = {

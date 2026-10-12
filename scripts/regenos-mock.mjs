@@ -158,6 +158,8 @@ const SESSION_PEOPLE = {
   "mock-peer": { did: PEER_DID, handle: PEER_HANDLE },
   "mock-steward": { did: STEWARD_DID, handle: "claudeji.scenius.social" },
   "mock-outsider": { did: OUTSIDER_DID, handle: OUTSIDER_HANDLE },
+  // Rosa: on the roster, and with only a PUBLIC profile (the publicFallback case).
+  "mock-builder": { did: "did:plc:mockbuilder", handle: "rosa.mock.test" },
 };
 function sessionPerson(req) {
   const value = /(?:^|;\s*)__Host-rs_session=([^;]*)/.exec(req.headers.cookie ?? "")?.[1];
@@ -261,6 +263,23 @@ function seedCircle() {
   seedPost("did:plc:mockbuilder", "Gracias a todas las personas que cocinaron el domingo.", { tags: ["gratitude"], langs: ["es"] }, 60 * 2);
 }
 seedCircle();
+
+// Profiles. A contextual (COhere) profile replaces the whole record; a member
+// with none shows their PUBLIC `self` profile as `publicFallback`. The mock's
+// default user starts with neither, so the editor's empty state is reachable.
+const PROFILE_FIELDS = new Set(["displayName", "bio", "avatar", "links", "createdAt"]);
+const circleProfiles = new Map();
+const publicProfiles = new Map([
+  ["did:plc:mockbuilder", { displayName: "Rosa Mock", bio: "Seed saver and fiddler. Find me at the Thursday market.", createdAt: "2026-09-01T00:00:00.000Z" }],
+]);
+function seedProfiles() {
+  circleProfiles.set(PEER_DID, {
+    uri: `at://${PEER_DID}/coop.lexicon.profile/${SCENE_DID}`, cid: "bafyprofilepeer", author: PEER_DID,
+    spaceUri: `at://${PEER_DID}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+    record: { displayName: "Pia Mock", bio: "I keep bees near Lyons and grow too much squash.", links: ["https://example.org/pia"], createdAt: "2026-09-02T00:00:00.000Z" },
+  });
+}
+seedProfiles();
 
 function circleSubject(req, res, url) {
   const person = sessionPerson(req);
@@ -442,6 +461,53 @@ const server = http.createServer(async (req, res) => {
       if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
       const uri = `at://${person.did}/${POST_COLLECTION}/${input.rkey}`;
       return json(res, 200, { deleted: circlePosts.delete(uri) });
+    }
+
+    case "social.scenius.listCircleProfiles": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      if (!members.has(person.did)) return json(res, 200, { records: [] });
+      const rows = [];
+      for (const did of members.keys()) {
+        const own = circleProfiles.get(did);
+        if (own) rows.push(own);
+        else if (publicProfiles.has(did)) {
+          rows.push({
+            uri: `at://${did}/coop.lexicon.profile/self`, cid: `bafypublic${did.slice(-6)}`, author: did,
+            record: publicProfiles.get(did), profileSource: "publicFallback",
+          });
+        }
+      }
+      return json(res, 200, pageOf(rows, url));
+    }
+
+    case "social.scenius.putCircleProfile": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const profile = input.profile;
+      if (!profile || typeof profile !== "object") return json(res, 400, { error: "InvalidRequest", message: "profile is required" });
+      const unknown = Object.keys(profile).find((k) => !PROFILE_FIELDS.has(k));
+      if (unknown) return json(res, 400, { error: "InvalidRequest", message: `unknown field ${unknown}` });
+      if (profile.displayName && Array.from(profile.displayName).length > 64) return json(res, 400, { error: "InvalidRequest", message: "displayName too long" });
+      if (profile.bio && Array.from(profile.bio).length > 256) return json(res, 400, { error: "InvalidRequest", message: "bio too long" });
+      if (profile.links && profile.links.length > 10) return json(res, 400, { error: "InvalidRequest", message: "too many links" });
+      const uri = `at://${person.did}/coop.lexicon.profile/${SCENE_DID}`;
+      circleProfiles.set(person.did, {
+        uri, cid: `bafyprofile${person.did.slice(-6)}${Date.now().toString(36)}`, author: person.did,
+        spaceUri: `at://${person.did}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+        record: { ...profile, createdAt: profile.createdAt ?? new Date().toISOString() },
+      });
+      return json(res, 200, { uri, cid: circleProfiles.get(person.did).cid });
+    }
+
+    case "social.scenius.deleteCircleProfile": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      return json(res, 200, { deleted: circleProfiles.delete(person.did) });
     }
 
     case "social.scenius.getMyContactPref": {
