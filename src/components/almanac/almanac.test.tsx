@@ -31,8 +31,7 @@ describe("HexTrail", () => {
     expect(html.match(/tabindex="0"/g)).toHaveLength(1);
     expect(html).toContain('aria-label="Sunday Oct 18, 1 of your events"');
   });
-  it("speaks Spanish", () => {
-    // LanguageProvider starts in English; the Spanish names are covered by the browser check.
+  it("fills placeholders", () => {
     expect(fill("{n} de tus eventos", { n: 2 })).toBe("2 de tus eventos");
   });
 });

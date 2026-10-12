@@ -18,7 +18,7 @@ try {
       for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${target}/`, { waitUntil: "networkidle" });
-        if (language === "es" && await page.getByRole("button", { name: "En/Es", exact: true }).count()) await page.getByRole("button", { name: "En/Es", exact: true }).click();
+        if (language === "es" && await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).count()) await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
         assert.equal(new URL(page.url()).pathname, "/");
         if (registered) {
           await page.locator('main [role="status"]').first().waitFor();
@@ -47,7 +47,7 @@ try {
         }
         if (shots && registered !== null) await page.screenshot({ path: `${shots}/home-${width}-${language}-${registered ? "registered" : "unregistered"}.png` });
         await page.goto(`${target}/events`, { waitUntil: "networkidle" });
-        if (language === "es") await page.getByRole("button", { name: "En/Es", exact: true }).click();
+        if (language === "es") await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
         if (registered) {
           assert.equal(await page.locator('a[href="/register"]').count(), 0);
           assert.equal(await page.locator('main [role="status"]').count(), 0);

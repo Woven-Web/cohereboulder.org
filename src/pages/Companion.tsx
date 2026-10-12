@@ -86,8 +86,10 @@ function TodayView() {
     useEffect(() => { setAnswered(false); setReply(''); setName(''); setNotice(''); setWriting(false); }, [data?.date]);
 
     const dayN = dayNumber(date);
-    const phase = dayN === 0 ? 'before' : dayN === 12 ? 'after' : 'during';
     const daily = data?.daily;
+    const inFestival = dayN >= 1 && dayN <= 11;
+    // Published content always wins; with none, the date says whether to count down, wait, or say thanks.
+    const phase = daily ? 'during' : dayN === 0 ? 'before' : dayN === 12 ? 'after' : 'during';
     const localized = (en: string | undefined, es: string | undefined) => language === 'es' ? (es || en || '') : (en || '');
     const isDone = done.includes(date);
     const sun = sunTimes(date);
@@ -130,7 +132,7 @@ function TodayView() {
     }
 
     const dateLabel = formatDay(date, language);
-    const actionBar = phase === 'during' && daily ? (
+    const actionBar = phase === 'during' && daily && inFestival ? (
         isDone ? (
             <div className="actionbar" role="region" aria-label={tr('almanac.practiceEyebrow')} data-testid="action-done">
                 <div className="actionbar__done">
@@ -236,7 +238,7 @@ function TodayView() {
     }
 
     return <main className="page" style={{ paddingTop: 0 }} data-has-bar={daily ? '' : undefined}>
-        <Folio className="pt-3"><span data-testid="folio">{fill(tr('almanac.dayOf'), { n: dayN })} · {dateLabel}</span></Folio>
+        <Folio className="pt-3"><span data-testid="folio">{inFestival && <>{fill(tr('almanac.dayOf'), { n: dayN })} · </>}{dateLabel}</span></Folio>
         {trail}
         <Ridgeline minutes={minutes} rise={sun.rise} set={sun.set} wide={wide} label={horizonLabel} />
         <p className="small" style={{ display: 'flex', justifyContent: 'space-between', padding: '.35rem 0 0' }}>
@@ -257,7 +259,7 @@ function TodayView() {
                             <p className="lede">{isLoading ? tr('companion.loading') : tr('almanac.awaiting')}</p>
                         </section>
                     )}
-                    {isDone && daily && <ObservedRow dateLabel={dateLabel} onReflect={daily.question ? reflect : undefined} />}
+                    {isDone && daily && inFestival && <ObservedRow dateLabel={dateLabel} onReflect={daily.question ? reflect : undefined} />}
                     {wide && actionBar}
                 </div>
                 <div className="o3">

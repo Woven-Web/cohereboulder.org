@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Ctx } from "./shell-context";
+import { AccountControl } from "@/components/AccountControl";
 import { TabBar } from "./TabBar";
 import { InstallSheet } from "./InstallSheet";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
@@ -38,9 +39,13 @@ export function AlmanacShell({ children, after }: { children: ReactNode; after?:
           <header className="mast">
             <Link className="wordmark" to="/" aria-label="[CO]here">[<i>CO</i>]here</Link>
             <TabBar />
-            <div className="lang" role="group" aria-label={tr("almanac.language")}>
-              <button type="button" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>En</button>
-              <button type="button" aria-pressed={language === "es"} onClick={() => setLanguage("es")}>Es</button>
+            <div className="mast__end">
+              {/* regenOS sign-in / account: renders nothing unless the lane is on. */}
+              <AccountControl variant="desktop" />
+              <div className="lang" role="group" aria-label={tr("almanac.language")}>
+                <button type="button" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>En</button>
+                <button type="button" aria-pressed={language === "es"} onClick={() => setLanguage("es")}>Es</button>
+              </div>
             </div>
           </header>
           {children}

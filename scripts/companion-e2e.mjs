@@ -39,6 +39,12 @@ for(const [hour,slot] of [[12,'practice'],[15,'events'],[21,'question']]){
  assert.equal(matching[0].body,slot==='practice'?'A local practice only':slot==='question'?'':'Local tomorrow gathering');
 }
 process.stdout.write('PASS companion: three encrypted slots, overlap claims and local event payloads\n');
+// Today lists what is still ahead today: an event at 11:30 PM Denver, made after the push payloads were asserted.
+const nextDay=tomorrow.toISOString().slice(0,10);
+const denverClock=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const eveningStart=['05','06'].map(h=>`${nextDay}T${h}:30:00Z`).find(iso=>denverClock.format(new Date(iso)).replace(',','')===`${date} 23:30`);
+assert.ok(eveningStart,'could not place an evening event in Denver');
+assert.equal((await api('/api/admin/events',{name:'Local evening gathering',startsAt:eveningStart,endsAt:new Date(Date.parse(eveningStart)+1800000).toISOString()},'POST',true)).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'=local formula',name:'<script>local</script>'})).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'again'})).status,429);
 const csv=await api('/api/admin/companion/replies.csv',undefined,'GET',true);assert.match(await csv.text(),/'=local formula/);
@@ -50,13 +56,13 @@ try{
  await context.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/today');await page.getByRole('heading',{name:'Local daily practice',exact:true}).waitFor();
- await page.getByRole('button',{name:'En/Es',exact:true}).last().click();await page.getByRole('heading',{name:'Práctica local',exact:true}).waitFor();await page.getByRole('button',{name:'Es/En',exact:true}).last().click();
- try { await page.getByRole('heading',{name:'Local tomorrow gathering',exact:true}).waitFor({timeout:5000}); } catch(error) { process.stderr.write(JSON.stringify(await page.evaluate(async()=>({today:await (await fetch('/api/companion/today')).json(),events:await (await fetch('/api/events')).json(),text:document.querySelector('.companion-page')?.textContent})))+'\n');throw error; }
+ await page.getByRole('button',{name:'Es',exact:true}).click();await page.getByRole('heading',{name:'Práctica local',exact:true}).waitFor();await page.getByRole('button',{name:'En',exact:true}).click();
+ await page.getByRole('heading',{name:'Local evening gathering',exact:true}).waitFor();
+ assert.equal(await page.getByRole('heading',{name:'Local tomorrow gathering'}).count(),0);
  await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.localCopied=value;}}});});
- await page.getByRole('button',{name:'Share',exact:true}).click();assert.match(await page.getByRole('link',{name:'Share by text',exact:true}).getAttribute('href'),/^sms:/);
- await page.getByRole('button',{name:'Copy link',exact:true}).click();await page.getByRole('status').filter({hasText:'Link copied'}).waitFor();assert.equal(await page.evaluate(()=>window.localCopied),base+eventPath);
- await page.getByLabel('Your reply', {exact:true}).fill('Browser local reply');await page.getByRole('button',{name:'Send reply',exact:true}).click();await page.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
- await page.getByRole('link',{name:'Quests',exact:true}).last().click();await page.getByRole('checkbox',{name:'Local walk'}).check();const celebration=page.getByRole('dialog',{name:'YAY!',exact:true});await celebration.waitFor();
+ await page.getByRole('button',{name:'Send it to someone',exact:true}).click();await page.getByRole('status').filter({hasText:'Question copied'}).waitFor();assert.equal(await page.evaluate(()=>window.localCopied),'Local question?');
+ await page.getByRole('button',{name:'Write an answer',exact:true}).click();await page.getByLabel('Your reply', {exact:true}).fill('Browser local reply');await page.getByRole('button',{name:'Send reply',exact:true}).click();await page.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
+ await page.getByRole('link',{name:'All quests',exact:true}).click();await page.getByRole('checkbox',{name:'Local walk'}).check();const celebration=page.getByRole('dialog',{name:'YAY!',exact:true});await celebration.waitFor();
  const continueButton=celebration.getByRole('button',{name:'Continue',exact:true});
  // Visibility precedes Radix's passive mount effects. Observe its autofocus
  // (never force focus) before testing the focus trap or sending Escape.
@@ -89,15 +95,17 @@ try{
  await page.getByRole('button',{name:'Retry completion report',exact:true}).click();
  await page.getByRole('button',{name:'Retry completion report',exact:true}).waitFor({state:'hidden'});
  assert.equal(await celebration.count(),0);
- await page.getByRole('button',{name:'En/Es',exact:true}).last().click();
+ await page.getByRole('button',{name:'Es',exact:true}).click();
  await page.getByRole('checkbox',{name:'Local walk'}).uncheck();await page.getByRole('checkbox',{name:'Local walk'}).check();
  await page.getByRole('dialog',{name:'¡YAY!',exact:true}).getByRole('button',{name:'Continuar',exact:true}).click();
- await page.getByRole('button',{name:'Es/En',exact:true}).last().click();
+ await page.getByRole('button',{name:'En',exact:true}).click();
  await page.reload();await page.getByRole('checkbox',{name:'Local walk'}).waitFor();assert.equal(await page.getByRole('checkbox',{name:'Local walk'}).isChecked(),true);
  await page.goto(base+'/more');await page.getByRole('heading',{name:'Install COhere',exact:true}).waitFor();
  // Simulate Chromium's install event without attempting a real browser install.
  await page.evaluate(()=>{const e=new Event('beforeinstallprompt');e.prompt=async()=>{};e.userChoice=Promise.resolve({outcome:'accepted'});window.dispatchEvent(e);});
- await page.getByRole('button',{name:'Install COhere',exact:true}).click();
+ await page.getByRole('button',{name:'Add to home screen & get reminders',exact:true}).click();
+ const installSheet=page.getByRole('dialog');await installSheet.getByRole('button',{name:'Add to home screen & get reminders',exact:true}).click();
+ await installSheet.getByRole('heading',{name:'You’re set.'}).waitFor();await installSheet.getByRole('button',{name:'Done',exact:true}).click();
  await page.evaluate(()=>window.dispatchEvent(new Event('appinstalled')));await page.getByText('COhere is installed',{exact:true}).waitFor();
  // Mock only browser permission/subscription APIs; registration and settings use the real local Worker.
  const pushPage=await context.newPage();
@@ -118,10 +126,10 @@ try{
  await pushPage.getByRole('button',{name:'Enable daily notifications',exact:true}).click();const enrollment=await enrolled;assert.equal(enrollment.status(),200);
  await pushPage.getByText('Daily notifications are on.',{exact:true}).waitFor();
  const synced=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='PATCH'&&r.request().postDataJSON().language==='es');
- await pushPage.getByRole('button',{name:/^(En\/Es|Es\/En)$/}).last().click();assert.equal((await synced).status(),200);
+ await pushPage.getByRole('button',{name:'Es',exact:true}).click();assert.equal((await synced).status(),200);
  // A failed language update must be visible.
  await pushPage.route('**/api/companion/subscriptions',route=>route.request().method()==='PATCH'?route.fulfill({status:503,json:{error:'local failure'}}):route.continue());
- await pushPage.getByRole('button',{name:/^(En\/Es|Es\/En)$/}).last().click();await pushPage.getByRole('status').filter({hasText:'Could not save.'}).waitFor();
+ await pushPage.getByRole('button',{name:'En',exact:true}).click();await pushPage.getByRole('status').filter({hasText:'Could not save.'}).waitFor();
  await pushPage.unroute('**/api/companion/subscriptions');
  await pushPage.evaluate(()=>localStorage.removeItem('cohere-companion-device'));
  const removed=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='DELETE');
@@ -138,12 +146,12 @@ try{
  let day=date,reads=0;
  await rollover.route('**/api/companion/today',route=>{reads++;return route.fulfill({json:{date:day,daily:{title:'Rollover practice',question:'Rollover question'},quests:[],pushKey:null}});});
  await rollover.route('**/api/companion/replies',route=>route.fulfill({json:{ok:true}}));
- await rollover.goto(base+'/today');await rollover.getByLabel('Your reply',{exact:true}).fill('Local answer');await rollover.getByRole('button',{name:'Send reply',exact:true}).click();await rollover.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
- assert.equal(await rollover.locator('.companion-page textarea').isDisabled(),true);
+ await rollover.goto(base+'/today');await rollover.getByRole('button',{name:'Write an answer',exact:true}).click();await rollover.getByLabel('Your reply',{exact:true}).fill('Local answer');await rollover.getByRole('button',{name:'Send reply',exact:true}).click();await rollover.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
+ assert.equal(await rollover.locator('#reply-text').isDisabled(),true);
  day=tomorrow.toISOString().slice(0,10);const before=reads;
- await rollover.clock.setFixedTime(new Date(tomorrow.toISOString().slice(0,10)+'T06:00:01Z'));await rollover.getByLabel('Your reply',{exact:true}).waitFor();
- await rollover.waitForFunction(()=>!document.querySelector('.companion-page textarea')?.disabled);
- assert(reads>before);assert.equal(await rollover.locator('.companion-page textarea').inputValue(),'');await rolloverContext.close();
+ await rollover.clock.setFixedTime(new Date(tomorrow.toISOString().slice(0,10)+'T06:00:01Z'));await rollover.getByRole('button',{name:'Write an answer',exact:true}).waitFor();
+ await rollover.waitForFunction(()=>!document.querySelector('#reply-text')?.disabled);
+ assert(reads>before);assert.equal(await rollover.locator('#reply-text').inputValue(),'');await rolloverContext.close();
  process.stdout.write('PASS companion: Denver rollover refreshes content and resets answered form\n');
  // Permission denial must be visible and must never trigger a prompt on render.
  await page.addInitScript(()=>{Object.defineProperty(Notification,'permission',{get:()=> 'denied'});Notification.requestPermission=()=>{throw new Error('unexpected permission prompt');};});
@@ -156,10 +164,10 @@ try{
  const disabled=await context.newPage();await disabled.route('**/api/companion/today',route=>route.fulfill({json:{date,daily:null,quests:[],pushKey:null,start:date,end:date}}));await disabled.goto(base+'/more');await disabled.getByText('Notifications are unavailable while organizers configure delivery.',{exact:true}).waitFor();await disabled.close();
  // Standalone nav safe area; desktop remains hidden.
  await page.addInitScript(()=>{const original=window.matchMedia.bind(window);window.matchMedia=query=>query==='(display-mode: standalone)'?{matches:true,media:query,addEventListener(){},removeEventListener(){}}:original(query);});
- await page.goto(base+'/today');await page.getByTestId('bottom-tabs').waitFor({state:'visible'});assert.equal(await page.getByTestId('bottom-tabs').getByRole('link',{name:'Today'}).getAttribute('aria-current'),'page');assert.equal(await page.locator('.companion-bottom').count(),0);
+ await page.goto(base+'/today');await page.getByTestId('app-tabs').waitFor({state:'visible'});assert.equal(await page.getByTestId('app-tabs').getByRole('link',{name:'Today'}).getAttribute('aria-current'),'page');assert.ok((await page.getByTestId('app-tabs').boundingBox()).y>700,'tabs are the bottom bar on a phone');assert.equal(await page.locator('.companion-bottom').count(),0);
  assert.equal(await page.evaluate(()=>getComputedStyle(document.body).overscrollBehavior),'none');
  // CSS display-mode is browser-managed; verify desktop nav is hidden separately.
- const desktop=await browser.newPage({viewport:{width:1280,height:900}});await desktop.goto(base+'/today');assert.equal(await desktop.getByTestId('bottom-tabs').isVisible(),false);assert.equal(await desktop.getByTestId('header-tabs').getByRole('link',{name:'Today'}).isVisible(),true);await desktop.close();
+ const desktop=await browser.newPage({viewport:{width:1280,height:900}});await desktop.goto(base+'/today');assert.ok((await desktop.getByTestId('app-tabs').boundingBox()).y<100,'tabs move into the masthead on the Daylight');assert.equal(await desktop.getByTestId('app-tabs').getByRole('link',{name:'Today'}).isVisible(),true);await desktop.close();
  // Authenticated operator portal uses its desktop layout.
  const adminContext=await browser.newContext({viewport:{width:1280,height:900}});
  await adminContext.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
@@ -174,7 +182,7 @@ try{
  // SW installed shell opens /today offline, and contains no API/admin entries.
  await page.goto(base+'/today');await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();
  const cacheKeys=await page.evaluate(async()=>{const name=(await caches.keys()).find(k=>k.startsWith('cohere-companion-'));if(!name)throw new Error('offline shell not installed');const cache=await caches.open(name);return (await cache.keys()).map(r=>new URL(r.url).pathname);});assert(cacheKeys.includes('/today'));assert(!cacheKeys.some(p=>/^\/(api|admin|xrpc)/.test(p)));
- await context.setOffline(true);await page.goto(base+'/today');await page.getByRole('heading',{name:'Your daily companion',exact:true}).waitFor();await context.setOffline(false);
+ await context.setOffline(true);await page.goto(base+'/today');await page.getByRole('status').filter({hasText:'You’re offline'}).waitFor();await context.setOffline(false);
  assert.deepEqual(errors,[]);await context.close();
 }finally{await browser.close();}
 assert.equal((await api('/api/companion/subscriptions',{device_id:device},'DELETE')).status,200);

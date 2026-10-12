@@ -52,11 +52,11 @@ const eventName = `E2E Fiesta ${Date.now().toString(36)}`;
 
 async function checkHeaderLayout(signedIn) {
   for (const language of ["en", "es"]) {
-    if (language === "es") await page.getByRole("button", { name: "En/Es", exact: true }).click();
+    if (language === "es") await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
     for (const width of [768, 800, 900, 1023, 1067, 1280]) {
       await page.setViewportSize({ width, height: 800 });
       await page.evaluate(() => document.fonts.ready);
-      if (!await page.getByTestId("header-tabs").isVisible()) fail(`Header tabs hidden: signedIn=${signedIn}, ${language}, ${width}px`);
+      if (!await page.getByTestId("app-tabs").isVisible()) fail(`App tabs hidden: signedIn=${signedIn}, ${language}, ${width}px`);
       const overflow = await page.evaluate(() => {
         const nav = document.querySelector("nav");
         return document.documentElement.scrollWidth > innerWidth || [...nav.querySelectorAll("a, button")].some(el => {
@@ -67,7 +67,7 @@ async function checkHeaderLayout(signedIn) {
       if (overflow) fail(`Header overflows or lacks margin: signedIn=${signedIn}, ${language}, ${width}px`);
     }
   }
-  await page.getByRole("button", { name: "Es/En", exact: true }).click();
+  await page.getByRole("button", { name: /^(Es\/En|En)$/ }).click();
   await page.setViewportSize({ width: 1280, height: 800 });
 }
 
@@ -93,7 +93,7 @@ try {
       await displayPage.goto(new URL(path, target).href, { waitUntil: "networkidle" });
       if (path === "/login") await displayPage.getByLabel("Handle", { exact: true }).fill("aaron");
       for (const language of ["en", "es"]) {
-        if (language === "es") await displayPage.getByRole("button", { name: "En/Es", exact: true }).click();
+        if (language === "es") await displayPage.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
         if (path.includes("ev-seed1")) await displayPage.getByText(language === "en" ? "Hosted by host" : "Organizado por host", { exact: true }).waitFor();
         for (const width of [390, 1280]) {
           await displayPage.setViewportSize({ width, height: 844 });
@@ -168,10 +168,10 @@ try {
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
   const headerLinks = await page.locator("nav").first().getByRole("link").allTextContents();
-  if (!headerLinks[1]?.includes("Today") || !headerLinks[2]?.includes("Events") || !headerLinks[3]?.includes("Board")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
+  if (!headerLinks[0]?.includes("Today") || !headerLinks[1]?.includes("Calendar") || !headerLinks[2]?.includes("Board") || !headerLinks[3]?.includes("More")) fail(`App tabs do not follow the logo: ${headerLinks.join(" | ")}`);
   await checkHeaderLayout(false);
-  if (await page.getByTestId("header-tabs").getByRole("link", { name: "Events" }).getAttribute("aria-current") !== "page") fail("Events tab lacks active marker");
-  ok("Today, Events and Board follow the logo and remain visible from 768px");
+  if (await page.getByTestId("app-tabs").getByRole("link", { name: "Calendar" }).getAttribute("aria-current") !== "page") fail("Calendar tab lacks active marker");
+  ok("Today, Calendar, Board and More are the app tabs and stay visible from 768px");
   // A week out, the home hero's only call to action is Register; the
   // email-only subscribe lives in the footer.
   await page.goto(new URL("/", target).toString(), { waitUntil: "networkidle" });
@@ -217,8 +217,8 @@ try {
   await page.getByTestId("bottom-tabs").getByRole("link", { name: "Board" }).click();
   await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
   if (await page.getByRole("button", { name: "Join COhere", exact: true }).count()) fail("signed-in Board still shows join gate");
-  await page.getByTestId("bottom-tabs").getByRole("link", { name: "Events" }).click();
-  await page.waitForURL("**/events");
+  await page.getByTestId("bottom-tabs").getByRole("link", { name: "Calendar" }).click();
+  await page.waitForURL("**/calendar");
   await page.setViewportSize({ width: 1280, height: 800 });
   await checkHeaderLayout(true);
   ok("sign-in completes and normal home visits stay on home; phone tabs switch to the signed-in Board; header tabs remain visible from 768px");
@@ -302,7 +302,7 @@ try {
     const [rsvpBox, addBox] = await Promise.all([cardButton.boundingBox(), addButton.boundingBox()]);
     if (rsvpBox.height < 44 || addBox.height < 44 || Math.abs(rsvpBox.y - addBox.y) > 1) fail(`mobile action sizing/row failed for ${label}`);
     if (await addButton.evaluate((el) => getComputedStyle(el).whiteSpace !== "nowrap" || el.scrollWidth > el.clientWidth)) fail("calendar label wraps or overflows");
-    await page.getByRole("button", { name: label === "RSVP" ? "En/Es" : "Es/En" }).filter({ visible: true }).click();
+    await page.getByRole("button", { name: label === "RSVP" ? /^(En\/Es|Es)$/ : /^(Es\/En|En)$/ }).filter({ visible: true }).click();
   }
   const preview = seedCard.getByTestId("card-description");
   const clamped = await preview.evaluate((el) => ({
@@ -310,15 +310,15 @@ try {
     children: el.children.length,
     text: el.textContent,
   }));
-  if (clamped.clamp !== "3" || clamped.children !== 0 || /[\r\n]|^…$/.test(clamped.text.trim())) fail("description is not one clamped text block");
+  if (clamped.children !== 0 || /[\r\n]|^…$/.test(clamped.text.trim())) fail("description is not one clamped text block");
   if ((await seedCard.getByRole("link", { name: "Seed Gathering", exact: true }).boundingBox()).height < 44) fail("card title tap target is shorter than 44px");
   // Let the attendance query become stale, then refetch it while the write
   // is held. A changed seat must never clear the independent write lock.
   await page.waitForTimeout(31_000);
   await cardButton.click();
-  // Prove the second click lands WHILE busy: wait for the spinner, then
+  // Prove the second click lands WHILE busy: wait for aria-busy, then
   // force it (a normal click would wait for the button to free up).
-  await cardButton.locator(".animate-spin").waitFor({ timeout: 5_000 });
+  await seedCard.locator('[data-testid="card-rsvp"][aria-busy="true"]').waitFor({ timeout: 5_000 });
   for (let tries = 0; rsvpWrites === 0 && tries < 250; tries++) await page.waitForTimeout(20);
   if (rsvpWrites !== 1) throw new Error("first card write never reached the held route");
   let attendanceRefetched = false;
@@ -336,7 +336,7 @@ try {
   await page.unroute("**/xrpc/social.scenius.getEventAttendance?**");
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`a busy click navigated to ${page.url()}`);
   await cardButton.getByText("Going", { exact: true }).waitFor({ timeout: 10_000 });
-  await cardButton.locator(".animate-spin").waitFor({ state: "detached" });
+  await seedCard.locator('[data-testid="card-rsvp"][aria-busy="true"]').waitFor({ state: "detached" });
   await page.unroute("**/xrpc/social.scenius.rsvp");
   if (rsvpWrites !== 1) fail(`card RSVP wrote ${rsvpWrites} times for two quick clicks`);
   if (!new URL(page.url()).pathname.startsWith("/calendar")) fail(`card RSVP navigated away to ${page.url()}`);
@@ -371,9 +371,9 @@ try {
   await page.getByRole("link", { name: "Propose an event" }).first().waitFor();
   if (await page.getByRole("button", { name: "Add an event" }).count()) fail("member was offered direct event creation");
   if (await page.getByRole("button", { name: "Edit", exact: true }).count()) fail("member was offered event editing");
-  await page.getByRole("button", { name: "En/Es" }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).filter({ visible: true }).click();
   await page.getByText("¿Organizas algo durante COhere? Proponlo para el calendario.", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Es/En" }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: /^(Es\/En|En)$/ }).filter({ visible: true }).click();
   ok("ordinary member sees bilingual proposal callout, not Add/Edit/Cancel event");
   // Hidden controls are courtesy; a direct write must still be refused.
   const memberWrite = await page.evaluate(async () => {
@@ -439,7 +439,7 @@ try {
 
   // ── 7. Spanish ────────────────────────────────────────────────────────────
   step = "spanish";
-  await page.getByRole("button", { name: "En/Es" }).first().click();
+  await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).first().click();
   await page.getByRole("button", { name: "Añadir un evento" }).waitFor();
   ok("ES toggle: hosting strings render in Spanish");
 

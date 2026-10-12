@@ -20,13 +20,17 @@ it('renders actual Today practice, local event links, escaped content and option
 });
 it('before the gathering, Today shows a countdown and a labelled sample, never "not available yet"',()=>{
  vi.setSystemTime(new Date('2026-10-11T14:00:00Z'));
- const html=render('/today');
+ const client=new QueryClient();
+ client.setQueryData(['companion'],{date:'2026-10-11',daily:null,quests:[],pushKey:null,start:'2026-10-15',end:'2026-10-25'});
+ client.setQueryData(['companion-events'],[]);
+ const html=renderToStaticMarkup(createElement(QueryClientProvider,{client},createElement(LanguageProvider,null,createElement(StaticRouter,{location:'/today'},createElement(Companion)))));
  expect(html).toContain('4 days until we gather');expect(html).toContain('Sample day');expect(html).toContain('Welcome. Start by arriving.');
  expect(html).not.toContain('not available yet');expect(html).not.toContain('I did it');
 });
 it('when the practice has not been published, Today says when it arrives instead of failing',()=>{
+ vi.setSystemTime(new Date('2026-10-17T14:00:00Z'));
  const client=new QueryClient();
- client.setQueryData(['companion'],{date:'2026-10-15',daily:null,quests:[],pushKey:null,start:'2026-10-15',end:'2026-10-25'});
+ client.setQueryData(['companion'],{date:'2026-10-17',daily:null,quests:[],pushKey:null,start:'2026-10-15',end:'2026-10-25'});
  client.setQueryData(['companion-events'],[]);
  const html=renderToStaticMarkup(createElement(QueryClientProvider,{client},createElement(LanguageProvider,null,createElement(StaticRouter,{location:'/today'},createElement(Companion)))));
  expect(html).toContain('arrives at 6 AM');expect(html).not.toContain('not available yet');expect(html).not.toContain('I did it');
