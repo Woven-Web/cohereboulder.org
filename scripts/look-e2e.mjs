@@ -152,6 +152,34 @@ for (const [w, h] of [[360, 780], [1280, 800]]) {
   await context.close();
 }
 
+// ProposeEvent in the Almanac look: an empty submit says what is wrong on the page.
+for (const [w, h] of [[360, 780], [1280, 800]]) {
+  const { context, page, errors } = await session({ width: w, height: h });
+  let posted = false;
+  await context.route("**/api/events/propose", (r) => { posted = true; return r.fulfill({ status: 500, body: "{}" }); });
+  await page.goto(`${base}/propose?look=almanac`, { waitUntil: "load" });
+  const submit = page.locator("#pe-submit");
+  await submit.waitFor();
+  const sb = await submit.boundingBox();
+  check(sb && sb.height >= 44, `/propose almanac: submit is ≥44px tall at ${w} (${Math.round(sb?.height ?? 0)}px)`);
+  await submit.click();
+  const nameErr = page.locator("#pe-name-err");
+  check(await nameErr.isVisible(), `/propose almanac: empty submit shows the name error on the page at ${w}`);
+  check(await page.locator("#pe-starts-err").isVisible(), `/propose almanac: empty submit shows the start-time error at ${w}`);
+  check(await page.locator("[role=alert]").first().isVisible(), `/propose almanac: an alert summary is announced at ${w}`);
+  check(await page.locator("#pe-name").evaluate((el) => el === document.activeElement && el.getAttribute("aria-invalid") === "true"), `/propose almanac: focus lands on the invalid name field at ${w}`);
+  check((await contrast(nameErr)) >= 4.5, `/propose almanac: error text is AA at ${w}`);
+  check(!posted, `/propose almanac: nothing is sent on an empty submit at ${w}`);
+  for (const sel of ["#pe-name", "#pe-starts", "#pe-mode", "#pe-submit"]) {
+    const b = await page.locator(sel).boundingBox();
+    check(b && b.height >= 44, `/propose almanac: ${sel} is a 44px target at ${w}`);
+  }
+  check((await overflow(page)) <= 0, `/propose almanac with errors has no horizontal overflow at ${w}`);
+  check(errors.length === 0, `/propose almanac empty submit at ${w}: no page errors`);
+  await shot(page, `hybrid-after-e2e-propose-error-${w}`);
+  await context.close();
+}
+
 // 1600×1200 Daylight screenshots only.
 {
   const { context, page } = await session({ width: 1600, height: 1200 });

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Compass } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -18,8 +17,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navigation />
+    <SitePage classic="min-h-screen bg-background flex flex-col">
 
       <main className="flex-1 flex items-center py-20">
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
@@ -41,9 +39,7 @@ const NotFound = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

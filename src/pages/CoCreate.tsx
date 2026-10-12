@@ -1,6 +1,5 @@
 import { RegistrationAction } from "@/components/RegistrationAction";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,8 +22,7 @@ const CoCreate = () => {
   const tr = (key: string) => getTranslation(key, language);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <SitePage>
       <main>
         {/* Hero Section */}
         <section className="py-20 bg-gradient-to-br from-community-yellow/20 to-background">
@@ -367,8 +365,7 @@ const CoCreate = () => {
           </div>
         </section>
       </main>
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

@@ -1425,6 +1425,18 @@ export const translations = {
       en: "Something went wrong. Please try again.",
       es: "Algo salió mal. Por favor, inténtalo de nuevo.",
     },
+    missingError: {
+      en: "Not sent yet. Please fill in the highlighted fields.",
+      es: "Aún no se envía. Completa los campos marcados.",
+    },
+    nameRequired: {
+      en: "Please give the event a name.",
+      es: "Ponle un nombre al evento.",
+    },
+    startsRequired: {
+      en: "Please choose when it starts.",
+      es: "Elige cuándo empieza.",
+    },
     successTitle: {
       en: "Thanks — we've got it!",
       es: "¡Gracias, lo recibimos!",
