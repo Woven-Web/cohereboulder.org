@@ -2,9 +2,11 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {StaticRouter} from 'react-router-dom/server';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
-import {expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import Companion from '../pages/Companion';
 import {LanguageProvider} from '../contexts/LanguageContext';
+beforeEach(()=>{vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-15T14:00:00Z'));});
+afterEach(()=>{vi.useRealTimers();});
 function render(path:string){
  const client=new QueryClient();
  client.setQueryData(['companion'],{date:'2026-10-15',daily:{title:'Local practice <script>',body:'Body',question:'Local question?'},quests:[{id:'walk',title:'Local walk',description:'Outside'}],pushKey:null,start:'2026-10-15',end:'2026-10-25'});
@@ -13,6 +15,21 @@ function render(path:string){
 }
 it('renders actual Today practice, local event links, escaped content and optional-name reply form',()=>{
  const html=render('/today');expect(html).toContain('Local practice &lt;script&gt;');expect(html).toContain('Local event');expect(html).not.toContain('Too late');expect(html).toContain('Local question?');expect(html).toContain('Name (optional)');expect(html).toContain('/events/did%3Aplc%3Alocal/local');
+ expect(html).toContain('Day 1 of 11');expect(html).toContain('I did it');expect(html).toContain('Write an answer');
+ expect(html).toMatch(/<div hidden=""><form/);
+});
+it('before the gathering, Today shows a countdown and a labelled sample, never "not available yet"',()=>{
+ vi.setSystemTime(new Date('2026-10-11T14:00:00Z'));
+ const html=render('/today');
+ expect(html).toContain('4 days until we gather');expect(html).toContain('Sample day');expect(html).toContain('Welcome. Start by arriving.');
+ expect(html).not.toContain('not available yet');expect(html).not.toContain('I did it');
+});
+it('when the practice has not been published, Today says when it arrives instead of failing',()=>{
+ const client=new QueryClient();
+ client.setQueryData(['companion'],{date:'2026-10-15',daily:null,quests:[],pushKey:null,start:'2026-10-15',end:'2026-10-25'});
+ client.setQueryData(['companion-events'],[]);
+ const html=renderToStaticMarkup(createElement(QueryClientProvider,{client},createElement(LanguageProvider,null,createElement(StaticRouter,{location:'/today'},createElement(Companion)))));
+ expect(html).toContain('arrives at 6 AM');expect(html).not.toContain('not available yet');expect(html).not.toContain('I did it');
 });
 it('renders real quest checklist and iOS installation guidance without requiring an account',()=>{
  expect(render('/quests')).toContain('type="checkbox"');expect(render('/quests')).toContain('Local walk');

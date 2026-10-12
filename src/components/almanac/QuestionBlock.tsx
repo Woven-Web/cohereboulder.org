@@ -24,7 +24,8 @@ export function QuestionBlock({ question, onWrite, writing = false, onShare, chi
           {onShare && <button type="button" className="link" onClick={onShare}>{tr("almanac.sendToSomeone")}</button>}
         </div>
       )}
-      {writing && children}
+      {/* In the DOM but hidden until "Write an answer", so the form is never lost to a script failure. */}
+      <div hidden={!writing}>{children}</div>
     </section>
   );
 }

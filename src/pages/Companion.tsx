@@ -26,7 +26,7 @@ import { QuestionBlock } from '@/components/almanac/QuestionBlock';
 import { YourNextStrip, type NextItem } from '@/components/almanac/YourNextStrip';
 import { EventRow } from '@/components/almanac/EventRow';
 import { fill, useWide } from '@/components/almanac/format';
-import { seatOf } from '@/components/almanac/SeatBadge';
+import { seatOf } from '@/components/almanac/seat';
 import gatheringPhoto from '@/assets/photos/gathering.webp';
 
 export default function Companion() {
