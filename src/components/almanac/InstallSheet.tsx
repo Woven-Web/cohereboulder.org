@@ -56,49 +56,39 @@ export function InstallSheet() {
     if (stage === "offer") close();
   }
 
-  if (ios) {
-    return (
-      <BottomSheet open={open} onOpenChange={(v) => { if (!v) notNow(); }} title={tr("almanac.iosTitle")} description={tr("almanac.iosBody")}>
-        <ol className="steps">
-          <li>
-            <div>{tr("almanac.iosStep1")}
-              <div className="ill"><span className="hl"><Share size={24} aria-hidden="true" /></span><span>{tr("almanac.iosStep1Cap")}</span></div></div>
-          </li>
-          <li>
-            <div>{tr("almanac.iosStep2")}
-              <div className="ill"><span className="hl"><SquarePlus size={24} aria-hidden="true" /></span><span>{tr("almanac.iosStep2Cap")}</span></div></div>
-          </li>
-          <li>
-            <div>{tr("almanac.iosStep3")}
-              <div className="ill"><img src="/cohere-icon-192.png" alt="" width="40" height="40" style={{ borderRadius: 9 }} /><span>COhere</span></div></div>
-          </li>
-        </ol>
-        <p className="sheet__fine">{tr("almanac.iosFine")}</p>
-        <button type="button" className="btn btn--primary btn--block" onClick={() => { rememberDismissed(); close(); toast(tr("almanac.iosToast")); }}>{tr("almanac.gotIt")}</button>
-        <button type="button" className="btn btn--quiet btn--block" onClick={notNow}>{tr("almanac.notNow")}</button>
-      </BottomSheet>
-    );
-  }
-
-  if (stage === "set") {
-    return (
-      <BottomSheet open={open} onOpenChange={(v) => { if (!v) close(); }} title={tr("almanac.setTitle")} description={reminders.subscribed ? tr("almanac.setBodyOn") : tr("almanac.setBody")}>
-        <Times />
-        {!reminders.subscribed && canRemind && (
-          <button type="button" className="btn btn--primary btn--block" disabled={reminders.busy} onClick={() => void remind()}>{tr("almanac.turnOn")}</button>
-        )}
-        <button type="button" className={`btn ${reminders.subscribed || !canRemind ? "btn--primary" : "btn--quiet"} btn--block`} onClick={close}>{tr("almanac.backToToday")}</button>
-      </BottomSheet>
-    );
-  }
-
-  return (
-    <BottomSheet
-      open={open}
-      onOpenChange={(v) => { if (!v) notNow(); }}
-      title={sheet.reason === "reminders" ? tr("almanac.installTitleReminders") : tr("almanac.installTitleDidit")}
-      description={prompt ? tr("almanac.installBody") : tr("almanac.remindersOnlyBody")}
-    >
+  // One sheet for every stage, so switching offer -> set never remounts it
+  // (which would drop focus and replay the slide). Only its contents change.
+  const showSet = !ios && stage === "set";
+  const content = ios ? (
+    <>
+      <ol className="steps">
+        <li>
+          <div>{tr("almanac.iosStep1")}
+            <div className="ill"><span className="hl"><Share size={24} aria-hidden="true" /></span><span>{tr("almanac.iosStep1Cap")}</span></div></div>
+        </li>
+        <li>
+          <div>{tr("almanac.iosStep2")}
+            <div className="ill"><span className="hl"><SquarePlus size={24} aria-hidden="true" /></span><span>{tr("almanac.iosStep2Cap")}</span></div></div>
+        </li>
+        <li>
+          <div>{tr("almanac.iosStep3")}
+            <div className="ill"><img src="/cohere-icon-192.png" alt="" width="40" height="40" style={{ borderRadius: 9 }} /><span>COhere</span></div></div>
+        </li>
+      </ol>
+      <p className="sheet__fine">{tr("almanac.iosFine")}</p>
+      <button type="button" className="btn btn--primary btn--block" onClick={() => { rememberDismissed(); close(); toast(tr("almanac.iosToast")); }}>{tr("almanac.gotIt")}</button>
+      <button type="button" className="btn btn--quiet btn--block" onClick={notNow}>{tr("almanac.notNow")}</button>
+    </>
+  ) : showSet ? (
+    <>
+      <Times />
+      {!reminders.subscribed && canRemind && (
+        <button type="button" className="btn btn--primary btn--block" disabled={reminders.busy} onClick={() => void remind()}>{tr("almanac.turnOn")}</button>
+      )}
+      <button type="button" className={`btn ${reminders.subscribed || !canRemind ? "btn--primary" : "btn--quiet"} btn--block`} onClick={close}>{tr("almanac.backToToday")}</button>
+    </>
+  ) : (
+    <>
       <Times />
       <p className="sheet__fine">{tr("almanac.installFine")}</p>
       {prompt ? (
@@ -107,6 +97,29 @@ export function InstallSheet() {
         <button type="button" className="btn btn--primary btn--block" disabled={reminders.busy || !canRemind} onClick={() => void remind()}>{tr("almanac.getReminders")}</button>
       )}
       <button type="button" className="btn btn--quiet btn--block" onClick={notNow}>{tr("almanac.notNow")}</button>
+    </>
+  );
+
+  const title = ios ? tr("almanac.iosTitle")
+    : showSet ? tr("almanac.setTitle")
+    : sheet.reason === "reminders" ? tr("almanac.installTitleReminders") : tr("almanac.installTitleDidit");
+  const description = ios ? tr("almanac.iosBody")
+    : showSet ? (reminders.subscribed ? tr("almanac.setBodyOn") : tr("almanac.setBody"))
+    : prompt ? tr("almanac.installBody") : tr("almanac.remindersOnlyBody");
+
+  // "I did it" replaces the button that was focused when the sheet opened, so
+  // Radix would hand focus to <body>. Put it on the Observed confirmation instead.
+  function returnFocus(event: Event) {
+    const target = document.querySelector<HTMLElement>("[data-testid=observed-row]");
+    if (sheet.reason === "didit" && target) {
+      event.preventDefault();
+      target.focus({ preventScroll: true });
+    }
+  }
+
+  return (
+    <BottomSheet open={open} onOpenChange={(v) => { if (v) return; if (showSet) close(); else notNow(); }} title={title} description={description} onCloseAutoFocus={returnFocus}>
+      {content}
     </BottomSheet>
   );
 }
@@ -115,9 +128,9 @@ function Times() {
   const { tr } = useLanguage();
   return (
     <ul className="times">
-      <li><b>6 AM</b><span>{tr("almanac.time6")}</span></li>
-      <li><b>9 AM</b><span>{tr("almanac.time9")}</span></li>
-      <li><b>3 PM</b><span>{tr("almanac.time15")}</span></li>
+      <li><b>{tr("almanac.at6")}</b><span>{tr("almanac.time6")}</span></li>
+      <li><b>{tr("almanac.at9")}</b><span>{tr("almanac.time9")}</span></li>
+      <li><b>{tr("almanac.at15")}</b><span>{tr("almanac.time15")}</span></li>
     </ul>
   );
 }

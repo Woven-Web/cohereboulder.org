@@ -561,6 +561,7 @@
 .alm .companion-ios svg{display:inline-block;margin-right:.75rem;color:var(--deep)}
 .alm .stack{display:grid;gap:var(--sp-4)}
 .alm .btn:disabled,.alm .btn[aria-disabled=true]{opacity:.55}
+.alm .toast:empty{padding:0;background:none;animation:none}
 .alm .toast{bottom:calc(var(--tabs-h) + var(--bar-h) + 1rem + env(safe-area-inset-bottom))}
 .alm .sched .ev:first-of-type{border-top:var(--rule-w) solid var(--rule)}
 /* Radix mounts the sheet inside .alm, so the layer needs no portal of its own. */

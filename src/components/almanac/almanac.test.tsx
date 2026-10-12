@@ -8,6 +8,7 @@ import { YourNextStrip } from "./YourNextStrip";
 import { Ridgeline } from "./Folio";
 import { seatOf } from "./seat";
 import { fill } from "./format";
+import { AddressBlock } from "./AddressBlock";
 
 const wrap = (node: React.ReactNode) => renderToStaticMarkup(<MemoryRouter><LanguageProvider>{node}</LanguageProvider></MemoryRouter>);
 
@@ -71,5 +72,18 @@ describe("Ridgeline", () => {
     const cx = Number(html.match(/<circle cx="(\d+)"/)?.[1]);
     expect(cx).toBeGreaterThan(30);
     expect(cx).toBeLessThan(400);
+  });
+});
+
+describe("AddressBlock", () => {
+  const location = { name: "The Hub", street: "1520 Pearl St", locality: "Boulder", region: "CO", postalCode: "80302" };
+  it("gives screen readers the full address once, with the decorative split hidden", () => {
+    const html = wrap(<AddressBlock location={location as never} />);
+    // What a screen reader would read: drop aria-hidden subtrees (flat divs here), then the tags.
+    const visible = html.replace(/<div[^>]*aria-hidden="true"[^>]*>.*?<\/div>/g, "").replace(/<[^>]+>/g, " ");
+    expect(html).toContain('class="sr-only"');
+    expect(html).toMatch(/sr-only[^>]*>[^<]*1520 Pearl St/);
+    // Outside the hidden split, the number appears exactly once (in the sr-only line).
+    expect((visible.match(/1520/g) ?? []).length).toBe(1);
   });
 });

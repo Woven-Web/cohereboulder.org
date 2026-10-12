@@ -17,8 +17,10 @@ export function AddressBlock({ location }: { location: CommunityEventLocation | 
   const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, street, locality].filter(Boolean).join(", "))}`;
   return (
     <div className="addr" data-testid="address-block">
+      {/* Screen readers get the whole address once; the large-number split is decoration. */}
+      <span className="sr-only">{[name, street, locality].filter(Boolean).join(", ") || tr("almanac.addressTba")}</span>
       <div className="addr__no" aria-hidden="true">{number ?? (street ? "·" : "TBA")}</div>
-      <div className="addr__lines">
+      <div className="addr__lines" aria-hidden="true">
         {name && <b>{name}</b>}
         {rest && <><span>{rest}</span><br /></>}
         <span>{street || locality ? locality : tr("almanac.addressTba")}</span>

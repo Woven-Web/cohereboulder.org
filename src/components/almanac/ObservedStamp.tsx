@@ -14,8 +14,9 @@ export function ObservedStamp({ dateLabel, small = false }: { dateLabel?: string
 /** The stamp with its line of text and the way into the reflection. */
 export function ObservedRow({ dateLabel, onReflect }: { dateLabel: string; onReflect?: () => void }) {
   const { tr } = useLanguage();
+  // tabIndex -1: focus lands here when the install sheet closes over the button that opened it.
   return (
-    <div className="sealrow" data-testid="observed-row">
+    <div className="sealrow" data-testid="observed-row" tabIndex={-1}>
       <ObservedStamp dateLabel={dateLabel} />
       <div>
         <p>{tr("almanac.observedNote")}</p>

@@ -24,6 +24,8 @@ it('manifest, brand icons, Apple metadata and private-safe service worker exist'
     // "any" and "maskable" are separate files, never "any maskable" on one.
     expect(manifest.icons.map((i: Icon) => `${i.sizes}:${i.purpose}`)).toEqual(['192x192:any', '512x512:any', '512x512:maskable']);
     for (const icon of manifest.icons as Icon[]) expect(existsSync('public' + icon.src)).toBe(true);
+    // No orientation lock: it fights tablets' two-column layout and WCAG 1.3.4.
+    expect(manifest.orientation).toBeUndefined();
     expect(manifest.id).toBe('/today');
     expect(manifest.description.length).toBeGreaterThan(20);
     expect(manifest.theme_color).toBe('#F5F0E3');

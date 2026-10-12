@@ -127,9 +127,11 @@ try{
  await pushPage.getByText('Daily notifications are on.',{exact:true}).waitFor();
  const synced=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='PATCH'&&r.request().postDataJSON().language==='es');
  await pushPage.getByRole('button',{name:'Es',exact:true}).click();assert.equal((await synced).status(),200);
- // A failed language update must be visible.
+ // A failed background language update is silent (no stray notice); it is retried on the next change.
  await pushPage.route('**/api/companion/subscriptions',route=>route.request().method()==='PATCH'?route.fulfill({status:503,json:{error:'local failure'}}):route.continue());
- await pushPage.getByRole('button',{name:'En',exact:true}).click();await pushPage.getByRole('status').filter({hasText:'Could not save.'}).waitFor();
+ const failedPatch=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='PATCH'&&r.status()===503);
+ await pushPage.getByRole('button',{name:'En',exact:true}).click();await failedPatch;
+ assert.equal(await pushPage.getByRole('status').filter({hasText:'Could not save.'}).count(),0);
  await pushPage.unroute('**/api/companion/subscriptions');
  await pushPage.evaluate(()=>localStorage.removeItem('cohere-companion-device'));
  const removed=pushPage.waitForResponse(r=>r.url().endsWith('/api/companion/subscriptions')&&r.request().method()==='DELETE');

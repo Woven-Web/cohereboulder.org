@@ -3,7 +3,7 @@
 // never double-send a request. The Worker side is /api/companion/subscriptions.
 import { useSyncExternalStore } from "react";
 import { companionRequest } from "@/lib/api";
-import { anonymousDevice, localSet } from "@/lib/companion";
+import { anonymousDevice, localGet, localSet } from "@/lib/companion";
 
 export type ReminderNotice = "" | "error" | "off";
 export interface ReminderState {
@@ -71,6 +71,7 @@ export async function enableReminders(pushKey: string, language: string): Promis
     }
     publish({ subscribed: true });
     localSet("cohere-push-off", "false");
+    localSet(LANGUAGE_SENT_KEY, language);
   } catch {
     publish({ notice: "error" });
   } finally {
@@ -96,17 +97,24 @@ export async function disableReminders(): Promise<void> {
   }
 }
 
-/** Keep the stored subscription's language in step with the site's. Mount once. */
+const LANGUAGE_SENT_KEY = "cohere-push-language";
+
+/**
+ * Keep the stored subscription's language in step with the site's. Only sends
+ * when the language differs from the last one the server accepted (kept on this
+ * device), and a failure is silent: it is background work, retried next time.
+ */
 export async function syncReminderLanguage(language: string): Promise<boolean> {
+  if (localGet(LANGUAGE_SENT_KEY) === language) return true;
   try {
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
     if (!sub) return true;
     const json = sub.toJSON();
     await companionRequest("subscriptions", { device_id: anonymousDevice(), endpoint: json.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth, language }, "PATCH");
+    localSet(LANGUAGE_SENT_KEY, language);
     return true;
   } catch {
-    publish({ notice: "error" });
     return false;
   }
 }

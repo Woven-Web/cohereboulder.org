@@ -52,7 +52,8 @@ export function AlmanacShell({ children, after }: { children: ReactNode; after?:
         </div>
         {after}
         <InstallSheet />
-        {message && <div className="toast" role="status">{message}</div>}
+        {/* The live region stays mounted so screen readers announce the text when it appears. */}
+        <div className="toast" role="status">{message}</div>
       </div>
     </Ctx.Provider>
   );

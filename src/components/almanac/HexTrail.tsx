@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { FESTIVAL_DATES, formatDayA11y, trailState, weekdayTwo, type TrailState } from "@/lib/festival";
@@ -22,8 +22,8 @@ interface Props {
  *  - `fit`  is Today's progress header, a <nav> of links. The hexes zigzag over
  *    two rows so every link is a 44px target even with all eleven on a 360px
  *    screen.
- *  - `pick` is Calendar's day picker, a horizontal listbox (arrows move and
- *    select). Tick marks show how many of your events fall on each day.
+ *  - `pick` is Calendar's day picker, a horizontal listbox (arrows move focus;
+ *    Enter, Space or a tap selects). Tick marks show how many of your events fall on each day.
  *
  * State is never colour alone: done = sun fill + check, today = ink fill + berry
  * ring, past/future = outline; the accessible name says it too.
@@ -89,15 +89,19 @@ function FitTrail({ today, done = [], counts = {} }: Props) {
 function PickTrail({ today, done = [], counts = {}, selected = null, onSelect }: Props) {
   const { language, tr } = useLanguage();
   const listRef = useRef<HTMLDivElement>(null);
-  const focusIndex = Math.max(0, selected ? FESTIVAL_DATES.indexOf(selected) : FESTIVAL_DATES.indexOf(today));
+  const homeIndex = Math.max(0, selected ? FESTIVAL_DATES.indexOf(selected) : FESTIVAL_DATES.indexOf(today));
+  // Roving tabindex: arrows move this (and focus), they never select. Enter,
+  // Space and click select, so passing over a day can't change the view.
+  const [focusIndex, setFocusIndex] = useState(homeIndex);
+  useEffect(() => setFocusIndex(homeIndex), [homeIndex]);
 
   function move(event: KeyboardEvent<HTMLElement>, index: number) {
     const last = FESTIVAL_DATES.length - 1;
     const next = event.key === "ArrowRight" ? Math.min(last, index + 1) : event.key === "ArrowLeft" ? Math.max(0, index - 1) : event.key === "Home" ? 0 : event.key === "End" ? last : -1;
     if (next < 0) return;
     event.preventDefault();
-    onSelect?.(FESTIVAL_DATES[next]);
-    window.requestAnimationFrame(() => listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[next]?.focus());
+    setFocusIndex(next);
+    listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[next]?.focus();
   }
 
   return (

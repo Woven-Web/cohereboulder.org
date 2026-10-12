@@ -133,6 +133,8 @@ for (const [w, h] of [[360, 780], [390, 844]]) {
     check(await sheet.getByRole('button', { name: 'Add to home screen & get reminders' }).isVisible(), 'sheet offers the pair "Add to home screen & get reminders"');
     await sheet.getByRole('button', { name: 'Not now' }).click();
     await sheet.waitFor({ state: 'detached' });
+    const landed = await page.evaluate(() => { const a = document.activeElement; return { body: a === document.body, inMain: !!a?.closest('main'), what: a?.getAttribute('data-testid') ?? a?.tagName }; });
+    check(!landed.body && landed.inMain, `focus returns into the page when the install sheet closes (landed on ${landed.what})`);
     check(await page.evaluate(() => localStorage.getItem('cohere-install-dismissed')) === 'true', '"Not now" is remembered in localStorage');
     await page.getByRole('button', { name: 'Add a thought' }).click();
     await page.getByLabel('Your reply', { exact: true }).fill('Sample reflection');
@@ -140,8 +142,11 @@ for (const [w, h] of [[360, 780], [390, 844]]) {
     // Reload: offered once means not again, even on a fresh "I did it" day.
     await page.evaluate(() => localStorage.setItem('cohere-practice-done', '[]'));
     await page.reload({ waitUntil: 'networkidle' });
+    // A controlled clock, not a sleep: the offer decision is a 1s timer after the tap.
+    await page.clock.install();
     await page.getByRole('button', { name: 'I did it', exact: true }).click();
-    await page.waitForTimeout(1500);
+    await page.getByTestId('observed-row').waitFor();
+    await page.clock.runFor(1500);
     check((await page.getByRole('dialog').count()) === 0, 'the install sheet is not offered again after "Not now"');
   }
   check(errors.length === 0, `no page errors on Today ${w}${errors.length ? ': ' + errors[0] : ''}`);
@@ -219,6 +224,26 @@ for (const [w, h] of [[390, 844], [360, 780], [1200, 1600], [1600, 1200]]) {
   await finiteAnimations(page, `Calendar ${w}`);
   await shot(page, `calendar-my-${w}x${h}`);
   if (w === 390) {
+    {
+      // Arrows only move focus. Walking the whole picker in My events must not
+      // leave the mode, whatever days have none of your events.
+      const picker390 = page.getByRole('listbox', { name: 'Pick a day, Oct 15 to 25' });
+      const options = picker390.getByRole('option');
+      await options.first().focus();
+      let walked = true;
+      for (let i = 0; i < 10; i++) {
+        await page.keyboard.press('ArrowRight');
+        const focusedIdx = await options.evaluateAll((els) => els.indexOf(document.activeElement));
+        if (focusedIdx !== i + 1 || (await page.getByTestId('event-card').count()) !== 4) walked = false;
+      }
+      check(walked, 'arrow keys across the picker move focus only: still My events (4 cards)');
+      check((await page.getByRole('button', { name: /^My events/ }).getAttribute('aria-pressed')) === 'true', 'My events stays selected after the arrows');
+      check((await options.evaluateAll((els) => els.filter((e) => e.getAttribute('tabindex') === '0').length)) === 1, 'picker keeps one roving tab stop');
+      await page.keyboard.press('Home');
+      await page.keyboard.press('Enter');
+      check((await page.getByTestId('event-card').count()) !== 4 || (await options.first().getAttribute('aria-selected')) === 'true', 'Enter selects the focused day');
+      await page.getByRole('button', { name: /^My events/ }).click();
+    }
     await page.getByRole('button', { name: /^All events/ }).click();
     const day = page.getByRole('option', { name: /^Saturday Oct 17/ });
     check((await day.getAttribute('aria-selected')) === 'true', 'All events selects today in the picker');
@@ -227,8 +252,10 @@ for (const [w, h] of [[390, 844], [360, 780], [1200, 1600], [1600, 1200]]) {
     await page.keyboard.press('Tab');
     await day.focus();
     await page.keyboard.press('ArrowRight');
-    await page.getByRole('option', { name: /^Sunday Oct 18/ }).waitFor();
-    check((await page.getByRole('option', { name: /^Sunday Oct 18/ }).getAttribute('aria-selected')) === 'true', 'arrow keys move and select a day');
+    check((await page.getByRole('option', { name: /^Saturday Oct 17/ }).getAttribute('aria-selected')) === 'true', 'arrow keys alone do not change the selected day');
+    await page.keyboard.press('Enter');
+    await page.getByRole('option', { name: /^Sunday Oct 18/ }).and(page.locator('[aria-selected=true]')).waitFor();
+    ok('arrows move focus and Enter selects a day');
     await page.getByRole('button', { name: 'Show every upcoming date' }).click();
     check((await page.getByTestId('event-card').count()) === 38, 'every upcoming date lists all 38 events');
     await page.getByRole('option', { name: /^Saturday Oct 17/ }).click();
