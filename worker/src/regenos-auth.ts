@@ -37,11 +37,17 @@
 //     cookie, and both must reach the browser or sign-in silently fails.
 //   * Never cached, in either direction.
 
+import { moderateRecords, type CircleRecord, type ModerationEnv } from "./board-moderation";
+
 export interface RegenosAuthEnv {
   /** Base URL of regenOS's public /xrpc surface, no trailing slash (shared with events.ts). */
   REGENOS_BASE_URL?: string;
   /** Master switch. Anything but the exact string "true" keeps every /xrpc route a 404. */
   REGENOS_LOGIN_ENABLED?: string;
+  /** The COhere collective. Circle (members area) calls are pinned to it. */
+  REGENOS_COLLECTIVE_DID?: string;
+  /** Board moderation state. Optional so the bare proxy still works without it. */
+  cohere?: D1Database;
 }
 
 /** A slow AppView must never hold a sign-in click hostage for long. */
@@ -79,7 +85,24 @@ const ALLOWED_NSIDS = new Set([
   "social.scenius.rsvp",
   "social.scenius.getEventAttendance",
   "social.scenius.getSceneMembers",
+  // The members area (regenOS circle content). Pinned to our collective below;
+  // reads are filtered through board-moderation.ts on the way out.
+  "social.scenius.createCirclePost",
+  "social.scenius.deleteCirclePost",
+  "social.scenius.listCirclePosts",
+  "social.scenius.getCircleThread",
 ]);
+
+/** Circle methods carry a `collective`; the proxy only lends us ours. */
+const CIRCLE_NSIDS = new Set([
+  "social.scenius.createCirclePost",
+  "social.scenius.deleteCirclePost",
+  "social.scenius.listCirclePosts",
+  "social.scenius.getCircleThread",
+]);
+
+/** Responses whose `records` pass through the Board's moderation filter. */
+const MODERATED_NSIDS = new Set(["social.scenius.listCirclePosts", "social.scenius.getCircleThread"]);
 
 /** A successful one of these stales the edge-cached /api/events listing. */
 const EVENT_WRITE_NSIDS = new Set([
@@ -197,6 +220,25 @@ export async function handleXrpcProxy(
   const cookie = relayableCookies(request.headers.get("Cookie"));
   if (cookie) headers.set("Cookie", cookie);
 
+  let postBody: ArrayBuffer | undefined;
+  if (request.method === "POST") postBody = await request.arrayBuffer();
+
+  if (CIRCLE_NSIDS.has(nsid)) {
+    const pinned = env.REGENOS_COLLECTIVE_DID?.trim();
+    let asked: unknown;
+    if (request.method === "POST") {
+      try {
+        asked = (JSON.parse(new TextDecoder().decode(postBody)) as { collective?: unknown }).collective;
+      } catch {
+        asked = undefined;
+      }
+    } else {
+      asked = url.searchParams.get("collective");
+    }
+    if (!pinned) return json({ error: "NotConfigured", message: "The members area isn't set up yet." }, 503);
+    if (asked !== pinned) return json({ error: "InvalidRequest", message: "That isn't our collective." }, 400);
+  }
+
   const init: RequestInit = {
     method: request.method,
     headers,
@@ -205,9 +247,7 @@ export async function handleXrpcProxy(
     redirect: "manual",
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   };
-  if (request.method === "POST") {
-    init.body = await request.arrayBuffer();
-  }
+  if (postBody) init.body = postBody;
 
   let upstream: Response;
   try {
@@ -241,7 +281,21 @@ export async function handleXrpcProxy(
     await edgeCache.delete(new Request(new URL("/api/events", url).toString())).catch(() => {});
   }
 
-  const out = new Response(upstream.body, { status: upstream.status });
+  let outBody: BodyInit | null = upstream.body;
+  if (MODERATED_NSIDS.has(nsid) && upstream.ok && env.cohere) {
+    // Hidden/held posts leave here, never reach the browser. If we cannot
+    // read moderation state we answer an error, not the unfiltered page.
+    try {
+      const page = (await upstream.json()) as { records?: CircleRecord[] } & Record<string, unknown>;
+      if (Array.isArray(page.records)) {
+        page.records = await moderateRecords(env as ModerationEnv, page.records, () => readVerifiedSessionDid(request, env));
+      }
+      outBody = JSON.stringify(page);
+    } catch {
+      return json({ error: "ModerationUnavailable", message: "The Board can't load right now." }, 502);
+    }
+  }
+  const out = new Response(outBody, { status: upstream.status });
   upstream.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
     if (STRIP_RESPONSE.has(lower) || lower.startsWith(STRIP_RESPONSE_PREFIX)) return;
@@ -262,6 +316,30 @@ export async function handleXrpcProxy(
     if (isRelayableSetCookie(line)) out.headers.append("Set-Cookie", line);
   }
   return out;
+}
+
+/** Who regenOS says this browser is — the DID, from the verified session, or null. */
+export async function readVerifiedSessionDid(request: Request, env: RegenosAuthEnv): Promise<string | null> {
+  const base = env.REGENOS_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!isRegenosLoginEnabled(env) || !base) return null;
+  const headers = new Headers();
+  const cookie = relayableCookies(request.headers.get("Cookie"));
+  if (!cookie) return null;
+  headers.set("Cookie", cookie);
+  for (const name of ["Origin", "Sec-Fetch-Site"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  try {
+    const response = await fetch(`${base}/xrpc/social.scenius.getSession`, {
+      headers, redirect: "manual", signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { did?: unknown };
+    return typeof data.did === "string" ? data.did : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Owner-only read for the registration lookup; never expose contact data through the proxy. */

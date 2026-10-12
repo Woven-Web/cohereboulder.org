@@ -14,6 +14,7 @@ import { companionRoute, runCompanionCron, type CompanionEnv } from "./companion
 import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
+import { handleAdminBoard, handleCreateReport } from "./board";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
@@ -404,6 +405,10 @@ export default {
       return json({ error: "not found" }, 404);
     }
 
+    // Members Board: a member's report of a post. Public route; the reporter is
+    // the regenOS DID from the verified session (worker/src/board.ts).
+    if (path === "/api/board/reports") return handleCreateReport(request, env);
+
     if (path.startsWith("/api/companion/")) return companionRoute(request, env);
     if (path.startsWith("/api/admin/companion/")) return companionRoute(request, env, await isAdmin(request, env), true);
 
@@ -686,6 +691,11 @@ export default {
         }
         return json({ error: "not found" }, 404);
       }
+
+      // The Board tab: reports queue, hide/remove, approval switch. Same gate as
+      // Access — any signed-in organizer, all of whom are stewards of the calendar.
+      const boardResponse = await handleAdminBoard(request, env, path, (await currentSession(env, request))?.email ?? "unknown");
+      if (boardResponse) return boardResponse;
 
       if (request.method === "GET" && path === "/api/admin/access") {
         return handleAdminAccessList(env);
