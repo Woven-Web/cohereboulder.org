@@ -11,7 +11,7 @@ export function signInDestination(path: string | null, registered = false): stri
 }
 export type AppTab = "today" | "events" | "board" | "more";
 export function activeAppTab(path: string): AppTab | null {
-  return ["/today", "/quests"].includes(path) ? "today" : path === "/more" ? "more" : path === "/board" ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" ? "events" : null;
+  return ["/today", "/quests"].includes(path) ? "today" : path === "/more" ? "more" : path === "/board" || path.startsWith("/board/") ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" ? "events" : null;
 }
 
 // The /login wizard navigates only after completing the handle step.

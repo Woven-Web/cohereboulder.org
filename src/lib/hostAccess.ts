@@ -1,5 +1,5 @@
 export interface SceneRoster {
-  members: { did: string; role: string }[];
+  members: { did: string; role: string; handle?: string | null; name?: string | null }[];
   steward: boolean;
 }
 

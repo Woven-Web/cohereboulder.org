@@ -161,9 +161,11 @@ try {
   }
   ok("unfinished OAuth endpoints and other unused methods are not advertised or proxied");
   await page.goto(new URL("/board", target).href, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
-  await page.getByRole("button", { name: "Join COhere", exact: true }).waitFor();
-  ok("signed-out Board shows members-only join gate");
+  await page.getByRole("heading", { name: "This part of COhere is for members." }).waitFor();
+  const gate = page.getByTestId("members-gate");
+  await gate.getByRole("button", { name: "Sign in", exact: true }).waitFor();
+  await gate.getByRole("link", { name: "Register for COhere", exact: true }).waitFor();
+  ok("signed-out Board shows the members-only gate, with sign in and register");
   // ── 1. Anonymous calendar: the sign-in affordance renders ─────────────────
   step = "sign-in panel";
   await page.goto(new URL("/calendar", target).toString(), { waitUntil: "networkidle" });
@@ -215,8 +217,9 @@ try {
   if (new URL(page.url()).pathname !== "/") fail("normal signed-in home visit redirected");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId("bottom-tabs").getByRole("link", { name: "Board" }).click();
-  await page.getByRole("heading", { name: "The COhere Board opens soon" }).waitFor();
-  if (await page.getByRole("button", { name: "Join COhere", exact: true }).count()) fail("signed-in Board still shows join gate");
+  await page.getByRole("heading", { name: "Board", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Write a post" }).filter({ visible: true }).first().waitFor();
+  if (await page.getByTestId("members-gate").count()) fail("signed-in member's Board still shows the gate");
   await page.getByTestId("bottom-tabs").getByRole("link", { name: "Calendar" }).click();
   await page.waitForURL("**/calendar");
   await page.setViewportSize({ width: 1280, height: 800 });

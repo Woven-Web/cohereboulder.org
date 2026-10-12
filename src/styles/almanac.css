@@ -591,3 +591,9 @@
 .alm .ev__acts{column-gap:var(--sp-2)}
 .alm .ev__acts .btn{padding-inline:.7rem}
 .alm [aria-busy=true]{cursor:progress}
+
+/* Members area (Board · People · Profile): small helpers the prototype kept inline. */
+.alm .only-wide{display:none}
+@media (min-width:820px){.alm .only-wide{display:inline-flex}.alm .actionbar.phone-only{display:none}}
+.alm .board__side .only-wide.btn--block{display:none}
+@media (min-width:820px){.alm .board__side .only-wide.btn--block{display:flex}.alm .board__side p.only-wide{display:flex}}

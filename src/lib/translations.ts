@@ -1,7 +1,10 @@
 // Centralized translations for maintainability
 // Add new translations here and use them throughout the app
 
+import { membersTranslations } from "./translations.members";
+
 export const translations = {
+  members: membersTranslations,
   companionAdmin: {
     heading: { en: "Daily companion", es: "Compañero diario" },
     tab: { en: "Companion", es: "Compañero" },

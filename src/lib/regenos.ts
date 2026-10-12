@@ -82,7 +82,7 @@ async function throwXrpcError(res: Response): Promise<never> {
   );
 }
 
-async function xrpcGet<T>(nsid: string, params?: Record<string, string>): Promise<T> {
+export async function xrpcGet<T>(nsid: string, params?: Record<string, string>): Promise<T> {
   const query = params ? `?${new URLSearchParams(params)}` : "";
   const res = await fetch(`${API_BASE}/xrpc/${nsid}${query}`, { cache: "no-store" });
   if (!res.ok) await throwXrpcError(res);

@@ -9,6 +9,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppSession } from "@/components/AppSession";
 import Board from "./pages/Board";
+import BoardThread from "./pages/BoardThread";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import CoCreate from "./pages/CoCreate";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/co-create" element={<CoCreate />} />
             <Route path="/events" element={<Calendar />} />
             <Route path="/board" element={<Board />} />
+            <Route path="/board/:did/:rkey" element={<BoardThread />} />
             <Route path="/home" element={<Index />} />
             <Route path="/calendar" element={<Calendar />} />
             {/* Accountless — anyone can suggest an event; an organizer

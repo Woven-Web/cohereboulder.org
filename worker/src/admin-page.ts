@@ -205,6 +205,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="funnel">Funnel</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="board">Board<span class="pill" id="boardbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Sign-in</button>
     </div>
@@ -324,6 +325,41 @@ export const ADMIN_PAGE = `<!doctype html>
         <table>
           <thead><tr><th>Step</th><th>Events</th><th>Fewer than previous step</th></tr></thead>
           <tbody id="funnel-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-board" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        The members Board lives on regenOS; these are COhere's own moderation tools. Hiding is reversible
+        and the author still sees their post, marked. Removing is permanent (only the author can truly delete).
+      </p>
+      <div class="toolbar">
+        <label style="display:flex;align-items:center;gap:0.5rem">
+          <input type="checkbox" id="boardapproval"> Hold new posts for steward approval
+        </label>
+        <span class="muted" id="boardmsg"></span>
+      </div>
+      <p class="muted" id="boardapprovalnote">Off. Posts appear as soon as they are written. Turning it on holds each new post from a non-steward until you approve it; posts already on the Board are not affected.</p>
+      <h3>Reports</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Post</th><th>Reported</th><th></th></tr></thead>
+          <tbody id="boardreports"></tbody>
+        </table>
+      </div>
+      <h3 id="boardpendingtitle">Waiting for approval</h3>
+      <div class="table-scroll" id="boardpendingwrap">
+        <table>
+          <thead><tr><th>Post</th><th>Held since</th><th></th></tr></thead>
+          <tbody id="boardpending"></tbody>
+        </table>
+      </div>
+      <h3>Hidden and removed</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Post</th><th>Status</th><th></th></tr></thead>
+          <tbody id="boardhidden"></tbody>
         </table>
       </div>
     </section>
@@ -1395,6 +1431,102 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   });
 
+  // ======================================================== the Board tab
+
+  var boardData = { reports: [], hidden: [], pending: [], settings: { approval: false } };
+
+  function boardLink(uri) {
+    var parts = uri.replace("at://", "").split("/coop.lexicon.post/");
+    return parts.length === 2 ? "/board/" + encodeURIComponent(parts[0]) + "/" + encodeURIComponent(parts[1]) : "/board";
+  }
+
+  function boardPostCell(uri, excerpt, authorDid) {
+    return '<div>' + (excerpt ? esc(excerpt) : '<span class="muted">(text not captured)</span>') + "</div>" +
+      '<div class="muted" style="font-size:0.8em">' + esc(authorDid || "") +
+      ' · <a href="' + boardLink(uri) + '" target="_blank" rel="noopener">open on the Board</a></div>';
+  }
+
+  function loadBoard() {
+    return api("/api/admin/board").then(function (r) { return r.json(); }).then(function (data) {
+      boardData = data;
+      renderBoard();
+    }).catch(function (e) {
+      el("boardmsg").textContent = e.message;
+    });
+  }
+
+  function renderBoard() {
+    var open = boardData.reports.length;
+    el("boardbadge").textContent = open ? String(open) : "";
+    el("boardapproval").checked = !!boardData.settings.approval;
+    el("boardapprovalnote").textContent = boardData.settings.approval
+      ? "On. New posts from non-stewards are held here until you approve them. Switching it off lets new posts through again."
+      : "Off. Posts appear as soon as they are written. Turning it on holds each new post from a non-steward until you approve it; posts already on the Board are not affected.";
+    el("boardreports").innerHTML = boardData.reports.length ? boardData.reports.map(function (r) {
+      var why = r.reasons.map(function (x) { return x.replace("_", " "); }).join(", ");
+      var notes = r.notes.map(function (n) { return '<div class="muted">\u201c' + esc(n) + '\u201d</div>'; }).join("");
+      return "<tr><td>" + boardPostCell(r.postUri, r.excerpt, r.authorDid) + "</td>" +
+        "<td>" + r.reporters + (r.reporters === 1 ? " report" : " reports") + "<br>" + esc(why) + notes +
+        '<div class="muted">' + esc(new Date(r.firstAt).toLocaleString()) + "</div></td>" +
+        '<td style="white-space:nowrap">' +
+        '<button class="btn" data-board="hide" data-uri="' + esc(r.postUri) + '">Hide</button> ' +
+        '<button class="btn" data-board="remove" data-uri="' + esc(r.postUri) + '">Remove</button> ' +
+        '<button class="btn" data-board="dismiss" data-id="' + r.id + '">Dismiss</button></td></tr>';
+    }).join("") : '<tr><td colspan="3" class="muted">No open reports.</td></tr>';
+    var showPending = boardData.settings.approval || boardData.pending.length > 0;
+    el("boardpendingtitle").style.display = showPending ? "" : "none";
+    el("boardpendingwrap").style.display = showPending ? "" : "none";
+    el("boardpending").innerHTML = boardData.pending.length ? boardData.pending.map(function (p) {
+      return "<tr><td>" + boardPostCell(p.uri, p.excerpt, p.author_did) + "</td>" +
+        "<td>" + esc(new Date(p.created_at).toLocaleString()) + "</td>" +
+        '<td style="white-space:nowrap"><button class="btn primary" data-board="approve" data-uri="' + esc(p.uri) + '">Approve</button> ' +
+        '<button class="btn" data-board="remove" data-uri="' + esc(p.uri) + '">Remove</button></td></tr>';
+    }).join("") : '<tr><td colspan="3" class="muted">Nothing is waiting.</td></tr>';
+    el("boardhidden").innerHTML = boardData.hidden.length ? boardData.hidden.map(function (h) {
+      return "<tr><td>" + boardPostCell(h.uri, h.excerpt, h.author_did) + "</td>" +
+        "<td><span class='pill'>" + esc(h.state) + "</span>" +
+        (h.note ? '<div class="muted">' + esc(h.note) + "</div>" : "") +
+        '<div class="muted">' + esc(h.actor || "") + " · " + esc(new Date(h.updated_at).toLocaleString()) + "</div></td>" +
+        "<td>" + (h.state === "hidden" ? '<button class="btn" data-board="unhide" data-uri="' + esc(h.uri) + '">Unhide</button>' : '<span class="muted">permanent</span>') + "</td></tr>";
+    }).join("") : '<tr><td colspan="3" class="muted">Nothing hidden.</td></tr>';
+  }
+
+  function boardPost(path, body) {
+    el("boardmsg").textContent = "";
+    return api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) })
+      .then(function () { return loadBoard(); })
+      .catch(function (e) { el("boardmsg").textContent = e.message; });
+  }
+
+  el("tab-board").addEventListener("click", function (event) {
+    var button = event.target.closest ? event.target.closest("[data-board]") : null;
+    if (!button) return;
+    var action = button.getAttribute("data-board"), uri = button.getAttribute("data-uri");
+    if (action === "hide") {
+      var note = prompt("Why is this being hidden? (optional, kept for the record; the author is only told a steward hid it)");
+      if (note === null) return;
+      boardPost("/api/admin/board/hide", { uri: uri, note: note });
+    } else if (action === "remove") {
+      var why = prompt("Remove this post for good? Say why (required). This cannot be undone here; only the author can truly delete it.");
+      if (!why) return;
+      boardPost("/api/admin/board/remove", { uri: uri, note: why });
+    } else if (action === "unhide") {
+      boardPost("/api/admin/board/unhide", { uri: uri });
+    } else if (action === "approve") {
+      boardPost("/api/admin/board/approve", { uri: uri });
+    } else if (action === "dismiss") {
+      boardPost("/api/admin/board/reports/" + button.getAttribute("data-id") + "/dismiss");
+    }
+  });
+
+  el("boardapproval").addEventListener("change", function () {
+    var on = el("boardapproval").checked;
+    el("boardmsg").textContent = "";
+    api("/api/admin/board/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval: on }) })
+      .then(function () { return loadBoard(); })
+      .catch(function (e) { el("boardmsg").textContent = e.message; el("boardapproval").checked = !on; });
+  });
+
   // ======================================================== the Access tab
 
   var ROLES = [["member", "Member"], ["builder", "Builder"],
@@ -2111,7 +2243,7 @@ export const ADMIN_PAGE = `<!doctype html>
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "funnel", "newsletter", "access", "admins", "companion"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "funnel", "newsletter", "board", "access", "admins", "companion"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -2120,6 +2252,7 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "events") loadEvents();
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
+      if (name === "board") loadBoard();
       if (name === "funnel") openFunnel();
       if (name === "newsletter") loadNewsletters();
       if (name === "companion") loadCompanion();

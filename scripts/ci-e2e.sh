@@ -61,6 +61,9 @@ P28952=$(( 28952 + E2E_PORT_OFFSET ))
 P28962=$(( 28962 + E2E_PORT_OFFSET ))
 P28954=$(( 28954 + E2E_PORT_OFFSET ))
 P28955=$(( 28955 + E2E_PORT_OFFSET ))
+P28956=$(( 28956 + E2E_PORT_OFFSET ))
+P28957=$(( 28957 + E2E_PORT_OFFSET ))
+P28240=$(( 28240 + E2E_PORT_OFFSET ))
 P28239=$(( 28239 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
@@ -311,6 +314,28 @@ fi
 cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-myevents"
+echo "::endgroup::"
+
+# --- 10. board-e2e.mjs: the members Board, report + admin moderation -------
+echo "::group::board-e2e (members Board + moderation lane)"
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-board")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --command \
+  "INSERT INTO admins (email, name, added_by, created_at) VALUES ('ci-e2e@cohere.test','CI E2E','ci', strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(email) DO NOTHING" >/dev/null
+npx wrangler kv key put --binding COHERE_AUTH --local "${WRANGLER_LOCAL_ARGS[@]}" "session:$SESSION_HASH" \
+  '{"email":"ci-e2e@cohere.test","name":"CI E2E","createdAt":"2026-01-01T00:00:00Z"}' >/dev/null
+start_mock ${P28956} "$PWA_SCRATCH/pwa-merge-mock-10.log"
+start_worker ${P28957} ${P28240} "$PWA_SCRATCH/pwa-merge-worker-10.log" \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28956} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/board-e2e.mjs http://127.0.0.1:${P28957} "$SESSION_TOKEN"; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-10.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-board"
 echo "::endgroup::"
 
 rm -rf "$PERSIST_DIR"

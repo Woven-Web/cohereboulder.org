@@ -57,11 +57,17 @@ const SERVICE_TOKEN = "mock-token";
 const SERVICE_DID = "did:plc:mockservice";
 
 /** The seeded roster: the site's own identity, its minter, and one builder. */
+const PEER_DID = "did:plc:mockpeer";
+const PEER_HANDLE = "pia.mock.test";
+const OUTSIDER_DID = "did:plc:mockoutsider";
+const OUTSIDER_HANDLE = "ollie.mock.test";
+const STEWARD_DID = "did:plc:mockji";
 const members = new Map([
   [SERVICE_DID, { did: SERVICE_DID, handle: "cohere-site.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockji", { did: "did:plc:mockji", handle: "claudeji.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockbuilder", { did: "did:plc:mockbuilder", handle: "rosa.mock.test", kind: "person", name: "Rosa Mock", role: "builder" }],
   [USER_DID, { did: USER_DID, handle: USER_HANDLE, kind: "person", name: null, role: "builder" }],
+  [PEER_DID, { did: PEER_DID, handle: PEER_HANDLE, kind: "person", name: "Pia Mock", role: "member" }],
 ]);
 
 /** Seeded RSVPs, keyed by rkey. Counts plus CONFIRMED guests, as production. */
@@ -142,6 +148,23 @@ function seedEvent() {
 }
 seedEvent();
 
+/**
+ * Who a `__Host-rs_session` cookie names. Any value is the default mock user
+ * (sess-1, mock-member, ...); these name the other people the members-area
+ * lanes need: a fellow member, a steward-authored session, and a signed-in
+ * person who is NOT on the collective's roster.
+ */
+const SESSION_PEOPLE = {
+  "mock-peer": { did: PEER_DID, handle: PEER_HANDLE },
+  "mock-steward": { did: STEWARD_DID, handle: "claudeji.scenius.social" },
+  "mock-outsider": { did: OUTSIDER_DID, handle: OUTSIDER_HANDLE },
+};
+function sessionPerson(req) {
+  const value = /(?:^|;\s*)__Host-rs_session=([^;]*)/.exec(req.headers.cookie ?? "")?.[1];
+  if (value === undefined) return null;
+  return SESSION_PEOPLE[value] ?? { did: USER_DID, handle: USER_HANDLE };
+}
+
 function hasCookie(req, name) {
   return (req.headers.cookie ?? "").split(";").some((p) => p.trim().startsWith(`${name}=`));
 }
@@ -206,6 +229,65 @@ const ANON_ONLY = new Set([
  * as getEventAttendance.mySeat (auth-only upstream: anonymous ⇒ null).
  */
 const mySeats = new Map();
+
+
+// ------------------------------------------------------- members area (circle)
+// regenOS main #167: member-owned circle posts. Mirrors the contract the Worker
+// relies on — every method needs a session; reads answer a non-member an EMPTY
+// page (never an error); lists run in ascending record-URI order with an
+// exclusive cursor; unknown record fields are refused; a delete only ever
+// touches the caller's own post.
+const POST_COLLECTION = "coop.lexicon.post";
+const POST_FIELDS = new Set(["text", "facets", "title", "subject", "reply", "tags", "langs", "createdAt"]);
+const circlePosts = new Map();
+let tidCounter = 0;
+function nextTid() {
+  tidCounter += 1;
+  return `3m${String(tidCounter).padStart(8, "0")}`;
+}
+function seedPost(author, text, extra = {}, minutesAgo = 0) {
+  const rkey = nextTid();
+  const uri = `at://${author}/${POST_COLLECTION}/${rkey}`;
+  circlePosts.set(uri, {
+    uri, cid: `bafy${rkey}`, author, spaceUri: `at://${author}/coop.lexicon.space.circle/${SCENE_DID}`,
+    record: { text, createdAt: new Date(Date.now() - minutesAgo * 60_000).toISOString(), ...extra },
+  });
+  return uri;
+}
+function seedCircle() {
+  const ride = seedPost(PEER_DID, "Two seats open from Longmont to Saturday's work day. Leaving 8:15, back by dark.", { title: "Seats to Saturday", tags: ["rideshare"], langs: ["en"] }, 60 * 26);
+  seedPost(USER_DID, "Count me in for one of them!", { reply: { root: { uri: ride, cid: `bafy${ride.split("/").pop()}` }, parent: { uri: ride, cid: `bafy${ride.split("/").pop()}` } }, langs: ["en"] }, 60 * 25);
+  seedPost(PEER_DID, "Spare squash, a lot of it. Come get some.", { tags: ["offers", "harvest"], langs: ["en"] }, 60 * 5);
+  seedPost("did:plc:mockbuilder", "Gracias a todas las personas que cocinaron el domingo.", { tags: ["gratitude"], langs: ["es"] }, 60 * 2);
+}
+seedCircle();
+
+function circleSubject(req, res, url) {
+  const person = sessionPerson(req);
+  if (!person) {
+    json(res, 401, { error: "AuthRequired", message: "sign in first" });
+    return null;
+  }
+  if (req.method === "GET" && url.searchParams.get("collective") !== SCENE_DID) {
+    json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+    return null;
+  }
+  return person;
+}
+
+function pageOf(records, url) {
+  const cursor = url.searchParams.get("cursor");
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50) || 50, 100);
+  const sorted = records.sort((a, b) => (a.uri < b.uri ? -1 : 1)).filter((r) => !cursor || r.uri > cursor);
+  const slice = sorted.slice(0, limit);
+  return { records: slice, ...(sorted.length > limit ? { cursor: slice[slice.length - 1].uri } : {}) };
+}
+
+/** What `person` may read: their own posts, plus those of current members — and only if they are a member. */
+function readableCirclePosts(person) {
+  if (!members.has(person.did)) return [];
+  return [...circlePosts.values()].filter((p) => p.author === person.did || members.has(p.author));
+}
 
 /** What the last proposeInvite carried, for the e2e script to inspect. */
 let lastInvite = null;
@@ -301,6 +383,67 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    case "social.scenius.listCirclePosts": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      const tag = url.searchParams.get("tag");
+      const subject = url.searchParams.get("subject");
+      const root = url.searchParams.get("root");
+      const matching = readableCirclePosts(person).filter(
+        (p) =>
+          (!tag || (p.record.tags ?? []).includes(tag)) &&
+          (!subject || p.record.subject?.uri === subject) &&
+          (!root || p.record.reply?.root?.uri === root),
+      );
+      return json(res, 200, pageOf(matching, url));
+    }
+
+    case "social.scenius.getCircleThread": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      const root = url.searchParams.get("root");
+      const readable = readableCirclePosts(person);
+      if (!readable.some((p) => p.uri === root && !p.record.reply)) {
+        return json(res, 404, { error: "NotFound", message: "no readable root post in that collective" });
+      }
+      return json(res, 200, pageOf(readable.filter((p) => p.uri === root || p.record.reply?.root?.uri === root), url));
+    }
+
+    case "social.scenius.createCirclePost": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const post = input.post;
+      if (!post || typeof post !== "object") return json(res, 400, { error: "InvalidRequest", message: "post is required" });
+      const unknown = Object.keys(post).find((k) => !POST_FIELDS.has(k));
+      if (unknown) return json(res, 400, { error: "InvalidRequest", message: `unknown field ${unknown}` });
+      if (typeof post.text !== "string" || !post.text.trim()) return json(res, 400, { error: "InvalidRequest", message: "text must not be empty" });
+      if (Array.from(post.text).length > 20000) return json(res, 400, { error: "InvalidRequest", message: "text is too long" });
+      if (post.reply && !circlePosts.has(post.reply.root?.uri) ) {
+        return json(res, 400, { error: "InvalidRequest", message: "reply root must be a readable post in this collective" });
+      }
+      if (post.reply && circlePosts.get(post.reply.root.uri).record.reply) {
+        return json(res, 400, { error: "InvalidRequest", message: "root must really be a root" });
+      }
+      const rkey = nextTid();
+      const uri = `at://${person.did}/${POST_COLLECTION}/${rkey}`;
+      circlePosts.set(uri, {
+        uri, cid: `bafy${rkey}`, author: person.did, spaceUri: `at://${person.did}/coop.lexicon.space.circle/${SCENE_DID}`,
+        record: { ...post, createdAt: post.createdAt ?? new Date().toISOString() },
+      });
+      return json(res, 200, { uri, cid: `bafy${rkey}` });
+    }
+
+    case "social.scenius.deleteCirclePost": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const uri = `at://${person.did}/${POST_COLLECTION}/${input.rkey}`;
+      return json(res, 200, { deleted: circlePosts.delete(uri) });
+    }
+
     case "social.scenius.getMyContactPref": {
       return json(res, signedIn ? 200 : 401, { channels: [] });
     }
@@ -317,7 +460,10 @@ const server = http.createServer(async (req, res) => {
         // calling origin. The proxy must drop anything that isn't `__Host-rs_`.
         ["set-cookie", `cohere_session=mock-hijack; ${COOKIE_ATTRS}`],
       ];
-      if (signedIn) return json(res, 200, { did: USER_DID, handle: USER_HANDLE, kind: "user" }, headers);
+      if (signedIn) {
+        const person = sessionPerson(req);
+        return json(res, 200, { did: person.did, handle: person.handle, kind: "user" }, headers);
+      }
       return json(res, 200, {}, headers);
     }
 
