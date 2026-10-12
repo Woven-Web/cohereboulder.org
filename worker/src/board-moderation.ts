@@ -11,6 +11,8 @@
 // The same filter carries the approval hook. With the `approval` setting on,
 // posts created after it was switched on are held (state 'pending') until a
 // steward approves them; stewards' own posts are exempt. Default: off.
+// "Created after" means FIRST SEEN BY THIS WORKER (board_seen), never the
+// author-supplied createdAt, which anyone can backdate.
 
 import { readStewardDids, type RosterEnv } from "./roster";
 
@@ -58,6 +60,25 @@ async function loadStates(db: D1Database, uris: string[]): Promise<Map<string, M
 }
 
 /**
+ * Record the first time the Worker sees each post, and return those times.
+ * Recorded whether or not approval is on, so switching it on never holds a
+ * post that was already on the Board.
+ */
+async function firstSeen(db: D1Database, uris: string[], now: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (let i = 0; i < uris.length; i += CHUNK) {
+    const chunk = uris.slice(i, i + CHUNK);
+    await db.batch(chunk.map((uri) => db.prepare("INSERT OR IGNORE INTO board_seen (uri, first_seen) VALUES (?1, ?2)").bind(uri, now)));
+    const { results } = await db
+      .prepare(`SELECT uri, first_seen FROM board_seen WHERE uri IN (${chunk.map(() => "?").join(",")})`)
+      .bind(...chunk)
+      .all<{ uri: string; first_seen: string }>();
+    for (const row of results) out.set(row.uri, row.first_seen);
+  }
+  return out;
+}
+
+/**
  * Filter one page of circle records for the viewer. Throws if moderation state
  * cannot be read — the caller must answer with an error, never with the
  * unfiltered page.
@@ -81,13 +102,14 @@ export async function moderateRecords(
 
   const out: CircleRecord[] = [];
   const now = new Date().toISOString();
+  const seen = await firstSeen(env.cohere, [...new Set(records.map((r) => r.uri))], now);
   for (const record of records) {
     let state = states.get(record.uri);
 
     // Approval hook: a brand-new post from a non-steward is held, once.
     if (settings.approval && state === undefined) {
-      const created = Date.parse(record.record?.createdAt ?? "");
-      const isNew = Number.isNaN(created) || created >= sinceMs;
+      const first = Date.parse(seen.get(record.uri) ?? now);
+      const isNew = Number.isNaN(first) || first >= sinceMs;
       if (isNew) {
         let steward = false;
         try {

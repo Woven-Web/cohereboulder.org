@@ -295,6 +295,13 @@ CREATE TABLE IF NOT EXISTS board_settings (
   updated_by  TEXT
 );
 
+-- When this Worker first saw each post. The approval hook holds posts FIRST SEEN
+-- after approval was switched on; the author's own createdAt can be backdated.
+CREATE TABLE IF NOT EXISTS board_seen (
+  uri         TEXT PRIMARY KEY,
+  first_seen  TEXT NOT NULL
+);
+
 -- Who sees a member's RSVPs on their profile. Keyed by the owner's regenOS DID
 -- and written only from the verified session. 'members' is the default (and an
 -- absent row means members). Only regenOS RSVPs are ever shown on a profile;

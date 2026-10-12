@@ -12,6 +12,7 @@
 // controls what COhere shows, nothing upstream.
 
 import { toCommunityEvent, type CommunityEvent, type GetEventsRow } from "./events";
+import { refuseCrossSiteWrite } from "./csrf";
 import { readVerifiedSessionDid, type RegenosAuthEnv } from "./regenos-auth";
 import { ATTENDANCE_TTL_SECONDS, attendanceCache, attendanceKey } from "./attendance-cache";
 import { readRoster, type RosterEnv } from "./roster";
@@ -144,6 +145,10 @@ const publicShape = (event: CommunityEvent) => ({
 
 export async function handleMyRsvpVisibility(request: Request, env: RsvpVisibilityEnv): Promise<Response> {
   if (request.method !== "GET" && request.method !== "PUT") return json({ error: "method not allowed" }, 405);
+  if (request.method === "PUT") {
+    const refused = refuseCrossSiteWrite(request);
+    if (refused) return refused;
+  }
   const did = await readVerifiedSessionDid(request, env);
   if (!did) return json({ error: "Sign in first." }, 401);
   const current = await readVisibility(env.cohere, did);

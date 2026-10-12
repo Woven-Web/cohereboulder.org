@@ -7,6 +7,7 @@
 // how hiding is applied to what the /xrpc proxy returns.
 
 import { rateLimited, type AuthEnv } from "./auth";
+import { refuseCrossSiteWrite } from "./csrf";
 import { EXCERPT_MAX, getBoardSettings, type ModerationEnv } from "./board-moderation";
 import { readVerifiedSessionDid, type RegenosAuthEnv } from "./regenos-auth";
 import { readRoster } from "./roster";
@@ -16,6 +17,8 @@ export type BoardEnv = ModerationEnv & RegenosAuthEnv & AuthEnv & { cohere: D1Da
 const REASONS = new Set(["spam", "unkind", "private_info", "other"]);
 const NOTE_MAX = 500;
 const REPORTS_PER_HOUR = 10;
+/** Per address, counted before the upstream session call so signed-out spam stays cheap. */
+const REPORTS_PER_IP_PER_HOUR = 30;
 /** A post's URI: a circle post in someone's repo. Nothing else is reportable or hideable. */
 const POST_URI_RE = /^at:\/\/did:[a-z0-9]+:[A-Za-z0-9._%:-]{1,200}\/coop\.lexicon\.post\/[A-Za-z0-9._~-]{1,64}$/;
 
@@ -47,6 +50,12 @@ function authorOf(uri: string): string {
 
 export async function handleCreateReport(request: Request, env: BoardEnv): Promise<Response> {
   if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const refused = refuseCrossSiteWrite(request);
+  if (refused) return refused;
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (ip && (await rateLimited(env, `board-report-ip:${ip}`, REPORTS_PER_IP_PER_HOUR, 3600))) {
+    return json({ error: "That's a lot of reports. Please try again later." }, 429);
+  }
   const body = await readJson(request);
   if (!body) return json({ error: "invalid JSON" }, 400);
 

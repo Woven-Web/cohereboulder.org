@@ -8,6 +8,7 @@ vi.hoisted(() => {
 import { handleAdminBoard, handleCreateReport } from "./board";
 import { moderateRecords, type CircleRecord } from "./board-moderation";
 import { handleXrpcProxy } from "./regenos-auth";
+import { resetRosterCache } from "./roster";
 import { testD1, testKV } from "./test-d1";
 
 const SCENE = "did:plc:mockscene";
@@ -174,8 +175,9 @@ describe("moderateRecords", () => {
       expect(await run([post(STEWARD, "s")], ME)).toHaveLength(1);
       expect(rows(env, "SELECT * FROM board_moderation")).toHaveLength(0);
     });
-    it("lets posts older than the switch-on time through", async () => {
-      expect(await run([post(PEER, "old", { createdAt: "2026-10-01T00:00:00.000Z" })], ME)).toHaveLength(1);
+    it("lets posts the Worker saw before the switch-on time through", async () => {
+      env.cohere.raw.prepare("INSERT INTO board_seen (uri, first_seen) VALUES (?, '2026-10-01T00:00:00.000Z')").run(post(PEER, "old").uri);
+      expect(await run([post(PEER, "old")], ME)).toHaveLength(1);
     });
     it("lets an approved post through, unmarked", async () => {
       setState(post(PEER, "a").uri, "approved");
@@ -204,7 +206,7 @@ describe("the /xrpc proxy and the board", () => {
     const url = new URL(`https://cohere.test/xrpc/social.scenius.${nsid}${search}`);
     return handleXrpcProxy(new Request(url, { ...init, headers: { Cookie: `__Host-rs_session=${who}; cohere_session=secret`, ...(init.headers as object) } }), env, url);
   }
-  beforeEach(() => { env = makeEnv(); });
+  beforeEach(() => { env = makeEnv(); resetRosterCache(); });
 
   function stubWith(records: CircleRecord[]) {
     const spy = stubUpstream();
@@ -221,7 +223,7 @@ describe("the /xrpc proxy and the board", () => {
     const spy = stubWith([]);
     const isGet = nsid.startsWith("list") || nsid.startsWith("get");
     const res = await proxy(nsid, isGet ? `?collective=${SCENE}&root=at://x` : "", "me",
-      isGet ? {} : { method: "POST", body: JSON.stringify({ collective: SCENE, post: {}, rkey: "r" }) });
+      isGet ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collective: SCENE, post: {}, rkey: "r" }) });
     expect(res.status).toBe(200);
     expect(spy.mock.calls.some(([u]) => String(u).includes(nsid))).toBe(true);
   });
@@ -244,9 +246,11 @@ describe("the /xrpc proxy and the board", () => {
     const body = await (await proxy("getCircleThread", `?collective=${SCENE}&root=${post(ME, "mine").uri}`)).json() as { records: CircleRecord[] };
     expect(body.records[0].cohereModeration).toBe("hidden");
   });
-  it("does not touch an empty page (the gate for non-members is the client's job)", async () => {
-    stubWith([]);
-    expect(await (await proxy("listCirclePosts", `?collective=${SCENE}`, "outsider")).json()).toEqual({ records: [] });
+  it("answers a non-member 403 rather than an empty page (the gate is the server's)", async () => {
+    stubWith([post(PEER, "a")]);
+    const res = await proxy("listCirclePosts", `?collective=${SCENE}`, "outsider");
+    expect(res.status).toBe(403);
+    expect(await res.text()).not.toContain("text of a");
   });
   it("is a 502, not a leak, if moderation state cannot be read", async () => {
     stubWith([post(PEER, "a")]);

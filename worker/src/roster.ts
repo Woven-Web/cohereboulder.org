@@ -42,3 +42,24 @@ export async function readStewardDids(env: RosterEnv): Promise<Set<string>> {
   if (!roster) throw new Error("roster unavailable");
   return new Set(roster.filter((m) => m.role === "steward").map((m) => m.did));
 }
+
+// A member check runs on every circle call, so the roster is kept for a few
+// seconds per isolate. Only a *positive* answer is trusted from the cache: a
+// DID that isn't in it triggers a fresh read, so someone who just joined is
+// never turned away, and a removed member loses access within the TTL.
+const ROSTER_TTL_MS = 30_000;
+let cached: { key: string; at: number; dids: Set<string> } | undefined;
+
+export function resetRosterCache(): void {
+  cached = undefined;
+}
+
+/** true / false, or null when the roster cannot be read (callers fail closed). */
+export async function isRosterMember(env: RosterEnv, did: string): Promise<boolean | null> {
+  const key = `${env.REGENOS_BASE_URL}|${env.REGENOS_COLLECTIVE_DID}`;
+  if (cached && cached.key === key && Date.now() - cached.at < ROSTER_TTL_MS && cached.dids.has(did)) return true;
+  const roster = await readRoster(env);
+  if (!roster) return null;
+  cached = { key, at: Date.now(), dids: new Set(roster.map((m) => m.did)) };
+  return cached.dids.has(did);
+}

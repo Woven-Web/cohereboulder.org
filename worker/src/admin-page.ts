@@ -1442,7 +1442,7 @@ export const ADMIN_PAGE = `<!doctype html>
   }
 
   function boardPostCell(uri, excerpt, authorDid) {
-    return '<div>' + (excerpt ? esc(excerpt) : '<span class="muted">(text not captured)</span>') + "</div>" +
+    return '<div>' + (excerpt ? esc(excerpt) + ' <span class="muted" style="font-size:0.8em">(supplied by the reporter, not verified)</span>' : '<span class="muted">(text not captured)</span>') + "</div>" +
       '<div class="muted" style="font-size:0.8em">' + esc(authorDid || "") +
       ' · <a href="' + boardLink(uri) + '" target="_blank" rel="noopener">open on the Board</a></div>';
   }

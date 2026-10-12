@@ -39,6 +39,8 @@
 
 import { attendanceCache, attendanceKey } from "./attendance-cache";
 import { moderateRecords, type CircleRecord, type ModerationEnv } from "./board-moderation";
+import { refuseCrossSiteWrite } from "./csrf";
+import { isRosterMember } from "./roster";
 
 export interface RegenosAuthEnv {
   /** Base URL of regenOS's public /xrpc surface, no trailing slash (shared with events.ts). */
@@ -267,6 +269,27 @@ export async function handleXrpcProxy(
     }
     if (!pinned) return json({ error: "NotConfigured", message: "The members area isn't set up yet." }, 503);
     if (asked !== pinned) return json({ error: "InvalidRequest", message: "That isn't our collective." }, 400);
+
+    // Cookie-authenticated writes: no cross-site callers, JSON bodies only.
+    if (request.method === "POST") {
+      const refused = refuseCrossSiteWrite(request);
+      if (refused) return refused;
+    }
+
+    // The members area is for members. regenOS will answer any signed-in
+    // account, so the roster is checked here, with the verified session DID,
+    // before anything is forwarded.
+    const did = await readVerifiedSessionDid(request, env);
+    if (!did) return json({ error: "AuthRequired", message: "Sign in to see the members area." }, 401);
+    const member = await isRosterMember(env, did);
+    if (member === null) return json({ error: "RosterUnavailable", message: "We can't check membership right now." }, 503);
+    if (!member) return json({ error: "NotAMember", message: "This is for COhere members." }, 403);
+  }
+
+  // Moderation can't be skipped: without the D1 binding, fail closed rather
+  // than hand over an unfiltered page.
+  if (MODERATED_NSIDS.has(nsid) && !env.cohere) {
+    return json({ error: "ModerationUnavailable", message: "The Board can't load right now." }, 502);
   }
 
   if (nsid === PROFILE_PUT) {

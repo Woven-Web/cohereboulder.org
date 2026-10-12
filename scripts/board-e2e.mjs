@@ -66,8 +66,11 @@ try {
   await feed(outsider.page);
   await outsider.page.locator('[data-gate="not-member"]').waitFor({ timeout: 15_000 });
   expect(!(await outsider.page.getByText("Spare squash").count()) && (await posts(outsider.page).count()) === 0, "signed in but not a member: the gate, not an empty board");
-  const direct = await outsider.page.evaluate(async () => (await (await fetch("/xrpc/social.scenius.listCirclePosts?collective=did:plc:mockscene")).json()).records.length);
-  expect(direct === 0, "the proxy gives a non-member an empty page");
+  const direct = await outsider.page.evaluate(async () => {
+    const res = await fetch("/xrpc/social.scenius.listCirclePosts?collective=did:plc:mockscene");
+    return { status: res.status, body: await res.text() };
+  });
+  expect(direct.status === 403 && !direct.body.includes("Spare squash"), "the proxy refuses a non-member outright (403, no posts)");
 
   // ── 2. read, write, reply, delete ─────────────────────────────────────────
   step = "member flow";

@@ -32,7 +32,8 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /api/events[/…]      community calendar, proxied from regenOS (public)
         ├── /api/config          what the SPA needs to know (regenOS flag + DID)
         ├── /xrpc/:nsid          regenOS sign-in/event-write proxy — 404s unless
-        │                        REGENOS_LOGIN_ENABLED="true" (default: off)
+        │                        REGENOS_LOGIN_ENABLED="true" (on in wrangler.jsonc;
+        │                        off in staging; the code default if unset is off)
         ├── /api/submit/:slug    a submission + confirmation   (public)
         ├── /  (POST)            legacy email-only capture     (public)
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
@@ -110,7 +111,7 @@ Read these before "verifying" anything.
 
 ## The data model — read this before changing any form
 
-Five tables (`worker/schema.sql`), designed so **the questions are data, not
+Five core tables (`worker/schema.sql`; the members area adds its own, below), designed so **the questions are data, not
 code**:
 
 | Table | Holds |
@@ -374,11 +375,13 @@ return 200 and the API is same-origin.
   `REGENOS_COLLECTIVE_DID` points at the COhere Boulder scene
   (`did:plc:w54s52ycbw5lreyhlzexredb`, minted 2026-08-30). Smoke-test locally
   with `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<scene did>`.
-- **Phase 2 (sign-in + on-site event hosting) is built but INERT.** The whole
-  lane — the `/xrpc` proxy (`worker/src/regenos-auth.ts`), the calendar page's
-  sign-in panel and event form, and `/login` — is dead until
-  `REGENOS_LOGIN_ENABLED` is set to `"true"` in `wrangler.jsonc` vars. Do not
-  flip it before regenOS's `ALLOWED_APP_ORIGINS` includes
+- **Phase 2 (sign-in + on-site event hosting) is LIVE in production config.**
+  The whole lane — the `/xrpc` proxy (`worker/src/regenos-auth.ts`), the
+  calendar page's sign-in panel and event form, and `/login` — runs because
+  `wrangler.jsonc` sets `REGENOS_LOGIN_ENABLED` to `"true"` (staging sets
+  `"false"`, and an unset var also means off, with every `/xrpc` route a 404).
+  The rule that mattered when it was off still holds for any new origin: do not
+  enable it on one before regenOS's `ALLOWED_APP_ORIGINS` includes
   `https://cohereboulder.org`: until then beginSignup's magic links would point
   at scenius.social and set their cookie there, stranding people mid-sign-in.
   The proxy exists because regenOS's `__Host-rs_session` cookie can only land

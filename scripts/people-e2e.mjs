@@ -57,8 +57,11 @@ try {
   await outsider.goto("/people", { waitUntil: "networkidle" });
   await outsider.locator('[data-gate="not-member"]').waitFor({ timeout: 15_000 });
   expect((await rows(outsider).count()) === 0 && !(await outsider.getByText("Pia Mock").count()), "not a member: the gate, not a list");
-  const direct = await outsider.evaluate(async () => (await (await fetch("/xrpc/social.scenius.listCircleProfiles?collective=did:plc:mockscene")).json()).records.length);
-  expect(direct === 0, "the proxy gives a non-member an empty directory");
+  const direct = await outsider.evaluate(async () => {
+    const res = await fetch("/xrpc/social.scenius.listCircleProfiles?collective=did:plc:mockscene");
+    return { status: res.status, body: await res.text() };
+  });
+  expect(direct.status === 403 && !direct.body.includes("Pia Mock"), "the proxy refuses a non-member outright (403, no names)");
 
   // ── 2. directory ──────────────────────────────────────────────────────────
   step = "directory";
