@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountControl } from "@/components/AccountControl";
+import { useLook } from "@/lib/look";
+import { AlmanacMast, BareChrome } from "@/components/almanac/SiteChrome";
 
 export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,11 +18,14 @@ export const Navigation = () => {
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   const signedIn = Boolean(session?.did);
 
+  const alm = useLook() === "almanac";
   const navItems = [
     { href: "/calendar", label: tr("nav.calendar") },
     { href: "/co-create", label: tr("nav.participate") },
     { href: "/archive", label: tr("nav.archive") },
   ];
+
+  if (alm) return <BareChrome><AlmanacMast register /></BareChrome>;
 
   return (
     <>

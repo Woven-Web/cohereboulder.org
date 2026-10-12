@@ -71,6 +71,8 @@ P28960=$(( 28960 + E2E_PORT_OFFSET ))
 P28961=$(( 28961 + E2E_PORT_OFFSET ))
 P28242=$(( 28242 + E2E_PORT_OFFSET ))
 P28239=$(( 28239 + E2E_PORT_OFFSET ))
+P28963=$(( 28963 + E2E_PORT_OFFSET ))
+P28243=$(( 28243 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
 PWA_PUSH_PORT="${PWA_PUSH_PORT:-10049}"
@@ -382,6 +384,25 @@ fi
 cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-rsvpvis"
+echo "::endgroup::"
+
+# --- 13. look-e2e.mjs: ?look=almanac public site + ?trail=row ---------------
+# The comparison switches (T-113). The form row loads BEFORE the Worker starts
+# (a wrangler d1 write against a running dev server can take it down). Regenos
+# login stays off: nothing here talks to a regenOS.
+echo "::group::look-e2e (Almanac public look + trail variants lane)"
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-look")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=scripts/fixtures/look-form.sql >/dev/null
+start_worker ${P28963} ${P28243} "$PWA_SCRATCH/pwa-merge-worker-13.log" \
+  --var REGENOS_LOGIN_ENABLED:false
+if ! node scripts/look-e2e.mjs http://127.0.0.1:${P28963} ${LOOK_SHOTS:-}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-13.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-look"
 echo "::endgroup::"
 
 rm -rf "$PERSIST_DIR"

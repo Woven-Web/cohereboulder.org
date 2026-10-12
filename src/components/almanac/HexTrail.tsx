@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { FESTIVAL_DATES, formatDayA11y, trailState, weekdayTwo, type TrailState } from "@/lib/festival";
+import { useTrailVariant } from "@/lib/look";
+import { useWide } from "@/hooks/useWide";
 import { fill } from "./format";
+import { BottomSheet } from "./BottomSheet";
 
 interface Props {
   /** Denver calendar day, "YYYY-MM-DD". */
@@ -29,7 +32,14 @@ interface Props {
  * ring, past/future = outline; the accessible name says it too.
  */
 export function HexTrail({ variant, ...props }: Props & { variant: "fit" | "pick" }) {
-  return variant === "fit" ? <FitTrail {...props} /> : <PickTrail {...props} />;
+  return variant === "fit" ? <FitSwitch {...props} /> : <PickTrail {...props} />;
+}
+
+/** ?trail=row swaps the phone's two zigzag rows for one compact row behind a day sheet; the Daylight keeps its straight row of links either way. */
+function FitSwitch(props: Props) {
+  const variant = useTrailVariant();
+  const wide = useWide();
+  return variant === "row" && !wide ? <RowTrail {...props} /> : <FitTrail {...props} />;
 }
 
 function dayFacts(date: string, today: string, done: string[], counts: Record<string, number>, lang: "en" | "es", tr: (k: string) => string) {
@@ -131,6 +141,58 @@ function PickTrail({ today, done = [], counts = {}, selected = null, onSelect }:
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The compact phone trail (?trail=row): eleven small marks in one row, drawn
+ * for the eye only. The whole row is a single button; it opens a sheet whose
+ * day links are 44px targets, so no hexagon needs a thumb of its own.
+ */
+function RowTrail({ today, done = [], counts = {} }: Props) {
+  const { language, tr } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const facts = FESTIVAL_DATES.map((date) => dayFacts(date, today, done, counts, language, tr));
+  const todayFacts = facts.find((_, i) => FESTIVAL_DATES[i] === today);
+  const label = [tr("almanac.trailFit"), todayFacts ? todayFacts.label : "", tr("look.trailOpen")].filter(Boolean).join(". ");
+  return (
+    <div className="trail trail--row">
+      <button type="button" ref={openerRef} className="trail__open" aria-haspopup="dialog" aria-label={label} onClick={() => setOpen(true)}>
+        <span className="trail__line" aria-hidden="true" />
+        <span className="trail__marks" aria-hidden="true">
+          {FESTIVAL_DATES.map((date, i) => (
+            <span key={date} className="trail__mark" data-state={facts[i].state}>
+              <span className="trail__hex"><span>{facts[i].state === "done" ? "✓" : ""}</span></span>
+            </span>
+          ))}
+        </span>
+      </button>
+      <BottomSheet open={open} onOpenChange={setOpen} title={tr("look.trailSheet")} onCloseAutoFocus={(event) => { event.preventDefault(); openerRef.current?.focus(); }}>
+        <nav aria-label={tr("almanac.trailFit")}>
+          <ol className="trail__sheetlist">
+            {FESTIVAL_DATES.map((date, i) => (
+              <li key={date}>
+                <Link
+                  to={`/calendar?day=${date}`}
+                  className="trail__day trail__day--row"
+                  data-state={facts[i].state}
+                  aria-label={facts[i].label}
+                  aria-current={date === today ? "date" : undefined}
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="trail__hex" aria-hidden="true"><span>{facts[i].state === "done" ? "✓" : 15 + i}</span></span>
+                  <span className="trail__rowlab" aria-hidden="true">{formatDayA11y(date, language)}</span>
+                  <span className="trail__rowflag" aria-hidden="true">{date === today ? tr("almanac.flagToday") : facts[i].state === "done" ? tr("almanac.flagDone") : ""}</span>
+                  <Ticks n={facts[i].n} />
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <Link className="btn btn--line btn--block" to="/calendar" onClick={() => setOpen(false)}>{tr("look.trailCalendar")}</Link>
+      </BottomSheet>
     </div>
   );
 }

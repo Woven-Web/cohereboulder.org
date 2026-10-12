@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/EventCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { fetchCommunityCalendar } from "@/lib/events";
+import { eventPath, fetchCommunityCalendar, formatEventDate, formatEventTimeRange, locationLine } from "@/lib/events";
+import { useLook } from "@/lib/look";
 
 /** How many cards the homepage teaser shows before pointing to /calendar. */
 const HOME_EVENT_COUNT = 4;
@@ -18,6 +19,7 @@ const HOME_EVENT_COUNT = 4;
  */
 export function UpcomingEventsHome() {
   const { language } = useLanguage();
+  const almanac = useLook() === "almanac";
   const tr = (key: string) => getTranslation(key, language);
 
   const { data } = useQuery({
@@ -28,6 +30,28 @@ export function UpcomingEventsHome() {
   if (!data || data.source !== "regenos" || data.events.length === 0) return null;
 
   const upcoming = data.events.slice(0, HOME_EVENT_COUNT);
+
+  if (almanac) {
+    return (
+      <section className="band">
+        <h2 className="h2">{tr("home.upcomingEvents.title")}</h2>
+        <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>
+        <ul className="upnext">
+          {upcoming.map((event) => {
+            const where = locationLine(event.location);
+            return (
+              <li key={`${event.did}/${event.rkey}`} className="upnext__item">
+                <p className="upnext__when mono">{[formatEventDate(event.startsAt, language), formatEventTimeRange(event.startsAt, event.endsAt, language)].filter(Boolean).join(" · ")}</p>
+                <h3 className="ev__title"><Link to={eventPath(event)}>{event.name}</Link></h3>
+                {where && <p className="ev__meta">{where}</p>}
+              </li>
+            );
+          })}
+        </ul>
+        <Link className="link" to="/calendar">{tr("home.upcomingEvents.seeFullCalendar")} <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" /></Link>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-white">

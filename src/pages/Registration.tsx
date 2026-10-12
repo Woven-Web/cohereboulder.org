@@ -4,11 +4,50 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { DynamicForm } from "@/components/DynamicForm";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { useLook } from "@/lib/look";
 
 const Registration = () => {
   const { tr, language } = useLanguage();
   const { data: config } = useSiteConfig();
   const spanish = language === "es";
+
+  const signInLine = config?.regenosLoginEnabled === true && (
+    <p className="text-center">{tr("app.alreadyJoined")} <button className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>{tr("nav.signIn")}</button></p>
+  );
+  const form = (
+    <DynamicForm
+      slug="register-2026"
+      successTitle={spanish ? "¡Estás dentro!" : "You're woven in!"}
+      successMessage={
+        spanish
+          ? "Gracias por registrarte. Te escribiremos a medida que COhere 2026 tome forma, y podrás elegir tu propia aventura desde el calendario comunitario."
+          : "Thanks for registering. We'll be in touch as COhere 2026 takes shape — and you'll be able to choose your own adventure from the community calendar."
+      }
+    />
+  );
+  const lede = spanish
+    ? "Regístrate para recibir novedades y mantenerte al tanto de lo que se está tejiendo. Registrarse es gratis y todos los eventos son opcionales."
+    : "Register to receive communications and stay up to date with what's unfolding. Registration is free and every event is opt-in.";
+
+  // The Almanac look keeps the page to what it was: heading, one sentence, the
+  // dates, then the form. Nothing sits between the visitor and the first question.
+  if (useLook() === "almanac") {
+    return (
+      <AlmanacShell site>
+        <main className="page register">
+          <header className="register__head">
+            <p className="folio">{tr("hero.dates")}</p>
+            <h1 className="h1">{tr("hero.tagline")}</h1>
+            <p className="lede">{lede}</p>
+          </header>
+          {/* TODO: regenOS getSession exposes only DID/handle; prefill name/email when available. */}
+          {signInLine}
+          {form}
+        </main>
+      </AlmanacShell>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-earth-light/20">
@@ -18,25 +57,13 @@ const Registration = () => {
         <div className="max-w-4xl mx-auto space-y-10">
           <div className="text-center space-y-4">
             <h1 className="text-4xl lg:text-5xl font-bold">{tr("hero.tagline")}</h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              {spanish
-                ? "Regístrate para recibir novedades y mantenerte al tanto de lo que se está tejiendo. Registrarse es gratis y todos los eventos son opcionales."
-                : "Register to receive communications and stay up to date with what's unfolding. Registration is free and every event is opt-in."}
-            </p>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">{lede}</p>
             <p className="text-lg font-medium text-primary">{tr("hero.dates")}</p>
           </div>
 
           {/* TODO: regenOS getSession exposes only DID/handle; prefill name/email when available. */}
-          {config?.regenosLoginEnabled === true && <p className="text-center">{tr("app.alreadyJoined")} <button className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>{tr("nav.signIn")}</button></p>}
-          <DynamicForm
-            slug="register-2026"
-            successTitle={spanish ? "¡Estás dentro!" : "You're woven in!"}
-            successMessage={
-              spanish
-                ? "Gracias por registrarte. Te escribiremos a medida que COhere 2026 tome forma, y podrás elegir tu propia aventura desde el calendario comunitario."
-                : "Thanks for registering. We'll be in touch as COhere 2026 takes shape — and you'll be able to choose your own adventure from the community calendar."
-            }
-          />
+          {signInLine}
+          {form}
         </div>
       </section>
 

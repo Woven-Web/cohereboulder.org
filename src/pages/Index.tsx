@@ -15,6 +15,8 @@ import {
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
+import { AlmanacHome } from "@/components/almanac/AlmanacHome";
+import { useLook } from "@/lib/look";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
@@ -27,6 +29,7 @@ const Index = () => {
   const { data: config } = useSiteConfig();
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   const signedIn = Boolean(session?.did);
+  if (useLook() === "almanac") return <AlmanacHome signedIn={signedIn} />;
 
   return (
     <div className="min-h-screen bg-background">

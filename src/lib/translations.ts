@@ -104,6 +104,14 @@ export const translations = {
     registerGathering: { en: "Register for the gathering", es: "Regístrate para el encuentro" },
     handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
   },
+  // Strings only the ?look=almanac public site and the ?trail=row variant use.
+  look: {
+    ridgeline: { en: "A ridgeline above Boulder with the sun and a creek", es: "Una cresta sobre Boulder con el sol y un arroyo" },
+    trailOpen: { en: "Opens the day list", es: "Abre la lista de días" },
+    trailSheet: { en: "Pick a festival day", es: "Elige un día del festival" },
+    trailCalendar: { en: "See the whole calendar", es: "Ver toda la agenda" },
+    mainNav: { en: "Site", es: "Sitio" },
+  },
   // The Almanac × Trail app screens (Today, Calendar, event detail, install sheet).
   // Placeholders like {n} are filled by the caller.
   almanac: {
