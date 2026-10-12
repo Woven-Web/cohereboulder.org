@@ -204,3 +204,49 @@ export async function fetchMyRegistration(): Promise<{ registered: boolean | nul
   if (!response.ok) throw new Error("Registration status unavailable");
   return response.json();
 }
+
+// ---------------------------------------------------- members: RSVP visibility
+// Who sees a member's RSVPs on their profile (worker/src/rsvp-visibility.ts).
+// The Worker takes the owner from the regenOS session cookie; nothing here
+// names a person except the profile being looked at.
+
+export type RsvpVisibilityMode = "members" | "nobody";
+
+export interface RsvpVisibility {
+  mode: RsvpVisibilityMode;
+  hiddenEvents: string[];
+}
+
+export interface ProfileRsvp {
+  uri: string;
+  did: string;
+  rkey: string;
+  name: string;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+async function memberJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: "same-origin", cache: "no-store", ...init });
+  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+  return response.json() as Promise<T>;
+}
+
+export const fetchRsvpVisibility = () => memberJson<RsvpVisibility>("/api/me/rsvp-visibility");
+
+export const fetchMyProfileRsvps = () =>
+  memberJson<{ visibility: RsvpVisibility; rsvps: (ProfileRsvp & { hidden: boolean })[] }>("/api/me/rsvps");
+
+/** What members see on this person's profile (their setting already applied). */
+export const fetchMemberRsvps = (did: string) =>
+  memberJson<{ rsvps: ProfileRsvp[] }>(`/api/members/${encodeURIComponent(did)}/rsvps`);
+
+function putVisibility(body: { mode: RsvpVisibilityMode } | { event: string; hidden: boolean }) {
+  return memberJson<RsvpVisibility>("/api/me/rsvp-visibility", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+export const setRsvpVisibilityMode = (mode: RsvpVisibilityMode) => putVisibility({ mode });
+export const setEventHidden = (event: string, hidden: boolean) => putVisibility({ event, hidden });

@@ -67,6 +67,9 @@ P28240=$(( 28240 + E2E_PORT_OFFSET ))
 P28958=$(( 28958 + E2E_PORT_OFFSET ))
 P28959=$(( 28959 + E2E_PORT_OFFSET ))
 P28241=$(( 28241 + E2E_PORT_OFFSET ))
+P28960=$(( 28960 + E2E_PORT_OFFSET ))
+P28961=$(( 28961 + E2E_PORT_OFFSET ))
+P28242=$(( 28242 + E2E_PORT_OFFSET ))
 P28239=$(( 28239 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
@@ -355,6 +358,26 @@ fi
 cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-board"
+echo "::endgroup::"
+
+# --- 12. rsvp-visibility-e2e.mjs: "Who sees my RSVPs" ----------------------
+# Needs D1 (the setting) and the email RSVP table, so it loads the schema into
+# its own state dir like lane 10. No mail is delivered: send_email is local.
+echo "::group::rsvp-visibility-e2e (who sees my RSVPs lane)"
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-rsvpvis")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+start_mock ${P28960} "$PWA_SCRATCH/pwa-merge-mock-12.log"
+start_worker ${P28961} ${P28242} "$PWA_SCRATCH/pwa-merge-worker-12.log" \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28960} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/rsvp-visibility-e2e.mjs http://127.0.0.1:${P28961}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-12.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-rsvpvis"
 echo "::endgroup::"
 
 rm -rf "$PERSIST_DIR"

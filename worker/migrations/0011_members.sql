@@ -45,3 +45,14 @@ CREATE TABLE IF NOT EXISTS board_settings (
   updated_at  TEXT NOT NULL,
   updated_by  TEXT
 );
+
+-- Who sees a member's RSVPs on their profile. Keyed by the owner's regenOS DID
+-- and written only from the verified session. 'members' is the default (and an
+-- absent row means members). Only regenOS RSVPs are ever shown on a profile;
+-- email RSVPs (event_rsvps) are not linked to any account and never appear.
+CREATE TABLE IF NOT EXISTS profile_rsvp_visibility (
+  did                TEXT PRIMARY KEY,
+  mode               TEXT NOT NULL DEFAULT 'members' CHECK (mode IN ('members', 'nobody')),
+  hidden_event_uris  TEXT NOT NULL DEFAULT '[]',   -- JSON array of event AT-URIs
+  updated_at         TEXT NOT NULL
+);

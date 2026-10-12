@@ -60,7 +60,7 @@ describe("XRPC proxy boundary", () => {
     const response = await handleXrpcProxy(new Request(target, {
       method,
       headers: { Cookie: "cohere_session=private; __Host-rs_session=allowed" },
-      ...(method === "POST" ? { body: JSON.stringify({ intent: "going" }) } : {}),
+      ...(method === "POST" ? { body: JSON.stringify({ intent: "going", eventDid: "did:plc:x", eventRkey: "r" }) } : {}),
     }), env, target);
     expect(response.status).toBe(200);
     expect(upstreamFetch).toHaveBeenCalledTimes(1);
@@ -68,8 +68,10 @@ describe("XRPC proxy boundary", () => {
     expect(calledUrl).toBe(`https://upstream.test/xrpc/social.scenius.${name}${target.search}`);
     expect((init.headers as Headers).get("Cookie")).toBe("__Host-rs_session=allowed");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
-    // An RSVP is not an event write: the public listing cache stays put.
-    expect(deleteCache).not.toHaveBeenCalled();
+    // An RSVP is not an event write: the public listing cache stays put. (It
+    // does drop that event's short-lived guest list, which profiles read.)
+    for (const [request] of deleteCache.mock.calls) expect(String(request.url)).not.toContain("/api/events");
+    expect(deleteCache).toHaveBeenCalledTimes(name === "rsvp" ? 1 : 0);
   });
   describe("member profiles", () => {
     const circleEnv = { ...env, REGENOS_COLLECTIVE_DID: "did:plc:mockscene" };

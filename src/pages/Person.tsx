@@ -1,11 +1,15 @@
 import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { Avatar } from "@/components/members/Avatar";
 import { MembersGate } from "@/components/members/MembersGate";
 import { MembersNav } from "@/components/members/MembersNav";
+import { ProfileRsvpList } from "@/components/members/ProfileRsvpList";
 import { SourceMark } from "@/components/members/SourceMark";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { MEMBER_RSVPS_KEY } from "@/hooks/useRsvpVisibility";
+import { fetchMemberRsvps } from "@/lib/api";
 import { entryName, linkLabel, safeLink } from "@/lib/people";
 
 export default function Person() {
@@ -22,6 +26,8 @@ function PersonView() {
   const access = useCircleAccess();
   const member = access.status === "member";
   const entry = access.entryOf(did);
+  // What this person lets members see: the Worker applies their "who sees my RSVPs" setting.
+  const going = useQuery({ queryKey: [...MEMBER_RSVPS_KEY, did], queryFn: () => fetchMemberRsvps(did), enabled: member && Boolean(entry), staleTime: 30_000, retry: 1 });
   const mine = Boolean(access.did) && did === access.did;
   const name = entry ? entryName(entry, access.nameOf(did)) : access.nameOf(did);
   const links = (entry?.record.links ?? []).flatMap((href) => {
@@ -60,6 +66,14 @@ function PersonView() {
             </div>
           </section>
         )}
+        <section style={{ marginTop: "1.2rem" }} data-testid="person-going" aria-labelledby="going-title">
+          <h2 className="eyebrow" id="going-title">{tr("members.rsvp.profileHeading")}</h2>
+          {going.isLoading ? <p className="small" role="status">{tr("members.loading")}</p>
+            : going.isError ? <p className="small">{tr("members.rsvp.profileError")}</p>
+            : going.data?.rsvps.length ? <ProfileRsvpList rsvps={going.data.rsvps} />
+            : <p className="small">{tr("members.rsvp.profileNone")}</p>}
+          {mine && <p className="small"><Link className="link" to="/profile#rsvps">{tr("members.rsvp.sheetAll")}</Link></p>}
+        </section>
         {mine && <p style={{ marginTop: "1.2rem" }}><Link className="btn btn--line btn--sm" to="/profile">{tr("members.people.editMine")}</Link></p>}
         <p className="vis-note" style={{ marginTop: "1.4rem" }}><span><b>{tr("members.people.privacy")}</b></span></p>
       </article>

@@ -7,6 +7,7 @@ import { useShell } from "@/components/almanac/shell-context";
 import { fill } from "@/components/almanac/format";
 import { MembersGate } from "@/components/members/MembersGate";
 import { MembersNav } from "@/components/members/MembersNav";
+import { RsvpVisibilityEditor } from "@/components/members/RsvpVisibilityEditor";
 import { SourceMark } from "@/components/members/SourceMark";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -44,6 +45,13 @@ function EditView() {
     setLinks(mine?.record.links?.length ? mine.record.links : [""]);
     setSeeded(true);
   }, [seeded, member, access.directory.isLoading, mine]);
+
+  // Links like "Change who sees all my RSVPs" arrive at /profile#rsvps; the router resets scroll, so go there once it's drawn.
+  useEffect(() => {
+    if (!seeded || window.location.hash !== "#rsvps") return;
+    const timer = window.setTimeout(() => document.getElementById("rsvps")?.scrollIntoView({ block: "start" }), 50);
+    return () => window.clearTimeout(timer);
+  }, [seeded]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEY });
   const save = useMutation({
@@ -130,6 +138,8 @@ function EditView() {
             </button>
             {access.did && <p style={{ marginTop: ".8rem", textAlign: "center" }}><Link className="link" to={`/people/${encodeURIComponent(access.did)}`}>{tr("members.profile.viewMine")}</Link></p>}
           </form>
+
+          {access.did && <RsvpVisibilityEditor did={access.did} />}
 
           <BottomSheet open={confirmPublic} onOpenChange={setConfirmPublic} title={tr("members.profile.usePublicTitle")} description={tr("members.profile.usePublicBody")}>
             <button type="button" className="btn btn--primary btn--block" disabled={usePublic.isPending} onClick={() => usePublic.mutate()}>{tr("members.profile.usePublicYes")}</button>

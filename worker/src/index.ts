@@ -15,6 +15,7 @@ import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { handleAdminBoard, handleCreateReport } from "./board";
+import { handleMemberRsvps, handleMyRsvps, handleMyRsvpVisibility } from "./rsvp-visibility";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
@@ -408,6 +409,21 @@ export default {
     // Members Board: a member's report of a post. Public route; the reporter is
     // the regenOS DID from the verified session (worker/src/board.ts).
     if (path === "/api/board/reports") return handleCreateReport(request, env);
+
+    // Who sees a member's RSVPs on their profile (worker/src/rsvp-visibility.ts).
+    // The owner is always the verified regenOS session, never a request field.
+    if (path === "/api/me/rsvp-visibility") return handleMyRsvpVisibility(request, env);
+    if (path === "/api/me/rsvps") return handleMyRsvps(request, env);
+    const memberRsvps = /^\/api\/members\/([^/]+)\/rsvps$/.exec(path);
+    if (memberRsvps) {
+      let target: string;
+      try {
+        target = decodeURIComponent(memberRsvps[1]);
+      } catch {
+        return json({ error: "not found" }, 404);
+      }
+      return handleMemberRsvps(request, env, target);
+    }
 
     if (path.startsWith("/api/companion/")) return companionRoute(request, env);
     if (path.startsWith("/api/admin/companion/")) return companionRoute(request, env, await isAdmin(request, env), true);

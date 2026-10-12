@@ -230,7 +230,17 @@ const ANON_ONLY = new Set([
  * The signed-in mock user's own RSVPs, keyed by rkey → seat state. Read back
  * as getEventAttendance.mySeat (auth-only upstream: anonymous ⇒ null).
  */
-const mySeats = new Map();
+const mySeats = new Map(); // `${did}|${rkey}` → seat state, one entry per signed-in person
+const seatKey = (req, rkey) => `${sessionPerson(req)?.did ?? ""}|${rkey}`;
+/** Confirmed guests: the seeded ones plus every signed-in person holding a confirmed seat. */
+function guestsFor(rkey, seeded) {
+  const out = [...seeded];
+  for (const [key, state] of mySeats) {
+    const [did, seatRkey] = key.split("|");
+    if (seatRkey === rkey && state === "confirmed") out.push({ did, handle: [...members.values()].find((m) => m.did === did)?.handle ?? null });
+  }
+  return out;
+}
 
 
 // ------------------------------------------------------- members area (circle)
@@ -349,7 +359,7 @@ const server = http.createServer(async (req, res) => {
       const rkey = url.searchParams.get("eventRkey") ?? "";
       const seats = attendance.get(rkey);
       if (!seats) return json(res, 404, { error: "NotFound", message: "no such event" });
-      return json(res, 200, { ...seats, mySeat: signedIn ? (mySeats.get(rkey) ?? null) : null });
+      return json(res, 200, { ...seats, guests: guestsFor(rkey, seats.guests ?? []), mySeat: signedIn ? (mySeats.get(seatKey(req, rkey)) ?? null) : null });
     }
 
     case "social.scenius.getSceneMembers": {
@@ -600,15 +610,15 @@ const server = http.createServer(async (req, res) => {
       if (!["going", "notgoing", "interested"].includes(input.intent)) {
         return json(res, 400, { error: "InvalidRequest", message: "unknown intent" });
       }
-      const before = mySeats.get(input.eventRkey) ?? null;
+      const before = mySeats.get(seatKey(req, input.eventRkey)) ?? null;
       let state = "none";
       if (input.intent === "going") state = seats.attendance === "approval" ? "requested" : "confirmed";
       if (before === "confirmed") seats.confirmed -= 1;
       if (before === "requested") seats.requested -= 1;
       if (state === "confirmed") seats.confirmed += 1;
       if (state === "requested") seats.requested += 1;
-      if (state === "none") mySeats.delete(input.eventRkey);
-      else mySeats.set(input.eventRkey, state);
+      if (state === "none") mySeats.delete(seatKey(req, input.eventRkey));
+      else mySeats.set(seatKey(req, input.eventRkey), state);
       return json(res, 200, { state, decidedBy: "self" });
     }
 

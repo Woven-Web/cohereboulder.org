@@ -8,6 +8,7 @@ import { useReminders } from "@/lib/reminders";
 import { useEventRsvp } from "@/lib/useEventRsvp";
 import { useInstallOffer } from "@/lib/useInstallOffer";
 import { AddToCalendar } from "@/components/AddToCalendar";
+import { RsvpPrivacyControl } from "@/components/members/RsvpPrivacyControl";
 import { fill } from "./format";
 import type { MyEventItem } from "@/lib/myEvents";
 import { SeatBadge } from "./SeatBadge";
@@ -120,6 +121,8 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
             )}
           </div>
         )}
+        {/* Only a regenOS RSVP can appear on a profile; an emailed one never does. */}
+        {rsvpDone && !viaEmail && <RsvpPrivacyControl event={event} />}
         {hostControls && <div className="ev__acts">{hostControls}</div>}
       </div>
     </article>

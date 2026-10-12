@@ -22,6 +22,7 @@ import { createEmailRsvp } from "@/lib/api";
 import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
 import { MY_SEATS_QUERY_KEY, recordEmailRsvp, recordRegenosRsvp } from "@/lib/myEvents";
 import type { CommunityEvent } from "@/lib/events";
+import { RsvpPrivacyControl } from "@/components/members/RsvpPrivacyControl";
 
 export function EventRsvp({ event }: { event: CommunityEvent }) {
   const { tr } = useLanguage();
@@ -101,6 +102,7 @@ function RegenosRsvp({ event }: { event: CommunityEvent }) {
             {seat === "confirmed" ? tr("calendar.events.cardGoing").replace(/^✓ /, "") : statusLine}
           </Button>
           <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.reminderNote")}</p>
+          <RsvpPrivacyControl event={event} inline />
           <Button
             variant="outline"
             size="sm"

@@ -37,6 +37,7 @@
 //     cookie, and both must reach the browser or sign-in silently fails.
 //   * Never cached, in either direction.
 
+import { attendanceCache, attendanceKey } from "./attendance-cache";
 import { moderateRecords, type CircleRecord, type ModerationEnv } from "./board-moderation";
 
 export interface RegenosAuthEnv {
@@ -315,6 +316,17 @@ export async function handleXrpcProxy(
   // refetch shows the change (worker/src/events.ts caches for 300s).
   if (EVENT_WRITE_NSIDS.has(nsid) && upstream.ok) {
     await edgeCache.delete(new Request(new URL("/api/events", url).toString())).catch(() => {});
+  }
+
+  // A landed RSVP changes who is confirmed for that event; drop our short-lived
+  // copy so the member's own profile reflects their click straight away.
+  if (nsid === "social.scenius.rsvp" && upstream.ok && postBody) {
+    try {
+      const { eventDid, eventRkey } = JSON.parse(new TextDecoder().decode(postBody)) as { eventDid?: unknown; eventRkey?: unknown };
+      if (typeof eventDid === "string" && typeof eventRkey === "string") await attendanceCache.delete(attendanceKey(eventDid, eventRkey)).catch(() => {});
+    } catch {
+      // A body we can't read just means the copy ages out on its own.
+    }
   }
 
   let outBody: BodyInit | null = upstream.body;
