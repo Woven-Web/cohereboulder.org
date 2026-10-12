@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Check, Clock, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
@@ -15,9 +14,7 @@ import {
   type CommunityEvent,
 } from "@/lib/events";
 import { AddToCalendar } from "@/components/AddToCalendar";
-import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
-import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
-import { MY_SEATS_QUERY_KEY, recordRegenosRsvp } from "@/lib/myEvents";
+import { useEventRsvp } from "@/lib/useEventRsvp";
 
 /** The statuses worth a badge; anything else renders as a plain event. */
 const BADGED_STATUSES = new Set(["cancelled", "postponed", "rescheduled"]);
@@ -52,65 +49,7 @@ export function EventCard({ event, hostControls }: { event: CommunityEvent; host
   const where = locationLine(event.location);
   const badged = event.status && BADGED_STATUSES.has(event.status);
   const cancelled = event.status === "cancelled";
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { data: config } = useSiteConfig();
-  const laneOn = config?.regenosLoginEnabled === true;
-  const { data: session } = useRegenosSession(laneOn);
-  const signedIn = laneOn && Boolean(session?.did);
-  const [rsvp, setRsvp] = useState<"idle" | "going" | "requested" | "waitlisted" | "error">("idle");
-  // Attendance refetches may change the seat during a write, never its lock.
-  // The ref also blocks a second click before React has rendered pending.
-  const pendingRef = useRef(false);
-  const [pending, setPending] = useState(false);
-  const { data: mySeat } = useQuery({
-    queryKey: ["regenos-my-seat", event.did, event.rkey],
-    queryFn: () => fetchMySeat(event.did, event.rkey),
-    enabled: signedIn,
-    staleTime: 30_000,
-  });
-  useEffect(() => {
-    setRsvp(!signedIn ? "idle" : mySeat?.seat === "confirmed" ? "going" : mySeat?.seat === "requested" ? "requested" : mySeat?.seat === "waitlisted" ? "waitlisted" : "idle");
-  }, [mySeat, signedIn]);
-  const upcoming = Boolean(event.startsAt) && new Date(event.startsAt ?? 0).getTime() > Date.now();
-
-  // The button opens
-  // the detail page with its RSVP panel expanded (EventRsvp reads #rsvp).
-  // Signed in on regenOS, the card RSVPs in one click (same call and cache
-  // key as the detail page's panel). Anonymous visitors still need the email
-  // form, which lives on the detail page.
-  async function handleRsvp(e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (pendingRef.current) return;
-    if (!signedIn) {
-      navigate(`${eventPath(event)}#rsvp`);
-      return;
-    }
-    pendingRef.current = true;
-    setPending(true);
-    const key = ["regenos-my-seat", event.did, event.rkey];
-    try {
-      const current = await fetchMySeat(event.did, event.rkey);
-      let seat = current.seat;
-      if (rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted") {
-        seat = await rsvpOnRegenos(event.did, event.rkey, "notgoing", current.attendance);
-      } else if (seat !== "confirmed" && seat !== "requested" && seat !== "waitlisted") {
-        seat = await rsvpOnRegenos(event.did, event.rkey, "going", current.attendance);
-      }
-      recordRegenosRsvp(event, seat);
-      queryClient.invalidateQueries({ queryKey: [MY_SEATS_QUERY_KEY] });
-      queryClient.setQueryData(key, { seat, attendance: current.attendance });
-      setRsvp(seat === "confirmed" ? "going" : seat === "requested" ? "requested" : seat === "waitlisted" ? "waitlisted" : seat === "declined" || seat === "none" ? "idle" : "error");
-    } catch {
-      setRsvp("error");
-    } finally {
-      pendingRef.current = false;
-      setPending(false);
-    }
-  }
-
-  const rsvpDone = rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted";
+  const { rsvp, pending, upcoming, rsvpDone, handleRsvp } = useEventRsvp(event);
 
   return (
     <div className="block group" data-testid="event-card">

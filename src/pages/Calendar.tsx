@@ -1,18 +1,22 @@
 import { RegistrationAction } from "@/components/RegistrationAction";
-import { useState } from "react";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { useMemo, useState } from "react";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { HexTrail } from "@/components/almanac/HexTrail";
+import { YourNextStrip } from "@/components/almanac/YourNextStrip";
+import { EventRow } from "@/components/almanac/EventRow";
+import { fill } from "@/components/almanac/format";
+import { seatOf } from "@/components/almanac/seat";
+import { formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
+import { currentDenverDate } from "@/lib/companion";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { LumaCalendar } from "@/components/LumaCalendar";
 import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { CommunityEventForm } from "@/components/CommunityEventForm";
-import { EventCard } from "@/components/EventCard";
 import { CalendarMonthView } from "@/components/CalendarMonthView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CalendarPlus, Loader2, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
@@ -41,15 +45,64 @@ export default function CalendarPage() {
   const { data: session } = useRegenosSession(hostingOn);
   const signedIn = Boolean(session?.did);
   const { data: registration } = useMyRegistration();
-  const today = denverDateKey(new Date().toISOString())!;
-  const tomorrow = denverDateKey(new Date(Date.now() + 86400000).toISOString());
-  const todayEvents = today >= "2026-10-15" && today <= "2026-10-25"
-    ? (data?.events ?? []).filter(event => [today, tomorrow].includes(denverDateKey(event.startsAt))) : [];
+  const today = currentDenverDate();
   const mine = useMyEvents(data?.events);
-  const [showAll, setShowAll] = useState(false);
-  // My events is the default view whenever there is anything in it.
-  const showingMine = mine.items.length > 0 && !showAll;
-  const listed = showingMine ? mine.items.map((i) => i.event) : (data?.events ?? []);
+  const [params, setParams] = useSearchParams();
+  const dayParam = isFestivalDate(params.get("day") ?? "") ? params.get("day") : null;
+  const [explicitMode, setExplicitMode] = useState<"my" | "all" | null>(null);
+  const [allDates, setAllDates] = useState(false);
+  const [myPick, setMyPick] = useState<string | null>(null);
+  const [showMonth, setShowMonth] = useState(false);
+  const hasMine = mine.items.length > 0;
+  // My events is the default view whenever there is anything in it; a day
+  // chosen from Today's trail means "show me that day" instead.
+  const mode: "my" | "all" = explicitMode ?? (dayParam ? "all" : hasMine ? "my" : "all");
+  const showingMine = hasMine && mode === "my";
+  // Inside the festival the picker opens on today; outside it, every upcoming date.
+  const selectedDay = dayParam ?? (allDates ? null : isFestivalDate(today) ? today : null);
+  const done = useMemo(() => practiceDoneDays(), []);
+  const counts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const i of mine.items) { const d = denverDateKey(i.event.startsAt); if (d) out[d] = (out[d] ?? 0) + 1; }
+    return out;
+  }, [mine.items]);
+  const firstMineDay = useMemo(() => {
+    const upcoming = mine.items.find((i) => i.event.status !== "cancelled" && i.event.startsAt && Date.parse(i.event.endsAt ?? i.event.startsAt) > Date.now());
+    return denverDateKey((upcoming ?? mine.items[0])?.event.startsAt ?? null);
+  }, [mine.items]);
+  const nextItems = useMemo(() => mine.items
+    .filter((i) => i.event.status !== "cancelled" && i.event.startsAt && Date.parse(i.event.endsAt ?? i.event.startsAt) > Date.now())
+    .map((i) => ({ event: i.event, seat: seatOf(i) })), [mine.items]);
+
+  function pickDay(date: string) {
+    if (showingMine) {
+      if (counts[date]) {
+        setMyPick(date);
+        window.requestAnimationFrame(() => document.getElementById(`g-${date}`)?.scrollIntoView({ block: "start" }));
+        return;
+      }
+      setExplicitMode("all");
+    }
+    setAllDates(false);
+    setParams({ day: date }, { replace: true });
+  }
+  function showEveryDate() {
+    setExplicitMode("all");
+    setAllDates(true);
+    setParams({}, { replace: true });
+  }
+  function setMode(next: "my" | "all") {
+    setExplicitMode(next);
+    if (next === "my") setParams({}, { replace: true });
+  }
+
+  const allEvents = data?.events ?? [];
+  const dayEvents = selectedDay ? allEvents.filter((e) => denverDateKey(e.startsAt) === selectedDay) : allEvents;
+  const listed = showingMine ? mine.items.map((i) => i.event) : dayEvents;
+  const itemFor = (event: CommunityEvent) => mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did);
+  const byDay = new Map<string, CommunityEvent[]>();
+  for (const e of listed) { const k = denverDateKey(e.startsAt) ?? ""; byDay.set(k, [...(byDay.get(k) ?? []), e]); }
+  const groups = [...byDay.entries()].sort(([x], [y]) => x.localeCompare(y));
   const { data: roster } = useQuery({
     queryKey: ["scene-roster", config?.collectiveDid, session?.did],
     queryFn: () => fetchSceneRoster(config!.collectiveDid!),
@@ -89,189 +142,188 @@ export default function CalendarPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+  const countLabel = (n: number) => (n === 1 ? tr("almanac.eventCountOne") : fill(tr("almanac.eventsCount"), { n }));
 
-      <main className="py-12 [&_button]:min-h-11">
-        <div className="max-w-[800px] mx-auto px-4">
-          {/* Eileen, 2026-09-30: events come first. Only the title and the
-              subscribe button sit above them; propose + hosting live below. */}
-          <div className="text-center mb-8 space-y-4">
-            <h1 className="text-4xl font-bold text-foreground">
-              {tr("calendar.events.title")}
-            </h1>
-            {data?.source === "regenos" && data.icsUrl && (
-              <CalendarSubscribe feedUrl={data.icsUrl} />
+  const hostControlsFor = (event: CommunityEvent) => canManage(event) && (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="min-h-11 gap-2"
+        onClick={() => {
+          setPanel("none");
+          setEditing(event);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+        {tr("calendar.host.editButton")}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="min-h-11 gap-2 text-destructive"
+        disabled={deletingRkey === event.rkey}
+        onClick={() => handleDelete(event)}
+      >
+        {deletingRkey === event.rkey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+        {tr("calendar.host.deleteButton")}
+      </Button>
+    </>
+  );
+
+  const row = (event: CommunityEvent) => {
+    const item = itemFor(event);
+    return (
+      <div key={`${event.did}/${event.rkey}`}>
+        <EventRow
+          event={event}
+          item={item ?? null}
+          showSource={showingMine}
+          descLimit={showingMine ? 100 : 120}
+          hostControls={hostControlsFor(event) || undefined}
+        />
+        {showingMine && item?.source === "email" && (
+          <Button variant="ghost" size="sm" className="-mt-1 mb-2 text-muted-foreground" onClick={() => removeMyEvent(event)} data-testid="my-events-remove">
+            {tr("calendar.events.myEventsRemove")}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <AlmanacShell>
+      <main className="page" style={{ paddingTop: 0 }}>
+        <div style={{ paddingTop: ".9rem", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "1rem" }}>
+          <h1 className="h1">{tr("almanac.calTitle")}</h1>
+          <span className="mono small" style={{ fontSize: ".78em", whiteSpace: "nowrap" }}>{tr("almanac.boulderTime")}</span>
+        </div>
+
+        {/* A host's create/edit form stays on top: Edit scrolls here. */}
+        {hostingOn && signedIn && (panel === "create" || editing) && (
+          <div className="my-6 space-y-4">
+            {panel === "create" && config?.collectiveDid && canCreate && (
+              <CommunityEventForm authority={config.collectiveDid} event={null} onDone={() => setPanel("none")} onCancel={() => setPanel("none")} />
+            )}
+            {editing && (
+              <CommunityEventForm authority={editing.did} event={editing} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
             )}
           </div>
+        )}
 
-          {/* A host's create/edit form stays on top: Edit scrolls here. */}
-          {hostingOn && signedIn && (panel === "create" || editing) && (
-            <div className="mb-10 space-y-4">
-              {panel === "create" && config?.collectiveDid && canCreate && (
-                <CommunityEventForm
-                  authority={config.collectiveDid}
-                  event={null}
-                  onDone={() => setPanel("none")}
-                  onCancel={() => setPanel("none")}
-                />
-              )}
-              {editing && (
-                <CommunityEventForm
-                  authority={editing.did}
-                  event={editing}
-                  onDone={() => setEditing(null)}
-                  onCancel={() => setEditing(null)}
-                />
-              )}
-            </div>
-          )}
-
-          {isLoading ? (
-            <p className="text-center text-muted-foreground py-16">
-              {tr("calendar.events.loading")}
-            </p>
-          ) : data?.source === "regenos" ? (
-            <>
-              {todayEvents.length > 0 && (
-                <section className="max-w-3xl mx-auto mb-10 space-y-4">
-                  <h2 className="text-2xl font-bold">{tr("app.today")}</h2>
-                  <p>{tr("app.todayBody")}</p>
-                  {todayEvents.map(event => (
-                    <EventCard key={`${event.did}/${event.rkey}`} event={event} />
-                  ))}
-                </section>
-              )}
-              <Tabs defaultValue="upcoming" className="max-w-3xl mx-auto">
-                <TabsList className="mx-auto mb-6 grid h-auto w-full grid-cols-2 gap-1 p-1 border border-slate-400">
-                  <TabsTrigger className="min-h-11 text-slate-600 data-[state=active]:font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" value="upcoming">{tr("calendar.events.tabUpcoming")}</TabsTrigger>
-                  <TabsTrigger className="min-h-11 text-slate-600 data-[state=active]:font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" value="month">{tr("calendar.events.tabMonth")}</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="upcoming">
-                  {mine.items.length > 0 && (
-                    <div className="mb-6 space-y-2" data-testid="my-events-toggle">
-                      <div className="flex gap-2" role="group" aria-label={tr("calendar.events.myEventsFilter")}>
-                        <Button size="sm" variant={showingMine ? "default" : "outline"} aria-pressed={showingMine} onClick={() => setShowAll(false)}>{tr("calendar.events.myEventsFilter")} · {mine.items.length}</Button>
-                        <Button size="sm" variant={showingMine ? "outline" : "default"} aria-pressed={!showingMine} onClick={() => setShowAll(true)}>{tr("calendar.events.allEventsFilter")}</Button>
+        {isLoading ? (
+          <p className="small" style={{ padding: "3rem 0", textAlign: "center" }}>{tr("calendar.events.loading")}</p>
+        ) : data?.source === "regenos" ? (
+          <>
+            <HexTrail
+              variant="pick"
+              today={today}
+              done={done}
+              counts={counts}
+              selected={showingMine ? myPick ?? firstMineDay : selectedDay}
+              onSelect={pickDay}
+            />
+            <div className="flow2 flow2--side" style={{ marginTop: ".4rem" }}>
+              <div className="flow2__a">
+                <div className="o1">
+                  {hasMine && (
+                    <div data-testid="my-events-toggle">
+                      <div className="seg" role="group" aria-label={tr("almanac.segLabel")}>
+                        <button type="button" aria-pressed={showingMine} onClick={() => setMode("my")}>{tr("calendar.events.myEventsFilter")}<span className="count">{mine.items.length}</span></button>
+                        <button type="button" aria-pressed={!showingMine} onClick={() => setMode("all")}>{tr("almanac.allEvents")}<span className="count">{allEvents.length}</span></button>
                       </div>
-                      <p className="text-sm text-muted-foreground">{tr("calendar.events.myEventsSource")}</p>
-                      {showingMine && <p className="text-sm text-muted-foreground">{tr("calendar.events.myEventsRemoveNote")}</p>}
                     </div>
                   )}
-                  <div className="space-y-6">
-                    {listed.map((event) => (
-                      <div key={`${event.did}/${event.rkey}`}>
-                        <EventCard event={event} hostControls={canManage(event) && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="min-h-11 gap-2"
-                              onClick={() => {
-                                setPanel("none");
-                                setEditing(event);
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              {tr("calendar.host.editButton")}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="min-h-11 gap-2 text-destructive"
-                              disabled={deletingRkey === event.rkey}
-                              onClick={() => handleDelete(event)}
-                            >
-                              {deletingRkey === event.rkey ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                              {tr("calendar.host.deleteButton")}
-                            </Button>
-                          </>
-                        )} />
-                        {showingMine && mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did)?.source === "email" && (
-                          <Button variant="ghost" size="sm" className="mt-1 text-muted-foreground" onClick={() => removeMyEvent(event)} data-testid="my-events-remove">
-                            {tr("calendar.events.myEventsRemove")}
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="month">
-                  <CalendarMonthView events={data.events} />
-                </TabsContent>
-              </Tabs>
-            </>
-          ) : (
-            <LumaCalendar />
-          )}
-
-          {/* Propose an event: no account needed, lands in the organizers'
-              approval queue. */}
-          {!canCreate && <Card className="w-full mx-auto mt-12">
-            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground flex-1">{tr(signedIn ? "calendar.proposeCallout.signedInText" : "calendar.proposeCallout.text")}</p>
-              <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
-                <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
-              </Button>
-            </CardContent>
-          </Card>}
-
-          {/* Hosting — only exists when the regenOS lane is enabled. */}
-          {hostingOn && (
-            <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
-              {signedIn ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {!registration?.registered && <RegistrationAction />}
-                    {/* No collective DID means nothing to create an event
-                        under — the form below would never render, so don't
-                        offer a button that does nothing. */}
-                    {panel !== "create" && !editing && canCreate && (
-                      <Button
-                        variant="community"
-                        size="sm"
-                        className="min-h-11 gap-2"
-                        onClick={() => {
-                          setEditing(null);
-                          setPanel("create");
-                        }}
-                      >
-                        <CalendarPlus className="h-4 w-4" />
-                        {tr("calendar.host.addEvent")}
-                      </Button>
-                    )}
-
-                  </div>
-                  {manageError && (
-                    <p className="text-sm text-destructive text-center">{manageError}</p>
-                  )}
-                </>
-              ) : panel === "signIn" ? (
-                <RegenosSignInPanel />
-              ) : (
-                <div className="text-center space-y-2">
-                  <span className="text-sm">{tr("calendar.proposeCallout.accountPrompt")}</span>{" "}
-                  <Button variant="link" size="sm" className="min-h-11 px-1 underline font-semibold" onClick={() => setPanel("signIn")}>
-                    {tr("calendar.proposeCallout.signIn")}
-                  </Button>
                 </div>
-              )}
+                <div className="o2">{hasMine && <YourNextStrip items={nextItems} total={mine.items.length} today={today} />}</div>
+                <div className="o4">
+                  {hasMine && (
+                    <p className="note">
+                      {tr("calendar.events.myEventsSource")}
+                      {showingMine && <> {tr("calendar.events.myEventsRemoveNote")}</>}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flow2__b">
+                <div className="o3">
+                  {!showingMine && selectedDay ? (
+                    <>
+                      <div className="agenda-head">
+                        <h2 className="h2" style={{ fontSize: "calc(1.5 * var(--u))" }}>{formatDay(selectedDay, language, true)}</h2>
+                        <span className="mono small" style={{ fontSize: ".78em", whiteSpace: "nowrap" }}>{countLabel(dayEvents.length)}</span>
+                      </div>
+                      {dayEvents.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
+                      {dayEvents.map(row)}
+                      <button type="button" className="link" style={{ marginTop: ".6rem" }} onClick={showEveryDate}>{tr("almanac.showEveryDate")}</button>
+                    </>
+                  ) : (
+                    groups.map(([date, list]) => (
+                      <section key={date || "undated"} className="daygroup" id={`g-${date}`}>
+                        <div className="daygroup__head">
+                          <h2>{date ? formatDay(date, language, true) : tr("calendar.events.undated")}</h2>
+                          <span>{countLabel(list.length)}</span>
+                        </div>
+                        {list.map(row)}
+                      </section>
+                    ))
+                  )}
+                  {groups.length === 0 && !selectedDay && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
+                  <button type="button" className="link" style={{ marginTop: ".8rem" }} aria-expanded={showMonth} onClick={() => setShowMonth((v) => !v)}>{tr("almanac.monthView")}</button>
+                  {showMonth && <div className="mt-3"><CalendarMonthView events={allEvents} /></div>}
+                  {data.icsUrl && <div style={{ marginTop: ".6rem" }}><CalendarSubscribe feedUrl={data.icsUrl} /></div>}
+                </div>
+              </div>
             </div>
-          )}
+          </>
+        ) : (
+          <LumaCalendar />
+        )}
 
-        </div>
+        {/* Propose an event: no account needed, lands in the organizers'
+            approval queue. */}
+        {!canCreate && <Card className="w-full mx-auto mt-12 bg-paper-3 border-ink/40 shadow-none">
+          <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
+            <p className="text-sm text-ink-2 flex-1">{tr(signedIn ? "calendar.proposeCallout.signedInText" : "calendar.proposeCallout.text")}</p>
+            <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
+              <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
+            </Button>
+          </CardContent>
+        </Card>}
+
+        {/* Hosting: only exists when the regenOS lane is enabled. */}
+        {hostingOn && (
+          <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
+            {signedIn ? (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  {!registration?.registered && <RegistrationAction />}
+                  {/* No collective DID means nothing to create an event
+                      under, so don't offer a button that does nothing. */}
+                  {panel !== "create" && !editing && canCreate && (
+                    <Button variant="community" size="sm" className="min-h-11 gap-2" onClick={() => { setEditing(null); setPanel("create"); }}>
+                      <CalendarPlus className="h-4 w-4" />
+                      {tr("calendar.host.addEvent")}
+                    </Button>
+                  )}
+                </div>
+                {manageError && <p className="text-sm text-destructive text-center">{manageError}</p>}
+              </>
+            ) : panel === "signIn" ? (
+              <RegenosSignInPanel />
+            ) : (
+              <div className="text-center space-y-2">
+                <span className="text-sm">{tr("calendar.proposeCallout.accountPrompt")}</span>{" "}
+                <Button variant="link" size="sm" className="min-h-11 px-1 underline font-semibold" onClick={() => setPanel("signIn")}>
+                  {tr("calendar.proposeCallout.signIn")}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
-
-      <Footer />
-    </div>
+    </AlmanacShell>
   );
 }

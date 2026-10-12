@@ -69,6 +69,10 @@ export default {
         // Was referenced by the Integration card but never defined, so every
         // `text-sunset` / `border-sunset` class was a no-op until now.
         sunset: "hsl(var(--sunset))",
+        // Almanac ground for the app screens (src/components/almanac).
+        paper: { DEFAULT: "hsl(var(--paper-hsl))", 2: "hsl(var(--paper-2-hsl))", 3: "hsl(var(--paper-3-hsl))" },
+        ink: { DEFAULT: "hsl(var(--ink-hsl))", 2: "hsl(var(--ink-2-hsl))" },
+        hair: "hsl(var(--hair-hsl))",
         brand: {
           deep: "hsl(var(--brand-deep))",
           water: "hsl(var(--brand-water))",
@@ -101,6 +105,10 @@ export default {
       boxShadow: {
         warm: "var(--shadow-warm)",
         community: "var(--shadow-community)",
+      },
+      fontFamily: {
+        almanac: ["Newsreader", "Georgia", "Times New Roman", "serif"],
+        plex: ["IBM Plex Mono", "ui-monospace", "monospace"],
       },
       keyframes: {
         "accordion-down": {

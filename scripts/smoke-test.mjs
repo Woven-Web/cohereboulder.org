@@ -21,7 +21,7 @@ const PAGES = [
   { path: "/register", expect: "Register" },
   // Renders whichever calendar source is live (regenOS cards or the Luma
   // fallback); the header proves the page itself mounted either way.
-  { path: "/calendar", expect: "Community Calendar" },
+  { path: "/calendar", expect: "Boulder time" },
   // Accountless propose flow — always reachable, no session needed.
   { path: "/propose", expect: "Propose an event" },
   // The magic-link landing page. With REGENOS_LOGIN_ENABLED on (production
