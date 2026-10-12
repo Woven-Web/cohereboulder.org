@@ -25,7 +25,7 @@ export const Navigation = () => {
     { href: "/archive", label: tr("nav.archive") },
   ];
 
-  if (alm) return <BareChrome><AlmanacMast register /></BareChrome>;
+  if (alm) return <BareChrome sticky><AlmanacMast register /></BareChrome>;
 
   return (
     <>

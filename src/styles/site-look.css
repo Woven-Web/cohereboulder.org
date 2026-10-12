@@ -7,9 +7,14 @@
 
 /* ---------- Chrome ---------- */
 .alm--bare{min-height:0;background:none}
+/* The masthead sticks like the classic nav; its wrapper's parent is the whole page, so sticky has room to work. */
+.alm--sticky{position:sticky;top:0;z-index:40}
+.alm--sticky .mast{background:var(--paper)}
+.alm .mast--sticky{position:sticky;top:0;z-index:40;background:var(--paper)}
+/* The phone tab bar is fixed to the bottom; give every hybrid page room under its last line, footer or not. */
+@media (max-width:819px){body:has(.alm--bare .tabs){padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
 .alm--bare .app{min-height:0;max-width:none;box-shadow:none;padding-bottom:0}
-.alm--bare .app:has(.foot){padding-bottom:calc(var(--tabs-h) + var(--sp-5))}
-@media (min-width:820px){.alm--bare .app:has(.foot){padding-bottom:var(--sp-5)}}
+.alm--bare .app:has(.foot){padding-bottom:var(--sp-5)}
 .alm .mast__register{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 calc(.8 * var(--u));border-radius:var(--r-2);
   background:var(--ink);color:var(--paper);box-shadow:0 2px 0 var(--deep);font-weight:600;font-size:var(--fs-small);text-decoration:none;white-space:nowrap}
 .alm .mast__register[role=status]{background:var(--leaf);color:var(--ink);box-shadow:none;border:1.5px solid var(--ink);gap:6px;margin:0;border-radius:var(--r-2)}
@@ -29,7 +34,7 @@
 .alm .foot__lang button[aria-pressed=true]{color:var(--ink);text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
 
 /* shadcn parts living inside the Almanac: same fields, same buttons, same rules */
-.alm input[type=text],.alm input[type=email],.alm input[type=tel],.alm textarea{
+.alm input:not([type]),.alm input[type=text],.alm input[type=email],.alm input[type=tel],.alm textarea{
   width:100%;min-height:48px;padding:calc(.5 * var(--u)) calc(.8 * var(--u));border:1.5px solid var(--ink);border-radius:var(--r-2);background:var(--paper-3);color:var(--ink);font-size:var(--fs-body);box-shadow:none}
 .alm textarea{min-height:calc(6 * var(--u));line-height:1.45}
 .alm input::placeholder,.alm textarea::placeholder{color:var(--ink-2);font-style:italic;opacity:1}
@@ -157,11 +162,11 @@
 .alm .trail__open .trail__line{left:calc(var(--gutter) + 10px);right:calc(var(--gutter) + 10px);top:50%}
 .alm .trail__marks{position:relative;display:grid;grid-template-columns:repeat(11,1fr);align-items:center;justify-items:center;height:30px}
 .alm .trail__mark .trail__hex{width:22px;max-width:none;font-size:calc(.62 * var(--u));font-weight:700}
-.alm .trail__mark[data-state=today] .trail__hex{width:30px;--ring:var(--berry);--fill:var(--ink);--fg:var(--paper)}
+.alm .trail__mark[data-state=today] .trail__hex{width:26px;--ring:var(--berry);--fill:var(--ink);--fg:var(--paper)}
 .alm .trail__mark[data-state=today]::after{content:"";position:absolute;bottom:-4px;width:12px;border-top:3px solid var(--berry);transform:translateX(0)}
 .alm .trail__mark{position:relative;display:grid;place-items:center}
 .alm .trail__mark[data-state=done] .trail__hex{--ring:var(--ink);--fill:var(--sun);--fg:var(--ink)}
-.alm .trail__mark[data-state=past] .trail__hex{--ring:var(--hair);--fg:var(--ink-2)}
+.alm .trail__mark[data-state=past] .trail__hex{--ring:var(--ink-2);--fill:var(--hair);--fg:var(--ink)}
 .alm .trail__mark[data-state=future] .trail__hex{--ring:var(--ink-2);--fill:var(--paper)}
 .alm .trail__sheetlist{display:grid;margin-top:var(--sp-3)}
 .alm .trail__day--row{flex-direction:row;display:grid;grid-template-columns:44px 1fr auto auto;align-items:center;gap:var(--sp-3);min-height:48px;padding:2px 0;border-top:var(--rule-w) solid var(--hair);text-decoration:none;width:100%}
@@ -175,9 +180,13 @@
   .alm .mast:has(.mast__register){gap:var(--sp-2)}
   .alm .mast:has(.mast__register) .wordmark{font-size:calc(1.1 * var(--u))}
   .alm .mast:has(.mast__register) .mast__end{gap:var(--sp-1)}
-  /* With regenOS sign-in on there is no room for both; the pages carry their own Register button. */
-  .alm .mast__end:has(>button) .mast__register{display:none}
+  /* No room for Register and Sign in together: Register stays, the account control moves to the footer on phones. */
+  .alm .mast:has(.mast__register) .mast__end>button{display:none}
 }
+@media (min-width:820px){.alm .foot__account{display:none}}
+.alm .foot__account{margin-top:var(--sp-2)}
+.alm .foot__account>*{margin:0}
+.alm .foot__account button{min-height:48px;border:1.5px solid var(--ink);border-radius:var(--r-2);background:var(--paper);color:var(--ink);font-weight:600;padding:0 calc(1.1 * var(--u))}
 
 /* Daylight: the hero is two columns so the photo does not push the invitation off the screen */
 @media (min-width:820px){

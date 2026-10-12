@@ -393,7 +393,7 @@ echo "::endgroup::"
 echo "::group::look-e2e (Almanac public look + trail variants lane)"
 WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-look")
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
-npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=scripts/fixtures/look-form.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
 start_worker ${P28963} ${P28243} "$PWA_SCRATCH/pwa-merge-worker-13.log" \
   --var REGENOS_LOGIN_ENABLED:false
 if ! node scripts/look-e2e.mjs http://127.0.0.1:${P28963} ${LOOK_SHOTS:-}; then

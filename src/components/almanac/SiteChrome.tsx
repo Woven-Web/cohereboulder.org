@@ -14,7 +14,7 @@ import { TabBar } from "./TabBar";
 export function AlmanacMast({ register = false }: { register?: boolean }) {
   const { language, setLanguage, tr } = useLanguage();
   return (
-    <header className="mast">
+    <header className={`mast${register ? " mast--sticky" : ""}`}>
       <Link className="wordmark" to="/" aria-label="[CO]here">[<i>CO</i>]here</Link>
       <TabBar />
       <div className="mast__end">
@@ -41,6 +41,7 @@ export function AlmanacFooter() {
           <p>{tr("footer.tagline")}</p>
           <p className="small foot__where"><MapPin className="h-4 w-4" aria-hidden="true" /> Boulder, Colorado</p>
         </div>
+        <div className="stack foot__account"><AccountControl variant="mobile" /></div>
         <div className="stack foot__signup">
           <h2 className="h3">{tr("signup.title")}</h2>
           <p className="small">{tr("footer.stayInLoop")}</p>
@@ -63,6 +64,6 @@ export function AlmanacFooter() {
 }
 
 /** For pages that keep their classic body under ?look=almanac: just the chrome, in its own .alm scope. */
-export function BareChrome({ children }: { children: React.ReactNode }) {
-  return <div className="alm alm--bare"><div className="app">{children}</div></div>;
+export function BareChrome({ children, sticky = false }: { children: React.ReactNode; sticky?: boolean }) {
+  return <div className={`alm alm--bare${sticky ? " alm--sticky" : ""}`}><div className="app">{children}</div></div>;
 }

@@ -430,7 +430,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
             />
           </div>
 
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+          {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
           {/* Counted on click, not on submit: native validation can stop the form before onSubmit ever runs. */}
           <Button
