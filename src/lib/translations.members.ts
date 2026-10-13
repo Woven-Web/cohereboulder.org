@@ -13,8 +13,8 @@ export const membersTranslations = {
   loadError: { en: "We couldn’t load this just now. Try again in a moment.", es: "No pudimos cargar esto ahora. Inténtalo de nuevo en un momento." },
   retry: { en: "Try again", es: "Reintentar" },
   gate: {
-    soonTitle: { en: "The COhere Board", es: "El foro de COhere" },
-    soonBody: { en: "A members-only space for rides, offers, questions and thank-yous, shared by the people at the gathering. Register for COhere to get in; members sign in here.", es: "Un espacio solo para miembros: aventones, ofrecimientos, preguntas y agradecimientos de la gente del encuentro. Regístrate en COhere para entrar; los miembros inician sesión aquí." },
+    soonTitle: { en: "The COhere Board opens soon", es: "El foro de COhere abre pronto" },
+    soonBody: { en: "A members-only space for rides, offers, questions and thank-yous. Register to be ready when it opens.", es: "Un espacio solo para miembros: aventones, ofrecimientos, preguntas y agradecimientos. Regístrate para estar lista cuando abra." },
     signedOutTitle: { en: "This part of COhere is for members.", es: "Esta parte de COhere es para miembros." },
     signedOutBody: { en: "Sign in with your COhere account to read and write here. Nothing on it is public.", es: "Inicia sesión con tu cuenta de COhere para leer y escribir aquí. Nada de esto es público." },
     notMemberTitle: { en: "You’re signed in, but not on the member list yet.", es: "Iniciaste sesión, pero aún no estás en la lista de miembros." },
