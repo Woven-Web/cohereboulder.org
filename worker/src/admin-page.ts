@@ -250,7 +250,9 @@ export const ADMIN_PAGE = `<!doctype html>
         <input type="search" id="q" placeholder="Search name, email, org, or any answer…">
         <button class="chip" data-filter="all" aria-pressed="true">Everyone</button>
         <button class="chip" data-filter="register-2025" aria-pressed="false">Registered 2025</button>
-        <button class="chip" data-filter="signup-2026" aria-pressed="false">2026 list</button>
+        <button class="chip" data-filter="register-2026" aria-pressed="false">Registered 2026</button>
+        <button class="chip" data-filter="any-2026" aria-pressed="false">Either 2026 form</button>
+        <button class="chip" data-filter="signup-2026" aria-pressed="false">Email-only 2026 list</button>
         <button class="chip" data-filter="host" aria-pressed="false">Offered to host</button>
         <button class="chip" data-filter="unsubscribed" aria-pressed="false">Unsubscribed</button>
         <button class="btn" id="exportall">Export CSV</button>
@@ -674,13 +676,15 @@ export const ADMIN_PAGE = `<!doctype html>
   function renderStats() {
     var subscribed = people.filter(function (p) { return p.subscribed; }).length;
     var reg2025 = people.filter(function (p) { return submissionOf(p, "register-2025"); }).length;
+    var reg2026 = people.filter(function (p) { return submissionOf(p, "register-2026"); }).length;
     var sig2026 = people.filter(function (p) { return submissionOf(p, "signup-2026"); }).length;
     var hosts = people.filter(wantsToHost).length;
     var tiles = [
       [people.length, "people"],
       [subscribed, "on the email list"],
       [reg2025, "registered in 2025"],
-      [sig2026, "on the 2026 list"],
+      [reg2026, "registered for 2026"],
+      [sig2026, "on the email-only 2026 list"],
       [hosts, "offered to host"]
     ];
     el("stats").innerHTML = tiles.map(function (t) {
@@ -692,6 +696,8 @@ export const ADMIN_PAGE = `<!doctype html>
   function matches(person) {
     if (filter === "register-2025" && !submissionOf(person, "register-2025")) return false;
     if (filter === "signup-2026" && !submissionOf(person, "signup-2026")) return false;
+    if (filter === "register-2026" && !submissionOf(person, "register-2026")) return false;
+    if (filter === "any-2026" && !submissionOf(person, "register-2026") && !submissionOf(person, "signup-2026")) return false;
     if (filter === "host" && !wantsToHost(person)) return false;
     if (filter === "unsubscribed" && person.subscribed) return false;
     if (!query) return true;
