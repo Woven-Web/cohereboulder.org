@@ -2,9 +2,11 @@
 // Add new translations here and use them throughout the app
 
 import { membersTranslations } from "./translations.members";
+import { notifyTranslations } from "./translations.notify";
 
 export const translations = {
   members: membersTranslations,
+  notify: notifyTranslations,
   companionAdmin: {
     heading: { en: "Daily companion", es: "Compañero diario" },
     tab: { en: "Companion", es: "Compañero" },
@@ -78,7 +80,7 @@ export const translations = {
     unsupported: { en: "This browser does not support Web Push.", es: "Este navegador no admite Web Push." },
     off: { en: "Daily notifications are off.", es: "Las notificaciones diarias están desactivadas." },
     privacy: { en: "No account or email is required. This device gets a random ID that links its replies, quest reports and notification subscription, so it is pseudonymous rather than anonymous. Replies may include an optional name; please avoid sensitive information. Replies, quest reports, subscriptions and delivery records are deleted after the gathering ends plus 30 days. You can turn off notifications here at any time.", es: "No se requiere cuenta ni correo. Este dispositivo recibe un identificador aleatorio que vincula sus respuestas, misiones y suscripción, por lo que es seudónimo y no anónimo. Puedes añadir un nombre a tu respuesta; evita información sensible. Las respuestas, misiones, suscripciones y registros de envío se eliminan 30 días después del encuentro. Puedes desactivar las notificaciones aquí en cualquier momento." },
-    schedule: { en: "During October 15–25: practice at 6 AM, events at 9 AM, and a question at 3 PM (Boulder time). Missing content is skipped.", es: "Del 15 al 25 de octubre: práctica a las 6, eventos a las 9 y pregunta a las 15 (hora de Boulder). Se omite el contenido que falte." },
+    schedule: { en: "Three notes: a morning note at 6 AM with the day’s practice, its question and today’s events; an invitation to share your harvest about an hour after an event you RSVP’d to ends; and at 8 PM, tomorrow’s events. Boulder time.", es: "Tres avisos: una nota a las 6 de la mañana con la práctica del día, su pregunta y los eventos de hoy; una invitación a compartir tu cosecha una hora después de que termine un evento al que confirmaste; y a las 8 PM, los eventos de mañana. Hora de Boulder." },
     language: { en: "Español", es: "English" },
     back: { en: "COhere home", es: "Inicio de COhere" },
   },
@@ -170,7 +172,7 @@ export const translations = {
     withHost: { en: "with {name}", es: "con {name}" },
     remindMe: { en: "Remind me", es: "Recuérdame" },
     remindersOn: { en: "Reminders on", es: "Recordatorios activos" },
-    remindersOnToast: { en: "Daily reminders are on: practice at 6 AM, today’s events at 9 AM, a question at 3 PM.", es: "Los recordatorios diarios están activos: práctica a las 6, eventos de hoy a las 9, pregunta a las 15." },
+    remindersOnToast: { en: "Notifications are on: a morning note at 6 AM, a harvest invitation after events you RSVP to, and an 8 PM note about tomorrow.", es: "Los avisos están activos: una nota a las 6 de la mañana, una invitación a la cosecha después de los eventos que confirmes, y un aviso a las 8 PM sobre mañana." },
     // Calendar
     calTitle: { en: "Calendar", es: "Agenda" },
     boulderTime: { en: "Boulder time", es: "Hora de Boulder" },
@@ -197,20 +199,20 @@ export const translations = {
     installTitleDidit: { en: "Keep today’s practice with you", es: "Lleva la práctica de hoy contigo" },
     installTitleReminders: { en: "Get the day’s reminders", es: "Recibe los recordatorios del día" },
     installBody: { en: "Add COhere to your home screen. One practice a day, right where you’ll see it.", es: "Agrega COhere a tu pantalla de inicio. Una práctica al día, justo donde la verás." },
-    remindersOnlyBody: { en: "COhere can nudge you once a day, right on your phone.", es: "COhere puede avisarte una vez al día, directo en tu teléfono." },
-    at6: { en: "6 AM", es: "6:00" },
-    at9: { en: "9 AM", es: "9:00" },
-    at15: { en: "3 PM", es: "15:00" },
-    time6: { en: "The day’s practice", es: "La práctica del día" },
-    time9: { en: "Events happening today", es: "Los eventos de hoy" },
-    time15: { en: "The question of the day", es: "La pregunta del día" },
+    remindersOnlyBody: { en: "COhere can nudge you three times a day at most, right on your phone.", es: "COhere puede avisarte hasta tres veces al día, directo en tu teléfono." },
+    at6: { en: "6 AM", es: "6 AM" },
+    at9: { en: "After events", es: "Tras un evento" },
+    at15: { en: "8 PM", es: "8 PM" },
+    time6: { en: "The day’s practice with its question, then today’s events", es: "La práctica del día con su pregunta, y luego los eventos de hoy" },
+    time9: { en: "An invitation to share your harvest, about an hour after an event you RSVP’d to ends", es: "Una invitación a compartir tu cosecha, una hora después de que termine un evento al que confirmaste" },
+    time15: { en: "Tomorrow’s events, with a place to RSVP", es: "Los eventos de mañana, con un lugar para confirmar" },
     installFine: { en: "Boulder time. Works offline. No account needed.", es: "Hora de Boulder. Funciona sin conexión. No necesitas cuenta." },
     installPair: { en: "Add to home screen & get reminders", es: "Agregar a inicio y recibir recordatorios" },
     getReminders: { en: "Get reminders", es: "Recibir recordatorios" },
     notNow: { en: "Not now", es: "Ahora no" },
     setTitle: { en: "You’re set.", es: "Todo listo." },
-    setBody: { en: "COhere is on your home screen. Turn on reminders to hear from us each morning.", es: "COhere está en tu pantalla de inicio. Activa los recordatorios para saber de nosotros cada mañana." },
-    setBodyOn: { en: "COhere is on your home screen and reminders are on.", es: "COhere está en tu pantalla de inicio y los recordatorios están activos." },
+    setBody: { en: "COhere is on your home screen. Turn on notifications to hear from us each morning. You choose which of the three you get.", es: "COhere está en tu pantalla de inicio. Activa los avisos para saber de nosotros cada mañana. Tú eliges cuáles de los tres recibes." },
+    setBodyOn: { en: "COhere is on your home screen and notifications are on. You can change which ones in More › Notifications.", es: "COhere está en tu pantalla de inicio y los avisos están activos. Puedes cambiar cuáles en Más › Avisos." },
     turnOn: { en: "Turn on reminders", es: "Activar recordatorios" },
     backToToday: { en: "Done", es: "Listo" },
     iosTitle: { en: "Add COhere to your Home Screen", es: "Agrega COhere a tu pantalla de inicio" },
@@ -220,7 +222,7 @@ export const translations = {
     iosStep2: { en: "Scroll down and choose Add to Home Screen.", es: "Desplázate y elige Agregar a pantalla de inicio." },
     iosStep2Cap: { en: "Add to Home Screen", es: "Agregar a pantalla de inicio" },
     iosStep3: { en: "Tap Add, then open COhere from your Home Screen and switch on reminders.", es: "Toca Agregar, abre COhere desde tu pantalla de inicio y activa los recordatorios." },
-    iosFine: { en: "Reminders: 6 AM practice, 9 AM events, 3 PM question (Boulder time). Works offline. No account.", es: "Recordatorios: práctica 6 AM, eventos 9 AM, pregunta 3 PM (hora de Boulder). Funciona sin conexión. Sin cuenta." },
+    iosFine: { en: "Notes: 6 AM practice and events, a harvest invitation after events you RSVP to, 8 PM tomorrow’s events (Boulder time). Works offline. No account needed for the morning note.", es: "Avisos: 6 AM práctica y eventos, una invitación a la cosecha después de los eventos que confirmes, 8 PM los eventos de mañana (hora de Boulder). Funciona sin conexión. La nota de la mañana no necesita cuenta." },
     gotIt: { en: "Got it", es: "Entendido" },
     iosToast: { en: "Open COhere from your Home Screen to turn on reminders.", es: "Abre COhere desde tu pantalla de inicio para activar los recordatorios." },
     installRow: { en: "Add to home screen & get reminders", es: "Agregar a inicio y recibir recordatorios" },

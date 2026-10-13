@@ -16,5 +16,6 @@ Disallow: /admin
 Disallow: /board
 Disallow: /people
 Disallow: /profile
+Disallow: /n/
 
 Sitemap: https://cohereboulder.org/sitemap.xml

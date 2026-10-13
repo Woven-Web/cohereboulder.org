@@ -3,6 +3,7 @@
 //
 //   GET    /api/harvests?event=<did>/<rkey>   the event's harvests          (member)
 //   GET    /api/harvests/mine                 which events I have shared on  (member)
+//   GET    /api/harvests/recent               events that ended in the last 2 days (member), for the Today card
 //   POST   /api/harvests                      write one                      (member)
 //   PATCH  /api/harvests/:id                  edit mine
 //   DELETE /api/harvests/:id                  delete mine
@@ -22,6 +23,7 @@
 import { rateLimited, type AuthEnv } from "./auth";
 import { refuseCrossSiteWrite } from "./csrf";
 import { eventEndMs } from "./notify-core";
+import { fetchSceneEvents } from "./notify-send";
 import { readVerifiedSessionDid, type RegenosAuthEnv } from "./regenos-auth";
 import { isRosterMember, type RosterEnv } from "./roster";
 import { lookupLiveEvent } from "./rsvps";
@@ -136,6 +138,25 @@ async function mine(env: HarvestEnv, did: string): Promise<Response> {
   return json({ harvests: results.map((r) => ({ id: r.id, eventDid: r.event_did, eventRkey: r.event_rkey })) });
 }
 
+const RECENT_HOURS = 48;
+
+/** Events that have just ended; the public calendar listing drops an event the moment it ends. */
+async function recent(env: HarvestEnv, deps: { events?: typeof fetchSceneEvents }): Promise<Response> {
+  const events = await (deps.events ?? fetchSceneEvents)(env as never);
+  if (!events) return json({ error: "The calendar isn’t responding right now." }, 503);
+  const now = Date.now();
+  return json({
+    events: events
+      .flatMap((e) => {
+        const end = eventEndMs(e);
+        return !Number.isNaN(end) && end <= now && now - end <= RECENT_HOURS * 3600_000
+          ? [{ did: e.did, rkey: e.rkey, name: e.name, startsAt: e.startsAt, endsAt: e.endsAt, where: e.location?.name ?? null }]
+          : [];
+      })
+      .sort((a, b) => Date.parse(b.endsAt ?? b.startsAt ?? "") - Date.parse(a.endsAt ?? a.startsAt ?? "")),
+  });
+}
+
 function validBody(value: unknown): string | null {
   return typeof value === "string" && value.trim() && Array.from(value.trim()).length <= HARVEST_TEXT_MAX ? value.trim() : null;
 }
@@ -246,7 +267,7 @@ async function photo(env: HarvestEnv, did: string, id: string): Promise<Response
 }
 
 /** Routes under /api/harvests. Null for any other path. */
-export async function handleHarvests(request: Request, env: HarvestEnv, url: URL, deps: { lookup?: typeof lookupLiveEvent } = {}): Promise<Response | null> {
+export async function handleHarvests(request: Request, env: HarvestEnv, url: URL, deps: { lookup?: typeof lookupLiveEvent; events?: typeof fetchSceneEvents } = {}): Promise<Response | null> {
   const path = url.pathname;
   if (path !== "/api/harvests" && !path.startsWith("/api/harvests/")) return null;
   const method = request.method;
@@ -263,6 +284,7 @@ export async function handleHarvests(request: Request, env: HarvestEnv, url: URL
     return json({ error: "method not allowed" }, 405);
   }
   if (path === "/api/harvests/mine" && method === "GET") return mine(env, who.did);
+  if (path === "/api/harvests/recent" && method === "GET") return recent(env, deps);
   const one = /^\/api\/harvests\/([^/]+)(\/photo)?$/.exec(path);
   if (one) {
     if (one[2]) return method === "GET" ? photo(env, who.did, one[1]) : json({ error: "method not allowed" }, 405);

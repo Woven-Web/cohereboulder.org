@@ -37,9 +37,12 @@
   // scheduled() sends day-before reminders to email RSVPs (once per row) and
   // deletes RSVPs 30 days after their event (worker/src/rsvps.ts).
   // Every minute: newsletters past their 15-minute hold start sending, a
-  // batch per tick (worker/src/newsletter.ts). scheduled() tells the two apart
-  // by the cron string, so keep these in step with index.ts.
-  "triggers": { "crons": ["0 12 * * *", "0 15 * * *", "0 21 * * *", "* * * * *"] },
+  // batch per tick (worker/src/newsletter.ts), and the notification senders
+  // check their Boulder-time windows (worker/src/notify-send.ts: morning 6 AM,
+  // 8 PM, harvest an hour after an event ends; DST-safe because they read the
+  // Boulder clock, not a fixed UTC hour). scheduled() tells the jobs apart by
+  // the cron string, so keep these in step with index.ts.
+  "triggers": { "crons": ["0 15 * * *", "* * * * *"] },
   "vars": {
     "RSVP_REMINDERS_PAUSED": "true",
     // "true" stops every scheduled companion push (worker/src/companion.ts).

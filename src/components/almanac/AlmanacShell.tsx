@@ -6,6 +6,7 @@ import { AccountControl } from "@/components/AccountControl";
 import { TabBar } from "./TabBar";
 import { InstallSheet } from "./InstallSheet";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
+import { useDeviceSync } from "@/hooks/useDeviceSync";
 
 /**
  * The app frame: masthead (wordmark, tabs, language), page, and the overlays
@@ -20,6 +21,7 @@ export function AlmanacShell({ children, after }: { children: ReactNode; after?:
   const [hasBar, setHasBar] = useState(false);
   const timer = useRef<number>();
   const { subscribed } = useReminders();
+  useDeviceSync();
 
   useEffect(() => { setContainer(rootRef.current); probeSubscription(); }, []);
   useEffect(() => () => window.clearTimeout(timer.current), []);

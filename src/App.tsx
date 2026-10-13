@@ -1,4 +1,7 @@
 import Companion from "./pages/Companion";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
+import NotifyLink from "./pages/NotifyLink";
+import Tomorrow from "./pages/Tomorrow";
 import { StandaloneMode } from "./components/StandaloneMode";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -49,6 +52,10 @@ const App = () => (
             <Route path="/today" element={<Companion />} />
             <Route path="/quests" element={<Companion />} />
             <Route path="/more" element={<Companion />} />
+            <Route path="/more/notifications" element={<NotificationSettingsPage />} />
+            <Route path="/tomorrow" element={<Tomorrow />} />
+            {/* A link in one of our notification emails: signed in nowhere, the token says who. */}
+            <Route path="/n/:token" element={<NotifyLink />} />
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />

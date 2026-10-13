@@ -21,6 +21,7 @@ const WATER = { did: SCENE, rkey: "water" };
 let env: HarvestEnv & { cohere: ReturnType<typeof testD1> };
 let lookup: (env: unknown, did: string, rkey: string) => Promise<LiveLookup>;
 let nowMs: number;
+let recentEvents: { did: string; rkey: string; name: string; startsAt: string | null; endsAt: string | null; location: { name: string } | null; [k: string]: unknown }[] | null;
 
 const ended = (rkey: string, minutesAgo: number): LiveLookup => ({
   kind: "ok", event: { did: SCENE, rkey, name: `Event ${rkey} | with Someone`, startsAt: new Date(nowMs - (minutesAgo + 60) * 60_000).toISOString(), endsAt: new Date(nowMs - minutesAgo * 60_000).toISOString(), status: "scheduled", where: "Mock Hall" },
@@ -29,6 +30,7 @@ const ended = (rkey: string, minutesAgo: number): LiveLookup => ({
 beforeEach(() => {
   resetRosterCache();
   nowMs = Date.now();
+  recentEvents = [];
   env = {
     cohere: testD1(["../migrations/0011_members.sql", "../migrations/0012_notify.sql"]), COHERE_AUTH: testKV(),
     REGENOS_LOGIN_ENABLED: "true", REGENOS_BASE_URL: "https://upstream.test", REGENOS_COLLECTIVE_DID: SCENE,
@@ -48,7 +50,7 @@ afterEach(() => vi.unstubAllGlobals());
 const call = (method: string, path: string, body?: unknown, who: string | null = "me", extra: Record<string, string> = {}) =>
   handleHarvests(
     new Request(`${BASE}${path}`, { method, headers: { "Content-Type": "application/json", ...(who ? { Cookie: `__Host-rs_session=${who}` } : {}), ...extra }, body: body === undefined ? undefined : JSON.stringify(body) }),
-    env, new URL(`${BASE}${path}`), { lookup: lookup as never },
+    env, new URL(`${BASE}${path}`), { lookup: lookup as never, events: async () => recentEvents },
   ) as Promise<Response>;
 const rows = (sql: string) => env.cohere.raw.prepare(sql).all() as Record<string, unknown>[];
 const write = (over: Record<string, unknown> = {}, who = "me") => call("POST", "/api/harvests", { eventDid: SCENE, eventRkey: "water", body: "I stood at the pond.", ...over }, who);
@@ -182,6 +184,20 @@ describe("reading an event's harvests", () => {
   it("rejects a bad event query", async () => {
     expect((await call("GET", "/api/harvests?event=nope")).status).toBe(400);
     expect((await call("GET", "/api/harvests")).status).toBe(400);
+  });
+});
+
+describe("recent events (for the Today card)", () => {
+  const e = (rkey: string, endedMinutesAgo: number) => ({ did: SCENE, rkey, name: rkey, startsAt: new Date(nowMs - (endedMinutesAgo + 60) * 60_000).toISOString(), endsAt: new Date(nowMs - endedMinutesAgo * 60_000).toISOString(), location: { name: "Hall" } });
+  it("lists events that ended in the last two days, newest first, and no others", async () => {
+    recentEvents = [e("old", 60 * 49), e("yesterday", 60 * 20), e("hourago", 60), e("running", -30)];
+    const res = await call("GET", "/api/harvests/recent");
+    expect((await res.json()).events.map((x: { rkey: string }) => x.rkey)).toEqual(["hourago", "yesterday"]);
+  });
+  it("is members only, and says so when the calendar is unreachable", async () => {
+    expect((await call("GET", "/api/harvests/recent", undefined, "outsider")).status).toBe(403);
+    recentEvents = null;
+    expect((await call("GET", "/api/harvests/recent")).status).toBe(503);
   });
 });
 

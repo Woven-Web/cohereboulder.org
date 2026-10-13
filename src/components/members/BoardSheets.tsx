@@ -96,20 +96,27 @@ export function DeleteSheet({ open, onOpenChange, collective, post, onDeleted }:
   );
 }
 
-export function ReportSheet({ open, onOpenChange, post }: SheetProps & { post: BoardPost | null }) {
+/** What a report is about: a Board post, or any `{uri, excerpt}` (a harvest). */
+export interface ReportTarget {
+  uri: string;
+  excerpt: string;
+}
+
+export function ReportSheet({ open, onOpenChange, post, target }: SheetProps & { post?: BoardPost | null; target?: ReportTarget | null }) {
   const { tr } = useLanguage();
   const { toast } = useShell();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [note, setNote] = useState("");
   const [missing, setMissing] = useState(false);
   const mutation = useMutation({
-    mutationFn: (target: BoardPost) => reportPost({ uri: target.uri, reason: reason as ReportReason, note: note.trim() || undefined, excerpt: excerptOf(target) }),
+    mutationFn: (subject: ReportTarget) => reportPost({ uri: subject.uri, reason: reason as ReportReason, note: note.trim() || undefined, excerpt: subject.excerpt }),
     onSuccess: () => { setReason(null); setNote(""); onOpenChange(false); toast(tr("members.report.thanks")); },
     onError: (err) => toast(tr(err instanceof XrpcError && err.status === 429 ? "members.report.tooMany" : "members.report.failed")),
   });
   function submit() {
     if (!reason) { setMissing(true); return; }
-    if (post) mutation.mutate(post);
+    const subject = target ?? (post ? { uri: post.uri, excerpt: excerptOf(post) } : null);
+    if (subject) mutation.mutate(subject);
   }
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={tr("members.report.title")} description={tr("members.report.lede")}>
