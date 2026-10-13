@@ -301,9 +301,6 @@
 /* ---- Calendar: no empty rail, a two-column day list from 768px, and the week at 1024px+ ---- */
 @media (min-width:768px){.alm .flow2--side.flow2--solo{grid-template-columns:minmax(0,1fr)}}
 .alm .cal-view{margin-bottom:var(--sp-3)}
-@media (min-width:768px) and (max-width:1023px){
-  .alm .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
-}
 @media (min-width:768px){
   .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
 }
@@ -350,10 +347,12 @@
 @media (max-width:767px){.alm.eco{--bar-h:88px}.alm.eco .actionbar{padding-top:var(--sp-3)}}
 /* Aaron 10-13: photos read too big on a computer. Cap them on wide screens. */
 @media (min-width:768px){
-  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:min(100%,34rem);margin-inline:auto;display:block;max-height:22rem;object-fit:cover;width:100%}
+  .alm.eco img.photo,.alm.eco figure.photo img,.alm.eco .plate:not(.plate--hero) img{max-width:min(100%,34rem);margin-inline:auto;display:block;max-height:22rem;object-fit:cover;width:100%}
+  .alm.eco figure.photo{max-width:min(100%,34rem);margin-inline:auto}
   .alm.eco .plate--hero img{max-height:26rem;object-fit:cover}
   .alm.eco .home__hero>.plate--hero img{aspect-ratio:4/3;max-height:24rem}
 }
 @media (min-width:1280px){
-  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:30rem;max-height:20rem}
+  .alm.eco img.photo,.alm.eco figure.photo img,.alm.eco .plate:not(.plate--hero) img{max-width:30rem;max-height:20rem}
+  .alm.eco figure.photo{max-width:30rem}
 }
