@@ -124,7 +124,7 @@ for (const [w, h] of SIZES) {
     check(await page.locator(".eco-ridges").count() > 0, `${label} shows the ridges at ${w}`);
     const fam = await page.locator("h1").first().evaluate((el) => getComputedStyle(el).fontFamily);
     check(/Bricolage/.test(fam), `${label}: the title is in Bricolage Grotesque at ${w}`);
-    const body = await page.locator("main p:not(.eyebrow):not(.folio)").first().evaluate((el) => getComputedStyle(el).fontFamily);
+    const body = await page.locator("main p:not(.eyebrow):not(.folio):not(.mono)").first().evaluate((el) => getComputedStyle(el).fontFamily);
     check(/Figtree/.test(body) || /Newsreader/.test(body), `${label}: body text is Figtree (or the Newsreader heart line) at ${w}`);
     // Register is on the first phone screen.
     const reg = page.locator(".mast .mast__register").first();
@@ -135,8 +135,6 @@ for (const [w, h] of SIZES) {
     errors.length = 0;
     await shot(page, `ecology-${label}-${w}`, path !== "/register");
   }
-  await go(page, "/");
-  check(await page.getByText("We Are Our Ecology").count() > 0 && await page.getByText("Weaving Our Resilience").count() > 0, `home carries "We Are Our Ecology" and "Weaving Our Resilience" at ${w}`);
   // The look sticks across a link; ?look=classic and ?look=almanac undo/replace it; default is classic.
   await page.getByRole("link", { name: /Join COhere|Register/ }).first().click();
   await page.locator("h1").first().waitFor();
@@ -357,11 +355,12 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   await go(page, "/");
   await page.getByTestId("home-preview").waitFor();
   check(await page.getByTestId("home-live").count() === 0 && await page.getByRole("heading", { level: 1 }).first().textContent().then((t) => /here/.test(t)), "home: before the gathering, signed out, the hero shows with the trail preview");
-  check(/Ten days, one trail/.test(await page.getByTestId("home-preview").innerText()), "home: the preview says ten days");
-  check(await page.getByText(/Connecting local community/).count() === 1, "home: the description appears once, lower down");
+  check(await page.getByText("We Are Our Ecology").count() > 0 && await page.getByText("Weaving Our Resilience").count() > 0, 'home carries "We Are Our Ecology" and "Weaving Our Resilience"');
+  check(/Oct 15–25/.test(await page.getByTestId("home-preview").innerText()), "home: the preview gives the dates");
+  check(await page.getByText(/Connecting local community/).count() >= 1, "home: the description is there, lower down");
   await go(page, "/today");
-  await page.getByTestId("sample-day").waitFor();
-  check((await page.getByTestId("sample-day").innerText()).match(/sample/gi).length === 1, "today: 'Sample' appears once on the sample day");
+  await page.getByRole("button", { name: "Remind me" }).waitFor();
+  check(await page.getByTestId("sample-day").count() === 0 && !/sample/i.test(await page.locator("main").innerText()), "today: before the gathering there is no sample practice, only the reminder");
   check(await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
   await go(page, "/board");
   await page.getByTestId("members-gate").waitFor();

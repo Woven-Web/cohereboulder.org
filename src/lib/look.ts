@@ -45,3 +45,7 @@ export const useTrailVariant = (): TrailVariant => useFlag(TRAIL_KEY, "trail", T
 
 /** The class the Almanac root carries for this look: "" for classic and almanac, "eco" for ecology. */
 export const lookClass = (look: Look): string => (look === "ecology" ? " eco" : "");
+
+/** Is the ecology look on right now? For code with no hook: the query value, else the stored one. */
+export const isEcoLook = (): boolean =>
+  typeof window !== "undefined" && resolveFlag(window.location.search, read(LOOK_KEY), "look", LOOKS, "classic") === "ecology";

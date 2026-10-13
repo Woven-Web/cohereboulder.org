@@ -3,6 +3,8 @@
 
 import { membersTranslations } from "./translations.members";
 import { notifyTranslations } from "./translations.notify";
+import { ecoCopy } from "./translations.eco";
+import { isEcoLook } from "./look";
 
 export const translations = {
   members: membersTranslations,
@@ -2457,6 +2459,7 @@ export const translations = {
 
 // Helper function to get nested translation
 export function getTranslation(path: string, language: "en" | "es"): string {
+  if (isEcoLook() && path in ecoCopy) return ecoCopy[path][language === "es" ? 1 : 0];
   const keys = path.split(".");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let current: any = translations;

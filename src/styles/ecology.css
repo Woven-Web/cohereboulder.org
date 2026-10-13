@@ -336,3 +336,7 @@
 }
 .alm.eco .page--read{max-width:46rem}
 
+
+/* ---------- Copy pass: a string cut to "" collapses the block it sat in ---------- */
+.alm.eco :is(p,li,div,span,h2,h3,small,figcaption,blockquote,dd,dt):empty{display:none}
+.alm.eco ul:not(:has(> li:not(:empty))){display:none}

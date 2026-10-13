@@ -38,8 +38,8 @@ export function MembersGate({ status, onRetry }: Props) {
       <h2 className="h3">{tr(signedOut ? "members.gate.signedOutTitle" : "members.gate.notMemberTitle")}</h2>
       <p className="lede">{tr(signedOut ? "members.gate.signedOutBody" : "members.gate.notMemberBody")}</p>
       <ul>
-        <li>{tr("members.gate.point1")}</li>
-        <li>{tr("members.gate.point2")}</li>
+        {tr("members.gate.point1") && <li>{tr("members.gate.point1")}</li>}
+        {tr("members.gate.point2") && <li>{tr("members.gate.point2")}</li>}
       </ul>
       <div className="gate__acts">
         {signedOut && <button type="button" className="btn btn--primary" onClick={openSignInDialog}>{tr("members.gate.signIn")}</button>}

@@ -61,23 +61,23 @@ const T = {
     youreGoing: "You’re going", eventsToday: "Today’s events", also: "Also", alsoToday: "Also today", alsoTomorrow: "Also tomorrow", yourEvents: "Your events today",
     practice: "Today’s practice", dayOf: (n: number, d: string) => `Day ${n} of 11 · ${d}`, openTodayLink: "Open Today in COhere",
     details: "Details", imGoing: "I’m going", rsvp: "RSVP: I’m going",
-    readyTitle: "Ready for tomorrow?", readyBody: (n: number, d: string, m: number) => `${n} event${n === 1 ? "" : "s"} on ${d}. You’re going to ${m}.`,
-    readyMail: (d: string) => `Tomorrow is ${d}. One tap on “RSVP” saves your place. No sign-in needed.`, openTomorrow: "Open tomorrow in COhere",
-    harvestTitle: (n: string) => `How was ${n}?`, harvestBody: "Share your harvest.", harvestLine: "A few words, or a photo, for everyone in COhere.",
-    harvestMail: (e: string, w: string | null) => `You said you were going to <b>${e}</b>${w ? ` at ${w}` : ""}.`,
-    harvestAsk: "How was it? A few words, or a photo, about what you took with you.", harvestLink: "Share your harvest",
-    harvestVis: "Harvests are visible to everyone in COhere and carry your name.",
+    readyTitle: "Ready for tomorrow?", readyBody: (n: number, d: string, m: number) => `${n} event${n === 1 ? "" : "s"} · ${d} · going to ${m}`,
+    readyMail: (d: string) => d, openTomorrow: "Open tomorrow in COhere",
+    harvestTitle: (n: string) => `How was ${n}?`, harvestBody: "Share your harvest.", harvestLine: "",
+    harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
+    harvestAsk: "How was it?", harvestLink: "Share your harvest",
+    harvestVis: "Harvests show your name.",
     names: { morning: "Morning note", harvest: "Harvest invitation", evening: "Ready for tomorrow" } as Record<NotifyType, string>,
-    because: (name: string, to: string) => `You get this because the “${name}” is on for ${to}.`,
-    change: "Change which notes you get", unsub: (name: string) => `Unsubscribe from the ${name.toLowerCase()}`,
-    fellBack: "Push stopped working, so we sent this by email.", fellBackLink: "Turn push back on",
+    because: (name: string, to: string) => `${name} · ${to}`,
+    change: "Notification settings", unsub: () => "Unsubscribe",
+    fellBack: "Push failed. Sent by email.", fellBackLink: "Turn push back on",
     subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Ready for tomorrow: ${n} event${n === 1 ? "" : "s"} on ${d}`,
-    subjectHarvest: (n: string) => `How was ${n}? Share your harvest`,
-    testTitle: "Push is working", testBody: "This is a test from COhere. You can close it.",
-    verifySubject: "Confirm your email for COhere notifications", verifyHeading: "Is this your email?", verifyBody: "Tap once to use this address for COhere notifications.",
-    verifyLink: "Yes, use this address", verifyFoot: "If you didn’t ask for this, ignore it. Nothing changes until you tap the link.",
-    optinLead: "Want a note the evening before and after the events you RSVP to?", optinBody: "At 8 PM we can list tomorrow’s events, and about an hour after an event ends we can ask how it was. Email only, and one tap to stop.",
-    optinLink: "Yes, send me those notes",
+    subjectHarvest: (n: string) => `How was ${n}?`,
+    testTitle: "Push is working", testBody: "Test from COhere.",
+    verifySubject: "Confirm your email", verifyHeading: "Is this your email?", verifyBody: "Confirm this address.",
+    verifyLink: "Yes, use this address", verifyFoot: "If you didn’t ask for this, ignore it.",
+    optinLead: "Evening and harvest notes?", optinBody: "",
+    optinLink: "Yes, send them",
   },
   es: {
     day: "Día", thenAsk: "Luego pregúntate:", settings: "Ajustes", openToday: "Abrir Hoy", rsvpTomorrow: "RSVP para mañana", share: "Compartir cosecha",
@@ -85,23 +85,23 @@ const T = {
     youreGoing: "Vas a", eventsToday: "Los eventos de hoy", also: "También", alsoToday: "También hoy", alsoTomorrow: "También mañana", yourEvents: "Tus eventos de hoy",
     practice: "La práctica de hoy", dayOf: (n: number, d: string) => `Día ${n} de 11 · ${d}`, openTodayLink: "Abrir Hoy en COhere",
     details: "Detalles", imGoing: "Voy", rsvp: "RSVP: voy",
-    readyTitle: "¿Lista para mañana?", readyBody: (n: number, d: string, m: number) => `${n} evento${n === 1 ? "" : "s"} el ${d}. Vas a ${m}.`,
-    readyMail: (d: string) => `Mañana es ${d}. Un toque en “RSVP” guarda tu lugar. No hace falta iniciar sesión.`, openTomorrow: "Abrir mañana en COhere",
-    harvestTitle: (n: string) => `¿Cómo estuvo ${n}?`, harvestBody: "Comparte tu cosecha.", harvestLine: "Unas palabras, o una foto, para todas las personas de COhere.",
-    harvestMail: (e: string, w: string | null) => `Dijiste que ibas a <b>${e}</b>${w ? ` en ${w}` : ""}.`,
-    harvestAsk: "¿Cómo estuvo? Unas palabras, o una foto, sobre lo que te llevaste.", harvestLink: "Comparte tu cosecha",
-    harvestVis: "Las cosechas son visibles para todas las personas de COhere y llevan tu nombre.",
+    readyTitle: "¿Lista para mañana?", readyBody: (n: number, d: string, m: number) => `${n} evento${n === 1 ? "" : "s"} · ${d} · voy a ${m}`,
+    readyMail: (d: string) => d, openTomorrow: "Abrir mañana en COhere",
+    harvestTitle: (n: string) => `¿Cómo estuvo ${n}?`, harvestBody: "Comparte tu cosecha.", harvestLine: "",
+    harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
+    harvestAsk: "¿Cómo estuvo?", harvestLink: "Comparte tu cosecha",
+    harvestVis: "Las cosechas muestran tu nombre.",
     names: { morning: "Nota de la mañana", harvest: "Invitación a la cosecha", evening: "Lista para mañana" } as Record<NotifyType, string>,
-    because: (name: string, to: string) => `Recibes esto porque “${name}” está activada para ${to}.`,
-    change: "Cambia qué avisos recibes", unsub: (name: string) => `Darte de baja de: ${name.toLowerCase()}`,
-    fellBack: "El aviso push dejó de funcionar, así que te lo enviamos por correo.", fellBackLink: "Reactivar los avisos push",
+    because: (name: string, to: string) => `${name} · ${to}`,
+    change: "Ajustes de notificaciones", unsub: () => "Darte de baja",
+    fellBack: "Falló el push. Enviado por correo.", fellBackLink: "Reactivar los avisos push",
     subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Lista para mañana: ${n} evento${n === 1 ? "" : "s"} el ${d}`,
-    subjectHarvest: (n: string) => `¿Cómo estuvo ${n}? Comparte tu cosecha`,
-    testTitle: "El push funciona", testBody: "Esto es una prueba de COhere. Puedes cerrarlo.",
-    verifySubject: "Confirma tu correo para los avisos de COhere", verifyHeading: "¿Es este tu correo?", verifyBody: "Toca una vez para usar esta dirección en los avisos de COhere.",
-    verifyLink: "Sí, usar esta dirección", verifyFoot: "Si no lo pediste, ignóralo. Nada cambia hasta que toques el enlace.",
-    optinLead: "¿Quieres un aviso la noche antes y después de los eventos a los que confirmas?", optinBody: "A las 8 PM podemos listar los eventos de mañana, y una hora después de que termine un evento preguntarte cómo estuvo. Solo por correo, y un toque para dejar de recibirlos.",
-    optinLink: "Sí, envíenme esos avisos",
+    subjectHarvest: (n: string) => `¿Cómo estuvo ${n}?`,
+    testTitle: "El push funciona", testBody: "Prueba de COhere.",
+    verifySubject: "Confirma tu correo", verifyHeading: "¿Es este tu correo?", verifyBody: "Confirma esta dirección.",
+    verifyLink: "Sí, usar esta dirección", verifyFoot: "Si no lo pediste, ignóralo.",
+    optinLead: "¿Avisos de la noche y la cosecha?", optinBody: "",
+    optinLink: "Sí, enviar",
   },
 } as const;
 
@@ -133,11 +133,11 @@ function frame(type: NotifyType, ctx: MailContext, heading: string, bodyHtml: st
   const name = c.names[type];
   const top = ctx.fellBack ? `<p ${P}><i>${esc(c.fellBack)}</i> <a href="${esc(ctx.pushSettingsUrl)}" ${A}>${esc(c.fellBackLink)}</a></p>` : "";
   const topText = ctx.fellBack ? `${c.fellBack} ${c.fellBackLink}: ${ctx.pushSettingsUrl}\n\n` : "";
-  const footer = `${esc(c.because(name, ctx.to))}<br><a href="${esc(ctx.settingsUrl)}" ${A}>${esc(c.change)}</a> · <a href="${esc(ctx.unsubUrl)}" ${A}>${esc(c.unsub(name))}</a>`;
+  const footer = `${esc(c.because(name, ctx.to))}<br><a href="${esc(ctx.settingsUrl)}" ${A}>${esc(c.change)}</a> · <a href="${esc(ctx.unsubUrl)}" ${A}>${esc(c.unsub())}</a>`;
   return {
     subject,
     html: mailShell(esc(heading), top + bodyHtml, footer),
-    text: `${topText}${bodyText}\n\n${c.because(name, ctx.to)}\n${c.change}: ${ctx.settingsUrl}\n${c.unsub(name)}: ${ctx.unsubUrl}`,
+    text: `${topText}${bodyText}\n\n${c.because(name, ctx.to)}\n${c.change}: ${ctx.settingsUrl}\n${c.unsub()}: ${ctx.unsubUrl}`,
     headers: { "List-Unsubscribe": `<${ctx.unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   };
 }
@@ -272,7 +272,7 @@ export function harvestPush(input: HarvestInput, deviceId?: string): PushPayload
   const name = shortName(input.event.name);
   return {
     title: clip(c.harvestTitle(name), 200),
-    body: `${c.harvestBody}\n\n${c.harvestLine}`,
+    body: [c.harvestBody, c.harvestLine].filter(Boolean).join("\n\n"),
     url: `/events/${encodeURIComponent(input.event.did)}/${encodeURIComponent(input.event.rkey)}`, tag: `harvest-${input.event.rkey}`,
     ...(deviceId ? { device: deviceId } : {}),
     actions: [{ action: "open", title: c.share }, { action: "settings", title: c.settings }],
@@ -305,8 +305,8 @@ export function verifyEmail(lang: Lang, link: string): MailMessage {
 export function optinBlock(lang: Lang, link: string): { html: string; text: string } {
   const c = T[lang];
   return {
-    html: `<p ${P}><b>${esc(c.optinLead)}</b><br>${esc(c.optinBody)}<br><a href="${esc(link)}" ${A}>${esc(c.optinLink)}</a></p>`,
-    text: `${c.optinLead}\n${c.optinBody}\n${c.optinLink}: ${link}`,
+    html: `<p ${P}><b>${esc(c.optinLead)}</b><br><a href="${esc(link)}" ${A}>${esc(c.optinLink)}</a></p>`,
+    text: `${c.optinLead}\n${c.optinLink}: ${link}`,
   };
 }
 

@@ -199,7 +199,7 @@ function TodayView() {
     const photo = (
         <figure className="photo"><img src={gatheringPhoto} alt="" width="900" height="600" loading="lazy" /><figcaption className="cap-mono">{tr('almanac.photoCap')}</figcaption></figure>
     );
-    const horizonLabel = language === 'es' ? 'Una línea de cumbres con el sol y un arroyo abajo' : 'A ridgeline with the sun and a creek below';
+    const horizonLabel = eco ? tr('look.ridgeline') : language === 'es' ? 'Una línea de cumbres con el sol y un arroyo abajo' : 'A ridgeline with the sun and a creek below';
 
     if (phase === 'before') {
         const days = daysUntilStart(date);
@@ -214,6 +214,9 @@ function TodayView() {
             {status}
             <div className="flow2">
                 <div className="flow2__a"><div className="o1">
+                    {eco ? (
+                        <button type="button" className="btn btn--primary btn--block" onClick={() => offer('manual')}>{tr('almanac.remindFirst')}</button>
+                    ) : (
                     <div className="sample-box" data-testid="sample-day">
                         <span className="sample-flag sample-box__flag">{tr('almanac.sampleDay')}</span>
                         <section className="practice" aria-labelledby="sample-title">
@@ -223,6 +226,7 @@ function TodayView() {
                         </section>
                         <button type="button" className="btn btn--primary btn--block" style={{ marginTop: '1rem' }} onClick={() => offer('manual')}>{tr('almanac.remindFirst')}</button>
                     </div>
+                    )}
                 </div></div>
                 <div className="flow2__b"><div className="o2">{next}</div><div className="o4">{later}</div></div>
             </div>

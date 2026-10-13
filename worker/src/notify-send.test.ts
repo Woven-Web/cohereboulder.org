@@ -267,9 +267,9 @@ describe("the morning note", () => {
     const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
     expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:sam@example.org", k: "unsub", t: "morning" });
-    const settings = /https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+)/.exec(message.text!.split("Change which notes you get: ")[1])![1];
+    const settings = /https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+)/.exec(message.text!.split("Notification settings: ")[1])![1];
     expect(await verifyLink(SECRET, settings, new Date())).toMatchObject({ p: "mailto:sam@example.org", k: "settings" });
-    expect(message.html).toContain("Change which notes you get");
+    expect(message.html).toContain("Notification settings");
   });
 });
 
@@ -281,13 +281,13 @@ describe("push and email together: fallback, dedupe", () => {
     await runNotifyCron(env, MORNING, deps);
     expect(pushed).toHaveLength(0);
     expect(mails).toHaveLength(1);
-    expect(mails[0].message.text).toContain("Push stopped working, so we sent this by email.");
+    expect(mails[0].message.text).toContain("Push failed. Sent by email.");
     expect(ledger()).toMatchObject([{ channel: "email", fell_back: 1, status: "sent" }]);
     // The next day's email does not repeat the line.
     await addDaily("2026-10-18");
     await runNotifyCron(env, new Date("2026-10-18T12:00:00Z"), deps);
     expect(mails).toHaveLength(2);
-    expect(mails[1].message.text).not.toContain("Push stopped working");
+    expect(mails[1].message.text).not.toContain("Push failed");
     expect(ledger().map((r) => r.fell_back)).toEqual([1, 1]);
   });
   it("returns to push by itself when the phone is live again, and forgets the 'stopped' line", async () => {
@@ -344,7 +344,7 @@ describe("push and email together: fallback, dedupe", () => {
     expect(pushed).toHaveLength(0);
     expect(mails).toHaveLength(1);
     expect(ledger()).toMatchObject([{ channel: "email", fell_back: 0 }]);
-    expect(mails[0].message.text).not.toContain("Push stopped working");
+    expect(mails[0].message.text).not.toContain("Push failed");
   });
   it("never sends both a push and an email for one note, across every run", async () => {
     await addDevice(ME);
@@ -431,7 +431,7 @@ describe("the 8 PM note", () => {
     const { payload } = pushed[0];
     expect(payload.title).toBe("Ready for tomorrow?");
     expect(payload.url).toBe("/tomorrow");
-    expect(String(payload.body)).toContain("4 events on Oct 17. You’re going to 1.");
+    expect(String(payload.body)).toContain("4 events · Oct 17 · going to 1");
     expect(String(payload.body)).toContain("You’re going 3 PM Stargazing");
     expect(String(payload.body)).toContain("Also 9 AM Honoring Water · 1 PM Soup Night · + 1 more");
     expect(String(payload.body)).not.toContain("Not tomorrow");
@@ -529,9 +529,9 @@ describe("the harvest invitation", () => {
     }
     await runNotifyCron(env, new Date("2026-10-16T17:15:00Z"), deps);
     expect(mails.map((m) => m.to)).toEqual(["sam@example.org"]);
-    expect(mails[0].message.subject).toBe("How was Honoring Water? Share your harvest");
+    expect(mails[0].message.subject).toBe("How was Honoring Water?");
     expect(mails[0].message.text).toContain("https://cohereboulder.org/events/did%3Aplc%3Amockscene/water");
-    expect(mails[0].message.text).toContain("Harvests are visible to everyone in COhere and carry your name.");
+    expect(mails[0].message.text).toContain("Harvests show your name.");
   });
   it("sees an event that has just ended, which the public listing has already dropped", async () => {
     const fetched = vi.fn(async () => Response.json({ events: [
