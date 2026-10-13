@@ -18,6 +18,7 @@ import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { handleAdminBoard, handleCreateReport } from "./board";
+import { handleMemberProfileExtras, handleMyProfileExtras } from "./profile-extras";
 import { handleMemberRsvps, handleMyRsvps, handleMyRsvpVisibility } from "./rsvp-visibility";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
@@ -417,6 +418,9 @@ export default {
     // The owner is always the verified regenOS session, never a request field.
     if (path === "/api/me/rsvp-visibility") return handleMyRsvpVisibility(request, env);
     if (path === "/api/me/rsvps") return handleMyRsvps(request, env);
+    // Bringing / offering / curious: COhere-side profile extras (worker/src/profile-extras.ts).
+    if (path === "/api/me/profile-extras") return handleMyProfileExtras(request, env);
+    if (path === "/api/members/profile-extras") return handleMemberProfileExtras(request, env);
     const memberRsvps = /^\/api\/members\/([^/]+)\/rsvps$/.exec(path);
     if (memberRsvps) {
       let target: string;

@@ -116,6 +116,7 @@ export const membersTranslations = {
     noneTitle: { en: "No profiles yet.", es: "Aún no hay perfiles." },
     noneBody: { en: "Be the first: a name and a line or two about you is plenty.", es: "Sé la primera persona: un nombre y una o dos líneas sobre ti bastan." },
     clear: { en: "Clear search", es: "Borrar búsqueda" },
+    filterBy: { en: "Search in", es: "Buscar en" },
     you: { en: "You", es: "Tú" },
     srcCohere: { en: "COhere profile", es: "Perfil COhere" },
     srcPublic: { en: "Public · scenius.social", es: "Pública · scenius.social" },
@@ -133,6 +134,12 @@ export const membersTranslations = {
     privacy: { en: "Visible to everyone in COhere. Current members only. Nothing here is public.", es: "Visible para todas las personas de COhere. Solo miembros actuales. Nada de esto es público." },
     publicSays: { en: "This is their public scenius.social profile. They haven’t made a COhere one.", es: "Este es su perfil público de scenius.social. No ha hecho uno de COhere." },
     mineEmpty: { en: "You haven’t made a profile yet, and you have no public one to show. Make one so people can find you.", es: "Aún no has hecho un perfil, ni tienes uno público que mostrar. Haz uno para que te encuentren." },
+  },
+  extras: {
+    bringing: { en: "Bringing", es: "Traigo" },
+    offering: { en: "Offering", es: "Ofrezco" },
+    curious: { en: "Curious about", es: "Me interesa" },
+    count: { en: "{n} of 120", es: "{n} de 120" },
   },
   profile: {
     title: { en: "My profile", es: "Mi perfil" },

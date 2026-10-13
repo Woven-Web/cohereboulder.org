@@ -250,3 +250,17 @@ function putVisibility(body: { mode: RsvpVisibilityMode } | { event: string; hid
 }
 export const setRsvpVisibilityMode = (mode: RsvpVisibilityMode) => putVisibility({ mode });
 export const setEventHidden = (event: string, hidden: boolean) => putVisibility({ event, hidden });
+
+// ------------------------------------------------ members: profile extras
+// "Bringing / Offering / Curious about" (worker/src/profile-extras.ts).
+export type ExtraKey = "bringing" | "offering" | "curious";
+export type ProfileExtras = Record<ExtraKey, string>;
+
+export const fetchMyProfileExtras = () => memberJson<ProfileExtras>("/api/me/profile-extras");
+export const fetchMemberProfileExtras = () => memberJson<{ extras: Record<string, ProfileExtras> }>("/api/members/profile-extras");
+export const putMyProfileExtras = (extras: ProfileExtras) =>
+  memberJson<ProfileExtras>("/api/me/profile-extras", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(extras),
+  });

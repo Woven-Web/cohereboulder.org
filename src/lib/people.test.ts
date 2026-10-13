@@ -19,6 +19,27 @@ describe("directory search", () => {
   });
 });
 
+describe("directory search over the extra lines", () => {
+  const e = entry({ displayName: "Pia", bio: "bees" });
+  const lines = { bringing: "Sourdough starter", offering: "Rides to Lyons", curious: "" };
+  it("with no chip, matches name, bio and every line", () => {
+    expect(matchesSearch(e, "Pia", "sourdough", lines)).toBe(true);
+    expect(matchesSearch(e, "Pia", "RIDES", lines)).toBe(true);
+    expect(matchesSearch(e, "Pia", "bees", lines)).toBe(true);
+    expect(matchesSearch(e, "Pia", "kombucha", lines)).toBe(false);
+  });
+  it("with a chip, searches that line only", () => {
+    expect(matchesSearch(e, "Pia", "lyons", lines, "offering")).toBe(true);
+    expect(matchesSearch(e, "Pia", "lyons", lines, "bringing")).toBe(false);
+    expect(matchesSearch(e, "Pia", "bees", lines, "bringing")).toBe(false);
+  });
+  it("a chip with no text lists whoever filled that line in", () => {
+    expect(matchesSearch(e, "Pia", "", lines, "bringing")).toBe(true);
+    expect(matchesSearch(e, "Pia", "", lines, "curious")).toBe(false);
+    expect(matchesSearch(e, "Pia", "", undefined, "curious")).toBe(false);
+  });
+});
+
 describe("profile links", () => {
   it.each([
     ["https://example.org/a", "https://example.org/a"],
