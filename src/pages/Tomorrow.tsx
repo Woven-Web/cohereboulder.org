@@ -28,7 +28,7 @@ export default function Tomorrow() {
 
   return (
     <AlmanacShell>
-      <main className="page" style={{ paddingTop: 0 }}>
+      <main className="page page--read" style={{ paddingTop: 0 }}>
         <div className="folio" style={{ marginTop: ".9rem" }}>{tr("notify.tomorrow.folio")} · {formatDay(date, language, true)}</div>
         <h1 className="h1" style={{ margin: ".4rem 0" }}>{tr("notify.tomorrow.title")}</h1>
         <p className="small">{tr("notify.tomorrow.lede")}</p>

@@ -319,7 +319,7 @@ function QuestsView() {
         finally { setBusy(false); }
     }
 
-    return <main className="page">
+    return <main className="page page--read">
         <Link className="link" to="/today">← {tr('companion.today')}</Link>
         <h1 className="h1" style={{ margin: '.4rem 0 .2rem' }}>{tr('companion.quests')}</h1>
         {isLoading && <p className="small">{tr('companion.loading')}</p>}
@@ -346,6 +346,7 @@ function QuestsView() {
 
 function MoreView() {
     const { tr, language } = useLanguage();
+    const meLabel = useLook() === 'ecology' ? tr('almanac.tabs.me') : tr('companion.more');
     const { data } = useCompanionToday();
     const reminders = useReminders();
     const { ios, installed, prompt, offer } = useInstallOffer();
@@ -361,8 +362,8 @@ function MoreView() {
     }
     const status = tr('companion.' + (!supported ? 'unsupported' : !data?.pushKey ? 'disabled' : reminders.permission === 'denied' ? 'denied' : reminders.subscribed ? 'enabled' : 'off'));
 
-    return <main className="page">
-        <h1 className="h1" style={{ margin: '.8rem 0 .2rem' }}>{tr('companion.more')}</h1>
+    return <main className="page page--read">
+        <h1 className="h1" style={{ margin: '.8rem 0 .2rem' }}>{meLabel}</h1>
         {reminders.notice && <p className="small" role="status">{tr('companion.' + reminders.notice)}</p>}
         <section style={{ marginTop: '1.4rem' }}>
             <h2 className="eyebrow">{tr('companion.install')}</h2>

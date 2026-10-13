@@ -321,3 +321,13 @@
   .alm.eco .mast .tabs a{padding:0 .5rem;white-space:nowrap}
   .alm.eco .mast .mast__end{gap:var(--sp-1)}
 }
+.alm.eco .page--read{max-width:46rem}
+
+/* Classic and Almanac screens (the Today/Calendar shell) keep their masthead on one row from 820px; between 768 and 819 the tabs take a row of their own, as in the ecology look. */
+@media (min-width:768px) and (max-width:819px){
+  .alm .mast{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"mark end" "tabs tabs";gap:var(--sp-2) var(--sp-4)}
+  .alm .mast .wordmark{grid-area:mark}
+  .alm .mast .mast__end{grid-area:end;justify-self:end}
+  .alm .mast .tabs{grid-area:tabs;justify-content:space-between;gap:0}
+  .alm .mast .tabs a{flex:1;justify-content:center}
+}

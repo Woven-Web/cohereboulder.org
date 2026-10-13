@@ -82,7 +82,7 @@ function EditView() {
   const onPublic = mine?.profileSource === "publicFallback";
 
   return (
-    <main className="page editor">
+    <main className="page editor page--read">
       <div className="folio"><span>{tr("members.folio")}</span></div>
       <h1 className="h1" style={{ margin: ".2rem 0 .1rem" }}>{tr("members.profile.title")}</h1>
       {!member ? (
