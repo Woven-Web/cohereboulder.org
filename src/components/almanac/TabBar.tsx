@@ -2,6 +2,9 @@ import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { activeAppTab, activeEcoTab } from "@/lib/appRouting";
 import { useLook } from "@/lib/look";
+import { CalendarDays, Home, MessageSquare, Sun, User, Users } from "lucide-react";
+
+const ECO_ICONS = { home: Home, today: Sun, events: CalendarDays, board: MessageSquare, people: Users, me: User } as const;
 
 const TABS = [
   { id: "today", to: "/today" },
@@ -34,6 +37,7 @@ export function TabBar() {
     <nav className={`tabs${eco ? " tabs--six" : ""}`} aria-label={tr("almanac.main")} data-testid="app-tabs">
       {tabs.map((tab) => (
         <Link key={tab.id} to={tab.to} aria-current={active === tab.id ? "page" : undefined}>
+          {eco && (() => { const Icon = ECO_ICONS[tab.id as keyof typeof ECO_ICONS]; return Icon ? <Icon className="tabs__icon" aria-hidden="true" strokeWidth={1.75} /> : null; })()}
           {tr(`almanac.tabs.${"key" in tab ? tab.key : tab.id}`)}
         </Link>
       ))}

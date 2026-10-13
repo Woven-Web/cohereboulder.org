@@ -75,14 +75,16 @@
 
 .alm.eco .tabs{background:#fff;border-top:0;border-radius:22px 22px 0 0;box-shadow:0 -6px 20px -12px hsl(var(--ink-hsl) / .35)}
 .alm.eco .tabs a{gap:5px}
-.alm.eco .tabs a::before{content:"";width:24px;height:22px;clip-path:var(--hex);background:hsl(var(--eco-rule-hsl))}
+.alm.eco .tabs a::before{content:none}
+.alm.eco .tabs__icon{width:22px;height:22px;color:var(--ink-2)}
+.alm.eco .tabs a[aria-current=page] .tabs__icon{color:var(--deep)}
 .alm.eco .tabs a[aria-current=page]{color:var(--ink);font-weight:800}
 .alm.eco .tabs a[aria-current=page]::before{background:var(--deep)}
 .alm.eco .tabs a[aria-current=page]::after{display:none}
 @media (min-width:768px){
   .alm.eco .tabs{background:none;box-shadow:none;border-radius:0}
   .alm.eco .tabs a{flex-direction:row;gap:8px}
-  .alm.eco .tabs a::before{width:16px;height:15px}
+  .alm.eco .tabs__icon{width:16px;height:16px}
 }
 .alm.eco .foot{margin:var(--sp-7) calc(var(--gutter) * -1) 0;padding:var(--sp-5) var(--gutter) var(--sp-5);border-top:0;background:var(--leaf);border-radius:28px 28px 0 0}
 .alm.eco .foot :is(.small,p,a,span){color:var(--ink)}
