@@ -106,7 +106,7 @@ async function upcomingEvents(env: RosterEnv): Promise<CommunityEvent[] | null> 
 }
 
 /** DIDs regenOS lists as confirmed for one event (anonymous read, cached a minute). */
-async function confirmedGuests(env: RosterEnv, event: CommunityEvent): Promise<Set<string>> {
+export async function confirmedGuests(env: RosterEnv, event: CommunityEvent): Promise<Set<string>> {
   const origin = base(env);
   if (!origin) return new Set();
   const key = attendanceKey(event.did, event.rkey);

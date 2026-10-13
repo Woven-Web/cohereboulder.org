@@ -11,6 +11,7 @@ import { refuseCrossSiteWrite } from "./csrf";
 import { EXCERPT_MAX, getBoardSettings, type ModerationEnv } from "./board-moderation";
 import { readVerifiedSessionDid, type RegenosAuthEnv } from "./regenos-auth";
 import { readRoster } from "./roster";
+import { HARVEST_URI_RE } from "./harvest";
 
 export type BoardEnv = ModerationEnv & RegenosAuthEnv & AuthEnv & { cohere: D1Database };
 
@@ -42,8 +43,27 @@ function text(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
 }
 
-function authorOf(uri: string): string {
-  return uri.slice("at://".length).split("/")[0];
+const isReportable = (uri: string) => POST_URI_RE.test(uri) || HARVEST_URI_RE.test(uri);
+
+/**
+ * Who wrote it. A Board post's author is in its URI; a harvest's is in D1, and
+ * its text is read from there too (never taken from the reporter).
+ */
+async function authorOf(db: D1Database, uri: string): Promise<{ author: string | null; excerpt?: string }> {
+  if (!HARVEST_URI_RE.test(uri)) return { author: uri.slice("at://".length).split("/")[0] };
+  const row = await db.prepare("SELECT author_did, body FROM harvests WHERE id = ?1").bind(uri.slice("cohere:harvest/".length)).first<{ author_did: string; body: string }>();
+  return row ? { author: row.author_did, excerpt: Array.from(row.body).slice(0, EXCERPT_MAX).join("") } : { author: null };
+}
+
+/** Where a moderated harvest lives, for the admin tab. Board posts need no help: their URI is the link. */
+async function harvestLinks(db: D1Database, uris: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const uri of uris) {
+    if (!HARVEST_URI_RE.test(uri)) continue;
+    const row = await db.prepare("SELECT event_did, event_rkey FROM harvests WHERE id = ?1").bind(uri.slice("cohere:harvest/".length)).first<{ event_did: string; event_rkey: string }>();
+    if (row) out.set(uri, `/events/${encodeURIComponent(row.event_did)}/${encodeURIComponent(row.event_rkey)}`);
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------- reports
@@ -61,7 +81,7 @@ export async function handleCreateReport(request: Request, env: BoardEnv): Promi
 
   const uri = typeof body.uri === "string" ? body.uri : "";
   const reason = typeof body.reason === "string" ? body.reason : "";
-  if (!POST_URI_RE.test(uri)) return json({ error: "That isn't a Board post." }, 400);
+  if (!isReportable(uri)) return json({ error: "That isn't a Board post." }, 400);
   if (!REASONS.has(reason)) return json({ error: "Pick a reason." }, 400);
   if (typeof body.note === "string" && body.note.trim().length > NOTE_MAX) {
     return json({ error: `Keep the note under ${NOTE_MAX} characters.` }, 400);
@@ -79,12 +99,14 @@ export async function handleCreateReport(request: Request, env: BoardEnv): Promi
     return json({ error: "That's a lot of reports. Please try again later." }, 429);
   }
 
+  const written = await authorOf(env.cohere, uri);
+  if (HARVEST_URI_RE.test(uri) && !written.author) return json({ error: "That harvest is gone." }, 404);
   await env.cohere
     .prepare(
       `INSERT OR IGNORE INTO board_reports (post_uri, post_author_did, reporter_did, reason, note, excerpt, created_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
     )
-    .bind(uri, authorOf(uri), did, reason, text(body.note, NOTE_MAX), text(body.excerpt, EXCERPT_MAX), new Date().toISOString())
+    .bind(uri, written.author, did, reason, text(body.note, NOTE_MAX), written.excerpt ?? text(body.excerpt, EXCERPT_MAX), new Date().toISOString())
     .run();
   return json({ ok: true });
 }
@@ -102,6 +124,8 @@ interface ReportGroup {
   excerpt: string | null;
   firstAt: string;
   state: string | null;
+  /** Where to look at it, for harvests (Board posts link from their URI). */
+  link?: string;
 }
 
 async function boardOverview(env: BoardEnv): Promise<Response> {
@@ -137,7 +161,17 @@ async function boardOverview(env: BoardEnv): Promise<Response> {
     .prepare("SELECT uri, author_did, excerpt, created_at FROM board_moderation WHERE state = 'pending' ORDER BY created_at ASC")
     .all();
   const settings = await getBoardSettings(db);
-  return json({ reports: [...groups.values()], hidden, pending, settings: { approval: settings.approval } });
+  const links = await harvestLinks(db, [...groups.keys(), ...hidden.map((h) => String(h.uri)), ...pending.map((p) => String(p.uri))]);
+  const withLink = <T extends { uri?: unknown; postUri?: string }>(row: T): T & { link?: string } => {
+    const link = links.get(String(row.uri ?? row.postUri));
+    return link ? { ...row, link } : row;
+  };
+  return json({
+    reports: [...groups.values()].map(withLink),
+    hidden: hidden.map(withLink),
+    pending: pending.map(withLink),
+    settings: { approval: settings.approval },
+  });
 }
 
 async function setState(env: BoardEnv, uri: string, state: "hidden" | "removed" | "approved", actor: string, reason: string | null, note: string | null): Promise<void> {
@@ -145,6 +179,7 @@ async function setState(env: BoardEnv, uri: string, state: "hidden" | "removed" 
   const excerpt = (
     await env.cohere.prepare("SELECT excerpt FROM board_reports WHERE post_uri = ?1 AND excerpt IS NOT NULL LIMIT 1").bind(uri).first<{ excerpt: string }>()
   )?.excerpt ?? null;
+  const author = (await authorOf(env.cohere, uri)).author;
   await env.cohere
     .prepare(
       `INSERT INTO board_moderation (uri, state, author_did, reason, note, excerpt, actor, created_at, updated_at)
@@ -152,7 +187,7 @@ async function setState(env: BoardEnv, uri: string, state: "hidden" | "removed" 
        ON CONFLICT(uri) DO UPDATE SET state = ?2, reason = ?4, note = ?5, actor = ?7, updated_at = ?8,
          excerpt = COALESCE(board_moderation.excerpt, ?6)`,
     )
-    .bind(uri, state, authorOf(uri), reason, note, excerpt, actor, now)
+    .bind(uri, state, author, reason, note, excerpt, actor, now)
     .run();
   if (state !== "approved") {
     await env.cohere
@@ -201,7 +236,7 @@ export async function handleAdminBoard(request: Request, env: BoardEnv, path: st
   if (method === "POST" && ["hide", "unhide", "remove", "approve"].some((a) => path === `/api/admin/board/${a}`)) {
     const body = await readJson(request);
     const uri = typeof body?.uri === "string" ? body.uri : "";
-    if (!body || !POST_URI_RE.test(uri)) return json({ error: "That isn't a Board post." }, 400);
+    if (!body || !isReportable(uri)) return json({ error: "That isn't a Board post." }, 400);
     const action = path.slice("/api/admin/board/".length);
     const current = await env.cohere.prepare("SELECT state FROM board_moderation WHERE uri = ?1").bind(uri).first<{ state: string }>();
 

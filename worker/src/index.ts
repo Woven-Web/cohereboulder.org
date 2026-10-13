@@ -1,4 +1,7 @@
 import { companionRoute, runCompanionCron, type CompanionEnv } from "./companion";
+import { handleNotify, type NotifyRouteEnv } from "./notify";
+import { runNotifyCron, type NotifyEnv } from "./notify-send";
+import { handleHarvests, type HarvestEnv } from "./harvest";
 // COhere member API + admin portal.
 //
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
@@ -75,7 +78,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends CompanionEnv, AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
+interface Env extends CompanionEnv, NotifyEnv, HarvestEnv, AuthEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -423,6 +426,15 @@ export default {
         return json({ error: "not found" }, 404);
       }
       return handleMemberRsvps(request, env, target);
+    }
+
+    // Notification settings, device health, and the signed email links
+    // (worker/src/notify.ts), and members' harvests (worker/src/harvest.ts).
+    {
+      const notify = await handleNotify(request, env as unknown as NotifyRouteEnv, url);
+      if (notify) return notify;
+      const harvest = await handleHarvests(request, env, url);
+      if (harvest) return harvest;
     }
 
     if (path.startsWith("/api/companion/")) return companionRoute(request, env);
@@ -1111,6 +1123,11 @@ export default {
   async scheduled(controller: { scheduledTime: number; cron?: string }, env: Env): Promise<void> {
     const now = new Date(controller.scheduledTime);
     try { await runCompanionCron(env, now); } catch { console.error("companion cron failed"); }
+    // Morning note, harvest invites and the 8 PM note: a no-op unless NOTIFY_PAUSED is "false".
+    try {
+      const sent = await runNotifyCron(env, now);
+      if (sent.sent || sent.skipped) console.info("notify cron:", JSON.stringify(sent));
+    } catch (error) { console.error("notify cron failed:", error instanceof Error ? error.message : error); }
     if (controller.cron === NEWSLETTER_CRON) {
       const result = await runNewsletterCron(env, now);
       if (result.started || result.sent || result.failed || result.skipped || result.retried || result.completed || result.aborted) {

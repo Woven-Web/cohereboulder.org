@@ -1,6 +1,5 @@
-import { translations } from "../../src/lib/translations";
-import { decode, encryptPush, validEndpoint, vapid, serializePush } from './push';
-import { handleEventsList, type EventsEnv } from './events';
+import { decode, validEndpoint } from './push';
+import type { EventsEnv } from './events';
 export interface CompanionEnv extends EventsEnv {
     cohere: D1Database;
     VAPID_PUBLIC_KEY?: string;
@@ -8,7 +7,7 @@ export interface CompanionEnv extends EventsEnv {
     VAPID_SUBJECT?: string;
     COMPANION_START_DATE?: string;
     COMPANION_END_DATE?: string;
-    /** "true" stops every scheduled push (like RSVP_REMINDERS_PAUSED). Flipped at launch. */ COMPANION_PUSH_PAUSED?: string;
+    /** "true" stops every scheduled push (like RSVP_REMINDERS_PAUSED). Flipped at launch. worker/src/notify.ts honours it for the morning, harvest and 8 PM pushes. */ COMPANION_PUSH_PAUSED?: string;
     /** Exact loopback origin for hermetic tests. Honoured only together with COMPANION_LOCAL_TEST_MODE. */ COMPANION_LOCAL_PUSH_MOCK?: string;
     /** "true" only on a developer machine (`wrangler dev --var`). No wrangler config sets it. */ COMPANION_LOCAL_TEST_MODE?: string;
 }
@@ -26,17 +25,16 @@ export function localMock(env: CompanionEnv): string | null {
 const configuredStart = (env: CompanionEnv) => env.COMPANION_START_DATE || LAUNCH_FLOOR;
 const start = (env: CompanionEnv) => localMock(env) || configuredStart(env) >= LAUNCH_FLOOR ? configuredStart(env) : LAUNCH_FLOOR;
 const end = (env: CompanionEnv) => env.COMPANION_END_DATE || '2026-10-25';
-const enabled = (env: CompanionEnv) => !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
-export function slotFor(now: Date, env: CompanionEnv): 'practice' | 'events' | 'question' | null {
+export const pushConfigured = (env: CompanionEnv) => !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
+const enabled = pushConfigured;
+/** The gathering's first and last Boulder dates (validated; the launch floor applies). The notify senders run inside it. */
+export function companionWindow(env: CompanionEnv): { start: string; end: string } {
     validateDates(env);
-    const date = denverDate(now);
-    if (date < start(env) || date > end(env) || now.getUTCMinutes() !== 0)
-        return null;
-    return ({ 12: 'practice', 15: 'events', 21: 'question' } as const)[now.getUTCHours() as 12 | 15 | 21] ?? null;
+    return { start: start(env), end: end(env) };
 }
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const dateOK = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
-function validateDates(env: CompanionEnv) {
+export function validateDates(env: CompanionEnv) {
     if (!dateOK(configuredStart(env)) || !dateOK(end(env)) || configuredStart(env) > end(env)) throw new Error('invalid companion dates');
 }
 const deviceOK = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -52,6 +50,10 @@ async function rateAllowed(request: Request, env: CompanionEnv, action: string, 
         attempts: number;
     }>();
     return !!row && row.attempts <= max;
+}
+/** Turning notifications off on a device is the person's choice, not a failure: it simply stops being a push target. */
+async function expireDevice(db: D1Database, deviceId: string): Promise<void> {
+    await db.prepare("UPDATE notify_devices SET state='expired', updated_at=?2 WHERE device_id=?1").bind(deviceId, new Date().toISOString()).run().catch(() => console.error('notify device not updated'));
 }
 export async function companionRoute(request: Request, env: CompanionEnv, admin = false, adminRoute = false): Promise<Response> {
     const url = new URL(request.url), path = url.pathname.split('/').pop()!, method = request.method;
@@ -155,8 +157,13 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
         if (method === 'DELETE') {
             if (body.endpoint != null) {
                 if (typeof body.endpoint !== 'string' || typeof body.p256dh !== 'string' || typeof body.auth !== 'string') return json({error:'invalid possession proof'},400);
+                const owner = await db.prepare('SELECT device_id FROM companion_subscriptions WHERE endpoint=?1 AND p256dh=?2 AND auth=?3').bind(body.endpoint,body.p256dh,body.auth).first<{ device_id: string }>();
                 await db.prepare('DELETE FROM companion_subscriptions WHERE endpoint=?1 AND p256dh=?2 AND auth=?3').bind(body.endpoint,body.p256dh,body.auth).run();
-            } else await db.prepare('DELETE FROM companion_subscriptions WHERE device_id=?1').bind(body.device_id).run();
+                if (owner) await expireDevice(db, owner.device_id);
+            } else {
+                await db.prepare('DELETE FROM companion_subscriptions WHERE device_id=?1').bind(body.device_id).run();
+                await expireDevice(db, body.device_id);
+            }
             return json({ ok: true });
         }
         if (method === 'PATCH') {
@@ -181,6 +188,11 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
             catch {
                 return json({ error: 'subscription conflict' }, 409);
             }
+            // A fresh subscription is a live device again. Best-effort: the
+            // push itself must still work if the health table is unavailable.
+            const stamp = new Date().toISOString();
+            await db.prepare("INSERT INTO notify_devices(device_id,installed,permission,state,fail_count,last_seen_at,created_at,updated_at) VALUES (?1,0,'granted','live',0,?2,?2,?2) ON CONFLICT(device_id) DO UPDATE SET state='live',fail_count=0,last_failure_at=NULL,permission='granted',last_seen_at=?2,updated_at=?2")
+                .bind(body.device_id, stamp).run().catch(() => console.error('notify device not recorded'));
             return json({ ok: true });
         }
     }
@@ -202,7 +214,11 @@ export async function companionRoute(request: Request, env: CompanionEnv, admin 
     }
     return json({ error: 'not found' }, 404);
 }
-/** Claim before I/O. Claimed recipients never retry, even after network errors. */
+/**
+ * Housekeeping only. The morning note, the harvest invite and the 8 PM note are
+ * sent by worker/src/notify.ts; this keeps rate-limit rows trimmed and, once the
+ * gathering plus 30 days has passed, deletes the anonymous companion data.
+ */
 export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<void> {
     validateDates(env);
     const date = denverDate(now), db = env.cohere;
@@ -211,122 +227,14 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
     const cutoff = new Date(end(env) + 'T12:00:00Z');
     cutoff.setUTCDate(cutoff.getUTCDate() + 30);
     if (date > cutoff.toISOString().slice(0, 10)) {
-        for (const table of ['companion_replies', 'companion_completions', 'companion_subscriptions', 'companion_ledger']) {
-            await db.prepare(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} LIMIT 500)`).run();
-        }
-        return;
-    }
-    if (env.COMPANION_PUSH_PAUSED === 'true' || !enabled(env) || date < start(env) || date > end(env) || now.getUTCMinutes() >= 5)
-        return;
-    const slot = ({ 12: 'practice', 15: 'events', 21: 'question' } as const)[now.getUTCHours() as 12 | 15 | 21];
-    if (!slot)
-        return;
-    const slotTime = new Date(now);
-    slotTime.setUTCMinutes(0, 0, 0);
-    const deadline = slotTime.getTime() + 5 * 60 * 1000;
-    const mock = localMock(env);
-    const stale = () => !mock && (Date.now() >= deadline || Date.now() < slotTime.getTime() - 60000);
-    if (stale())
-        return;
-    let marker = await db.prepare("SELECT claimed_at,payload_en,payload_es FROM companion_ledger WHERE date=?1 AND slot=?2 AND recipient='*'")
-        .bind(date, slot).first<{
-        claimed_at: string;
-        payload_en: string | null;
-        payload_es: string | null;
-    }>();
-    // No organizer-written content for today means nothing goes out, in any
-    // slot, claimed or not: deleting the day's content withdraws it.
-    const daily = await db.prepare('SELECT * FROM companion_daily WHERE date=?1').bind(date).first<Record<string, string>>();
-    if (!daily)
-        return;
-    const withdrawn = async () => !await db.prepare('SELECT 1 FROM companion_daily WHERE date=?1').bind(date).first();
-    if (!marker) {
-        // Minute ticks may continue a claimed slot, but cannot create late content.
-        if (!slotFor(now, env))
-            return;
-        let eventsBody = '';
-        if (slot === 'events') {
-            const response = await handleEventsList(new Request('https://cohereboulder.org/api/events'), env, {});
-            const data = await response.json() as {
-                events?: {
-                    name: string;
-                    startsAt: string | null;
-                    status?: string;
-                }[];
-            };
-            const tomorrow = new Date(now);
-            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-            const dates = [date, denverDate(tomorrow)];
-            eventsBody = (data.events ?? []).filter(e => e.status !== 'cancelled' && e.startsAt && !isNaN(Date.parse(e.startsAt)) && dates.includes(denverDate(new Date(e.startsAt))))
-                .map(e => e.name).join(' · ');
-            if (!eventsBody)
-                return;
-        }
-        else if (slot === 'question' ? !daily.question : !daily.title)
-            return;
-        const payload = (language: 'en' | 'es') => {
-            const es = language === 'es';
-            const title = slot === 'events' ? translations.companion.events[language] : slot === 'question' ? (daily![es ? 'question_es' : 'question'] || daily!.question) : (daily![es ? 'title_es' : 'title'] || daily!.title);
-            const body = slot === 'events' ? eventsBody : slot === 'question' ? '' : (daily![es ? 'body_es' : 'body'] || daily!.body || '');
-            return serializePush({ title: Array.from(title).slice(0, 200).join(''), body: Array.from(body).slice(0, 1000).join(''), url: '/today', tag: date + '-' + slot });
-        };
-        await db.prepare('INSERT OR IGNORE INTO companion_ledger(date,slot,recipient,claimed_at,payload_en,payload_es) VALUES (?1,?2,?3,?4,?5,?6)')
-            .bind(date, slot, '*', slotTime.toISOString(), payload('en'), payload('es')).run();
-        // Concurrent creators all read the winner's snapshot, keeping content stable.
-        marker = await db.prepare("SELECT claimed_at,payload_en,payload_es FROM companion_ledger WHERE date=?1 AND slot=?2 AND recipient='*'")
-            .bind(date, slot).first<{
-            claimed_at: string;
-            payload_en: string | null;
-            payload_es: string | null;
-        }>();
-    }
-    if (!marker?.payload_en || !marker.payload_es)
-        return;
-    let after = '';
-    // Bounded queries and invocation work. Minute cron resumes any unclaimed
-    // recipients while this slot is fresh; recipients added later are excluded.
-    for (let page = 0; page < 20 && !stale(); page++) {
-        const rows = await db.prepare(`SELECT s.* FROM companion_subscriptions s
-   WHERE s.device_id>?1 AND s.created_at<=?2 AND NOT EXISTS
-   (SELECT 1 FROM companion_ledger l WHERE l.date=?3 AND l.slot=?4 AND l.recipient=s.device_id)
-   ORDER BY s.device_id LIMIT 50`).bind(after, marker.claimed_at, date, slot)
-            .all<{
-            device_id: string;
-            endpoint: string;
-            p256dh: string;
-            auth: string;
-            language: string;
-        }>();
-        for (const sub of rows.results) {
-            if (stale() || await withdrawn())
-                return;
-            after = sub.device_id;
-            const claimed = await db.prepare('INSERT OR IGNORE INTO companion_ledger(date,slot,recipient,claimed_at) VALUES (?1,?2,?3,?4)')
-                .bind(date, slot, sub.device_id, now.toISOString()).run();
-            if (!claimed.meta.changes)
-                continue;
+        for (const table of ['companion_replies', 'companion_completions', 'companion_subscriptions', 'companion_ledger', 'notify_devices', 'notify_ledger', 'notify_runs']) {
             try {
-                if (!validEndpoint(sub.endpoint, localMock(env) ?? undefined))
-                    throw new Error('unsafe endpoint');
-                const encrypted = await encryptPush(sub.language === 'es' ? marker.payload_es : marker.payload_en, sub.p256dh, sub.auth);
-                const token = await vapid(sub.endpoint, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!, env.VAPID_SUBJECT!);
-                // Check deadline again after crypto; do not start any stale delivery.
-                if (stale() || await withdrawn())
-                    return;
-                const res = await fetch(sub.endpoint, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(8000),
-                    headers: { Authorization: `vapid t=${token}, k=${env.VAPID_PUBLIC_KEY}`, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '300' }, body: encrypted });
-                if (res.status === 404 || res.status === 410)
-                    await db.prepare('DELETE FROM companion_subscriptions WHERE device_id=?1 AND endpoint=?2 AND p256dh=?3 AND auth=?4').bind(sub.device_id,sub.endpoint,sub.p256dh,sub.auth).run();
-                else if (res.ok)
-                    await db.prepare('UPDATE companion_subscriptions SET last_success=?1,failure_count=0 WHERE device_id=?2 AND endpoint=?3 AND p256dh=?4 AND auth=?5').bind(now.toISOString(), sub.device_id,sub.endpoint,sub.p256dh,sub.auth).run();
-                else
-                    throw new Error('push failed');
+                await db.prepare(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} LIMIT 500)`).run();
             }
-            catch {
-                await db.prepare('UPDATE companion_subscriptions SET failure_count=failure_count+1 WHERE device_id=?1 AND endpoint=?2 AND p256dh=?3 AND auth=?4').bind(sub.device_id,sub.endpoint,sub.p256dh,sub.auth).run();
+            catch (error) {
+                // A table from a later migration that this database has not had yet.
+                if (!/no such table/i.test(String(error))) throw error;
             }
         }
-        if (rows.results.length < 50)
-            break;
     }
 }
