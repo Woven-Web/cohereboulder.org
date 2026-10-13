@@ -90,6 +90,7 @@ export const notifyTranslations = {
   footnote: { en: "Times are Boulder time. Every email has an unsubscribe link that works without signing in.", es: "Horas de Boulder. Cada correo tiene un enlace de baja que funciona sin iniciar sesión." },
   testPush: { en: "Send a test push", es: "Enviar un push de prueba" },
   testSent: { en: "Sent. It should arrive in a few seconds.", es: "Enviado. Debería llegar en unos segundos." },
+  testPaused: { en: "Notifications haven’t started yet. They’ll begin when the gathering does.", es: "Las notificaciones aún no han comenzado. Empezarán cuando comience el encuentro." },
   testFailed: { en: "The test didn’t go through. Open the app on your phone and try again.", es: "La prueba no llegó. Abre la app en tu teléfono e inténtalo de nuevo." },
 
   link: {

@@ -104,7 +104,6 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
         ) : info.kind === "unsub" && !undone ? (
           <button type="button" className="btn btn--line" disabled={busy} data-testid="link-undo" onClick={() => void run("resubscribe", { previous }).then((ok) => ok && setUndone(true))}>{tr("notify.link.undo")}</button>
         ) : null}
-        {info.kind === "unsub" && info.settingsToken && <Link className="btn btn--line" to={`/n/${info.settingsToken}`}>{tr("notify.link.allSettings")}</Link>}
         {done && info.kind !== "unsub" && <Link className="btn btn--line" to="/today">{tr("notify.link.home")}</Link>}
       </div>
     </div>

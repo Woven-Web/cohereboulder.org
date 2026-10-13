@@ -135,7 +135,7 @@ describe("photos", () => {
     const photo = await call("GET", `/api/harvests/${harvest.id}/photo`, undefined, "peer");
     expect(photo.status).toBe(200);
     expect(photo.headers.get("Content-Type")).toBe("image/jpeg");
-    expect(photo.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    expect(photo.headers.get("Cache-Control")).toBe("private, max-age=60");
     expect((await photo.arrayBuffer()).byteLength).toBe(54);
     expect((await call("GET", `/api/harvests/${harvest.id}/photo`, undefined, null)).status).toBe(401);
     expect((await call("GET", `/api/harvests/${harvest.id}/photo`, undefined, "outsider")).status).toBe(403);

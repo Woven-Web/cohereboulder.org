@@ -21,7 +21,7 @@ import {
   type Channel, type DeviceRow, type LinkPayload, type NotifyType, type PushStatus,
 } from "./notify-core";
 import { testPush, verifyEmail } from "./notify-messages";
-import { baseUrl, deliverPush, linkSecret, type NotifyEnv } from "./notify-send";
+import { baseUrl, deliverPush, linkSecret, notifyPaused, type NotifyEnv } from "./notify-send";
 import {
   getDevice, getPrefs, installedDevices, mergeEmailPerson, prefsOrBlank, reachOf, recordSend, saveDevice, savePrefs, type PrefsRow,
 } from "./notify-store";
@@ -178,7 +178,7 @@ async function handleAddEmail(request: Request, env: NotifyRouteEnv, url: URL): 
   const email = normalizeEmail(body?.email);
   if (!EMAIL_RE.test(email) || email.length > 254) return json({ error: "That doesn’t look like an email address." }, 400);
   const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
-  if ((await rateLimited(env, `notify-email:${prefs.person_key}`, 5, 3600)) || (await rateLimited(env, `notify-email-ip:${ip}`, 20, 3600))) {
+  if ((await rateLimited(env, `notify-email-addr:${email}`, 3, 86400)) || (await rateLimited(env, `notify-email:${prefs.person_key}`, 5, 3600)) || (await rateLimited(env, `notify-email-ip:${ip}`, 20, 3600))) {
     return json({ error: "Too many tries. Please try again later." }, 429);
   }
   const secret = linkSecret(env);
@@ -245,6 +245,11 @@ async function deviceCalls(request: Request, env: NotifyRouteEnv, path: string):
     // The page asked pushManager and there is no subscription: the device is gone.
     const id = body.device_id;
     if (typeof id !== "string" || !UUID_RE.test(id)) return json({ error: "invalid device" }, 400);
+    // Holding the subscription's endpoint (itself a secret URL) is the proof; a bare device id is not enough.
+    const known = typeof body.endpoint === "string"
+      ? await env.cohere.prepare("SELECT 1 AS ok FROM companion_subscriptions WHERE device_id = ?1 AND endpoint = ?2").bind(id, body.endpoint).first()
+      : null;
+    if (!known) return json({ error: "subscription missing" }, 404);
     const row = await getDevice(env.cohere, id);
     if (row) await saveDevice(env.cohere, afterHeartbeat(row, { installed, permission, subscribed: false }, now), now);
     return json({ ok: true, state: "expired" });
@@ -283,7 +288,9 @@ async function deviceCalls(request: Request, env: NotifyRouteEnv, path: string):
   return json({ error: "not found" }, 404);
 }
 
-const pushReady = (env: NotifyRouteEnv) => Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
+/** VAPID is configured AND neither pause switch is on: a user-initiated push must obey the same switches as the cron. */
+const pushReady = (env: NotifyRouteEnv) =>
+  Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT) && env.COMPANION_PUSH_PAUSED !== "true" && !notifyPaused(env);
 
 // -------------------------------------------------------------------- links
 
@@ -299,10 +306,6 @@ async function linkInfo(env: NotifyRouteEnv, link: LinkPayload): Promise<Record<
   const out: Record<string, unknown> = { kind: link.k, type: link.t ?? null, email: link.k === "verify" ? link.e ?? null : prefs.email, locale: prefs.locale };
   if (link.k === "settings" || link.k === "unsub") {
     out.view = await settingsView(env, prefs, now);
-    if (link.k === "unsub") {
-      // The unsubscribe page offers "all my settings"; mint the settings link from the (never-expiring) unsubscribe one.
-      out.settingsToken = await signLink(linkSecret(env)!, { p: link.p, k: "settings" }, now);
-    }
   }
   if (link.k === "rsvp" && link.d && link.r) {
     const live = await lookupLiveEvent(env, link.d, link.r);

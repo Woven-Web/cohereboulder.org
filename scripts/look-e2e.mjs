@@ -335,7 +335,9 @@ for (const [w, h] of SIZES) {
       await shot(page, `today-row-sheet-${w}`);
       await page.keyboard.press("Escape");
       await sheet.waitFor({ state: "detached" });
-      check(await opener.evaluate((el) => el === document.activeElement), `row: focus returns to the trail button at ${w}`);
+      // Radix hands focus back in a setTimeout(0) after the sheet unmounts, so poll rather than read the instant it detaches.
+      const refocused = await opener.evaluate((el) => new Promise((done) => { const end = Date.now() + 2000; const look = () => (el === document.activeElement ? done(true) : Date.now() > end ? done(false) : setTimeout(look, 20)); look(); }));
+      check(refocused, `row: focus returns to the trail button at ${w}`);
       await opener.click();
       await page.getByRole("dialog").getByRole("link", { name: /Sunday Oct 18/ }).click();
       await page.waitForURL(/\/calendar\?day=2026-10-18/);

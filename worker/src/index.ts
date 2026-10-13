@@ -1108,7 +1108,16 @@ export default {
     // own title/description; every page its own canonical), plus immutable
     // caching for hashed /assets/*. Best-effort: falls back to the file as-is.
     const asset = await env.ASSETS.fetch(request);
-    return decorateAssetResponse(request, asset, env);
+    const decorated = await decorateAssetResponse(request, asset, env);
+    if (path.startsWith("/n/")) {
+      // Emailed-link pages carry a bearer token in the URL: keep them out of search and out of Referer headers.
+      const out = new Response(decorated.body, decorated);
+      out.headers.set("X-Robots-Tag", "noindex, nofollow");
+      out.headers.set("Referrer-Policy", "no-referrer");
+      out.headers.set("Cache-Control", "no-store");
+      return out;
+    }
+    return decorated;
   },
 
   // Companion runs at 12:00, 15:00 and 21:00 UTC, with minute ticks for retries.

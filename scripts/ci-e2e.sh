@@ -429,6 +429,7 @@ fi
 cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-ecology"
+echo "::endgroup::"
 # --- 15. notify-e2e: notifications + Harvest ---------------------------------
 # Self-contained (its own scratch, servers and ports): see scripts/notify-e2e.sh.
 echo "::group::notify-e2e (notifications + harvest lane)"

@@ -108,7 +108,7 @@ function TestPush() {
   const { tr, language } = useLanguage();
   const { toast } = useShell();
   return (
-    <button type="button" className="link" style={{ minHeight: 0 }} onClick={() => void testPush(language).then((ok) => toast(tr(ok ? "notify.testSent" : "notify.testFailed")))}>
+    <button type="button" className="link" style={{ minHeight: 0 }} onClick={() => void testPush(language).then((ok) => toast(tr(ok === "paused" ? "notify.testPaused" : ok ? "notify.testSent" : "notify.testFailed")))}>
       {tr("notify.testPush")}
     </button>
   );
@@ -140,7 +140,7 @@ function Reach({ view, guest }: { view: SettingsView; guest: boolean }) {
       await syncDevice({ signedIn: true, language, pushKey: today.pushKey, force: true });
       const ok = await testPush(language);
       await queryClient.invalidateQueries({ queryKey: NOTIFY_SETTINGS_KEY });
-      toast(tr(ok ? "notify.reach.back" : "notify.reach.backFailed"));
+      toast(tr(ok === "paused" ? "notify.testPaused" : ok ? "notify.reach.back" : "notify.reach.backFailed"));
     } finally {
       setBusy(false);
     }

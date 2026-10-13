@@ -138,6 +138,12 @@ describe("GET/PUT /api/notify/settings", () => {
 });
 
 describe("POST /api/notify/email", () => {
+  it("caps verify mail to one address at 3 a day, across people", async () => {
+    sessions.p2 = { did: "did:plc:p2", email: null }; sessions.p3 = { did: "did:plc:p3", email: null }; sessions.p4 = { did: "did:plc:p4", email: null };
+    const codes: number[] = [];
+    for (const who of ["peer", "p2", "p3", "p4"]) codes.push((await call("POST", "/api/notify/email", { email: "same@example.org" }, who)).status);
+    expect(codes).toEqual([200, 200, 200, 429]);
+  });
   it("sends a confirmation link to the new address, and changes nothing until it is tapped", async () => {
     const res = await call("POST", "/api/notify/email", { email: " New@Example.org " }, "peer");
     expect(res.status).toBe(200);
@@ -187,7 +193,10 @@ describe("devices", () => {
   });
   it("a heartbeat saying there is no subscription, or that permission was denied, expires the phone", async () => {
     await addDevice(ME);
-    await call("POST", "/api/notify/heartbeat", { device_id: DEVICE, installed: true, permission: "granted", subscribed: false }, null);
+    const bare = await call("POST", "/api/notify/heartbeat", { device_id: DEVICE, installed: true, permission: "granted", subscribed: false }, null);
+    expect(bare.status).toBe(404); // a device id alone proves nothing
+    expect(rows("SELECT state FROM notify_devices")[0].state).not.toBe("expired");
+    await call("POST", "/api/notify/heartbeat", { device_id: DEVICE, endpoint: KEYS.endpoint, installed: true, permission: "granted", subscribed: false }, null);
     expect(rows("SELECT state FROM notify_devices")[0].state).toBe("expired");
     await env.cohere.prepare("UPDATE notify_devices SET state = 'live'").run();
     await call("POST", "/api/notify/heartbeat", { ...proof, installed: true, permission: "denied", subscribed: true }, null);
@@ -199,6 +208,17 @@ describe("devices", () => {
     expect(rows("SELECT last_shown_at FROM notify_devices")[0].last_shown_at).not.toBeNull();
     expect((await call("POST", "/api/notify/shown", { device_id: "x" }, null)).status).toBe(400);
   });
+  it("the test push is refused while NOTIFY_PAUSED or COMPANION_PUSH_PAUSED is on, even with VAPID set", async () => {
+    await addDevice(ME);
+    Object.assign(env, { VAPID_PUBLIC_KEY: "a", VAPID_PRIVATE_KEY: "b", VAPID_SUBJECT: "mailto:x@example.org" });
+    for (const pause of [{ NOTIFY_PAUSED: "true" }, { NOTIFY_PAUSED: undefined }, { NOTIFY_PAUSED: "false", COMPANION_PUSH_PAUSED: "true" }]) {
+      Object.assign(env, { NOTIFY_PAUSED: "false", COMPANION_PUSH_PAUSED: undefined }, pause);
+      const fetched = vi.fn();
+      vi.stubGlobal("fetch", fetched);
+      expect((await call("POST", "/api/notify/test", proof, null)).status).toBe(503);
+      expect(fetched).not.toHaveBeenCalled();
+    }
+  });
   it("the test push is refused without push configured, and with the wrong secrets", async () => {
     await addDevice(ME, { state: "suspect", fail_count: 3 });
     expect((await call("POST", "/api/notify/test", proof, null)).status).toBe(503);
@@ -208,7 +228,7 @@ describe("devices", () => {
     const { createPushReceiver } = await import("../../scripts/pwa-push-receiver.mjs");
     const receiver = createPushReceiver("http://127.0.0.1:10049");
     const k = receiver.fixture;
-    Object.assign(env, { VAPID_PUBLIC_KEY: k.publicKey, VAPID_PRIVATE_KEY: k.privateKey, VAPID_SUBJECT: k.subject, COMPANION_LOCAL_TEST_MODE: "true", COMPANION_LOCAL_PUSH_MOCK: "http://127.0.0.1:10049" });
+    Object.assign(env, { NOTIFY_PAUSED: "false", VAPID_PUBLIC_KEY: k.publicKey, VAPID_PRIVATE_KEY: k.privateKey, VAPID_SUBJECT: k.subject, COMPANION_LOCAL_TEST_MODE: "true", COMPANION_LOCAL_PUSH_MOCK: "http://127.0.0.1:10049" });
     await env.cohere.prepare("INSERT INTO companion_subscriptions(device_id,endpoint,p256dh,auth,created_at) VALUES (?1,?2,?3,?4,?5)").bind(DEVICE, k.endpoint, k.p256dh, k.auth, "2026-10-01T00:00:00Z").run();
     await env.cohere.prepare("INSERT INTO notify_devices(device_id,person_key,installed,permission,state,fail_count,created_at,updated_at) VALUES (?1,?2,1,'granted','suspect',3,'2026-10-01T00:00:00Z','2026-10-01T00:00:00Z')").bind(DEVICE, ME).run();
     let received: Record<string, unknown> | undefined;
@@ -254,7 +274,7 @@ describe("emailed links", () => {
     const t = await token({ p: "mailto:sam@example.org", k: "unsub", t: "evening" });
     const info = await (await call("GET", `/api/notify/link/${t}`, undefined, null)).json();
     expect(info).toMatchObject({ kind: "unsub", type: "evening" });
-    expect(await verifyLink(SECRET, info.settingsToken, new Date())).toMatchObject({ p: "mailto:sam@example.org", k: "settings" });
+    expect(info.settingsToken).toBeUndefined(); // a never-expiring link must not mint a 30-day settings link
     const off = await (await call("POST", `/api/notify/link/${t}/unsubscribe`, {}, null)).json();
     expect(off).toEqual({ ok: true, types: ["evening"], previous: { evening: null } });
     expect(rows("SELECT evening_on FROM notify_prefs")[0].evening_on).toBe(0);

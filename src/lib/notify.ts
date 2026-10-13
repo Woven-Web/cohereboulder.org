@@ -75,7 +75,6 @@ export interface LinkInfo {
   email: string | null;
   locale: "en" | "es";
   view?: SettingsView;
-  settingsToken?: string;
   event?: { name: string; startsAt: string | null; where: string | null } | null;
 }
 
@@ -109,10 +108,12 @@ const permission = () => (typeof Notification === "undefined" ? "default" : Noti
 /** The proof a request carries that it comes from this phone: the subscription's own secrets. */
 async function proof(language: string) {
   const sub = await currentSubscription();
+  if (sub) localSet(ENDPOINT_KEY, sub.endpoint);
   return sub ? { device_id: anonymousDevice(), ...sub, installed: isInstalled(), permission: permission(), language } : null;
 }
 
 const SYNC_KEY = "cohere-notify-synced";
+const ENDPOINT_KEY = "cohere-notify-endpoint";
 const SYNC_EVERY_MS = 10 * 60_000;
 
 /**
@@ -135,7 +136,9 @@ export async function syncDevice(opts: { signedIn: boolean; language: string; pu
     }
     if (!body) {
       // Only worth saying if this phone ever had notifications on.
-      if (hadPush) await call("/api/notify/heartbeat", "POST", { device_id: anonymousDevice(), installed: isInstalled(), permission: permission(), subscribed: false });
+      // The last endpoint this phone held is its proof: without it the Worker ignores the report.
+      const endpoint = localGet(ENDPOINT_KEY);
+      if (hadPush && endpoint) await call("/api/notify/heartbeat", "POST", { device_id: anonymousDevice(), endpoint, installed: isInstalled(), permission: permission(), subscribed: false });
       return;
     }
     await call("/api/notify/heartbeat", "POST", { ...body, subscribed: true });
@@ -163,13 +166,14 @@ async function resubscribe(pushKey: string, language: string) {
 }
 
 /** "Turn push back on": one visible test push. If the push service takes it, this phone is live again. */
-export async function testPush(language: string): Promise<boolean> {
+export async function testPush(language: string): Promise<boolean | "paused"> {
   const body = await proof(language);
   if (!body) return false;
   try {
     return (await call<{ ok: boolean }>("/api/notify/test", "POST", body)).ok;
-  } catch {
-    return false;
+  } catch (error) {
+    // 503: pushes aren't switched on yet, which is not the phone's fault.
+    return error instanceof NotifyError && error.status === 503 ? "paused" : false;
   }
 }
 

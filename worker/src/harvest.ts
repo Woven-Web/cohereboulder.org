@@ -263,7 +263,7 @@ async function photo(env: HarvestEnv, did: string, id: string): Promise<Response
   if (!visible(state, row.author_did === did)) return json({ error: "not found" }, 404);
   const bytes = Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0));
   // Members only, and private to this browser: a shared cache must never hold it.
-  return new Response(bytes, { headers: { "Content-Type": row.mime, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+  return new Response(bytes, { headers: { "Content-Type": row.mime, "Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff" } });
 }
 
 /** Routes under /api/harvests. Null for any other path. */
