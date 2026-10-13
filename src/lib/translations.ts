@@ -2467,7 +2467,7 @@ export const translations = {
       },
       subtitle: {
         en: "Explore events on the community events",
-        es: "Algunos encuentros del calendario comunitario — co-creados, no programados.",
+        es: "Explora los eventos de la comunidad",
       },
       seeFullCalendar: {
         en: "See the full calendar",
