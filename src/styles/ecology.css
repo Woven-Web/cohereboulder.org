@@ -342,3 +342,13 @@
 /* ---------- Copy pass: a string cut to "" collapses the block it sat in ---------- */
 .alm.eco :is(p,li,div,span,h2,h3,small,figcaption,blockquote,dd,dt):not([class*="mark"]):not([class*="dot"]):not([class*="line"]):not([class*="grab"]):not([class*="sun"]):not(.box):not([aria-hidden="true"]):not([role]):empty{display:none}
 .alm.eco ul:not(:has(> li:not(:empty))){display:none}
+
+/* Aaron 10-13: photos read too big on a computer. Cap them on wide screens. */
+@media (min-width:768px){
+  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:min(100%,34rem);margin-inline:auto;display:block;max-height:22rem;object-fit:cover;width:100%}
+  .alm.eco .plate--hero img{max-height:26rem;object-fit:cover}
+  .alm.eco .home__hero>.plate--hero img{aspect-ratio:4/3;max-height:24rem}
+}
+@media (min-width:1280px){
+  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:30rem;max-height:20rem}
+}
