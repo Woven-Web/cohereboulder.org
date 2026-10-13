@@ -119,7 +119,7 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
               {editing ? (
                 <Editor harvest={mine} onDone={() => { setEditing(false); refresh(); }} onCancel={() => setEditing(false)} />
               ) : (
-                <MineCard harvest={mine} onEdit={() => setEditing(true)} onDelete={() => setDeleting(mine)} />
+                <MineCard harvest={mine} name={nameOf(did)} onEdit={() => setEditing(true)} onDelete={() => setDeleting(mine)} />
               )}
             </div>
           ) : (
@@ -250,12 +250,13 @@ function Composer({ event, onShared }: { event: CommunityEvent; onShared: () => 
   );
 }
 
-function MineCard({ harvest, onEdit, onDelete }: { harvest: Harvest; onEdit: () => void; onDelete: () => void }) {
+function MineCard({ harvest, name, onEdit, onDelete }: { harvest: Harvest; name: string; onEdit: () => void; onDelete: () => void }) {
   const { tr, language } = useLanguage();
   return (
     <article className="post post--own" data-testid="harvest-mine" id={`harvest-${harvest.id}`}>
       <div className="post__by">
-        <b>{tr("notify.harvest.you")}</b>
+        <Avatar did={harvest.authorDid} name={name} size="sm" />
+        <b>{name}</b>
         <time dateTime={harvest.createdAt}>{stamp(harvest.createdAt, language)}</time>
       </div>
       {harvest.moderation && <p className="vis-note" data-testid="mod-mark"><span><b>{tr(harvest.moderation === "hidden" ? "notify.harvest.markHidden" : "notify.harvest.markRemoved")}</b></span></p>}

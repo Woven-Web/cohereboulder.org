@@ -332,6 +332,30 @@ if (process.env.MOCK_RICH_SEED === "1") {
   seedPost(STEWARD_DID, "Welcome, everyone. Be kind, stay curious, and tell us if a post doesn't feel right. Use Report on any post.", { title: "Welcome to the Board", tags: ["welcome"], langs: ["en"] }, 60 * 40);
 }
 
+// MOCK_NOTIFY=1 — what the notifications/harvest lane needs (never set by the older lanes):
+//  * two events that just ended (90 minutes ago, and yesterday) the default user and Pia both
+//    RSVP'd to, so the harvest composer, the Today card and the invitation have something to be about;
+//  * Pia has a verified contact email (getMyContactPref); the default user has none.
+const CONTACT_EMAILS = new Map();
+if (process.env.MOCK_NOTIFY === "1") {
+  const ended = (rkey, name, hoursAgo, lengthH, place, description) => {
+    const endsAt = new Date(Date.now() - hoursAgo * 3600_000);
+    events.set(rkey, {
+      uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
+      value: { name, description, createdAt: new Date(endsAt.getTime() - 7 * 86_400_000).toISOString(),
+        startsAt: new Date(endsAt.getTime() - lengthH * 3600_000).toISOString(), endsAt: endsAt.toISOString(),
+        mode: "community.lexicon.calendar.event#inperson",
+        locations: [{ $type: "community.lexicon.location.address", name: place, locality: "Boulder", region: "CO", country: "US" }] },
+    });
+    seedAttendance(rkey);
+    mySeats.set(`${USER_DID}|${rkey}`, "confirmed");
+    mySeats.set(`${PEER_DID}|${rkey}`, "confirmed");
+  };
+  ended("ev-ended1", "Honoring Water | with Angelique", 1.5, 1.25, "Boulder Creek Path", "A slow walk to our local waters.");
+  ended("ev-ended2", "Soup Night at the Barn", 20, 2, "The Old Barn", "Bring a bowl.");
+  CONTACT_EMAILS.set(PEER_DID, "pia@example.test");
+}
+
 function circleSubject(req, res, url) {
   const person = sessionPerson(req);
   if (!person) {
@@ -562,7 +586,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     case "social.scenius.getMyContactPref": {
-      return json(res, signedIn ? 200 : 401, { channels: [] });
+      const email = signedIn ? CONTACT_EMAILS.get(sessionPerson(req)?.did) : null;
+      return json(res, signedIn ? 200 : 401, { channels: email ? [{ kind: "email", address: email, verified: true }] : [] });
     }
 
     case "social.scenius.getSession": {

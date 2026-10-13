@@ -43,6 +43,9 @@ cohereboulder.org ─→ Worker "cohere-signup"
         │     ├── …/access[/invite|role|revoke]        who may host on it
         │     └── …/board[/hide|unhide|remove|approve|settings|reports/:id/dismiss]
         ├── /api/board/reports   a member reports a Board post     (regenOS session)
+        ├── /api/notify/*        notification settings, device health, signed email links (session or token)
+        ├── /n/:token            emailed-link pages (SPA); POST = RFC 8058 one-click unsubscribe
+        ├── /api/harvests[/…]    members' event harvests (D1; members only)
         ├── /api/me/rsvp-visibility · /api/me/rsvps · /api/members/:did/rsvps
         │                        who sees my RSVPs on my profile   (regenOS session)
         └── /admin               the admin portal, one self-contained HTML page
@@ -178,6 +181,38 @@ Test it against `scripts/regenos-mock.mjs` (it models the circle XRPCs and four
 extra sessions: `mock-peer`, `mock-steward`, `mock-outsider`, `mock-builder`);
 lanes 10–12 of `scripts/ci-e2e.sh` are `board-e2e`, `people-e2e`,
 `rsvp-visibility-e2e`.
+
+## Notifications and Harvest
+
+Three notes, built in `worker/src/notify-*.ts` and driven by the every-minute cron:
+the **morning note** (6 AM Boulder: the day's practice with its question inside it, then
+today's events, your RSVPs first), the **harvest invitation** (about an hour after an
+event you RSVP'd to ends) and the **8 PM "ready for tomorrow"**. They replace the old
+anonymous 6/9/3 companion pushes; `runCompanionCron` is now housekeeping only.
+
+- **Master switch:** `NOTIFY_PAUSED` runs the senders only when it is exactly `"false"`
+  (`"true"` in `wrangler.jsonc`; unset also means off). It covers push AND email.
+  `COMPANION_PUSH_PAUSED="true"` additionally stops pushes. Staging has no cron, no mail
+  binding and no VAPID keys, so nothing can go out; an email send with no transport is logged.
+- **Who:** `notify_prefs` is keyed by a person_key (the regenOS DID, else `mailto:<verified
+  email>`); `notify_devices` tracks each push subscription's health (live / suspect /
+  expired; a 404/410 expires at once, 3 failures or 2 across days make it suspect, no sign
+  of life for 14 days downgrades it, the service worker reports "shown"). The pure rules
+  (defaults, channel choice, fallback, timing, signed links) are in `notify-core.ts`.
+- **Defaults:** all three on by push for people with the app installed and a live phone.
+  Email-only people: morning is opt-in; harvest and 8 PM only after the one-tap ask in the RSVP
+  confirmation. Push chosen but not live falls back to email at send time (never both); the
+  first fallback says so in settings and on top of that email. Dedupe: `notify_ledger`.
+- **Links:** every email carries signed `/n/<token>` links (settings 30 days, unsubscribe never
+  expires) and `List-Unsubscribe` one-click headers. Pages never change anything on load; a
+  button POSTs. The secret is `NOTIFY_LINK_SECRET` (falls back to a key derived from the VAPID
+  private key); without either, no email is sent.
+- **Harvest** lives in D1 (`harvests`, `harvest_photos`), not as circle posts: it needs a photo,
+  an edit and an event reference, and the proxy lends none of those. Reports and steward hiding
+  reuse `board_reports` / `board_moderation` with the key `cohere:harvest/<id>`.
+- **Tests:** `notify-core|send|test`, `harvest.test.ts`; `scripts/notify-e2e.sh` (lane 13)
+  drives it in a browser against `MOCK_NOTIFY=1` regenos-mock and the loopback push receiver.
+- Worker code is not covered by `npm run typecheck` (it only reads `src/`); vitest is its check.
 
 ## Admin access
 

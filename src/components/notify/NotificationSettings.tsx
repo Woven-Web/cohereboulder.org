@@ -158,14 +158,15 @@ function Reach({ view, guest }: { view: SettingsView; guest: boolean }) {
         </div>
       </div>
     );
-  } else if (reminders.permission === "denied") {
-    push = <Line tone="bad" title={tr("notify.reach.denied")} />;
   } else if (!installed && device?.status !== "live") {
+    // Installing comes first: a browser tab that isn't the app has nothing to turn on yet.
     push = (
       <Line tone="warn" title={tr("notify.reach.notInstalled")}>
         {tr("notify.reach.installHint")} <Link className="link" style={{ minHeight: 0 }} to="/more">{tr("notify.reach.howInstall")}</Link>
       </Line>
     );
+  } else if (reminders.permission === "denied") {
+    push = <Line tone="bad" title={tr("notify.reach.denied")} />;
   } else if (broke) {
     push = (
       <>
