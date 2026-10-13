@@ -39,7 +39,8 @@ function EditView() {
   const [seeded, setSeeded] = useState(false);
   const [extras, setExtras] = useState<ProfileExtras>({ bringing: "", offering: "", curious: "" });
   const [extrasSeeded, setExtrasSeeded] = useState(false);
-  const savedExtras = useQuery({ queryKey: ["my-profile-extras"], queryFn: fetchMyProfileExtras, enabled: member, staleTime: 30_000, retry: 1 });
+  const MY_EXTRAS_KEY = ["my-profile-extras"];
+  const savedExtras = useQuery({ queryKey: MY_EXTRAS_KEY, queryFn: fetchMyProfileExtras, enabled: member, staleTime: 0, retry: 1 });
 
   useEffect(() => {
     if (extrasSeeded || !savedExtras.data) return;
@@ -71,7 +72,7 @@ function EditView() {
       const lines = extrasSeeded ? putMyProfileExtras(extras) : Promise.resolve(null);
       return Promise.all([putProfile(collective, { displayName: name, bio, links: cleaned.links }), lines]);
     },
-    onSuccess: async () => { await refresh(); queryClient.invalidateQueries({ queryKey: PEOPLE_EXTRAS_KEY }); toast(tr("members.profile.saved")); },
+    onSuccess: async ([, savedLines]) => { if (savedLines) queryClient.setQueryData(MY_EXTRAS_KEY, savedLines); await refresh(); queryClient.invalidateQueries({ queryKey: PEOPLE_EXTRAS_KEY }); toast(tr("members.profile.saved")); },
     onError: () => toast(tr("members.profile.saveFailed")),
   });
   const usePublic = useMutation({
@@ -128,7 +129,7 @@ function EditView() {
               <textarea className="field__input" id="pf-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
               <div className={`counter${bioOver ? " is-over" : ""}`} data-testid="bio-count">{fill(tr("members.profile.bioCount"), { n: graphemes(bio) })}</div>
             </div>
-            {EXTRA_KEYS.map((key) => (
+            {!savedExtras.isError && EXTRA_KEYS.map((key) => (
               <div className="field" key={key}>
                 <label className="field__label" htmlFor={`pf-${key}`}>{tr(`members.extras.${key}`)}</label>
                 <input className="field__input" id={`pf-${key}`} value={extras[key]} disabled={!extrasSeeded} data-testid={`extra-${key}`}

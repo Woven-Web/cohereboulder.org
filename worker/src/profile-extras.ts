@@ -30,7 +30,7 @@ const graphemeCount = (text: string): number => {
 
 /** Plain text only: no control characters, whitespace collapsed to single spaces. */
 // eslint-disable-next-line no-control-regex
-const tidy = (text: string): string => text.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+const tidy = (text: string): string => text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ").replace(/[\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "").replace(/\s+/g, " ").trim();
 
 /** Body → three clean strings ("" = empty), or an error sentence. A missing key counts as empty. */
 export function validateExtras(body: unknown): { extras: Extras } | { error: string } {
@@ -53,7 +53,17 @@ const fromRow = (row: Row | null | undefined): Extras => ({
   bringing: row?.bringing ?? "", offering: row?.offering ?? "", curious: row?.curious ?? "",
 });
 
+const missingTable = (err: unknown): boolean => /no such table/i.test(String((err as Error)?.message ?? err));
+const unavailable = () => json({ error: "Not available yet." }, 503);
+
 export async function handleMyProfileExtras(request: Request, env: ProfileExtrasEnv): Promise<Response> {
+  try { return await myExtras(request, env); } catch (err) { if (missingTable(err)) return unavailable(); throw err; }
+}
+export async function handleMemberProfileExtras(request: Request, env: ProfileExtrasEnv): Promise<Response> {
+  try { return await memberExtras(request, env); } catch (err) { if (missingTable(err)) return unavailable(); throw err; }
+}
+
+async function myExtras(request: Request, env: ProfileExtrasEnv): Promise<Response> {
   if (request.method !== "GET" && request.method !== "PUT") return json({ error: "method not allowed" }, 405);
   if (request.method === "PUT") {
     const refused = refuseCrossSiteWrite(request);
@@ -89,7 +99,7 @@ export async function handleMyProfileExtras(request: Request, env: ProfileExtras
 }
 
 /** { extras: { [did]: {bringing, offering, curious} } } for current members who have set any line. */
-export async function handleMemberProfileExtras(request: Request, env: ProfileExtrasEnv): Promise<Response> {
+async function memberExtras(request: Request, env: ProfileExtrasEnv): Promise<Response> {
   if (request.method !== "GET") return json({ error: "method not allowed" }, 405);
   const viewer = await readVerifiedSessionDid(request, env);
   if (!viewer) return json({ error: "Sign in first." }, 401);
