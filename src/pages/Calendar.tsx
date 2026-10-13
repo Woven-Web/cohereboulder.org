@@ -8,6 +8,7 @@ import { fill, useMedia } from "@/components/almanac/format";
 import { CalendarWeek } from "@/components/almanac/CalendarWeek";
 import { seatOf } from "@/components/almanac/seat";
 import { FESTIVAL_DATES, formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
+import { useLook } from "@/lib/look";
 import { currentDenverDate } from "@/lib/companion";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { LumaCalendar } from "@/components/LumaCalendar";
@@ -65,7 +66,9 @@ export default function CalendarPage() {
   // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.
   const [chosenView, setChosenView] = useState<"day" | "week" | null>(readView);
   const xl = useMedia("(min-width: 1024px)");
-  const view: "day" | "week" = chosenView ?? (xl ? "week" : "day");
+  // Only the ecology look defaults to the week; every other look keeps the day list unless the visitor picks the week.
+  const eco = useLook() === "ecology";
+  const view: "day" | "week" = chosenView ?? (xl && eco ? "week" : "day");
   function setView(next: "day" | "week") {
     setChosenView(next);
     try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }

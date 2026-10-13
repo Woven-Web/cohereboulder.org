@@ -282,7 +282,7 @@ try {
   await scheduleAt(boulderInstant(today, "20:00"));
   ({ messages } = await pushMessages());
   const evening = messages.filter((m) => m.url === "/tomorrow");
-  expect(evening.length === 1 && evening[0].title === "Ready for tomorrow?" && /1 event on/.test(evening[0].body), "one 8 PM push for the live phone, listing tomorrow");
+  expect(evening.length === 1 && evening[0].title === "Ready for tomorrow?" && /1 event · /.test(evening[0].body), "one 8 PM push for the live phone, listing tomorrow");
   await scheduleAt(boulderInstant(today, "20:00") + 120_000);
   expect((await pushMessages()).messages.filter((m) => m.url === "/tomorrow").length === 1, "…and not again on a later tick");
 
