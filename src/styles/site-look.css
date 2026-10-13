@@ -74,8 +74,9 @@
 @media (min-width:768px){.alm .band.cols{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--sp-7);align-items:center}}
 .alm .depths{display:grid;gap:0;margin-top:var(--sp-2)}
 .alm .depths li{padding:var(--sp-3) 0;border-top:var(--rule-w) dotted var(--hair);display:grid;gap:var(--sp-1)}
-@media (min-width:768px){.alm .depths{grid-template-columns:repeat(3,1fr);column-gap:var(--sp-5)}.alm .depths li{border-top:var(--rule-w) solid var(--rule)}}
+@media (min-width:768px){.alm .depths{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--sp-5)}.alm .depths li{border-top:var(--rule-w) solid var(--rule)}}
 .alm .depths .h3{display:flex;align-items:center;gap:var(--sp-2)}
+.alm .depths li,.alm .depths .h3,.alm .depths p{min-width:0;overflow-wrap:anywhere;hyphens:auto}
 .alm .hexmark{width:calc(.9 * var(--u));height:calc(.95 * var(--u));flex:none;clip-path:var(--hex);background:var(--sun);box-shadow:inset 0 0 0 2px var(--ink)}
 .alm .hexmark{background:var(--sun)}
 .alm .films{row-gap:var(--sp-4)}
