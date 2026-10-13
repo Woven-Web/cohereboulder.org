@@ -42,6 +42,8 @@ async function session({ width, height, when = DAY3, member = null }) {
   await context.route("https://www.youtube.com/**", (r) => r.fulfill({ contentType: "text/html", body: "" }));
   await context.route("**/Ecosystem.pdf", (r) => r.fulfill({ contentType: "text/html", body: "" }));
   if (member) await context.addCookies([{ name: "__Host-rs_session", value: member, domain: "127.0.0.1", path: "/", secure: true, httpOnly: true, sameSite: "Lax" }]);
+  // WIDE_FONTS=1 swaps in a wide system face, standing in for a CI runner's fallback metrics.
+  if (process.env.WIDE_FONTS) await context.addInitScript(() => { document.addEventListener("DOMContentLoaded", () => { const st = document.createElement("style"); st.textContent = "*{font-family:'DejaVu Sans',Verdana,sans-serif !important;letter-spacing:.03em}"; document.head.append(st); }); });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -49,6 +51,8 @@ async function session({ width, height, when = DAY3, member = null }) {
   return { context, page, errors };
 }
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+// Names what pokes past the viewport, so a red CI run says which element, not just that something did.
+const wider = (page) => page.evaluate(() => { const vw = document.documentElement.clientWidth; return [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); return r.width && r.right > vw + 0.5; }).slice(0, 6).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 40)}`).join(" "); });
 const shot = async (page, name, full = false) => { if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: full }); };
 const go = (page, path) => page.goto(`${base}${path}${path.includes("?") ? "&" : "?"}look=ecology`, { waitUntil: "load" });
 
@@ -329,7 +333,7 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
       if (w < 768) check(nav.fixed && nav.bottom >= nav.vh - 2, `nav: a bottom tab bar on ${tag}`);
       else check(!nav.fixed && nav.top < 140, `nav: no bottom tab bar, the masthead holds the destinations on ${tag}`);
       if (w >= 1280) check(nav.shell > 900, `nav: no phone-width box on ${tag} (${nav.shell}px)`);
-      check((await overflow(page)) <= 0, `nav: no horizontal overflow on ${tag}`);
+      check((await overflow(page)) <= 0, `nav: no horizontal overflow on ${tag}${(await overflow(page)) > 0 ? ` (${await wider(page)})` : ""}`);
     }
     // Home: during the gathering it leads with today's practice, the trail and Your next; Register stays within reach signed out.
     await go(page, "/");
