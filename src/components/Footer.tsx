@@ -10,7 +10,7 @@ import { AlmanacFooter, BareChrome } from "@/components/almanac/SiteChrome";
 export const Footer = () => {
   const { tr, language, setLanguage } = useLanguage();
   // Pages that have not been restyled still get the new foot under ?look=almanac.
-  if (useLook() === "almanac") return <BareChrome><AlmanacFooter /></BareChrome>;
+  if (useLook() !== "classic") return <BareChrome><AlmanacFooter /></BareChrome>;
 
   return (
     <footer className="bg-earth-warm text-primary-foreground">

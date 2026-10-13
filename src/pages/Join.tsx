@@ -28,7 +28,7 @@ export default function Join() {
   const { tr } = useLanguage();
   const { data: config } = useSiteConfig();
   const loginOn = config?.regenosLoginEnabled === true;
-  const alm = useLook() === "almanac";
+  const alm = useLook() !== "classic";
 
   const main = (
     <main className={alm ? "page skin" : "py-16"}>

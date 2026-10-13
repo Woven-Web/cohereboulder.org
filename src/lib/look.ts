@@ -3,10 +3,12 @@ import { UNSAFE_LocationContext } from "react-router-dom";
 
 // Two comparison switches for staging (T-113). Both ride a query parameter,
 // stick for the browser session, and fall back to the current design:
-//   ?look=almanac|classic   the public site's skin (Home, Register, About, Join)
+//   ?look=classic|almanac|ecology   the site's skin. almanac and ecology restyle the
+//                           public site (Home, Register, About, Join, the hybrid pages);
+//                           ecology also dresses the app screens (Today, Calendar, Board, …)
 //   ?trail=zigzag|row       Today's hex trail on phones
 
-export const LOOKS = ["classic", "almanac"] as const;
+export const LOOKS = ["classic", "almanac", "ecology"] as const;
 export const TRAILS = ["zigzag", "row"] as const;
 export type Look = (typeof LOOKS)[number];
 export type TrailVariant = (typeof TRAILS)[number];
@@ -40,3 +42,6 @@ function useFlag<T extends string>(key: string, param: string, allowed: readonly
 
 export const useLook = (): Look => useFlag(LOOK_KEY, "look", LOOKS, "classic");
 export const useTrailVariant = (): TrailVariant => useFlag(TRAIL_KEY, "trail", TRAILS, "zigzag");
+
+/** The class the Almanac root carries for this look: "" for classic and almanac, "eco" for ecology. */
+export const lookClass = (look: Look): string => (look === "ecology" ? " eco" : "");

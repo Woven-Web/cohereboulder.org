@@ -87,3 +87,17 @@ describe("AddressBlock", () => {
     expect((visible.match(/1520/g) ?? []).length).toBe(1);
   });
 });
+
+describe("ecology look", () => {
+  const at = (url: string, node: React.ReactNode) => renderToStaticMarkup(<MemoryRouter initialEntries={[url]}><LanguageProvider>{node}</LanguageProvider></MemoryRouter>);
+  it("draws the landscape above both trails only under ?look=ecology, and keeps the trail's links", () => {
+    for (const variant of ["fit", "pick"] as const) {
+      const eco = at("/today?look=ecology", <HexTrail variant={variant} today="2026-10-17" />);
+      expect(eco).toContain("eco-ridges");
+      expect(eco).toContain('aria-hidden="true"');
+      expect(at("/today?look=almanac", <HexTrail variant={variant} today="2026-10-17" />)).not.toContain("eco-ridges");
+      expect(wrap(<HexTrail variant={variant} today="2026-10-17" />)).not.toContain("eco-ridges");
+    }
+    expect(at("/today?look=ecology", <HexTrail variant="fit" today="2026-10-17" />).match(/<a /g)).toHaveLength(11);
+  });
+});

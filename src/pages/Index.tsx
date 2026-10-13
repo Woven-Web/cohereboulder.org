@@ -29,7 +29,7 @@ const Index = () => {
   const { data: config } = useSiteConfig();
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   const signedIn = Boolean(session?.did);
-  if (useLook() === "almanac") return <AlmanacHome signedIn={signedIn} />;
+  if (useLook() !== "classic") return <AlmanacHome signedIn={signedIn} />;
 
   return (
     <div className="min-h-screen bg-background">

@@ -19,7 +19,7 @@ const HOME_EVENT_COUNT = 4;
  */
 export function UpcomingEventsHome() {
   const { language } = useLanguage();
-  const almanac = useLook() === "almanac";
+  const almanac = useLook() !== "classic";
   const tr = (key: string) => getTranslation(key, language);
 
   const { data } = useQuery({

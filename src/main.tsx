@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./index.css";
 import "./styles/almanac.css";
 import "./styles/site-look.css";
+import "./styles/ecology.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

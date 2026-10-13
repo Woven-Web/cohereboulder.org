@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Ctx } from "./shell-context";
 import { AlmanacFooter, AlmanacMast } from "./SiteChrome";
+import { EcoRidges } from "./EcoRidges";
 import { InstallSheet } from "./InstallSheet";
+import { lookClass, useLook } from "@/lib/look";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
 
 /**
@@ -10,8 +12,9 @@ import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/rem
  * every screen shares (install sheet, toast). Everything under .alm picks up the
  * Almanac tokens; the rest of the site is untouched.
  */
-export function AlmanacShell({ children, after, site = false }: { children: ReactNode; after?: ReactNode; site?: boolean }) {
+export function AlmanacShell({ children, after, site = false, ridges = true }: { children: ReactNode; after?: ReactNode; site?: boolean; ridges?: boolean }) {
   const { language } = useLanguage();
+  const look = useLook();
   const rootRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [message, setMessage] = useState("");
@@ -32,9 +35,11 @@ export function AlmanacShell({ children, after, site = false }: { children: Reac
 
   return (
     <Ctx.Provider value={{ container, toast, setHasBar }}>
-      <div className="alm" ref={rootRef}>
+      <div className={`alm${lookClass(look)}`} ref={rootRef}>
         <div className={`app${hasBar ? " has-bar" : ""}`}>
           <AlmanacMast register={site} />
+          {/* Ecology only: the landscape under the masthead. Screens that draw their own (Today, Calendar, Home) hide it with CSS or ridges={false}. */}
+          {look === "ecology" && ridges && <EcoRidges />}
           {children}
           {site && <AlmanacFooter />}
         </div>

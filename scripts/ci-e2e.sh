@@ -73,6 +73,9 @@ P28242=$(( 28242 + E2E_PORT_OFFSET ))
 P28239=$(( 28239 + E2E_PORT_OFFSET ))
 P28963=$(( 28963 + E2E_PORT_OFFSET ))
 P28243=$(( 28243 + E2E_PORT_OFFSET ))
+P28244=$(( 28244 + E2E_PORT_OFFSET ))
+P28964=$(( 28964 + E2E_PORT_OFFSET ))
+P28965=$(( 28965 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
 PWA_PUSH_PORT="${PWA_PUSH_PORT:-10049}"
@@ -403,6 +406,28 @@ fi
 cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-look"
+echo "::endgroup::"
+
+# --- 14. ecology-e2e.mjs: ?look=ecology across the site and the app screens --
+# Same rule as lane 13: the form row and the day's companion content load BEFORE
+# the Worker starts. The regenOS mock (fresh) feeds the Board and the day picker.
+echo "::group::ecology-e2e (Ecology look lane)"
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-ecology")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=scripts/fixtures/look-companion.sql >/dev/null
+start_mock ${P28964} "$PWA_SCRATCH/pwa-merge-mock-14.log"
+start_worker ${P28965} ${P28244} "$PWA_SCRATCH/pwa-merge-worker-14.log" \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28964} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+if ! node scripts/ecology-e2e.mjs http://127.0.0.1:${P28965} http://127.0.0.1:${P28964} ${LOOK_SHOTS:+$LOOK_SHOTS/ecology}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-14.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-ecology"
 echo "::endgroup::"
 
 rm -rf "$PERSIST_DIR"

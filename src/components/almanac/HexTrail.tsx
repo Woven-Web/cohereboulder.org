@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { FESTIVAL_DATES, formatDayA11y, trailState, weekdayTwo, type TrailState } from "@/lib/festival";
-import { useTrailVariant } from "@/lib/look";
+import { useLook, useTrailVariant } from "@/lib/look";
+import { EcoRidges } from "./EcoRidges";
 import { useWide } from "@/hooks/useWide";
 import { fill } from "./format";
 import { BottomSheet } from "./BottomSheet";
@@ -39,7 +40,9 @@ export function HexTrail({ variant, ...props }: Props & { variant: "fit" | "pick
 function FitSwitch(props: Props) {
   const variant = useTrailVariant();
   const wide = useWide();
-  return variant === "row" && !wide ? <RowTrail {...props} /> : <FitTrail {...props} />;
+  const eco = useLook() === "ecology";
+  if (variant === "row" && !wide) return <>{eco && <EcoRidges variant="trail" />}<RowTrail {...props} /></>;
+  return <FitTrail {...props} />;
 }
 
 function dayFacts(date: string, today: string, done: string[], counts: Record<string, number>, lang: "en" | "es", tr: (k: string) => string) {
@@ -66,8 +69,10 @@ function Ticks({ n }: { n: number }) {
 
 function FitTrail({ today, done = [], counts = {} }: Props) {
   const { language, tr } = useLanguage();
+  const eco = useLook() === "ecology";
   return (
     <nav className="trail trail--fit" aria-label={tr("almanac.trailFit")}>
+      {eco && <EcoRidges variant="trail" />}
       <svg className="trail__path" viewBox="0 0 11 2" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <polyline points={FESTIVAL_DATES.map((_, i) => `${i + 0.5},${i % 2 ? 1.33 : 0.33}`).join(" ")} />
       </svg>
@@ -114,7 +119,10 @@ function PickTrail({ today, done = [], counts = {}, selected = null, onSelect }:
     listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[next]?.focus();
   }
 
+  const eco = useLook() === "ecology";
   return (
+    <>
+    {eco && <EcoRidges variant="trail" />}
     <div className="trail trail--pick" id="trail">
       <span className="trail__line" aria-hidden="true" />
       <div ref={listRef} className="trail__days" role="listbox" aria-orientation="horizontal" aria-label={tr("almanac.trailPick")}>
@@ -142,6 +150,7 @@ function PickTrail({ today, done = [], counts = {}, selected = null, onSelect }:
         })}
       </div>
     </div>
+    </>
   );
 }
 

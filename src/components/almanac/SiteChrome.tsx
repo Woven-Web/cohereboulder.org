@@ -4,6 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountControl } from "@/components/AccountControl";
 import { EmailSignup } from "@/components/EmailSignup";
 import { RegistrationAction } from "@/components/RegistrationAction";
+import { lookClass, useLook } from "@/lib/look";
 import { TabBar } from "./TabBar";
 
 /**
@@ -65,5 +66,6 @@ export function AlmanacFooter() {
 
 /** For pages that keep their classic body under ?look=almanac: just the chrome, in its own .alm scope. */
 export function BareChrome({ children, sticky = false }: { children: React.ReactNode; sticky?: boolean }) {
-  return <div className={`alm alm--bare${sticky ? " alm--sticky" : ""}`}><div className="app">{children}</div></div>;
+  const eco = lookClass(useLook());
+  return <div className={`alm${eco} alm--bare${sticky ? " alm--sticky" : ""}`}><div className="app">{children}</div></div>;
 }

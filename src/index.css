@@ -27,6 +27,14 @@ All colors MUST be HSL.
     --hair-hsl:    44 26% 75%;
     --ground-hsl:  45 24% 80%;
 
+    /* Ecology look (?look=ecology): pale sky and leaf-tinted ground, plus the far
+       ridge and night blue the landscape needs. Same palette family as above. */
+    --eco-paper-hsl: 138 28% 96%;
+    --eco-sky-hsl:   180 38% 92%;
+    --eco-rule-hsl:  160 24% 80%;
+    --eco-mist-hsl:  197 42% 74%;
+    --eco-night-hsl: 219 48% 27%;
+
     --background: 140 25% 98%;
     --foreground: 219 35% 16%;
 

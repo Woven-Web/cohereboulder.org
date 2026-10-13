@@ -10,7 +10,7 @@ import { useLook } from "@/lib/look";
 
 const About = () => {
   const { tr } = useLanguage();
-  const alm = useLook() === "almanac";
+  const alm = useLook() !== "classic";
 
   const main = (
     <main className={alm ? "page skin" : undefined}>

@@ -32,7 +32,7 @@ const Registration = () => {
 
   // The Almanac look keeps the page to what it was: heading, one sentence, the
   // dates, then the form. Nothing sits between the visitor and the first question.
-  if (useLook() === "almanac") {
+  if (useLook() !== "classic") {
     return (
       <AlmanacShell site>
         <main className="page register">

@@ -27,6 +27,7 @@ import { YourNextStrip, type NextItem } from '@/components/almanac/YourNextStrip
 import { EventRow } from '@/components/almanac/EventRow';
 import { fill, useWide } from '@/components/almanac/format';
 import { seatOf } from '@/components/almanac/seat';
+import { useLook } from '@/lib/look';
 import gatheringPhoto from '@/assets/photos/gathering.webp';
 
 export default function Companion() {
@@ -70,6 +71,7 @@ function TodayView() {
     const { tr, language } = useLanguage();
     const { toast } = useShell();
     const wide = useWide();
+    const eco = useLook() === 'ecology';
     const { data, refetch, isLoading, isError } = useCompanionToday();
     const events = useQuery({ queryKey: ['companion-events'], queryFn: companionEvents, retry: 1 });
     const refetchEvents = events.refetch;
@@ -248,6 +250,7 @@ function TodayView() {
         <div className="flow2">
             <div className="flow2__a">
                 <div className="o1">
+                    {eco && <figure className="photo photo--arch"><img src={gatheringPhoto} alt="" width="900" height="600" /></figure>}
                     {daily ? (
                         <PracticeBlock eyebrow={tr('almanac.practiceEyebrow')} title={localized(daily.title, daily.title_es)}>
                             {localized(daily.body, daily.body_es)}
@@ -271,7 +274,7 @@ function TodayView() {
                             onShare={() => void shareQuestion(localized(daily.question, daily.question_es))}
                         >{replyForm}</QuestionBlock>
                     )}
-                    {photo}
+                    {!eco && photo}
                 </div>
             </div>
             <div className="flow2__b">

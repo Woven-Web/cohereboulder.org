@@ -36,7 +36,7 @@ const EMPTY_PROPOSER: ProposerFields = { proposerName: "", proposerEmail: "", we
 
 const ProposeEvent = () => {
   const { tr } = useLanguage();
-  const alm = useLook() === "almanac";
+  const alm = useLook() !== "classic";
 
   const [form, setForm] = useState<EventFormValues>(EMPTY_EVENT_FORM);
   const [proposer, setProposer] = useState<ProposerFields>(EMPTY_PROPOSER);

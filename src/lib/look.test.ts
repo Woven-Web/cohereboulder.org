@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOOKS, TRAILS, resolveFlag } from "./look";
+import { LOOKS, TRAILS, lookClass, resolveFlag } from "./look";
 
 describe("resolveFlag", () => {
   it("defaults to classic / zigzag", () => {
@@ -9,6 +9,12 @@ describe("resolveFlag", () => {
   it("the query wins over what was stored", () => {
     expect(resolveFlag("?look=almanac", "classic", "look", LOOKS, "classic")).toBe("almanac");
     expect(resolveFlag("?look=classic", "almanac", "look", LOOKS, "classic")).toBe("classic");
+  });
+  it("knows the ecology look and keeps it for the session", () => {
+    expect(resolveFlag("?look=ecology", null, "look", LOOKS, "classic")).toBe("ecology");
+    expect(resolveFlag("", "ecology", "look", LOOKS, "classic")).toBe("ecology");
+    expect(lookClass("ecology")).toBe(" eco");
+    expect(lookClass("almanac")).toBe("");
   });
   it("a stored choice persists when the query is gone", () => {
     expect(resolveFlag("", "row", "trail", TRAILS, "zigzag")).toBe("row");

@@ -7,10 +7,10 @@ import { AlmanacShell } from "./AlmanacShell";
 /**
  * The frame for pages whose body is still written in the classic vocabulary.
  * Classic: nav, body, footer inside `classic` (the page's old outer classes).
- * ?look=almanac: the Almanac shell with the body dressed by `.skin`.
+ * ?look=almanac or ?look=ecology: the Almanac shell with the body dressed by `.skin`.
  */
 export function SitePage({ classic = "min-h-screen bg-background", children }: { classic?: string; children: ReactNode }) {
-  if (useLook() === "almanac") {
+  if (useLook() !== "classic") {
     return <AlmanacShell site><div className="page skin">{children}</div></AlmanacShell>;
   }
   return (

@@ -5,7 +5,9 @@ import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useWide } from "@/hooks/useWide";
+import { useLook } from "@/lib/look";
 import { AlmanacShell } from "./AlmanacShell";
+import { EcoRidges } from "./EcoRidges";
 import { Ridgeline } from "./Folio";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
@@ -24,16 +26,18 @@ const Hex = () => <span className="hexmark" aria-hidden="true" />;
 export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
   const { tr } = useLanguage();
   const wide = useWide();
+  const eco = useLook() === "ecology";
   const cta = `btn ${signedIn ? "btn--line" : "btn--primary"} btn--block`;
 
   return (
-    <AlmanacShell site>
+    <AlmanacShell site ridges={false}>
       <main className="page home">
         <section className="home__hero">
           <p className="eyebrow">{tr("hero.themeLabel")}</p>
           <h1 className="home__title">[CO]<i>here</i></h1>
           <p className="home__theme">{tr("hero.theme")}</p>
           <p className="lede home__tagline">{tr("hero.tagline")}</p>
+          {eco && <EcoRidges variant="hero" />}
 
           <div className="regcard">
             <h2 className="folio">{tr("hero.mainEvent")}</h2>

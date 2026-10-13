@@ -1,0 +1,272 @@
+/* ==========================================================================
+   The Ecology look (?look=ecology, T-113, compare-only). D2 from the look
+   pass: layered Flatirons ridges, a sun disc and the creek, the hex trail as
+   stepping stones on a meadow strip, white rounded cards on a pale leaf-tinted
+   ground, arch-shaped photos, a berry-dotted day picker.
+
+   It is a theme over the Almanac: structure (kicker + rule, large titles,
+   18px/1.6 body, Plex Mono times) comes from almanac.css; identity (Eileen's
+   palette, Bricolage Grotesque headings, Figtree body, Newsreader italic for
+   heart lines, real photos) comes from here. Everything is scoped to .alm.eco,
+   so nothing applies unless the look is switched on. Colours are the --brand-*
+   and --eco-* tokens in index.css; white text only sits on deep, night or
+   berry. Water and leaf are always carried by ink.
+   ========================================================================== */
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/bricolage-grotesque-normal.woff2) format('woff2')}
+@font-face{font-family:'Figtree';font-style:normal;font-weight:400 700;font-display:swap;src:url(/fonts/figtree-normal.woff2) format('woff2')}
+
+/* ---------- Tokens ---------- */
+.alm.eco{
+  --head:'Bricolage Grotesque',system-ui,sans-serif;
+  --body:'Figtree',system-ui,sans-serif;
+  --sky:hsl(var(--eco-sky-hsl)); --night:hsl(var(--eco-night-hsl)); --mist:hsl(var(--eco-mist-hsl));
+  --paper:hsl(var(--eco-paper-hsl)); --paper-2:hsl(0 0% 100%); --paper-3:hsl(0 0% 100%); --ground:hsl(var(--eco-paper-hsl));
+  --rule:hsl(var(--eco-rule-hsl)); --hair:hsl(var(--eco-rule-hsl)); --rule-heavy:1.5px solid hsl(var(--eco-rule-hsl));
+  --card:0 0 0 1.5px hsl(var(--eco-rule-hsl));
+  --r-1:8px; --r-2:16px; --r-3:24px;
+  --ridge-h:96px; --pill:28px;
+  --gutter:calc(1.1 * var(--u));
+  font-family:var(--body); line-height:1.6;
+}
+.alm.eco .app{background:linear-gradient(180deg,var(--sky) 0,var(--paper) 280px) no-repeat,var(--paper);box-shadow:none}
+@media (min-width:820px){.alm.eco{--ridge-h:132px}}
+
+/* ---------- Type ---------- */
+.alm.eco :is(.h1,.h2,.h3,.wordmark,.home__title,.regcard__dates,.ev__title,.post__title,.next__title,.row__title,.profile__name,.daygroup__head h2,.df-card h2,.df-card h3,.skin h1,.skin h2,.skin h3,.foot__brand,.addr__lines b,.list-link,.btn,.seg button,.chip,.tabs a,.lang button,.prompt dd b,.post__by b,.opt b,.mode button b,.vis b){font-family:var(--head)}
+.alm.eco :is(.h1,.h2,.h3,.home__title,.ev__title,.post__title,.df-card h2,.skin h1,.skin h2,.skin h3){letter-spacing:-.02em;color:var(--night)}
+.alm.eco .h1,.alm.eco .skin h1{font-weight:700}
+.alm.eco .wordmark{font-weight:700;font-size:calc(1.25 * var(--u));letter-spacing:-.01em}
+.alm.eco .wordmark i,.alm.eco .foot__brand i,.alm.eco .home__title i{color:var(--deep)}
+.alm.eco .home__title{font-weight:700;color:var(--night)}
+/* the kicker: mono caps with a rule running out of it */
+.alm.eco :is(.eyebrow,.folio,.field__label,.row__line b,.prompt dt,.sample-flag){font:600 calc(.74 * var(--u))/1.3 var(--mono);font-variant-caps:normal;text-transform:uppercase;letter-spacing:.08em;color:var(--deep)}
+.alm.eco .eyebrow::after{border-top:1.5px solid var(--deep);opacity:.4}
+.alm.eco .tabs a{font:600 .78rem/1 var(--head);font-variant-caps:normal;letter-spacing:0;text-transform:none}
+.alm.eco .lang button{font:700 .85rem/1 var(--head);font-variant-caps:normal;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+/* Figtree has no italic: roman for notes, Newsreader italic for the heart lines */
+.alm.eco :is(.ev__meta,.row__sub,.field__help,.next__meta,.profile__line,.vis-note,.prompt--empty dd,.opt small,.mode button small,.empty .h3,.sheet__fine,figcaption.small){font-style:normal}
+.alm.eco :is(.home__theme,.question blockquote,.sealrow p,.actionbar__done,.pull,.plate__big,.home__sub,.skin .italic,.empty .h3){font-family:var(--serif);font-style:italic;font-weight:500}
+.alm.eco .home__theme{color:var(--deep);font-size:var(--fs-h1)}
+.alm.eco .home__tagline{font-family:var(--body);color:var(--ink-2)}
+.alm.eco .question blockquote{color:var(--night)}
+.alm.eco .practice__body{font:400 var(--fs-body)/1.6 var(--body);font-size:var(--fs-body)}
+.alm.eco .practice__body::first-letter{float:none;font-size:inherit;padding:0;line-height:inherit;font-weight:inherit;color:inherit}
+.alm.eco .lede{font-size:var(--fs-lede);line-height:1.55}
+.alm.eco .small,.alm.eco .note{color:var(--ink-2)}
+.alm.eco .alm .link,.alm.eco .link{color:var(--deep)}
+
+/* ---------- Chrome: masthead, ridges, tab bar, footer ---------- */
+.alm.eco .mast{border-bottom:0;background:none}
+.alm.eco .alm--sticky .mast,.alm.eco.alm--sticky .mast,.alm.eco .mast--sticky{background:var(--sky)}
+.alm.eco .lang{background:#fff;border-radius:24px;padding:2px;box-shadow:inset 0 0 0 1.5px hsl(var(--eco-mist-hsl))}
+.alm.eco .lang button{border-radius:22px;min-width:46px}
+.alm.eco .lang button[aria-pressed=true]{background:var(--deep);color:#fff;text-decoration:none}
+.alm.eco .mast__register{background:var(--sun);color:var(--ink);border-radius:var(--pill);box-shadow:none;font-family:var(--head);font-weight:700}
+.alm.eco .mast__register[role=status]{background:var(--leaf);border:1.5px solid var(--deep)}
+.alm.eco .mast .tabs a{color:var(--ink-2)}
+.eco-ridges{position:relative;display:block;height:var(--ridge-h);margin:0 calc(var(--gutter) * -1);overflow:hidden;pointer-events:none}
+.eco-ridges svg{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+.eco-ridges .eco-far{fill:var(--mist)} .eco-ridges .eco-near{fill:var(--deep)} .eco-ridges .eco-creek{fill:var(--water)} .eco-ridges .eco-meadow{fill:var(--leaf)}
+.eco-ridges__sun{position:absolute;right:26%;top:12%;width:48px;height:48px;border-radius:50%;background:var(--sun)}
+.eco-ridges--page{--ridge-h:72px;margin-top:var(--sp-1)}
+.eco-ridges--hero{margin-top:var(--sp-4)}
+/* Today and Calendar draw the landscape above the trail themselves */
+.alm.eco .app:has(.trail) > .eco-ridges--page{display:none}
+
+.alm.eco .tabs{background:#fff;border-top:0;border-radius:22px 22px 0 0;box-shadow:0 -6px 20px -12px hsl(var(--ink-hsl) / .35)}
+.alm.eco .tabs a{gap:5px}
+.alm.eco .tabs a::before{content:"";width:24px;height:22px;clip-path:var(--hex);background:hsl(var(--eco-rule-hsl))}
+.alm.eco .tabs a[aria-current=page]{color:var(--ink);font-weight:800}
+.alm.eco .tabs a[aria-current=page]::before{background:var(--deep)}
+.alm.eco .tabs a[aria-current=page]::after{display:none}
+@media (min-width:820px){
+  .alm.eco .tabs{background:none;box-shadow:none;border-radius:0}
+  .alm.eco .tabs a{flex-direction:row;gap:8px}
+  .alm.eco .tabs a::before{width:16px;height:15px}
+}
+.alm.eco .foot{margin:var(--sp-7) calc(var(--gutter) * -1) 0;padding:var(--sp-5) var(--gutter) var(--sp-5);border-top:0;background:var(--leaf);border-radius:28px 28px 0 0}
+.alm.eco .foot :is(.small,p,a,span){color:var(--ink)}
+.alm.eco .foot .link,.alm.eco .foot a{color:var(--night)}
+.alm.eco .foot__base{border-top:1.5px solid hsl(var(--brand-deep) / .4)}
+.alm.eco .foot__lang button{color:var(--ink)}
+.alm.eco .foot__lang button[aria-pressed=true]{color:var(--ink);text-decoration-color:var(--deep)}
+.alm.eco .alm--bare .foot{margin-inline:calc(var(--gutter) * -1)}
+
+/* ---------- Controls ---------- */
+.alm.eco .btn{border-radius:var(--pill);font-weight:700}
+.alm.eco .btn--primary,.alm.eco .skin a[class*="bg-primary"],.alm.eco .skin button[class*="bg-primary"],.alm.eco .skin [class*="bg-gradient-"][class*="inline-flex"],.alm.eco .foot button[type=submit],.alm.eco .df-card button[type=submit]{background:var(--deep);background-image:none;color:#fff;box-shadow:none;border:0;border-radius:var(--pill)}
+.alm.eco .regcard .btn--primary,.alm.eco .home__last,.alm.eco .band--close .btn--primary{background:var(--sun);color:var(--ink)}
+.alm.eco .btn--primary:active,.alm.eco .df-card button[type=submit]:active{box-shadow:none}
+.alm.eco .btn--line,.alm.eco .skin a[class*="border-input"],.alm.eco .skin button[class*="border-input"]{border:2px solid var(--deep);color:var(--night);background:#fff;border-radius:var(--pill)}
+.alm.eco .btn--line[aria-pressed=true]{background:var(--leaf)}
+.alm.eco .btn[role=status]{border-color:var(--deep)}
+.alm.eco .skin a[class*="inline-flex"],.alm.eco .skin button[class*="inline-flex"]{border-radius:var(--pill);font-family:var(--head)}
+.alm.eco .seg{border:0;background:hsl(164 28% 90%);padding:4px;gap:4px;border-radius:var(--r-2)}
+.alm.eco .seg button{border-radius:12px;min-height:48px;font-weight:700}
+.alm.eco .seg button+button{border-left:0}
+.alm.eco .seg button[aria-pressed=true]{background:var(--deep);color:#fff}
+.alm.eco .chip{border-color:var(--ink-2);background:#fff}
+.alm.eco .chip[aria-pressed=true],.alm.eco .chip[aria-current=page]{background:var(--deep);border-color:var(--deep);color:#fff}
+.alm.eco .tag{border-radius:8px}
+.alm.eco .tag[data-state=going]{border-color:var(--deep);color:var(--ink)}
+.alm.eco .switch{border-color:var(--deep)}
+.alm.eco .switch::after{background:var(--deep)}
+.alm.eco :is(.field__input,input:not([type]),input[type=text],input[type=email],input[type=tel],textarea,.skin input[type=datetime-local],.skin input[type=password],.skin input[type=search],.skin input[type=url],.skin input[type=number],.skin select){border:1.5px solid var(--ink-2);border-radius:14px;background:#fff}
+.alm.eco :is(input,textarea,select):focus-visible{outline:3px solid var(--deep);outline-offset:2px}
+.alm.eco :focus-visible{outline-color:var(--berry)}
+.alm.eco :is(.field__input,input,textarea):focus-visible{outline-color:var(--berry)}
+.alm.eco .question textarea{background:#fff;border:1.5px solid var(--ink-2);border-radius:14px;font:400 calc(1.05 * var(--u))/1.6 var(--body)}
+
+/* ---------- Cards: rules become soft white cards ---------- */
+.alm.eco :is(.ev,.row,.post,.next__item,.addr,.gate,.req,.regcard,.sample-box,.df-card,.profile,.vis,.prompts,.depths li){background:#fff;border:0;box-shadow:var(--card);border-radius:20px}
+.alm.eco .ev{padding:var(--sp-3) var(--sp-3) var(--sp-2);margin-top:var(--sp-3)}
+.alm.eco .ev--compact{padding:var(--sp-2) var(--sp-3)}
+.alm.eco .row{padding:var(--sp-2) var(--sp-3);margin-top:var(--sp-2)}
+.alm.eco .row--person{padding:var(--sp-3)}
+.alm.eco .post{padding:var(--sp-3) var(--sp-4);margin-top:var(--sp-3)}
+.alm.eco .thread-reply{border-left:3px solid var(--water);background:none;box-shadow:none;border-radius:0}
+.alm.eco .next__item{border-radius:20px}
+.alm.eco .next__item:first-child,.alm.eco .next__cell:first-child .next__item{box-shadow:0 0 0 2px var(--deep)}
+.alm.eco .ev.is-past{opacity:1}
+.alm.eco .ev.is-past .ev__title{color:var(--ink-2)}
+.alm.eco .ev__time,.alm.eco .next__when{color:var(--deep)}
+.alm.eco .ev__soon,.alm.eco .next__when em,.alm.eco .ev.is-now .ev__time{color:var(--berry)}
+.alm.eco .addr{border-radius:20px}
+.alm.eco .gate{border:0;border-radius:24px;padding:var(--sp-5)}
+.alm.eco .list-link{border:0;background:#fff;box-shadow:var(--card);border-radius:20px;padding:0 var(--sp-3)}
+.alm.eco .regcard{padding:var(--sp-4);border-radius:24px;margin-top:var(--sp-4)}
+.alm.eco .regcard__dates{color:var(--deep)}
+.alm.eco .df-card{border-radius:24px;border:0;box-shadow:var(--card)}
+.alm.eco .df-card h3{color:var(--deep)}
+.alm.eco .df-card :is([role=radio],[role=checkbox]){border-color:var(--deep)}
+.alm.eco .df-card [role=radio][data-state=checked]{background:var(--deep);box-shadow:inset 0 0 0 5px #fff}
+.alm.eco .df-card [role=checkbox][data-state=checked]{background:var(--deep);color:#fff}
+.alm.eco .depths li{padding:var(--sp-3) var(--sp-4);margin-top:var(--sp-3)}
+.alm.eco .depths{gap:0}
+.alm.eco .hexmark{background:var(--deep)}
+.alm.eco .hexmark::after{background:var(--sun)}
+.alm.eco .pull{border-left:4px solid var(--berry);color:var(--night)}
+.alm.eco .band{border-top:0;padding-top:var(--sp-4)}
+.alm.eco .band--close{border-top:0}
+.alm.eco .band--close{background:var(--leaf);margin-inline:calc(var(--gutter) * -1);padding:var(--sp-5) var(--gutter);border-radius:28px}
+.alm.eco .band--close :is(.small,p,.h2){color:var(--ink)}
+.alm.eco .upnext__item{border-top:0;background:#fff;box-shadow:var(--card);border-radius:20px;padding:var(--sp-3);margin-top:var(--sp-2)}
+.alm.eco .daygroup__head,.alm.eco .agenda-head{border-bottom:2px dotted var(--water);padding-bottom:var(--sp-2)}
+.alm.eco .empty{border:0;background:#fff;box-shadow:var(--card);border-radius:24px;padding:var(--sp-5)}
+.alm.eco .empty__mark{background:var(--deep)}
+.alm.eco .empty__mark::after{background:#fff}
+.alm.eco .note{border-top:2px dotted var(--water)}
+.alm.eco .profile{padding:var(--sp-4);border-bottom:0}
+.alm.eco .prompt{border-top:2px dotted var(--water)}
+.alm.eco .prompt:first-child{border-top:0}
+.alm.eco .prompts{padding:0 var(--sp-4);border-bottom:0}
+.alm.eco .vis{padding:var(--sp-3) var(--sp-4);margin-top:var(--sp-2)}
+.alm.eco .avatar{background:var(--deep);color:#fff}
+.alm.eco .avatar[data-tone=ghost]{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 3px var(--ink-2)}
+.alm.eco .sheet{border-radius:28px 28px 0 0;border-top:0}
+.alm.eco .sample-box{border:0;background:#fff}
+.alm.eco .sample-box__flag{background:#fff}
+
+/* ---------- Today ---------- */
+.alm.eco .horizon{display:none}
+.alm.eco .trail--fit,.alm.eco .trail--pick,.alm.eco .trail--row{position:relative}
+.alm.eco .trail--fit{height:auto;margin:0 calc(var(--gutter) * -1);padding:0 calc(var(--gutter) * .5) var(--sp-3);background:var(--leaf);border-radius:0 0 32px 32px}
+.alm.eco .trail--fit .trail__days{margin-top:var(--sp-1)}
+.alm.eco .trail--fit .trail__path{top:calc(var(--ridge-h) + var(--sp-1));left:calc(var(--gutter) * .5);right:calc(var(--gutter) * .5);width:calc(100% - var(--gutter))}
+.alm.eco .trail--fit .trail__path polyline{stroke:var(--deep);stroke-width:2.5;stroke-dasharray:2 7}
+.alm.eco .trail--fit .eco-ridges{margin:0 calc(var(--gutter) * -.5);margin-bottom:0}
+.alm.eco .trail--pick{background:var(--leaf);margin:0 calc(var(--gutter) * -1);padding-top:var(--sp-1);padding-bottom:var(--sp-1);border-radius:0 0 28px 28px}
+.alm.eco .trail--pick .trail__line{border-top:2.5px dotted var(--deep)}
+.alm.eco .trail--row{background:var(--leaf);margin:0 calc(var(--gutter) * -1);padding:var(--sp-1) var(--gutter) var(--sp-2);border-radius:0 0 28px 28px}
+.alm.eco .trail--row .trail__open .trail__line{border-top:2.5px dotted var(--deep)}
+.alm.eco .trail__hex{--ring:var(--deep);--fill:#fff;--fg:var(--ink)}
+.alm.eco .trail__lab{color:var(--ink)}
+.alm.eco .trail__day[data-state=past] .trail__hex{--ring:var(--ink-2);--fill:var(--paper);--fg:var(--ink-2)}
+.alm.eco .trail__day[data-state=done] .trail__hex{--ring:var(--deep);--fill:var(--sun);--fg:var(--ink)}
+.alm.eco .trail__day[data-state=today] .trail__hex{--ring:var(--sun);--fill:var(--deep);--fg:#fff}
+.alm.eco .trail__day[data-state=today] .trail__lab{color:var(--ink);font-weight:700}
+.alm.eco .trail__day[data-state=today][data-done] .trail__hex{--fill:var(--sun);--fg:var(--ink);--ring:var(--deep)}
+.alm.eco .trail__day[aria-selected=true] .trail__hex{--ring:var(--deep);--fill:var(--sun);--fg:var(--ink)}
+.alm.eco .trail__day[aria-selected=true] .trail__hex::before{inset:4px}
+.alm.eco .trail__day[data-state=today][aria-selected=true] .trail__hex{--ring:var(--deep);--fill:var(--sun)}
+.alm.eco .trail__day[data-state=today][aria-selected=true] .trail__hex::before{inset:4px}
+.alm.eco .trail__day[aria-selected=true] .trail__lab{text-decoration-color:var(--deep)}
+.alm.eco .trail__ticks{height:8px;gap:3px}
+.alm.eco .trail__ticks i{width:8px;height:8px;clip-path:none;border-radius:50%;background:var(--berry);box-shadow:0 0 0 2px #fff}
+.alm.eco .trail__mark[data-state=done] .trail__hex{--ring:var(--deep);--fill:var(--sun);--fg:var(--ink)}
+.alm.eco .trail__mark[data-state=past] .trail__hex{--ring:var(--ink-2);--fill:var(--paper)}
+.alm.eco .trail__mark[data-state=future] .trail__hex{--ring:var(--deep);--fill:#fff}
+.alm.eco .trail__mark[data-state=today] .trail__hex{--ring:var(--sun);--fill:var(--deep);--fg:#fff}
+.alm.eco .trail__mark[data-state=today]::after{border-top-color:var(--deep)}
+.alm.eco .trail__day--row{border-top:0}
+.alm.eco .trail__rowflag{color:var(--berry)}
+.alm.eco .photo--arch{display:block;margin:var(--sp-4) 0 0;border:0}
+.alm.eco .photo--arch img{border:0;border-radius:110px 110px 24px 24px;aspect-ratio:3/2;height:auto;filter:none}
+.alm.eco .practice{padding-top:var(--sp-3)}
+.alm.eco .question{background:#fff;border:0;box-shadow:var(--card);border-radius:28px;position:relative;overflow:hidden;padding:calc(var(--sp-5) + 6px) var(--sp-4) var(--sp-3);margin-top:var(--sp-5)}
+.alm.eco .question::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:repeating-linear-gradient(90deg,var(--water) 0 22px,var(--leaf) 22px 44px)}
+.alm.eco .question .eyebrow,.alm.eco .question .link{color:var(--deep)}
+.alm.eco .quest{background:none;border-top:2px dotted var(--water);padding-top:var(--sp-3);color:var(--ink-2)}
+.alm.eco .sealrow{border:0;background:var(--leaf);border-radius:24px;padding:var(--sp-3) var(--sp-4)}
+.alm.eco .sealrow p{color:var(--ink)}
+.alm.eco .stamp{border-color:var(--berry);color:var(--berry);background:#fff}
+.alm.eco .actionbar{background:none;border-top:0;padding-bottom:var(--sp-2)}
+.alm.eco .actionbar .btn--primary{border-radius:var(--pill);min-height:56px;font-size:calc(1.2 * var(--u));box-shadow:0 6px 18px -6px hsl(var(--ink-hsl) / .5)}
+.alm.eco .actionbar__done{background:#fff;box-shadow:0 0 0 2px var(--deep),0 6px 18px -6px hsl(var(--ink-hsl) / .4);border-radius:var(--pill);padding:var(--sp-2) var(--sp-4);color:var(--ink);font-style:normal}
+.alm.eco .actionbar__done b{color:var(--berry)}
+.alm.eco .actionbar__done{font-family:var(--body)}
+@media (min-width:820px){.alm.eco .actionbar{background:none}}
+
+/* ---------- Events ---------- */
+.alm.eco .addr__no{color:var(--deep)}
+.alm.eco .ev__title a:hover{text-decoration-color:var(--deep)}
+
+/* ---------- Photos: arches and soft corners, real stills only ---------- */
+.alm.eco .plate{margin:var(--sp-5) 0 0;border:0}
+.alm.eco .plate img{border-radius:140px 140px 24px 24px;aspect-ratio:4/3}
+.alm.eco .plate--theme img{border-radius:28px;aspect-ratio:4/3}
+.alm.eco .plate figcaption{left:var(--sp-2);right:var(--sp-2);bottom:var(--sp-2);border:0;border-radius:20px;background:#fff;box-shadow:var(--card);padding:var(--sp-2) var(--sp-3)}
+.alm.eco .plate__big{color:var(--night)}
+.alm.eco .photo{display:block;border:0;border-radius:110px 110px 24px 24px;overflow:hidden}
+.alm.eco .photo img{border:0;border-radius:inherit;filter:none}
+.alm.eco .skin img{border-radius:20px}
+.alm.eco .film{border:0;border-radius:20px;overflow:hidden}
+.alm.eco .mapframe{border:0;border-radius:24px;overflow:hidden;box-shadow:var(--card)}
+@media (min-width:820px){
+  .alm.eco .home__hero>.plate{margin:0}
+  .alm.eco .home__hero>.plate img{aspect-ratio:4/5}
+}
+
+/* ---------- Long-form pages (About, Join, hybrid pages): markup kept, dressed in place ---------- */
+.alm.eco .skin section{border-top:0;padding-top:var(--sp-4);margin-top:var(--sp-3)}
+.alm.eco .skin section:first-child{border-top:0}
+.alm.eco .skin :is([class*="rounded-lg"][class*="border"],[class*="rounded-xl"]){border:0;border-radius:24px;background:#fff;box-shadow:var(--card)}
+.alm.eco .skin [class*="rounded-lg"][class*="border"]{border-top:0}
+.alm.eco .skin [class*="rounded-full"][class*="bg-"]{background:var(--deep)}
+.alm.eco .skin [class*="rounded-full"] span{color:#fff}
+.alm.eco .skin a:not([class*="inline-flex"]):not(.btn),.alm.eco .df-card a{color:var(--deep)}
+.alm.eco .skin .form-err{border-radius:12px;border-color:var(--berry);background:#fff}
+.alm.eco .skin :is(.text-muted-foreground){color:var(--ink-2)}
+.alm.eco .skin .df-card{border-top:0}
+/* shadcn parts: icons follow the button's text colour; badges keep their own small padding */
+.alm.eco .skin :is(a,button)[class*="inline-flex"] svg{color:currentColor}
+.alm.eco .skin div[class*="rounded-full"][class*="border"]{padding:2px 10px;font-size:var(--fs-small);border-color:var(--ink-2);background:#fff}
+.alm.eco .avatar[data-tone=ghost]{background:var(--leaf);color:var(--ink);box-shadow:none}
+/* shadcn buttons on the app screens (event page, calendar): same pills as .btn */
+.alm.eco :is(a,button):is([class*="border-input"],[class*="border-slate-400"]){border:2px solid var(--deep);background:#fff;color:var(--night);border-radius:var(--pill);font-family:var(--head);font-weight:700;min-height:44px}
+.alm.eco :is(a,button)[class*="bg-gradient-community"]{background:var(--sun);background-image:none;color:var(--ink);border-radius:var(--pill);box-shadow:none;font-family:var(--head);font-weight:700}
+.alm.eco :is(a,button)[class*="bg-primary"]:not(.skin *){background:var(--deep);color:#fff;border-radius:var(--pill)}
+
+/* ---------- 44px targets ---------- */
+.alm.eco .wordmark{display:inline-flex;align-items:center;min-height:44px}
+.alm.eco .btn,.alm.eco .link,.alm.eco .mast__end :is(a,button),.alm.eco .skin :is(a,button)[class*="inline-flex"]{min-width:44px}
+.alm.eco :is(a,button):is([class*="h-auto"],[class*="p-0"],[class*="border-0"]){min-height:44px;display:inline-flex;align-items:center}
+.alm.eco :is(.skin,.df-card) a:not([class*="inline-flex"]):not(.btn):not(.link){padding-block:.85rem}
+.alm.eco .post__title a{display:inline-block;padding-block:.65rem;margin-block:-.65rem}
+.alm.eco .addr .link{min-height:44px}
+.alm.eco [class*="bg-paper-3"]{background:#fff}
+.alm.eco a.ev__title{display:inline-block;padding-block:.85rem;margin-block:-.85rem}
+.alm.eco .skin button a:not(.x):not(.y){color:inherit;text-decoration:none;padding-block:.85rem}
+.alm.eco .skin [class*="text-muted-foreground/"]{color:var(--ink-2)}
+.alm.eco .switch.is-on{background:var(--deep)}
+.alm.eco .switch.is-on::after{background:#fff}

@@ -18,7 +18,7 @@ export const Navigation = () => {
   const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
   const signedIn = Boolean(session?.did);
 
-  const alm = useLook() === "almanac";
+  const alm = useLook() !== "classic";
   const navItems = [
     { href: "/calendar", label: tr("nav.calendar") },
     { href: "/co-create", label: tr("nav.participate") },
