@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { BottomSheet } from "@/components/almanac/BottomSheet";
 import { useShell } from "@/components/almanac/shell-context";
@@ -11,7 +11,8 @@ import { RsvpVisibilityEditor } from "@/components/members/RsvpVisibilityEditor"
 import { SourceMark } from "@/components/members/SourceMark";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { BIO_MAX, LINKS_MAX, NAME_MAX, PEOPLE_QUERY_KEY, cleanLinks, deleteProfile, graphemes, putProfile } from "@/lib/people";
+import { fetchMyProfileExtras, putMyProfileExtras, type ProfileExtras } from "@/lib/api";
+import { BIO_MAX, EXTRA_KEYS, EXTRA_MAX, LINKS_MAX, NAME_MAX, PEOPLE_EXTRAS_KEY, PEOPLE_QUERY_KEY, cleanLinks, deleteProfile, graphemes, putProfile } from "@/lib/people";
 
 export default function ProfileEdit() {
   return (
@@ -36,6 +37,16 @@ function EditView() {
   const [problem, setProblem] = useState<string | null>(null);
   const [confirmPublic, setConfirmPublic] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [extras, setExtras] = useState<ProfileExtras>({ bringing: "", offering: "", curious: "" });
+  const [extrasSeeded, setExtrasSeeded] = useState(false);
+  const MY_EXTRAS_KEY = ["my-profile-extras"];
+  const savedExtras = useQuery({ queryKey: MY_EXTRAS_KEY, queryFn: fetchMyProfileExtras, enabled: member, staleTime: 0, retry: 1 });
+
+  useEffect(() => {
+    if (extrasSeeded || !savedExtras.data) return;
+    setExtras(savedExtras.data);
+    setExtrasSeeded(true);
+  }, [extrasSeeded, savedExtras.data]);
 
   // Start from what members already see — their COhere profile, or the public one they'd begin from.
   useEffect(() => {
@@ -57,9 +68,11 @@ function EditView() {
   const save = useMutation({
     mutationFn: () => {
       const cleaned = cleanLinks(links);
-      return putProfile(collective, { displayName: name, bio, links: cleaned.links });
+      // Only write the lines once they have loaded: an unread form must not blank what is saved.
+      const lines = extrasSeeded ? putMyProfileExtras(extras) : Promise.resolve(null);
+      return Promise.all([putProfile(collective, { displayName: name, bio, links: cleaned.links }), lines]);
     },
-    onSuccess: async () => { await refresh(); toast(tr("members.profile.saved")); },
+    onSuccess: async ([, savedLines]) => { if (savedLines) queryClient.setQueryData(MY_EXTRAS_KEY, savedLines); await refresh(); queryClient.invalidateQueries({ queryKey: PEOPLE_EXTRAS_KEY }); toast(tr("members.profile.saved")); },
     onError: () => toast(tr("members.profile.saveFailed")),
   });
   const usePublic = useMutation({
@@ -71,7 +84,7 @@ function EditView() {
   function submit() {
     const { rejected } = cleanLinks(links);
     if (!name.trim()) { setProblem(tr("members.profile.needName")); return; }
-    if (graphemes(name) > NAME_MAX || graphemes(bio) > BIO_MAX) return;
+    if (graphemes(name) > NAME_MAX || graphemes(bio) > BIO_MAX || EXTRA_KEYS.some((key) => graphemes(extras[key]) > EXTRA_MAX)) return;
     if (rejected.length) { setProblem(fill(tr("members.profile.linkBad"), { bad: rejected.join(", ") })); return; }
     setProblem(null);
     save.mutate();
@@ -79,6 +92,7 @@ function EditView() {
 
   const nameOver = graphemes(name) > NAME_MAX;
   const bioOver = graphemes(bio) > BIO_MAX;
+  const extrasOver = EXTRA_KEYS.some((key) => graphemes(extras[key]) > EXTRA_MAX);
   const onPublic = mine?.profileSource === "publicFallback";
 
   return (
@@ -115,6 +129,14 @@ function EditView() {
               <textarea className="field__input" id="pf-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
               <div className={`counter${bioOver ? " is-over" : ""}`} data-testid="bio-count">{fill(tr("members.profile.bioCount"), { n: graphemes(bio) })}</div>
             </div>
+            {!savedExtras.isError && EXTRA_KEYS.map((key) => (
+              <div className="field" key={key}>
+                <label className="field__label" htmlFor={`pf-${key}`}>{tr(`members.extras.${key}`)}</label>
+                <input className="field__input" id={`pf-${key}`} value={extras[key]} disabled={!extrasSeeded} data-testid={`extra-${key}`}
+                  onChange={(e) => setExtras((cur) => ({ ...cur, [key]: e.target.value }))} />
+                <div className={`counter${graphemes(extras[key]) > EXTRA_MAX ? " is-over" : ""}`}>{fill(tr("members.extras.count"), { n: graphemes(extras[key]) })}</div>
+              </div>
+            ))}
             <div className="field">
               <span className="field__label" id="pf-links">{tr("members.profile.linksLabel")}</span>
               <p className="field__help">{tr("members.profile.linksHelp")}</p>
@@ -133,7 +155,7 @@ function EditView() {
             <p className="small" style={{ fontStyle: "italic", marginTop: ".6rem" }}>{tr("members.profile.photo")}</p>
             {problem && <p className="field__error" style={{ display: "block", marginTop: ".6rem" }} role="alert">{problem}</p>}
             <p className="vis-note" style={{ margin: "1rem 0" }}><span><b>{tr("members.people.privacy")}</b></span></p>
-            <button type="submit" className="btn btn--primary btn--block" disabled={save.isPending || nameOver || bioOver} aria-busy={save.isPending}>
+            <button type="submit" className="btn btn--primary btn--block" disabled={save.isPending || nameOver || bioOver || extrasOver} aria-busy={save.isPending}>
               {tr(save.isPending ? "members.profile.saving" : "members.profile.save")}
             </button>
             {access.did && <p style={{ marginTop: ".8rem", textAlign: "center" }}><Link className="link" to={`/people/${encodeURIComponent(access.did)}`}>{tr("members.profile.viewMine")}</Link></p>}

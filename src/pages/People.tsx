@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
@@ -9,7 +10,8 @@ import { MembersNav } from "@/components/members/MembersNav";
 import { SourceMark } from "@/components/members/SourceMark";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { entryName, matchesSearch } from "@/lib/people";
+import { fetchMemberProfileExtras, type ExtraKey } from "@/lib/api";
+import { EXTRA_KEYS, PEOPLE_EXTRAS_KEY, entryName, matchesSearch } from "@/lib/people";
 
 export default function People() {
   return (
@@ -26,16 +28,26 @@ function PeopleView() {
   const q = params.get("q") ?? "";
   const member = access.status === "member";
   const entries = access.directory.data;
+  const fieldParam = params.get("in");
+  const field = EXTRA_KEYS.find((key) => key === fieldParam) ?? null;
+  // The extra lines are a nicety: if they can't be read, People still works without them.
+  const extrasQuery = useQuery({ queryKey: PEOPLE_EXTRAS_KEY, queryFn: fetchMemberProfileExtras, enabled: member, staleTime: 30_000, retry: 1 });
+  const extras = extrasQuery.data?.extras;
+  const setSearch = (next: { q?: string; field?: ExtraKey | null }) => {
+    const nq = next.q ?? q;
+    const nf = next.field === undefined ? field : next.field;
+    setParams({ ...(nq ? { q: nq } : {}), ...(nf ? { in: nf } : {}) }, { replace: true });
+  };
 
   const shown = useMemo(
     () => (entries ?? [])
       .map((entry) => ({ entry, name: entryName(entry, access.nameOf(entry.author)) }))
-      .filter(({ entry, name }) => matchesSearch(entry, name, q))
+      .filter(({ entry, name }) => matchesSearch(entry, name, q, extras?.[entry.author], field))
       .sort((a, b) => a.name.localeCompare(b.name)),
     // nameOf closes over the roster and directory, both of which change `entries`
     // or the roster identity; recompute when either does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entries, q, access.roster],
+    [entries, q, field, extras, access.roster],
   );
   const publicCount = shown.filter(({ entry }) => entry.profileSource === "publicFallback").length;
 
@@ -53,7 +65,7 @@ function PeopleView() {
     body = (
       <div className="empty" style={{ marginTop: ".6rem" }}><span className="empty__mark" aria-hidden="true" />
         <h2 className="h3">{tr("members.people.emptyTitle")}</h2>
-        <p className="small">{fill(tr("members.people.emptyBody"), { q })}</p>
+        <p className="small">{fill(tr("members.people.emptyBody"), { q: q || (field ? tr(`members.extras.${field}`) : "") })}</p>
         <button type="button" className="link" onClick={() => setParams({}, { replace: true })}>{tr("members.people.clear")}</button></div>
     );
   } else {
@@ -67,6 +79,9 @@ function PeopleView() {
               <div className="row__line" style={entry.profileSource === "publicFallback" ? { fontStyle: "italic", color: "var(--ink-2)" } : undefined}>
                 {entry.record.bio || tr("members.people.noBio")}
               </div>
+              {EXTRA_KEYS.map((key) => extras?.[entry.author]?.[key] ? (
+                <div className="row__line" key={key} data-testid={`line-${key}`}><b>{tr(`members.extras.${key}`)}</b> {extras[entry.author][key]}</div>
+              ) : null)}
               <div className="row__src"><SourceMark source={entry.profileSource} /></div>
             </div>
             <span className="row__end" aria-hidden="true">&rarr;</span>
@@ -90,7 +105,14 @@ function PeopleView() {
             <label className="sr" htmlFor="q">{tr("members.people.search")}</label>
             <Search size={18} aria-hidden="true" />
             <input className="field__input" id="q" type="search" value={q} autoComplete="off" placeholder={tr("members.people.placeholder")}
-              onChange={(e) => setParams(e.target.value ? { q: e.target.value } : {}, { replace: true })} />
+              onChange={(e) => setSearch({ q: e.target.value })} />
+          </div>
+          <div role="group" aria-label={tr("members.people.filterBy")} style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".5rem" }}>
+            {EXTRA_KEYS.map((key) => (
+              <button type="button" key={key} className="chip" aria-pressed={field === key} data-testid={`chip-${key}`} onClick={() => setSearch({ field: field === key ? null : key })}>
+                {tr(`members.extras.${key}`)}
+              </button>
+            ))}
           </div>
           {entries?.length ? (
             <div className="people-count" style={{ marginTop: ".4rem", borderBottom: "var(--rule-heavy)" }} aria-live="polite">

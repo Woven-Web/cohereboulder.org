@@ -9,8 +9,8 @@ import { SourceMark } from "@/components/members/SourceMark";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MEMBER_RSVPS_KEY } from "@/hooks/useRsvpVisibility";
-import { fetchMemberRsvps } from "@/lib/api";
-import { entryName, linkLabel, safeLink } from "@/lib/people";
+import { fetchMemberProfileExtras, fetchMemberRsvps } from "@/lib/api";
+import { EXTRA_KEYS, PEOPLE_EXTRAS_KEY, entryName, linkLabel, safeLink } from "@/lib/people";
 
 export default function Person() {
   return (
@@ -28,6 +28,8 @@ function PersonView() {
   const entry = access.entryOf(did);
   // What this person lets members see: the Worker applies their "who sees my RSVPs" setting.
   const going = useQuery({ queryKey: [...MEMBER_RSVPS_KEY, did], queryFn: () => fetchMemberRsvps(did), enabled: member && Boolean(entry), staleTime: 30_000, retry: 1 });
+  const extrasQuery = useQuery({ queryKey: PEOPLE_EXTRAS_KEY, queryFn: fetchMemberProfileExtras, enabled: member && Boolean(entry), staleTime: 30_000, retry: 1 });
+  const lines = extrasQuery.data?.extras[did];
   const mine = Boolean(access.did) && did === access.did;
   const name = entry ? entryName(entry, access.nameOf(did)) : access.nameOf(did);
   const links = (entry?.record.links ?? []).flatMap((href) => {
@@ -58,6 +60,13 @@ function PersonView() {
         </div>
         {entry.profileSource === "publicFallback" && <p className="small" style={{ marginTop: ".8rem", fontStyle: "italic" }}>{tr("members.people.publicSays")}</p>}
         <p className="lede" style={{ marginTop: "1rem", whiteSpace: "pre-line" }}>{entry.record.bio || tr("members.people.noBio")}</p>
+        {lines && EXTRA_KEYS.some((key) => lines[key]) && (
+          <dl style={{ marginTop: "1rem" }} data-testid="person-extras">
+            {EXTRA_KEYS.map((key) => lines[key] ? (
+              <div key={key} style={{ marginTop: ".4rem" }}><dt className="eyebrow">{tr(`members.extras.${key}`)}</dt><dd style={{ margin: 0, overflowWrap: "anywhere" }}>{lines[key]}</dd></div>
+            ) : null)}
+          </dl>
+        )}
         {links.length > 0 && (
           <section style={{ marginTop: "1rem" }}>
             <h2 className="eyebrow">{tr("members.people.links")}</h2>

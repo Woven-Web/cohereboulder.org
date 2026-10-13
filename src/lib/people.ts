@@ -3,6 +3,7 @@
 // /xrpc proxy. A member either has a COhere ("contextual") profile or shows
 // their public scenius.social one ("publicFallback"); regenOS says which.
 
+import type { ExtraKey } from "./api";
 import { xrpcGet, xrpcPost } from "./regenos";
 
 export const BIO_MAX = 256;
@@ -77,10 +78,24 @@ export function fold(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-export function matchesSearch(entry: DirectoryEntry, name: string, query: string): boolean {
+export const EXTRA_KEYS = ["bringing", "offering", "curious"] as const;
+export const EXTRA_MAX = 120;
+export const PEOPLE_EXTRAS_KEY = ["people-extras"] as const;
+
+/**
+ * Search the directory. With no `field`, the text may match the name, bio or any
+ * of the three extra lines; with one, it applies to that line only (and an empty
+ * query then lists everyone who has filled that line in).
+ */
+export function matchesSearch(entry: DirectoryEntry, name: string, query: string, extras?: Partial<Record<ExtraKey, string>>, field?: ExtraKey | null): boolean {
   const q = fold(query.trim());
+  if (field) {
+    const line = extras?.[field] ?? "";
+    return Boolean(line) && fold(line).includes(q);
+  }
   if (!q) return true;
-  return fold(`${name} ${entry.record.bio ?? ""}`).includes(q);
+  const lines = EXTRA_KEYS.map((key) => extras?.[key] ?? "").join(" ");
+  return fold(`${name} ${entry.record.bio ?? ""} ${lines}`).includes(q);
 }
 
 /**

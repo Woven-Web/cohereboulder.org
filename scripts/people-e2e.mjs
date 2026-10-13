@@ -127,6 +127,43 @@ try {
   await me.getByTestId("board-post").first().waitFor({ timeout: 10_000 });
   expect(await me.getByTestId("board-post").filter({ hasText: "Spare squash" }).getByText("Pia Mock").isVisible(), "the Board shows the author's profile name");
 
+  // ── 3b. profile extras: bringing / offering / curious ─────────────────────
+  step = "profile extras";
+  await me.goto("/profile", { waitUntil: "networkidle" });
+  await me.locator("#pf-bringing").waitFor({ timeout: 10_000 });
+  expect(await me.getByLabel("Bringing", { exact: true }).isVisible() && await me.getByLabel("Offering", { exact: true }).isVisible() && await me.getByLabel("Curious about", { exact: true }).isVisible(), "the editor has Bringing, Offering and Curious about");
+  expect(!(await me.locator("#pf-bringing").getAttribute("placeholder")), "the inputs have no placeholder text");
+  await me.waitForFunction(() => !document.querySelector("#pf-bringing")?.disabled);
+  await me.locator("#pf-bringing").fill(`Sourdough ${stamp}`);
+  await me.locator("#pf-offering").fill("Rides from the Longmont bus");
+  await me.locator("#pf-curious").fill("a".repeat(121));
+  expect(await me.getByRole("button", { name: "Save profile" }).isDisabled(), "a 121-character line disables Save");
+  await me.locator("#pf-curious").fill("Mushroom foraging");
+  await me.getByRole("button", { name: "Save profile" }).click();
+  await me.getByText("Saved. Members can see it now.").waitFor({ timeout: 10_000 });
+  await me.goto("/people", { waitUntil: "networkidle" });
+  await rows(me).first().waitFor();
+  await rows(me).filter({ hasText: `Sam ${stamp}` }).getByTestId("line-offering").waitFor();
+  ok("the lines show on the member's card");
+  await me.getByRole("searchbox", { name: "Search people" }).fill("longmont");
+  expect((await rows(me).count()) === 1 && (await rows(me).first().innerText()).includes(`Sam ${stamp}`), "search finds a member by what they offer");
+  await me.getByTestId("chip-bringing").click();
+  expect((await rows(me).count()) === 0, "with the Bringing chip, text from Offering no longer matches");
+  await me.getByRole("searchbox", { name: "Search people" }).fill("sourdough");
+  expect((await rows(me).count()) === 1, "…while text from Bringing does");
+  await me.getByRole("searchbox", { name: "Search people" }).fill("");
+  expect((await rows(me).count()) === 1, "a chip alone lists whoever filled that line in");
+  await me.getByTestId("chip-bringing").click();
+  await rows(me).filter({ hasText: `Sam ${stamp}` }).click();
+  await me.getByTestId("person-extras").getByText("Mushroom foraging").waitFor();
+  ok("the profile page shows the lines");
+  const gated = await outsider.evaluate(async () => {
+    const list = await fetch("/api/members/profile-extras");
+    const write = await fetch("/api/me/profile-extras", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ bringing: "x" }) });
+    return { list: list.status, write: write.status, body: await list.text() };
+  });
+  expect(gated.list === 403 && gated.write === 403 && !gated.body.includes("Sourdough"), "an outsider is refused both reading and writing (403)");
+
   // ── 4. back to the public profile ─────────────────────────────────────────
   step = "public fallback";
   const rosa = await persona("mock-builder");

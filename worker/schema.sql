@@ -402,3 +402,12 @@ CREATE TABLE IF NOT EXISTS harvest_photos (
   mime       TEXT NOT NULL,
   data       TEXT NOT NULL
 );
+
+-- ---- 0013_profile_extras.sql (keep in step with the migration) ----
+CREATE TABLE IF NOT EXISTS profile_extras (
+  did         TEXT PRIMARY KEY,
+  bringing    TEXT,
+  offering    TEXT,
+  curious     TEXT,
+  updated_at  TEXT NOT NULL
+);
