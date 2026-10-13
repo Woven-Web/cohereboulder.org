@@ -2181,8 +2181,8 @@ export const translations = {
         es: "Lo Que Viene",
       },
       subtitle: {
-        en: "Explore events on the community events",
-        es: "Explora los eventos de la comunidad",
+        en: "Explore events on the community events calendar",
+        es: "Explora los eventos en el calendario comunitario",
       },
       seeFullCalendar: {
         en: "See the full calendar",
