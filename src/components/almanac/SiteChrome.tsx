@@ -5,6 +5,7 @@ import { AccountControl } from "@/components/AccountControl";
 import { EmailSignup } from "@/components/EmailSignup";
 import { RegistrationAction } from "@/components/RegistrationAction";
 import { lookClass, useLook } from "@/lib/look";
+import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { TabBar } from "./TabBar";
 
 /**
@@ -14,11 +15,16 @@ import { TabBar } from "./TabBar";
  */
 export function AlmanacMast({ register = false }: { register?: boolean }) {
   const { language, setLanguage, tr } = useLanguage();
+  const eco = useLook() === "ecology";
+  const { data: config } = useSiteConfig();
+  const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
+  const signedIn = Boolean(session?.did);
   return (
     <header className={`mast${register ? " mast--sticky" : ""}`}>
       <Link className="wordmark" to="/" aria-label="[CO]here">[<i>CO</i>]here</Link>
       <TabBar />
       <div className="mast__end">
+        {eco && !signedIn && <Link className="mast__about" to="/about">{tr("nav.about")}</Link>}
         {register && <RegistrationAction className="mast__register" />}
         {/* regenOS sign-in / account: renders nothing unless the lane is on. */}
         <AccountControl variant="desktop" />

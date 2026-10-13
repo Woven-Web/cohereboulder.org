@@ -39,11 +39,11 @@ export function AlmanacShell({ children, after, site = false, ridges = true }: {
     <Ctx.Provider value={{ container, toast, setHasBar }}>
       <div className={`alm${lookClass(look)}`} ref={rootRef}>
         <div className={`app${hasBar ? " has-bar" : ""}`}>
-          <AlmanacMast register={site} />
+          <AlmanacMast register={site || look === "ecology"} />
           {/* Ecology only: the landscape under the masthead. Screens that draw their own (Today, Calendar, Home) hide it with CSS or ridges={false}. */}
           {look === "ecology" && ridges && <EcoRidges />}
           {children}
-          {site && <AlmanacFooter />}
+          {(site || look === "ecology") && <AlmanacFooter />}
         </div>
         {after}
         {/* The public site asks for one thing, a registration; no install prompt on top of it. */}

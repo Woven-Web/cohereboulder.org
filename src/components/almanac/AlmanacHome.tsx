@@ -8,6 +8,8 @@ import { useWide } from "@/hooks/useWide";
 import { useLook } from "@/lib/look";
 import { AlmanacShell } from "./AlmanacShell";
 import { EcoRidges } from "./EcoRidges";
+import { HomeLive, HomePreview } from "./HomeLive";
+import { duringGathering } from "./format";
 import { Ridgeline } from "./Folio";
 // Stills from the two Woven Web films — real gatherings, not stock imagery.
 import gatheringPhoto from "@/assets/photos/gathering.webp";
@@ -27,12 +29,14 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
   const { tr } = useLanguage();
   const wide = useWide();
   const eco = useLook() === "ecology";
+  const live = eco && (signedIn || duringGathering());
   const cta = `btn ${signedIn ? "btn--line" : "btn--primary"} btn--block`;
 
   return (
     <AlmanacShell site ridges={false}>
       <main className="page home">
-        <section className="home__hero">
+        {live && <HomeLive signedIn={signedIn} />}
+        {!live && <section className="home__hero">
           <p className="eyebrow">{tr("hero.themeLabel")}</p>
           <h1 className="home__title">[CO]<i>here</i></h1>
           <p className="home__theme">{tr("hero.theme")}</p>
@@ -52,9 +56,10 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <img src={gatheringPhoto} alt="Community members gathering during COhere Boulder" width={1280} height={720} />
           </figure>
           <p className="lede home__desc">{tr("hero.description")}</p>
-        </section>
+        </section>}
+        {eco && !live && <HomePreview />}
 
-        <Ridgeline minutes={11 * 60} rise={7 * 60} set={18 * 60} wide={wide} label={tr("look.ridgeline")} />
+        {!live && <Ridgeline minutes={11 * 60} rise={7 * 60} set={18 * 60} wide={wide} label={tr("look.ridgeline")} />}
 
         {/* What's coming up - real events, hidden entirely when there are none */}
         <UpcomingEventsHome />

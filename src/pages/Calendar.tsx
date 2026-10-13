@@ -4,7 +4,8 @@ import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { HexTrail } from "@/components/almanac/HexTrail";
 import { YourNextStrip } from "@/components/almanac/YourNextStrip";
 import { EventRow } from "@/components/almanac/EventRow";
-import { fill } from "@/components/almanac/format";
+import { fill, useMedia } from "@/components/almanac/format";
+import { CalendarWeek } from "@/components/almanac/CalendarWeek";
 import { seatOf } from "@/components/almanac/seat";
 import { formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
 import { currentDenverDate } from "@/lib/companion";
@@ -53,6 +54,8 @@ export default function CalendarPage() {
   const [allDates, setAllDates] = useState(false);
   const [myPick, setMyPick] = useState<string | null>(null);
   const [showMonth, setShowMonth] = useState(false);
+  const [view, setView] = useState<"day" | "week">("day");
+  const xl = useMedia("(min-width: 1024px)");
   const hasMine = mine.items.length > 0;
   // My events is the default view whenever there is anything in it; a day
   // chosen from Today's trail means "show me that day" instead.
@@ -224,8 +227,8 @@ export default function CalendarPage() {
               selected={showingMine ? myPick ?? firstMineDay : selectedDay}
               onSelect={pickDay}
             />
-            <div className="flow2 flow2--side" style={{ marginTop: ".4rem" }}>
-              <div className="flow2__a">
+            <div className={`flow2 flow2--side${hasMine ? "" : " flow2--solo"}`} style={{ marginTop: ".4rem" }}>
+              {hasMine && <div className="flow2__a">
                 <div className="o1">
                   {hasMine && (
                     <div data-testid="my-events-toggle">
@@ -245,10 +248,18 @@ export default function CalendarPage() {
                     </p>
                   )}
                 </div>
-              </div>
+              </div>}
               <div className="flow2__b">
                 <div className="o3">
-                  {!showingMine && selectedDay ? (
+                  {xl && !showingMine && selectedDay && (
+                    <div className="seg cal-view" role="group" aria-label={tr("look.calView")}>
+                      <button type="button" aria-pressed={view === "day"} onClick={() => setView("day")}>{tr("look.calDay")}</button>
+                      <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>{tr("look.calWeek")}</button>
+                    </div>
+                  )}
+                  {xl && !showingMine && selectedDay && view === "week" ? (
+                    <CalendarWeek events={allEvents} day={selectedDay} today={today} onPick={(date) => { setView("day"); pickDay(date); }} />
+                  ) : !showingMine && selectedDay ? (
                     <>
                       <div className="agenda-head">
                         <h2 className="h2" style={{ fontSize: "calc(1.5 * var(--u))" }}>{formatDay(selectedDay, language, true)}</h2>
@@ -256,7 +267,7 @@ export default function CalendarPage() {
                       </div>
                       {dayEvents.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
                       {dayEvents.map(row)}
-                      <button type="button" className="link" style={{ marginTop: ".6rem" }} onClick={showEveryDate}>{tr("almanac.showEveryDate")}</button>
+                      <button type="button" className="link" style={{ marginTop: ".6rem", display: "block" }} onClick={showEveryDate}>{tr("almanac.showEveryDate")}</button>
                     </>
                   ) : (
                     groups.map(([date, list]) => (
@@ -270,7 +281,7 @@ export default function CalendarPage() {
                     ))
                   )}
                   {groups.length === 0 && !selectedDay && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
-                  <button type="button" className="link" style={{ marginTop: ".8rem" }} aria-expanded={showMonth} onClick={() => setShowMonth((v) => !v)}>{tr("almanac.monthView")}</button>
+                  <button type="button" className="link" style={{ marginTop: ".8rem", display: "block" }} aria-expanded={showMonth} onClick={() => setShowMonth((v) => !v)}>{tr("almanac.monthView")}</button>
                   {showMonth && <div className="mt-3"><CalendarMonthView events={allEvents} /></div>}
                   {data.icsUrl && <div style={{ marginTop: ".6rem" }}><CalendarSubscribe feedUrl={data.icsUrl} /></div>}
                 </div>

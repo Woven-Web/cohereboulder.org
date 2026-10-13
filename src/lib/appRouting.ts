@@ -10,6 +10,15 @@ export function signInDestination(path: string | null, registered = false): stri
   return registered && safe?.split(/[?#]/)[0] === "/register" ? "/events" : safe ?? "/events";
 }
 export type AppTab = "today" | "events" | "board" | "more";
+/** The ecology look's destinations: the same six on a phone's bottom bar and in the wide masthead. */
+export type EcoTab = "home" | "today" | "events" | "board" | "people" | "me";
+export function activeEcoTab(path: string): EcoTab | null {
+  if (path === "/" || path === "/home") return "home";
+  if (path === "/people" || path.startsWith("/people/")) return "people";
+  if (path === "/more" || path.startsWith("/more/") || path === "/profile") return "me";
+  const tab = activeAppTab(path);
+  return tab === "board" ? "board" : tab === "today" ? "today" : tab === "events" ? "events" : null;
+}
 export function activeAppTab(path: string): AppTab | null {
   return ["/today", "/quests"].includes(path) ? "today" : path === "/more" || path === "/more/notifications" ? "more" : ["/board", "/people", "/profile"].some((root) => path === root || path.startsWith(`${root}/`)) ? "board" : path === "/events" || path.startsWith("/events/") || path === "/calendar" || path === "/tomorrow" ? "events" : null;
 }

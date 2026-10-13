@@ -12,7 +12,7 @@
 .alm--sticky .mast{background:var(--paper)}
 .alm .mast--sticky{position:sticky;top:0;z-index:40;background:var(--paper)}
 /* The phone tab bar is fixed to the bottom; give every hybrid page room under its last line, footer or not. */
-@media (max-width:819px){body:has(.alm--bare .tabs){padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
+@media (max-width:767px){body:has(.alm--bare .tabs){padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
 .alm--bare .app{min-height:0;max-width:none;box-shadow:none;padding-bottom:0}
 .alm--bare .app:has(.foot){padding-bottom:var(--sp-5)}
 .alm .mast__register{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 calc(.8 * var(--u));border-radius:var(--r-2);
@@ -22,7 +22,7 @@
 
 .alm .foot{margin-top:var(--sp-7);padding:var(--sp-5) 0 var(--sp-4);border-top:var(--rule-heavy)}
 .alm .foot__cols{display:grid;gap:var(--sp-5)}
-@media (min-width:820px){.alm .foot__cols{grid-template-columns:1fr 1fr;column-gap:var(--sp-7)}}
+@media (min-width:768px){.alm .foot__cols{grid-template-columns:1fr 1fr;column-gap:var(--sp-7)}}
 .alm .foot__brand{font-weight:600;font-size:var(--fs-h2);line-height:1}
 .alm .foot__brand i{font-style:normal;color:var(--deep)}
 .alm .foot__where{display:flex;align-items:center;gap:6px}
@@ -71,10 +71,10 @@
 .alm .photo{width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;border:var(--rule-w) solid var(--rule)}
 .alm .band .cols{row-gap:var(--sp-4)}
 .alm .band.cols{display:grid;row-gap:var(--sp-4)}
-@media (min-width:820px){.alm .band.cols{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--sp-7);align-items:center}}
+@media (min-width:768px){.alm .band.cols{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--sp-7);align-items:center}}
 .alm .depths{display:grid;gap:0;margin-top:var(--sp-2)}
 .alm .depths li{padding:var(--sp-3) 0;border-top:var(--rule-w) dotted var(--hair);display:grid;gap:var(--sp-1)}
-@media (min-width:820px){.alm .depths{grid-template-columns:repeat(3,1fr);column-gap:var(--sp-5)}.alm .depths li{border-top:var(--rule-w) solid var(--rule)}}
+@media (min-width:768px){.alm .depths{grid-template-columns:repeat(3,1fr);column-gap:var(--sp-5)}.alm .depths li{border-top:var(--rule-w) solid var(--rule)}}
 .alm .depths .h3{display:flex;align-items:center;gap:var(--sp-2)}
 .alm .hexmark{width:calc(.9 * var(--u));height:calc(.95 * var(--u));flex:none;clip-path:var(--hex);background:var(--sun);box-shadow:inset 0 0 0 2px var(--ink)}
 .alm .hexmark{background:var(--sun)}
@@ -176,20 +176,20 @@
 .alm .trail__sheetlist+.btn{margin-top:var(--sp-3)}
 
 /* phone masthead with a Register link: wordmark · Register · En Es must fit 320px */
-@media (max-width:819px){
+@media (max-width:767px){
   .alm .mast:has(.mast__register){gap:var(--sp-2)}
   .alm .mast:has(.mast__register) .wordmark{font-size:calc(1.1 * var(--u))}
   .alm .mast:has(.mast__register) .mast__end{gap:var(--sp-1)}
   /* No room for Register and Sign in together: Register stays, the account control moves to the footer on phones. */
   .alm .mast:has(.mast__register) .mast__end>button{display:none}
 }
-@media (min-width:820px){.alm .foot__account{display:none}}
+@media (min-width:768px){.alm .foot__account{display:none}}
 .alm .foot__account{margin-top:var(--sp-2)}
 .alm .foot__account>*{margin:0}
 .alm .foot__account button{min-height:48px;border:1.5px solid var(--ink);border-radius:var(--r-2);background:var(--paper);color:var(--ink);font-weight:600;padding:0 calc(1.1 * var(--u))}
 
 /* Daylight: the hero is two columns so the photo does not push the invitation off the screen */
-@media (min-width:820px){
+@media (min-width:768px){
   .alm .home__hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);column-gap:var(--sp-7);align-items:start}
   .alm .home__hero>*{grid-column:1}
   .alm .home__hero>.plate{grid-column:2;grid-row:1 / span 6;margin:0;border:var(--rule-w) solid var(--rule)}
@@ -202,8 +202,8 @@
 .alm .band .stack{display:grid;gap:var(--sp-3);align-content:start}
 .alm .band .stack>*+*{margin-top:0}
 .alm .band .cols{align-items:start}
-@media (min-width:820px){.alm .band.cols{align-items:start}}
-@media (max-width:819px){.alm .home__acts>*{flex:1 1 11rem}}
+@media (min-width:768px){.alm .band.cols{align-items:start}}
+@media (max-width:767px){.alm .home__acts>*{flex:1 1 11rem}}
 .alm .depths li{align-content:start}
 .alm .hexmark{position:relative;background:var(--ink);box-shadow:none;width:calc(1.05 * var(--u));height:calc(1.1 * var(--u))}
 .alm .hexmark::after{content:"";position:absolute;inset:2px;clip-path:var(--hex);background:var(--sun)}

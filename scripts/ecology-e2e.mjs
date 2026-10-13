@@ -308,6 +308,70 @@ for (const [w, h] of SIZES) {
   }
 }
 
+// ───────────── One navigation model, one product: phone bar vs masthead, Home, week ─────────────
+// The same six destinations everywhere: a bottom tab bar on phones, the masthead from 768px up
+// (no bottom bar, no phone-width box).
+const DESTINATIONS = ["Home", "Today", "Calendar", "Board", "People", "Me"];
+for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
+  for (const member of [null, "mock-peer"]) {
+    const who = member ? "signed in" : "signed out";
+    const { context, page, errors } = await session({ width: w, height: h, member });
+    for (const path of ["/", "/today", "/calendar", "/board", "/people", "/more"]) {
+      await go(page, path);
+      await page.locator("h1").first().waitFor();
+      const nav = await page.evaluate(() => {
+        const bar = document.querySelector("[data-testid=app-tabs]");
+        const r = bar.getBoundingClientRect();
+        return { fixed: getComputedStyle(bar).position === "fixed", inMast: Boolean(bar.closest(".mast")), top: r.top, bottom: r.bottom, vh: innerHeight, names: [...bar.querySelectorAll("a")].map((a) => a.textContent.trim()), shell: Math.round(document.querySelector(".alm .app").getBoundingClientRect().width) };
+      });
+      const tag = `${path} ${who} at ${w}`;
+      check(JSON.stringify(nav.names) === JSON.stringify(DESTINATIONS), `nav: the same six destinations on ${tag} (${nav.names.join("|")})`);
+      if (w < 768) check(nav.fixed && nav.bottom >= nav.vh - 2, `nav: a bottom tab bar on ${tag}`);
+      else check(!nav.fixed && nav.top < 140, `nav: no bottom tab bar, the masthead holds the destinations on ${tag}`);
+      if (w >= 1280) check(nav.shell > 900, `nav: no phone-width box on ${tag} (${nav.shell}px)`);
+      check((await overflow(page)) <= 0, `nav: no horizontal overflow on ${tag}`);
+    }
+    // Home: during the gathering it leads with today's practice, the trail and Your next; Register stays within reach signed out.
+    await go(page, "/");
+    await page.getByTestId("home-live").waitFor();
+    await page.getByTestId("home-live").getByText(/Learn three/).first().waitFor({ timeout: 8000 }).catch(() => {});
+    check(await page.getByTestId("home-live").getByText(/Learn three neighbours/).count() === 1, `home: leads with today's practice ${who} at ${w}`);
+    check(await page.locator(".trail--fit, .trail--row").count() >= 1 && await page.getByTestId("home-live").getByRole("link", { name: /Open Today/ }).count() === 1, `home: the trail and a way into Today ${who} at ${w}`);
+    if (member) await page.getByTestId("home-live").getByRole("link", { name: /Open the Board/ }).waitFor({ timeout: 8000 }).catch(() => {});
+    if (member) check(await page.getByTestId("home-live").getByRole("link", { name: /Open the Board/ }).count() === 1, `home: signed in, the latest Board posts link into the Board at ${w}`);
+    else {
+      const reg = await page.getByTestId("home-live").getByRole("link", { name: /Join COhere|Register/ }).first().boundingBox();
+      check(reg && reg.y + reg.height <= h, `home: signed out, Register is on the first screen at ${w}`);
+    }
+    check(errors.length === 0, `nav/home: no page errors ${who} at ${w}${errors.length ? ` — ${errors[0]}` : ""}`);
+    await context.close();
+  }
+}
+// Before the gathering, signed out: the hero and Register, plus the trail preview.
+{
+  const { context, page } = await session({ width: 1280, height: 800, when: "2026-10-10T16:00:00Z" });
+  await go(page, "/");
+  await page.getByTestId("home-preview").waitFor();
+  check(await page.getByTestId("home-live").count() === 0 && await page.getByRole("heading", { level: 1 }).first().textContent().then((t) => /here/.test(t)), "home: before the gathering, signed out, the hero shows with the trail preview");
+  await context.close();
+}
+// The week view appears from 1024px and lists a day's events as links.
+{
+  const { context, page } = await session({ width: 1280, height: 800, member: "mock-peer" });
+  await go(page, "/calendar?day=2026-10-17");
+  await page.getByRole("listbox").waitFor();
+  await page.getByRole("button", { name: /^My events|^All events/ }).first().waitFor({ timeout: 3000 }).catch(() => {});
+  if (await page.getByRole("button", { name: /^All events/ }).count()) await page.getByRole("button", { name: /^All events/ }).click();
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  check(await page.getByTestId("calendar-week").getByRole("link", { name: /Ecology Free Market/ }).count() === 1, "calendar: the week view lists the day's events at 1280");
+  await context.close();
+  const phone = await session({ width: 390, height: 844, member: "mock-peer" });
+  await go(phone.page, "/calendar?day=2026-10-17");
+  await phone.page.getByRole("listbox").waitFor();
+  check(await phone.page.getByRole("button", { name: "Week", exact: true }).count() === 0, "calendar: no week toggle on a phone");
+  await phone.context.close();
+}
+
 await browser.close();
 if (fails.length) { console.error(`\n${fails.length} check(s) failed`); process.exit(1); }
 console.log("\necology-e2e: all checks passed");

@@ -105,7 +105,7 @@ for (const [w, h] of [[360, 780], [1280, 800]]) {
     const reg = page.locator(".mast .mast__register").first();
     const rb = await reg.boundingBox();
     check(rb && rb.height >= 44 && rb.x >= 0 && rb.x + rb.width <= w, `${path}: Register is in the masthead (≥44px, on screen) with sign-in on at ${w}`);
-    if (w < 820) {
+    if (w < 768) {
       check(await page.locator(".mast__end > button").first().isHidden().catch(() => true), `${path}: Sign in leaves the phone masthead at ${w}`);
       const foot = page.locator(".foot__account button").first();
       await foot.scrollIntoViewIfNeeded().catch(() => {});
@@ -133,7 +133,7 @@ for (const [w, h] of [[360, 780], [1280, 800]]) {
     const top = await page.locator(".alm .mast").first().evaluate((el) => Math.round(el.getBoundingClientRect().top));
     const scrolled = await page.evaluate(() => window.scrollY);
     check(scrolled === 0 || top === 0, `${path}: the masthead stays at the top after scrolling at ${w} (top ${top}, scrollY ${scrolled})`);
-    if (w < 820) {
+    if (w < 768) {
       const clear = await page.evaluate(() => {
         const tabs = document.querySelector(".tabs").getBoundingClientRect().top;
         // Lowest visible leaf in the page (containers carry padding, so they would hide the problem).
@@ -301,7 +301,7 @@ for (const [w, h] of SIZES) {
     await context.addInitScript(() => { if (!localStorage.getItem("cohere-practice-done")) localStorage.setItem("cohere-practice-done", JSON.stringify(["2026-10-15", "2026-10-16"])); });
     await page.goto(`${base}/today?trail=${trail}`, { waitUntil: "load" });
     await page.getByRole("heading", { level: 1 }).first().waitFor();
-    const phoneRow = trail === "row" && w < 820;
+    const phoneRow = trail === "row" && w < 768;
     if (!phoneRow) {
       check(await page.getByRole("link", { name: /Saturday Oct 17, today/ }).count() === 1, `${trail}: trail names today at ${w}`);
       check(await page.getByRole("link", { name: /Thursday Oct 15, practice done/ }).count() === 1, `${trail}: trail marks a finished day at ${w}`);
