@@ -42,7 +42,7 @@ export function UpcomingEventsHome() {
     return (
       <section className="band" data-testid="home-events">
         <h2 className="h2">{eco ? tr(duringGathering() ? "look.home.onToday" : "look.home.comingUp") : tr("home.upcomingEvents.title")}</h2>
-        {!eco && <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>}
+        <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>
         <ul className="upnext">
           {upcoming.map((event) => {
             const where = locationLine(event.location);

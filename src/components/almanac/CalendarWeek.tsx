@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * The wide screen's week: one column per day, each event a compact chip (time
- * and title) that opens its page. The festival's eleven dates fall in two
+ * and title) that opens its page. The festival's ten days fall in two
  * weeks, so the arrows step between them.
  */
 export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: Props) {
