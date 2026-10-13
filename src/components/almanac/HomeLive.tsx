@@ -14,6 +14,7 @@ import { HexTrail } from "./HexTrail";
 import { YourNextStrip, type NextItem } from "./YourNextStrip";
 import { seatOf } from "./seat";
 import { fill } from "./format";
+import readingQuestionsPhoto from "@/assets/photos/reading-questions.webp";
 
 /**
  * Home, once the app is the point (signed in, or the gathering is on): today's
@@ -91,6 +92,7 @@ export function HomePreview() {
       <p className="lede">{tr("look.home.previewBody")}</p>
       <HexTrail variant="fit" today={currentDenverDate()} done={[]} />
       <Link className="list-link" to="/today"><span>{tr("look.home.seeToday")}</span><span aria-hidden="true">→</span></Link>
+      <img className="photo" src={readingQuestionsPhoto} alt={tr("photos.readingQuestions")} loading="lazy" width={1600} height={884} />
     </section>
   );
 }

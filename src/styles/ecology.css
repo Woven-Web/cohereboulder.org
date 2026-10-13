@@ -224,6 +224,7 @@
 /* ---------- Photos: arches and soft corners, real stills only ---------- */
 .alm.eco .plate{margin:var(--sp-5) 0 0;border:0}
 .alm.eco .plate img{border-radius:140px 140px 24px 24px;aspect-ratio:4/3}
+.alm.eco .plate--hero img{aspect-ratio:16/10;object-position:38% 20%}
 .alm.eco .plate--theme img{border-radius:28px;aspect-ratio:4/3}
 .alm.eco .plate figcaption{left:var(--sp-2);right:var(--sp-2);bottom:var(--sp-2);border:0;border-radius:20px;background:#fff;box-shadow:var(--card);padding:var(--sp-2) var(--sp-3)}
 .alm.eco .plate__big{color:var(--night)}
@@ -235,6 +236,7 @@
 @media (min-width:768px){
   .alm.eco .home__hero>.plate{margin:0}
   .alm.eco .home__hero>.plate img{aspect-ratio:4/5}
+  .alm.eco .home__hero>.plate--hero img{aspect-ratio:4/5;object-position:36% 20%}
 }
 
 /* ---------- Long-form pages (About, Join, hybrid pages): markup kept, dressed in place ---------- */

@@ -96,6 +96,8 @@ its lede and thank-you are the live strings.
 - "A Woven Web Initiative" — live-translations.ts `footer.wovenWeb`
 - "Propose an event" — live-translations.ts `joinInvite.proposeButton`
 - "Subscribe to calendar" — live-translations.ts `calendar.events.subscribe`
+- "What is COhere?" body, two paragraphs — **Eileen, 10-13, verbatim** (`translations.eco.ts` `whatIs.p1`, `whatIs.p2`, ecology look only; the shared classic text is untouched): "COhere is a 10-day event series designed to bring us into deeper connection to place." / "Through storytelling, relationship building, and exploring new aspects of Boulder, we invite participants to find new perspectives and passions. COhere invites curiosity and a sense of re/discovery of how we move through the world."
+- "Explore events on the community events" — **Eileen, 10-13, verbatim**, the What's Coming Up subtitle (`home.upcomingEvents.subtitle` en in `translations.ts`, so it applies to every look)
 - "Hosting something during COhere? You don't need an account to put it on this calendar." — live-translations.ts `calendar.proposeCallout.text`
 - "Share event" — live-translations.ts `calendar.events.share`
 - "Add to calendar" — live-translations.ts `calendar.events.addToCalendar`
@@ -161,6 +163,9 @@ Everything longer than a short label that is not verbatim from a source. Short l
 | 16 | Harvest, event page | Visible to members. / Your name is shown. | Visible para miembros. / Tu nombre se muestra. |
 | 17 | Board, People, Harvest | Visible to members. | Visible para miembros. |
 | 18 | Evening-note opt-in (RSVP email) | Evening and harvest notes? / Yes, send them | ¿Avisos de la noche y la cosecha? / Sí, enviar |
+| 19 | Home › What is COhere? (ecology look) | es translation of Eileen's What is COhere text. Until then es shows the live `whatIs.p1` and `hero.description` Spanish, which say something different | (none yet) |
+| 20 | Home › What's Coming Up (all looks) | es for Eileen's What's Coming Up line. es is unchanged: "Algunos encuentros del calendario comunitario — co-creados, no programados." | (unchanged) |
+| 21 | Home photos (alt text, ecology look) | Short literal alt text for Eileen's four photos, e.g. "People talking around a wooden table" | e.g. "Personas conversando alrededor de una mesa de madera" |
 
 Spanish for every changed string is mine (the live `es` is used wherever the source has the line); like the rest of
 the new Spanish in the app, it has not had a native-speaker pass.

@@ -16,6 +16,10 @@ import gatheringPhoto from "@/assets/photos/gathering.webp";
 import altarPhoto from "@/assets/photos/altar.webp";
 import coCreatingPhoto from "@/assets/photos/co-creating.webp";
 import singingCirclePhoto from "@/assets/photos/singing-circle.webp";
+// Eileen's photos (ecology look).
+import hatConversationPhoto from "@/assets/photos/hat-conversation.webp";
+import tableCirclePhoto from "@/assets/photos/table-circle.webp";
+import eveningGatheringPhoto from "@/assets/photos/evening-gathering.webp";
 
 const Hex = () => <span className="hexmark" aria-hidden="true" />;
 
@@ -52,6 +56,13 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <RegistrationAction className={cta} anonymousKey="hero.registerHere" />
           </div>
 
+          {/* Eileen's first big photo, under the registration card (beside it on wide screens). Not lazy: it is the hero. */}
+          {eco && (
+            <figure className="plate plate--hero">
+              <img src={hatConversationPhoto} alt={tr("photos.hatConversation")} width={1600} height={907} fetchPriority="high" />
+            </figure>
+          )}
+
           {/* The film still and the one-line description sit lower under the ecology look. */}
           {!eco && <>
             <figure className="plate">
@@ -75,9 +86,9 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <div className="cols cols--even">
               <div className="stack">
                 <p className="lede">{tr("whatIs.p1")}</p>
-                <p>{tr("hero.description")}</p>
+                <p>{tr("whatIs.p2")}</p>
               </div>
-              <img className="photo" src={gatheringPhoto} alt="Community members gathering during COhere Boulder" loading="lazy" width={1280} height={720} />
+              <img className="photo" src={tableCirclePhoto} alt={tr("photos.tableCircle")} loading="lazy" width={1600} height={836} />
             </div>
           ) : (
             <div className="band__prose">
@@ -99,7 +110,9 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
 
         {/* The Community Calendar - co-created, not programmed */}
         <section className="band cols cols--even">
-          <img className="photo" src={coCreatingPhoto} alt="People gathered around a table of printed event listings" loading="lazy" width={1280} height={720} />
+          {eco
+            ? <img className="photo" src={eveningGatheringPhoto} alt={tr("photos.eveningGathering")} loading="lazy" width={1600} height={864} />
+            : <img className="photo" src={coCreatingPhoto} alt="People gathered around a table of printed event listings" loading="lazy" width={1280} height={720} />}
           <div className="stack">
             <h2 className="h2">{tr("communityCalendar.title")}</h2>
             <p className="lede home__sub">{tr("communityCalendar.subtitle")}</p>

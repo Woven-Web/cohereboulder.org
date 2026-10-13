@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTranslation, translations } from "./translations";
-import { ecoCopy } from "./translations.eco";
+import { ECO_VERBATIM, ecoCopy } from "./translations.eco";
 
 const base = (path: string) => path.split(".").reduce<any>((o, k) => o?.[k], translations); // eslint-disable-line @typescript-eslint/no-explicit-any
 const slots = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort();
@@ -18,7 +18,7 @@ describe("the ecology copy pass", () => {
   });
 
   it("is only a word or two: no override runs past 12 words", () => {
-    for (const [path, [en]] of Object.entries(ecoCopy)) expect(en.split(/\s+/).length, path).toBeLessThanOrEqual(12);
+    for (const [path, [en]] of Object.entries(ecoCopy)) if (!ECO_VERBATIM.has(path)) expect(en.split(/\s+/).length, path).toBeLessThanOrEqual(12);
   });
 
   describe("lookup", () => {

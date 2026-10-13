@@ -396,6 +396,26 @@ export const translations = {
     },
   },
 
+  // Alt text for Eileen's photos (ecology look): short and literal, no captions.
+  photos: {
+    hatConversation: {
+      en: "A young woman in a hat smiling as she talks with two people in a lively room",
+      es: "Una joven con sombrero sonríe mientras conversa con dos personas en una sala animada",
+    },
+    readingQuestions: {
+      en: "Two people reading a handwritten card of questions together",
+      es: "Dos personas leen juntas una tarjeta de preguntas escrita a mano",
+    },
+    tableCircle: {
+      en: "People talking around a wooden table",
+      es: "Personas conversando alrededor de una mesa de madera",
+    },
+    eveningGathering: {
+      en: "People talking in a room lit for the evening, with bicycles hanging on the walls",
+      es: "Personas conversando en una sala iluminada de noche, con bicicletas colgadas en las paredes",
+    },
+  },
+
   // What is COhere Section
   whatIs: {
     title: { en: "What is COhere?", es: "¿Qué es COhere?" },
@@ -2446,7 +2466,7 @@ export const translations = {
         es: "Lo Que Viene",
       },
       subtitle: {
-        en: "A few gatherings from the community calendar — co-created, not programmed.",
+        en: "Explore events on the community events",
         es: "Algunos encuentros del calendario comunitario — co-creados, no programados.",
       },
       seeFullCalendar: {

@@ -317,4 +317,17 @@ export const ecoCopy: Record<string, Pair> = {
   "proposeEvent.missingError": ["Check the highlighted fields.", "Revisa los campos marcados."],
   "proposeEvent.nameRequired": ["Add an event name.", "Añade un nombre."],
   "proposeEvent.startsRequired": ["Choose a start time.", "Elige una hora de inicio."],
+
+  // --- Eileen's own words, verbatim (10-13). Exempt from the 12-word limit: see ECO_VERBATIM. ---
+  "whatIs.p1": [
+    "COhere is a 10-day event series designed to bring us into deeper connection to place.",
+    "COhere Boulder aviva la cultura y el compromiso de Boulder conectando residentes, organizaciones, artistas, líderes e innovadores durante un contenedor de 10 días. A través de un calendario curado de eventos alineados con valores y reuniones memorables de apertura y cierre, fortalecemos los lazos comunitarios, destacamos la vitalidad de nuestra ciudad e inspiramos acción hacia un futuro más regenerativo y resiliente.",
+  ], // es: the live whatIs.p1, kept until Eileen OKs a translation
+  "whatIs.p2": [
+    "Through storytelling, relationship building, and exploring new aspects of Boulder, we invite participants to find new perspectives and passions. COhere invites curiosity and a sense of re/discovery of how we move through the world.",
+    "Conectando la comunidad local para crear un futuro regenerativo y resiliente.",
+  ], // es: the live hero.description, which this paragraph replaces under the ecology look
 };
+
+/** Overrides that are someone's own words, quoted exactly; the test does not hold them to the short-label limit. */
+export const ECO_VERBATIM: ReadonlySet<string> = new Set(["whatIs.p1", "whatIs.p2"]);
