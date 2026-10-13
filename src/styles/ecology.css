@@ -281,6 +281,8 @@
 .alm.eco .homelive__register{margin:0 0 var(--sp-3);width:100%}
 .alm.eco .homelive__cols{display:grid;gap:var(--sp-5);margin-top:var(--sp-4)}
 .alm.eco .homelive__main{max-width:42rem}
+.alm.eco .homelive__main,.alm.eco .homelive__side{min-width:0;overflow-wrap:anywhere}
+.alm.eco .homeboard li a{grid-template-columns:minmax(0,1fr)}
 .alm.eco .homelive .question__q{margin:var(--sp-4) 0;font:italic 500 calc(1.35 * var(--u))/1.35 var(--serif,var(--head));color:var(--deep);max-width:34ch}
 .alm.eco .homeboard{margin-top:var(--sp-5)}
 .alm.eco .homeboard ul{margin-top:var(--sp-2)}
@@ -309,10 +311,9 @@
 /* Masthead at tablet width: six destinations plus Register, account and language will not share one row, so the tabs take a row of their own. */
 @media (min-width:768px) and (max-width:1023px){
   .alm.eco .mast{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"mark end" "tabs tabs";row-gap:0;gap:var(--sp-2) var(--sp-4)}
-  .alm.eco .mast .wordmark{grid-area:mark}
-  .alm.eco .mast .mast__end{grid-area:end;justify-self:end}
-  .alm.eco .mast .tabs{grid-area:tabs;justify-content:space-between;gap:0;border-top:1px solid hsl(var(--eco-rule-hsl))}
-  .alm.eco .mast .tabs a{min-height:48px;flex:1;justify-content:center}
+  .alm.eco .mast .mast__end{justify-self:end;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
+  .alm.eco .mast .tabs{justify-content:space-between;gap:0;border-top:1px solid hsl(var(--eco-rule-hsl))}
+  .alm.eco .mast .tabs a{min-height:48px;flex:1;min-width:0;justify-content:center;padding:0 .25rem;overflow-wrap:anywhere}
   .alm.eco .mast .tabs a[aria-current=page]::after{bottom:2px}
 }
 @media (min-width:1024px){
@@ -323,11 +324,3 @@
 }
 .alm.eco .page--read{max-width:46rem}
 
-/* Classic and Almanac screens (the Today/Calendar shell) keep their masthead on one row from 820px; between 768 and 819 the tabs take a row of their own, as in the ecology look. */
-@media (min-width:768px) and (max-width:819px){
-  .alm .mast{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"mark end" "tabs tabs";gap:var(--sp-2) var(--sp-4)}
-  .alm .mast .wordmark{grid-area:mark}
-  .alm .mast .mast__end{grid-area:end;justify-self:end}
-  .alm .mast .tabs{grid-area:tabs;justify-content:space-between;gap:0}
-  .alm .mast .tabs a{flex:1;justify-content:center}
-}

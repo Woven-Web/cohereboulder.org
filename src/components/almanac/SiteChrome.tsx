@@ -22,7 +22,6 @@ export function AlmanacMast({ register = false }: { register?: boolean }) {
   return (
     <header className={`mast${register ? " mast--sticky" : ""}`}>
       <Link className="wordmark" to="/" aria-label="[CO]here">[<i>CO</i>]here</Link>
-      <TabBar />
       <div className="mast__end">
         {eco && !signedIn && <Link className="mast__about" to="/about">{tr("nav.about")}</Link>}
         {register && <RegistrationAction className="mast__register" />}
@@ -33,6 +32,8 @@ export function AlmanacMast({ register = false }: { register?: boolean }) {
           <button type="button" aria-pressed={language === "es"} onClick={() => setLanguage("es")}>Es</button>
         </div>
       </div>
+      {/* After the controls in the DOM so keyboard order follows the rows the grid draws (wordmark, controls, then tabs). */}
+      <TabBar />
     </header>
   );
 }

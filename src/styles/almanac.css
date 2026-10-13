@@ -91,12 +91,22 @@
 .alm .tabs a[aria-current=page]{color:var(--ink)}
 .alm .tabs a[aria-current=page]::after{content:"";width:26px;border-top:3px solid var(--berry)}
 @media (min-width:768px){
-  .alm .mast{display:grid;grid-template-columns:auto 1fr auto;gap:var(--sp-6);padding-top:calc(.2 * var(--u))}
+  .alm .mast{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"mark tabs end";gap:var(--sp-6);padding-top:calc(.2 * var(--u))}
+  .alm .mast .wordmark{grid-area:mark}
+  .alm .mast .tabs{grid-area:tabs;min-width:0}
+  .alm .mast .mast__end{grid-area:end}
   .alm .tabs{position:static;transform:none;max-width:none;background:none;border:0;display:flex;gap:var(--sp-5);justify-content:center;padding:0}
   .alm .tabs a{flex-direction:row;min-height:var(--mast-h);font-size:calc(1.05 * var(--u));padding:0 var(--sp-2);position:relative}
   .alm .tabs a .pg{display:none}
   .alm .tabs a[aria-current=page]::after{position:absolute;left:var(--sp-2);right:var(--sp-2);bottom:6px;width:auto}
   .alm .app,.alm .app.has-bar{padding-bottom:var(--sp-7)}
+}
+/* Every .alm screen (Almanac, Today, Calendar, Ecology) switches to the wide layout at 768, not 820. Between 768 and 819 the tabs take a row of their own. The markup order is wordmark, account/language, tabs, so keyboard order matches the rows; the grid areas place them. */
+@media (min-width:768px) and (max-width:819px){
+  .alm .mast{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"mark end" "tabs tabs";gap:var(--sp-2) var(--sp-4)}
+  .alm .mast .mast__end{justify-self:end}
+  .alm .mast .tabs{justify-content:space-between;gap:0}
+  .alm .mast .tabs a{flex:1;justify-content:center;min-width:0}
 }
 .alm .page{padding-top:var(--sp-4)}
 .alm .stack>*+*{margin-top:var(--sp-4)}
