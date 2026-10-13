@@ -9,7 +9,7 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    for (const [path, text] of [["/", "Weaving Our Resilience"], ["/events", "Boulder time"], ["/register", "Register"], ["/board", "The COhere Board opens soon"]]) {
+    for (const [path, text] of [["/", "Weaving Our Resilience"], ["/events", "Boulder time"], ["/register", "Register"], ["/board", "A members-only space"]]) {
       const response = await page.goto(new URL(path, base).href, { waitUntil: "networkidle" });
       assert.equal(response.status(), 200);
       await page.getByText(text, { exact: false }).filter({ visible: true }).first().waitFor();

@@ -357,22 +357,52 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   await go(page, "/");
   await page.getByTestId("home-preview").waitFor();
   check(await page.getByTestId("home-live").count() === 0 && await page.getByRole("heading", { level: 1 }).first().textContent().then((t) => /here/.test(t)), "home: before the gathering, signed out, the hero shows with the trail preview");
+  check(/Ten days, one trail/.test(await page.getByTestId("home-preview").innerText()), "home: the preview says ten days");
+  check(await page.getByText(/Connecting local community/).count() === 1, "home: the description appears once, lower down");
+  await go(page, "/today");
+  await page.getByTestId("sample-day").waitFor();
+  check((await page.getByTestId("sample-day").innerText()).match(/sample/gi).length === 1, "today: 'Sample' appears once on the sample day");
+  check(await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
+  await go(page, "/board");
+  await page.getByTestId("members-gate").waitFor();
+  check(/members-only space/.test(await page.getByTestId("members-gate").innerText()) || /sign in/i.test(await page.getByTestId("members-gate").innerText()), "board: signed out, the gate says what it is and how to get in");
   await context.close();
 }
-// The week view appears from 1024px and lists a day's events as links.
+// Calendar by width: the week is the default from 1024px (a choice sticks), tablets get a two-column day list, phones the day.
 {
   const { context, page } = await session({ width: 1280, height: 800, member: "mock-peer" });
   await go(page, "/calendar?day=2026-10-17");
   await page.getByRole("listbox").waitFor();
   await page.getByRole("button", { name: /^My events|^All events/ }).first().waitFor({ timeout: 3000 }).catch(() => {});
   if (await page.getByRole("button", { name: /^All events/ }).count()) await page.getByRole("button", { name: /^All events/ }).click();
-  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await page.getByTestId("calendar-week").waitFor({ timeout: 5000 }).catch(() => {});
+  check(await page.getByTestId("calendar-week").count() === 1, "calendar: the week is the default at 1280");
   check(await page.getByTestId("calendar-week").getByRole("link", { name: /Ecology Free Market/ }).count() === 1, "calendar: the week view lists the day's events at 1280");
+  const cols = await page.locator(".week__col").count();
+  check(cols === 7, "calendar: the week has seven day columns");
+  const chip = await page.getByTestId("calendar-week").getByRole("link", { name: /Ecology Free Market/ }).first().boundingBox();
+  check(Boolean(chip) && chip.width < 220 && chip.height < 140, "calendar: week events are compact chips");
+  await page.getByRole("button", { name: "Day", exact: true }).click();
+  check(await page.getByTestId("calendar-week").count() === 0, "calendar: Day swaps the week out at 1280");
+  await page.reload();
+  await page.getByRole("listbox").waitFor();
+  check(await page.getByTestId("calendar-week").count() === 0, "calendar: the Day choice persists across a reload");
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await page.getByTestId("week-step").click();
+  await page.waitForTimeout(300);
+  check(await page.locator(".week__col").count() === 4, "calendar: the second week has four days");
   await context.close();
+
+  const tablet = await session({ width: 800, height: 900, member: "mock-peer" });
+  await go(tablet.page, "/calendar?day=2026-10-17");
+  await tablet.page.getByRole("listbox").waitFor();
+  check(await tablet.page.getByTestId("calendar-week").count() === 0 && await tablet.page.getByRole("button", { name: "Week", exact: true }).count() === 0, "calendar: tablet shows the day list, no week");
+  await tablet.context.close();
+
   const phone = await session({ width: 390, height: 844, member: "mock-peer" });
   await go(phone.page, "/calendar?day=2026-10-17");
   await phone.page.getByRole("listbox").waitFor();
-  check(await phone.page.getByRole("button", { name: "Week", exact: true }).count() === 0, "calendar: no week toggle on a phone");
+  check(await phone.page.getByRole("button", { name: "Week", exact: true }).count() === 0 && await phone.page.getByTestId("calendar-week").count() === 0, "calendar: phone keeps the day list, no week toggle");
   await phone.context.close();
 }
 

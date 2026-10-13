@@ -8,6 +8,7 @@ import { currentDenverDate } from "@/lib/companion";
 import { FESTIVAL_DATES, dayNumber, formatDay, practiceDoneDays } from "@/lib/festival";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { BOARD_POSTS_QUERY_KEY, fetchPosts, postPath, splitFeed } from "@/lib/board";
+import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 import { RegistrationAction } from "@/components/RegistrationAction";
 import { HexTrail } from "./HexTrail";
 import { YourNextStrip, type NextItem } from "./YourNextStrip";
@@ -40,10 +41,13 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
     <section className="homelive" data-testid="home-live">
       <p className="folio">{n >= 1 && n <= 11 ? `${fill(tr("almanac.dayOf"), { n })} · ` : ""}{FESTIVAL_DATES.includes(today) ? formatDay(today, language) : formatDay(FESTIVAL_DATES[0], language)}</p>
       <h1 className="h1 homelive__title">{tr("look.home.title")}</h1>
-      {/* Signed out during the gathering the one ask stays within reach, above the fold. */}
-      {!signedIn && <RegistrationAction className="btn btn--primary homelive__register" anonymousKey="hero.registerHere" />}
+      {/* Signed out the one ask stays within reach, above the fold; signed in, your next event takes its place. */}
+      {signedIn
+        ? <YourNextStrip items={next} total={mine.items.length} today={today} />
+        : <RegistrationAction className="btn btn--primary homelive__register" anonymousKey="hero.registerHere" />}
       <HexTrail variant="fit" today={today} done={practiceDoneDays()} />
-      <div className="homelive__cols">
+      <UpcomingEventsHome />
+      <div className={`homelive__cols${member && latest.length > 0 ? "" : " homelive__cols--one"}`}>
         <div className="homelive__main">
           <div className="eyebrow">{tr("almanac.practiceEyebrow")}</div>
           {daily ? <>
@@ -53,9 +57,9 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
           </> : <p className="lede">{tr("look.home.noPractice")}</p>}
           <Link className="list-link" to="/today"><span>{tr("look.home.openToday")}</span><span aria-hidden="true">→</span></Link>
         </div>
+        {member && latest.length > 0 && (
         <div className="homelive__side">
-          <YourNextStrip items={next} total={mine.items.length} today={today} />
-          {member && latest.length > 0 && (
+          {(
             <section className="homeboard" aria-labelledby="homeboard-h">
               <div className="eyebrow" id="homeboard-h">{tr("look.home.latestBoard")}</div>
               <ul>
@@ -72,6 +76,7 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
             </section>
           )}
         </div>
+        )}
       </div>
     </section>
   );

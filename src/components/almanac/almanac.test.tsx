@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { HexTrail } from "./HexTrail";
 import { SeatBadge } from "./SeatBadge";
@@ -10,7 +11,7 @@ import { seatOf } from "./seat";
 import { fill } from "./format";
 import { AddressBlock } from "./AddressBlock";
 
-const wrap = (node: React.ReactNode) => renderToStaticMarkup(<MemoryRouter><LanguageProvider>{node}</LanguageProvider></MemoryRouter>);
+const wrap = (node: React.ReactNode, client = new QueryClient()) => renderToStaticMarkup(<QueryClientProvider client={client}><MemoryRouter><LanguageProvider>{node}</LanguageProvider></MemoryRouter></QueryClientProvider>);
 
 describe("HexTrail", () => {
   it("fit is a nav of links, each named with its day, state and your events", () => {
@@ -58,9 +59,18 @@ describe("Your next", () => {
     expect(html).toContain("All 3 of your events");
   });
   it("is a quiet hint, not an empty box, with no events", () => {
-    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />);
+    const client = new QueryClient();
+    client.setQueryData(["regenos-session"], { did: "did:plc:me" });
+    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />, client);
     expect(html).not.toContain('data-testid="your-next"');
     expect(html).toContain("Nothing yet");
+    expect(html).toContain('href="/calendar"');
+  });
+  it("signed out, points at Register instead of promising a list", () => {
+    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />);
+    expect(html).toContain('data-testid="next-signed-out"');
+    expect(html).toContain('href="/register"');
+    expect(html).not.toContain("Nothing yet");
   });
 });
 

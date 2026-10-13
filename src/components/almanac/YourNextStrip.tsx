@@ -3,6 +3,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { eventPath, type CommunityEvent } from "@/lib/events";
 import { denverMinutes, formatDay, formatMinutes } from "@/lib/festival";
 import { denverDateKey } from "@/lib/events";
+import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { openSignInDialog } from "@/lib/signin";
 import { fill } from "./format";
 import { SeatBadge } from "./SeatBadge";
 import type { Seat } from "./seat";
@@ -23,6 +25,23 @@ interface Props {
 export function YourNextStrip({ items, total, today }: Props) {
   const { tr, language } = useLanguage();
   const now = Date.now();
+  const { data: config } = useSiteConfig();
+  const loginOn = config?.regenosLoginEnabled === true;
+  const { data: session } = useRegenosSession(loginOn);
+  if (items.length === 0 && !session?.did) {
+    // Nobody to keep a list for yet: point at the two ways to become someone.
+    return (
+      <section className="next" aria-label={tr("almanac.yourNextLabel")} data-testid="next-signed-out">
+        <div className="eyebrow">{tr("almanac.yourNext")}</div>
+        <p className="small" style={{ marginTop: ".5rem" }}>{tr("look.home.nextSignedOut")}</p>
+        <p className="small" style={{ marginTop: ".3rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+          <Link className="link" to="/register">{tr("members.gate.join")}</Link>
+          {loginOn && <button type="button" className="link" onClick={openSignInDialog}>{tr("look.home.nextSignIn")}</button>}
+          <Link className="link" to="/calendar">{tr("almanac.browseCalendar")}</Link>
+        </p>
+      </section>
+    );
+  }
   if (items.length === 0) {
     return (
       <section className="next" aria-label={tr("almanac.yourNextLabel")}>

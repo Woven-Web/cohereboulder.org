@@ -41,6 +41,7 @@ export function AlmanacMast({ register = false }: { register?: boolean }) {
 /** The colophon: same words and links as the classic footer, set as a ruled page foot. */
 export function AlmanacFooter() {
   const { tr, language, setLanguage } = useLanguage();
+  const eco = useLook() === "ecology";
   return (
     <footer className="foot">
       <div className="foot__cols">
@@ -52,9 +53,14 @@ export function AlmanacFooter() {
         <div className="stack foot__account"><AccountControl variant="mobile" /></div>
         <div className="stack foot__signup">
           <h2 className="h3">{tr("signup.title")}</h2>
-          <p className="small">{tr("footer.stayInLoop")}</p>
+          {/* The gathering is days away, so "as plans take shape" no longer fits. */}
+          {eco ? (
+            <p className="small foot__now">
+              {tr("look.home.footerWhere")} · <Link className="link" to="/register">{tr("look.home.footerRegister")}</Link> / <Link className="link" to="/calendar">{tr("almanac.tabs.calendar")}</Link>
+            </p>
+          ) : <p className="small">{tr("footer.stayInLoop")}</p>}
           <EmailSignup source="footer" />
-          <p className="small">{tr("footer.dates2026")}</p>
+          {!eco && <p className="small">{tr("footer.dates2026")}</p>}
         </div>
       </div>
       <div className="foot__base">

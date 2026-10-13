@@ -52,34 +52,49 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <RegistrationAction className={cta} anonymousKey="hero.registerHere" />
           </div>
 
-          <figure className="plate">
-            <img src={gatheringPhoto} alt="Community members gathering during COhere Boulder" width={1280} height={720} />
-          </figure>
-          <p className="lede home__desc">{tr("hero.description")}</p>
+          {/* The film still and the one-line description sit lower under the ecology look. */}
+          {!eco && <>
+            <figure className="plate">
+              <img src={gatheringPhoto} alt="Community members gathering during COhere Boulder" width={1280} height={720} />
+            </figure>
+            <p className="lede home__desc">{tr("hero.description")}</p>
+          </>}
         </section>}
         {eco && !live && <HomePreview />}
 
         {!live && <Ridgeline minutes={11 * 60} rise={7 * 60} set={18 * 60} wide={wide} label={tr("look.ridgeline")} />}
 
-        {/* What's coming up - real events, hidden entirely when there are none */}
-        <UpcomingEventsHome />
+        {/* What's coming up - real events, hidden entirely when there are none.
+            HomeLive carries its own, between the trail and the practice. */}
+        {!live && <UpcomingEventsHome />}
 
+        {/* What is COhere. The ecology look says it once and shows the gathering. */}
         <section className="band">
           <h2 className="h2">{tr("whatIs.title")}</h2>
-          <div className="band__prose">
-            <p className="lede">{tr("whatIs.p1")}</p>
-            <p>{tr("whatIs.p2")}</p>
-            <p>{tr("whatIs.p3")}</p>
-          </div>
+          {eco ? (
+            <div className="cols cols--even">
+              <div className="stack">
+                <p className="lede">{tr("whatIs.p1")}</p>
+                <p>{tr("hero.description")}</p>
+              </div>
+              <img className="photo" src={gatheringPhoto} alt="Community members gathering during COhere Boulder" loading="lazy" width={1280} height={720} />
+            </div>
+          ) : (
+            <div className="band__prose">
+              <p className="lede">{tr("whatIs.p1")}</p>
+              <p>{tr("whatIs.p2")}</p>
+              <p>{tr("whatIs.p3")}</p>
+            </div>
+          )}
         </section>
 
-        {/* This year's theme, stated over the land it comes from */}
+        {/* This year's theme, stated over the land it comes from (the ecology hero already says it in words) */}
         <figure className="plate plate--theme">
           <img src={altarPhoto} alt="An altar of feathers, fruit, stone and candlelight on a woven blanket" loading="lazy" width={1280} height={720} />
-          <figcaption>
+          {!eco && <figcaption>
             <span className="folio">{tr("hero.themeLabel")}</span>
             <span className="plate__big">{tr("hero.theme")}</span>
-          </figcaption>
+          </figcaption>}
         </figure>
 
         {/* The Community Calendar - co-created, not programmed */}
@@ -88,7 +103,8 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
           <div className="stack">
             <h2 className="h2">{tr("communityCalendar.title")}</h2>
             <p className="lede home__sub">{tr("communityCalendar.subtitle")}</p>
-            <p>{tr("communityCalendar.p1")}</p>
+            {/* Under the ecology look Choose-your-adventure carries the "calendar the community builds" line, so this keeps the second paragraph. */}
+            {!eco && <p>{tr("communityCalendar.p1")}</p>}
             <p>{tr("communityCalendar.p2")}</p>
             <div className="home__acts">
               <Link className="btn btn--primary" to="/calendar">{tr("communityCalendar.explore")}</Link>
@@ -103,7 +119,7 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <div className="stack">
               <h2 className="h2">{tr("chooseAdventure.title")}</h2>
               <p className="lede">{tr("chooseAdventure.p1")}</p>
-              <p>{tr("chooseAdventure.p2")}</p>
+              {!eco && <p>{tr("chooseAdventure.p2")}</p>}
             </div>
             <img className="photo" src={singingCirclePhoto} alt="People standing arm in arm, singing together from song sheets" loading="lazy" width={1280} height={720} />
           </div>

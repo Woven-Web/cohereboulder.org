@@ -293,20 +293,32 @@
 @media (min-width:768px){
   .alm.eco .homelive__register{width:auto}
   .alm.eco .homelive__cols{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:var(--sp-7);align-items:start}
+  .alm.eco .homelive__cols--one{grid-template-columns:minmax(0,46rem)}
 }
 
-/* ---- Calendar: no empty rail, and the week at 1024px+ ---- */
-@media (min-width:768px){.alm .flow2--side.flow2--solo{grid-template-columns:minmax(0,1fr);max-width:54rem}}
+/* ---- Calendar: no empty rail, a two-column day list from 768px, and the week at 1024px+ ---- */
+@media (min-width:768px){.alm .flow2--side.flow2--solo{grid-template-columns:minmax(0,1fr)}}
 .alm .cal-view{margin-bottom:var(--sp-3)}
-.alm .week__cols{display:grid;gap:var(--sp-2)}
-.alm .week__col{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
-.alm .week__head{display:flex;align-items:baseline;gap:6px;min-height:44px;padding:0 var(--sp-2);border-bottom:2px solid hsl(var(--eco-rule-hsl));font:600 .8rem/1 var(--mono)}
-.alm .week__head b{font:700 1.4rem/1 var(--head)}
+@media (min-width:768px){
+  .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
+}
+@media (min-width:1024px){
+  .alm .flow2--side:not(.flow2--solo) .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
+}
+.alm .week__bar{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3);margin-bottom:var(--sp-2);font-size:.8rem}
+.alm .week__cols{display:grid;gap:6px}
+.alm .week__col{display:flex;flex-direction:column;gap:6px;min-width:0}
+.alm .week__head{display:flex;align-items:baseline;gap:6px;min-height:44px;padding:0 6px;border-bottom:2px solid hsl(var(--eco-rule-hsl));font:600 .75rem/1 var(--mono);text-align:left}
+.alm .week__head b{font:700 1.25rem/1 var(--head)}
+.alm .week__head em{margin-left:auto;font-style:normal;font-size:.7rem;color:var(--ink-2)}
 .alm .week__col[data-today] .week__head{border-bottom-color:var(--deep);color:var(--deep)}
-.alm .week__ev{display:grid;gap:2px;padding:var(--sp-2);min-height:44px;background:#fff;border:1.5px solid hsl(var(--eco-rule-hsl));border-radius:14px;text-decoration:none}
-.alm .week__ev .mono{font-size:.72rem;color:var(--deep)}
-.alm .week__ev b{font:600 .95rem/1.2 var(--head);overflow-wrap:anywhere}
-.alm .week__none{font-size:.8rem;color:var(--ink-2);padding:0 var(--sp-2)}
+.alm .week__col[data-today]{background:hsl(var(--eco-rule-hsl)/.18);border-radius:10px}
+.alm .week__ev{display:block;padding:5px 7px;min-height:44px;background:#fff;border:1px solid hsl(var(--eco-rule-hsl));border-left:3px solid var(--water);border-radius:8px;text-decoration:none;color:inherit}
+.alm .week__ev[data-mine]{border-left-color:var(--deep);background:hsl(var(--eco-rule-hsl)/.12)}
+.alm .week__ev:hover,.alm .week__ev:focus-visible{border-color:var(--deep)}
+.alm .week__ev .mono{display:block;font-size:.68rem;line-height:1.3;color:var(--deep)}
+.alm .week__ev b{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font:600 .82rem/1.25 var(--head);overflow-wrap:anywhere}
+.alm .week__none{font-size:.8rem;color:var(--ink-2);padding:0 6px}
 
 /* Masthead at tablet width: six destinations plus Register, account and language will not share one row, so the tabs take a row of their own. */
 @media (min-width:768px) and (max-width:1023px){

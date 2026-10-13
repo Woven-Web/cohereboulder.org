@@ -7,7 +7,7 @@ import { EventRow } from "@/components/almanac/EventRow";
 import { fill, useMedia } from "@/components/almanac/format";
 import { CalendarWeek } from "@/components/almanac/CalendarWeek";
 import { seatOf } from "@/components/almanac/seat";
-import { formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
+import { FESTIVAL_DATES, formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
 import { currentDenverDate } from "@/lib/companion";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { LumaCalendar } from "@/components/LumaCalendar";
@@ -27,6 +27,14 @@ import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
 import { useMyEvents, removeMyEvent } from "@/lib/myEvents";
 import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
+
+const VIEW_KEY = "cohere.calendar.view";
+function readView(): "day" | "week" | null {
+  try {
+    const v = window.localStorage.getItem(VIEW_KEY);
+    return v === "day" || v === "week" ? v : null;
+  } catch { return null; }
+}
 
 export default function CalendarPage() {
   const { language } = useLanguage();
@@ -54,8 +62,14 @@ export default function CalendarPage() {
   const [allDates, setAllDates] = useState(false);
   const [myPick, setMyPick] = useState<string | null>(null);
   const [showMonth, setShowMonth] = useState(false);
-  const [view, setView] = useState<"day" | "week">("day");
+  // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.
+  const [chosenView, setChosenView] = useState<"day" | "week" | null>(readView);
   const xl = useMedia("(min-width: 1024px)");
+  const view: "day" | "week" = chosenView ?? (xl ? "week" : "day");
+  function setView(next: "day" | "week") {
+    setChosenView(next);
+    try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }
+  }
   const hasMine = mine.items.length > 0;
   // My events is the default view whenever there is anything in it; a day
   // chosen from Today's trail means "show me that day" instead.
@@ -78,7 +92,7 @@ export default function CalendarPage() {
     .map((i) => ({ event: i.event, seat: seatOf(i) })), [mine.items]);
 
   function pickDay(date: string) {
-    if (showingMine) {
+    if (showingMine && !weekMode) {
       if (counts[date]) {
         setMyPick(date);
         window.requestAnimationFrame(() => document.getElementById(`g-${date}`)?.scrollIntoView({ block: "start" }));
@@ -100,6 +114,9 @@ export default function CalendarPage() {
   }
 
   const allEvents = data?.events ?? [];
+  const weekMode = xl && view === "week";
+  // The week needs a day to anchor on: the chosen one, today in the festival, else day one.
+  const weekDay = selectedDay ?? (isFestivalDate(today) ? today : FESTIVAL_DATES[0]);
   const dayEvents = selectedDay ? allEvents.filter((e) => denverDateKey(e.startsAt) === selectedDay) : allEvents;
   const listed = showingMine ? mine.items.map((i) => i.event) : dayEvents;
   const itemFor = (event: CommunityEvent) => mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did);
@@ -251,14 +268,21 @@ export default function CalendarPage() {
               </div>}
               <div className="flow2__b">
                 <div className="o3">
-                  {xl && !showingMine && selectedDay && (
+                  {xl && (
                     <div className="seg cal-view" role="group" aria-label={tr("look.calView")}>
                       <button type="button" aria-pressed={view === "day"} onClick={() => setView("day")}>{tr("look.calDay")}</button>
                       <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>{tr("look.calWeek")}</button>
                     </div>
                   )}
-                  {xl && !showingMine && selectedDay && view === "week" ? (
-                    <CalendarWeek events={allEvents} day={selectedDay} today={today} onPick={(date) => { setView("day"); pickDay(date); }} />
+                  {weekMode ? (
+                    <CalendarWeek
+                      events={showingMine ? mine.items.map((i) => i.event) : allEvents}
+                      mineKeys={showingMine ? undefined : new Set(mine.items.map((i) => `${i.event.did}/${i.event.rkey}`))}
+                      day={weekDay}
+                      today={today}
+                      onPick={(date) => { setView("day"); pickDay(date); }}
+                      onWeek={(date) => { setAllDates(false); setParams({ day: date }, { replace: true }); }}
+                    />
                   ) : !showingMine && selectedDay ? (
                     <>
                       <div className="agenda-head">
@@ -266,7 +290,7 @@ export default function CalendarPage() {
                         <span className="mono small" style={{ fontSize: ".78em", whiteSpace: "nowrap" }}>{countLabel(dayEvents.length)}</span>
                       </div>
                       {dayEvents.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
-                      {dayEvents.map(row)}
+                      <div className="cal-list">{dayEvents.map(row)}</div>
                       <button type="button" className="link" style={{ marginTop: ".6rem", display: "block" }} onClick={showEveryDate}>{tr("almanac.showEveryDate")}</button>
                     </>
                   ) : (
@@ -276,11 +300,11 @@ export default function CalendarPage() {
                           <h2>{date ? formatDay(date, language, true) : tr("calendar.events.undated")}</h2>
                           <span>{countLabel(list.length)}</span>
                         </div>
-                        {list.map(row)}
+                        <div className="cal-list">{list.map(row)}</div>
                       </section>
                     ))
                   )}
-                  {groups.length === 0 && !selectedDay && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
+                  {!weekMode && groups.length === 0 && !selectedDay && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
                   <button type="button" className="link" style={{ marginTop: ".8rem", display: "block" }} aria-expanded={showMonth} onClick={() => setShowMonth((v) => !v)}>{tr("almanac.monthView")}</button>
                   {showMonth && <div className="mt-3"><CalendarMonthView events={allEvents} /></div>}
                   {data.icsUrl && <div style={{ marginTop: ".6rem" }}><CalendarSubscribe feedUrl={data.icsUrl} /></div>}

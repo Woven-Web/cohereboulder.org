@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { eventPath, fetchCommunityCalendar, formatEventDate, formatEventTimeRange, locationLine } from "@/lib/events";
 import { useLook } from "@/lib/look";
+import { duringGathering } from "@/components/almanac/format";
 
 /** How many cards the homepage teaser shows before pointing to /calendar. */
 const HOME_EVENT_COUNT = 4;
@@ -19,7 +20,9 @@ const HOME_EVENT_COUNT = 4;
  */
 export function UpcomingEventsHome() {
   const { language } = useLanguage();
-  const almanac = useLook() !== "classic";
+  const look = useLook();
+  const almanac = look !== "classic";
+  const eco = look === "ecology";
   const tr = (key: string) => getTranslation(key, language);
 
   const { data } = useQuery({
@@ -29,13 +32,17 @@ export function UpcomingEventsHome() {
 
   if (!data || data.source !== "regenos" || data.events.length === 0) return null;
 
-  const upcoming = data.events.slice(0, HOME_EVENT_COUNT);
+  // Under the ecology look this is the "what's on" strip near the top: events that
+  // have not finished, soonest first, so today's come before the rest.
+  const now = Date.now();
+  const unfinished = eco ? data.events.filter((e) => e.status !== "cancelled" && Date.parse(e.endsAt ?? e.startsAt ?? "") >= now) : data.events;
+  const upcoming = (unfinished.length > 0 ? unfinished : data.events).slice(0, HOME_EVENT_COUNT);
 
   if (almanac) {
     return (
-      <section className="band">
-        <h2 className="h2">{tr("home.upcomingEvents.title")}</h2>
-        <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>
+      <section className="band" data-testid="home-events">
+        <h2 className="h2">{eco ? tr(duringGathering() ? "look.home.onToday" : "look.home.comingUp") : tr("home.upcomingEvents.title")}</h2>
+        {!eco && <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>}
         <ul className="upnext">
           {upcoming.map((event) => {
             const where = locationLine(event.location);
