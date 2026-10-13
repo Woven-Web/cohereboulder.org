@@ -348,3 +348,12 @@
 
 /* The fixed "I did it" pill is taller than the plain bar: reserve its full height so it never sits on the practice text. */
 @media (max-width:767px){.alm.eco{--bar-h:88px}.alm.eco .actionbar{padding-top:var(--sp-3)}}
+/* Aaron 10-13: photos read too big on a computer. Cap them on wide screens. */
+@media (min-width:768px){
+  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:min(100%,34rem);margin-inline:auto;display:block;max-height:22rem;object-fit:cover;width:100%}
+  .alm.eco .plate--hero img{max-height:26rem;object-fit:cover}
+  .alm.eco .home__hero>.plate--hero img{aspect-ratio:4/3;max-height:24rem}
+}
+@media (min-width:1280px){
+  .alm.eco .photo,.alm.eco .plate:not(.plate--hero) img,.alm.eco img.photo{max-width:30rem;max-height:20rem}
+}

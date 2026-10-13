@@ -321,12 +321,12 @@ export const ecoCopy: Record<string, Pair> = {
   // --- Eileen's own words, verbatim (10-13). Exempt from the 12-word limit: see ECO_VERBATIM. ---
   "whatIs.p1": [
     "COhere is a 10-day event series designed to bring us into deeper connection to place.",
-    "COhere Boulder aviva la cultura y el compromiso de Boulder conectando residentes, organizaciones, artistas, líderes e innovadores durante un contenedor de 10 días. A través de un calendario curado de eventos alineados con valores y reuniones memorables de apertura y cierre, fortalecemos los lazos comunitarios, destacamos la vitalidad de nuestra ciudad e inspiramos acción hacia un futuro más regenerativo y resiliente.",
-  ], // es: the live whatIs.p1, kept until Eileen OKs a translation
+    "COhere es una serie de eventos de 10 días diseñada para conectarnos más profundamente con el lugar.",
+  ], // es: Uni's translation of Eileen's text (Aaron 10-13), checked by a second model
   "whatIs.p2": [
     "Through storytelling, relationship building, and exploring new aspects of Boulder, we invite participants to find new perspectives and passions. COhere invites curiosity and a sense of re/discovery of how we move through the world.",
-    "Conectando la comunidad local para crear un futuro regenerativo y resiliente.",
-  ], // es: the live hero.description, which this paragraph replaces under the ecology look
+    "A través de las historias, la creación de vínculos y la exploración de nuevos aspectos de Boulder, invitamos a quienes participan a encontrar nuevas perspectivas y pasiones. COhere invita a la curiosidad y a una sensación de re/descubrimiento de cómo nos movemos por el mundo.",
+  ], // es: Uni's translation of Eileen's text (Aaron 10-13), checked by a second model
 };
 
 /** Overrides that are someone's own words, quoted exactly; the test does not hold them to the short-label limit. */

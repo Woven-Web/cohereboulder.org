@@ -15,6 +15,8 @@ import { YourNextStrip, type NextItem } from "./YourNextStrip";
 import { seatOf } from "./seat";
 import { fill } from "./format";
 import readingQuestionsPhoto from "@/assets/photos/reading-questions.webp";
+import hatConversationPhoto from "@/assets/photos/hat-conversation.webp";
+import { isEcoLook } from "@/lib/look";
 
 /**
  * Home, once the app is the point (signed in, or the gathering is on): today's
@@ -46,6 +48,11 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
       {signedIn
         ? <YourNextStrip items={next} total={mine.items.length} today={today} />
         : <RegistrationAction className="btn btn--primary homelive__register" anonymousKey="hero.registerHere" />}
+      {isEcoLook() ? (
+        <figure className="plate plate--hero">
+          <img src={hatConversationPhoto} alt={tr("photos.hatConversation")} width={1600} height={907} />
+        </figure>
+      ) : null}
       <HexTrail variant="fit" today={today} done={practiceDoneDays()} />
       <UpcomingEventsHome />
       <div className={`homelive__cols${member && latest.length > 0 ? "" : " homelive__cols--one"}`}>
