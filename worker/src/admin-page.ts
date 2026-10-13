@@ -335,6 +335,8 @@ export const ADMIN_PAGE = `<!doctype html>
         The members Board lives on regenOS; these are COhere's own moderation tools. Hiding is reversible
         and the author still sees their post, marked. Removing is permanent (only the author can truly delete).
         Both act only on cohereboulder.org: the post still exists on regenOS and can be seen in other apps.
+        Reported event harvests show up here too, marked Harvest. They live in COhere itself, so hiding or removing one
+        takes it off the event page (and its photo with it) and the author still sees it, marked.
       </p>
       <div class="toolbar">
         <label style="display:flex;align-items:center;gap:0.5rem">
@@ -1442,10 +1444,13 @@ export const ADMIN_PAGE = `<!doctype html>
     return parts.length === 2 ? "/board/" + encodeURIComponent(parts[0]) + "/" + encodeURIComponent(parts[1]) : "/board";
   }
 
-  function boardPostCell(uri, excerpt, authorDid) {
-    return '<div>' + (excerpt ? esc(excerpt) + ' <span class="muted" style="font-size:0.8em">(supplied by the reporter, not verified)</span>' : '<span class="muted">(text not captured)</span>') + "</div>" +
+  function boardPostCell(uri, excerpt, authorDid, link) {
+    var harvest = uri.indexOf("cohere:harvest/") === 0;
+    return '<div>' + (harvest ? '<span class="pill">Harvest</span> ' : "") + (excerpt ? esc(excerpt) + (harvest ? "" : ' <span class="muted" style="font-size:0.8em">(supplied by the reporter, not verified)</span>') : '<span class="muted">(text not captured)</span>') + "</div>" +
       '<div class="muted" style="font-size:0.8em">' + esc(authorDid || "") +
-      ' · <a href="' + boardLink(uri) + '" target="_blank" rel="noopener">open on the Board</a></div>';
+      (harvest
+        ? (link ? ' · <a href="' + esc(link) + '" target="_blank" rel="noopener">open the event page</a>' : " · deleted")
+        : ' · <a href="' + boardLink(uri) + '" target="_blank" rel="noopener">open on the Board</a>') + "</div>";
   }
 
   function loadBoard() {
@@ -1467,7 +1472,7 @@ export const ADMIN_PAGE = `<!doctype html>
     el("boardreports").innerHTML = boardData.reports.length ? boardData.reports.map(function (r) {
       var why = r.reasons.map(function (x) { return x.replace("_", " "); }).join(", ");
       var notes = r.notes.map(function (n) { return '<div class="muted">\u201c' + esc(n) + '\u201d</div>'; }).join("");
-      return "<tr><td>" + boardPostCell(r.postUri, r.excerpt, r.authorDid) + "</td>" +
+      return "<tr><td>" + boardPostCell(r.postUri, r.excerpt, r.authorDid, r.link) + "</td>" +
         "<td>" + r.reporters + (r.reporters === 1 ? " report" : " reports") + "<br>" + esc(why) + notes +
         '<div class="muted">' + esc(new Date(r.firstAt).toLocaleString()) + "</div></td>" +
         '<td style="min-width:11rem">' +
@@ -1479,13 +1484,13 @@ export const ADMIN_PAGE = `<!doctype html>
     el("boardpendingtitle").style.display = showPending ? "" : "none";
     el("boardpendingwrap").style.display = showPending ? "" : "none";
     el("boardpending").innerHTML = boardData.pending.length ? boardData.pending.map(function (p) {
-      return "<tr><td>" + boardPostCell(p.uri, p.excerpt, p.author_did) + "</td>" +
+      return "<tr><td>" + boardPostCell(p.uri, p.excerpt, p.author_did, p.link) + "</td>" +
         "<td>" + esc(new Date(p.created_at).toLocaleString()) + "</td>" +
         '<td style="min-width:9rem"><button class="btn primary" data-board="approve" data-uri="' + esc(p.uri) + '">Approve</button> ' +
         '<button class="btn" data-board="remove" data-uri="' + esc(p.uri) + '">Remove</button></td></tr>';
     }).join("") : '<tr><td colspan="3" class="muted">Nothing is waiting.</td></tr>';
     el("boardhidden").innerHTML = boardData.hidden.length ? boardData.hidden.map(function (h) {
-      return "<tr><td>" + boardPostCell(h.uri, h.excerpt, h.author_did) + "</td>" +
+      return "<tr><td>" + boardPostCell(h.uri, h.excerpt, h.author_did, h.link) + "</td>" +
         "<td><span class='pill'>" + esc(h.state) + "</span>" +
         (h.note ? '<div class="muted">' + esc(h.note) + "</div>" : "") +
         '<div class="muted">' + esc(h.actor || "") + " · " + esc(new Date(h.updated_at).toLocaleString()) + "</div></td>" +

@@ -6,7 +6,7 @@ export function installPlatform(userAgent: string, standalone: boolean, prompt: 
     return prompt ? 'prompt' : 'manual';
 }
 export function safeNotificationPath(path: unknown): string {
-    return typeof path === 'string' && (/^(\/today|\/calendar|\/quests|\/more)$/.test(path) || /^\/events\/[a-zA-Z0-9:%_-]+\/[a-zA-Z0-9_-]+$/.test(path)) ? path : '/today';
+    return typeof path === 'string' && (/^(\/today|\/calendar|\/quests|\/more|\/tomorrow|\/more\/notifications)$/.test(path) || /^\/events\/[a-zA-Z0-9:%_-]+\/[a-zA-Z0-9_-]+$/.test(path)) ? path : '/today';
 }
 export function eventsForDays<T extends {
     startsAt: string | null;

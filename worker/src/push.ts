@@ -57,7 +57,17 @@ export async function vapid(endpoint: string, publicKey: string, privateKey: str
 }
 
 /** Budget the serialized UTF-8 message, including JSON escapes and metadata. */
-export function serializePush(payload: {title:string;body:string;url:string;tag:string}): string {
+export interface PushPayload {
+    title: string;
+    body: string;
+    url: string;
+    tag: string;
+    /** The device this is for, so the service worker can say it was shown. */
+    device?: string;
+    /** Android action buttons; the service worker only honours 'open' and 'settings'. */
+    actions?: { action: 'open' | 'settings'; title: string }[];
+}
+export function serializePush(payload: PushPayload): string {
     const copy={...payload};
     let result=JSON.stringify(copy);
     while (new TextEncoder().encode(result).length > 3992) {

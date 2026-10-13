@@ -6,6 +6,7 @@ import { EcoRidges } from "./EcoRidges";
 import { InstallSheet } from "./InstallSheet";
 import { lookClass, useLook } from "@/lib/look";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
+import { useDeviceSync } from "@/hooks/useDeviceSync";
 
 /**
  * The app frame: masthead (wordmark, tabs, language), page, and the overlays
@@ -21,6 +22,7 @@ export function AlmanacShell({ children, after, site = false, ridges = true }: {
   const [hasBar, setHasBar] = useState(false);
   const timer = useRef<number>();
   const { subscribed } = useReminders();
+  useDeviceSync();
 
   useEffect(() => { setContainer(rootRef.current); probeSubscription(); }, []);
   useEffect(() => () => window.clearTimeout(timer.current), []);

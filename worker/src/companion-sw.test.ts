@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { safeNotificationPath } from '../../src/lib/companion';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { ADMIN_PAGE } from './admin-page';
@@ -52,4 +53,32 @@ it('generated admin script parses after bilingual companion interpolation', () =
     // HTML has a single script block; syntax checking is hermetic and executes no requests.
     const script = ADMIN_PAGE.split('<script>')[1].split('</script>')[0];
     expect(() => new Function(script)).not.toThrow();
+});
+it('notification pushes carry safe action buttons and report being shown; settings action opens settings', async () => {
+    const w = worker();
+    const device = '00000000-0000-4000-8000-000000000001';
+    const fetchMock = vi.fn(async () => new Response('{}'));
+    const handlers: Record<string, (event: Record<string, unknown>) => void> = {};
+    const showNotification = vi.fn(async () => { });
+    const self = { location: { origin: 'https://cohereboulder.org' }, addEventListener: (n: string, fn: (e: Record<string, unknown>) => void) => handlers[n] = fn, registration: { showNotification }, clients: { matchAll: async () => [], openWindow: vi.fn(async () => { }) } };
+    runInNewContext(readFileSync('public/sw.js', 'utf8'), { self, caches: {}, fetch: fetchMock, URL, JSON });
+    let task: Promise<void> | undefined;
+    handlers.push({ data: { json: () => ({ title: 'Day 3', body: 'b', url: '/tomorrow', tag: 't', device, actions: [{ action: 'open', title: 'Open Today' }, { action: 'evil', title: 'x' }, { action: 'settings', title: 'Settings' }] }) }, waitUntil: (p: Promise<void>) => task = p });
+    await task;
+    const options = showNotification.mock.calls[0][1] as { actions: unknown[]; data: unknown };
+    expect(options.actions).toEqual([{ action: 'open', title: 'Open Today' }, { action: 'settings', title: 'Settings' }]);
+    expect(options.data).toEqual({ url: '/tomorrow', device });
+    expect(fetchMock).toHaveBeenCalledWith('/api/notify/shown', expect.objectContaining({ method: 'POST', body: JSON.stringify({ device_id: device }) }));
+    // a forged device id is neither echoed nor reported
+    handlers.push({ data: { json: () => ({ title: 'x', body: '', url: '/today', device: 'not-a-uuid' }) }, waitUntil: (p: Promise<void>) => task = p });
+    await task;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    handlers.notificationclick({ action: 'settings', notification: { close: vi.fn(), data: { url: '/today' } }, waitUntil: (p: Promise<void>) => task = p });
+    await task;
+    expect(self.clients.openWindow).toHaveBeenCalledWith('/more/notifications');
+    void w;
+});
+it('only known notification destinations are allowed', () => {
+    for (const path of ['/tomorrow', '/more/notifications']) expect(safeNotificationPath(path)).toBe(path);
+    expect(safeNotificationPath('/more/notifications/x')).toBe('/today');
 });

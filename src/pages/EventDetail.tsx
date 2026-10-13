@@ -23,6 +23,7 @@ import {
   locationLine,
 } from "@/lib/events";
 import { AddToCalendar } from "@/components/AddToCalendar";
+import { HarvestSection } from "@/components/harvest/HarvestSection";
 // The event API doesn't carry a per-event image today, so a detail page
 // gets a tasteful COhere still as a banner instead of a blank header — real
 // footage, never AI/stock, per Eileen's rule. Picked deterministically per
@@ -142,6 +143,7 @@ export default function EventDetail() {
                     </ul>
                   </div>
                 )}
+                <HarvestSection event={event} />
                 <p className="note">{tr("almanac.sourceNote")}</p>
               </div>
             </div>

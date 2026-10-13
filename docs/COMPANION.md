@@ -94,11 +94,10 @@ applies: an earlier `COMPANION_START_DATE` is ignored unless the local-test
 capability above is active. Configure valid `YYYY-MM-DD` dates with start on or before end. Invalid dates
 stop companion work; companion failures are isolated from newsletter and RSVP jobs. Daily slots are:
 
-| UTC cron | During Boulder MDT | Content |
-| --- | --- | --- |
-| `0 12 * * *` | 6 AM | practice title/body |
-| `0 15 * * *` | 9 AM | public events today and tomorrow |
-| `0 21 * * *` | 3 PM | daily question |
+The scheduled pushes are now the **notifications** (see CLAUDE.md, "Notifications and
+Harvest"): one morning note at 6 AM Boulder, run from the minute cron by reading the Boulder
+clock (so it is DST-safe), replaces the old 6 AM / 9 AM / 3 PM slots. Anonymous installs still
+get the morning note; the other two notes need an account.
 
 Dates use `America/Denver`; UTC triggers remain fixed if a future gathering is
 scheduled during standard time. Existing 15:00 RSVP reminders and the minute
@@ -238,7 +237,7 @@ and check an actual installed iPhone and Android device before announcing
 
 ## Launch controls and content import
 
-**Pause flag.** `COMPANION_PUSH_PAUSED` (`"true"` in `wrangler.jsonc` and
+**Pause flags.** `NOTIFY_PAUSED` (must be exactly `"false"` to run any sender, push or email) and `COMPANION_PUSH_PAUSED` (`"true"` in `wrangler.jsonc` and
 `wrangler.staging.jsonc`) stops every scheduled push, the same way
 `RSVP_REMINDERS_PAUSED` does for reminders. Aaron sets it to `"false"` at
 launch. Retention cleanup still runs while paused. Independently of the flag,

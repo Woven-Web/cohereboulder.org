@@ -21,6 +21,7 @@ import { useShell } from '@/components/almanac/shell-context';
 import { HexTrail } from '@/components/almanac/HexTrail';
 import { Folio, Ridgeline } from '@/components/almanac/Folio';
 import { PracticeBlock } from '@/components/almanac/PracticeBlock';
+import { HarvestCard } from '@/components/harvest/HarvestCard';
 import { ObservedRow, ObservedStamp } from '@/components/almanac/ObservedStamp';
 import { QuestionBlock } from '@/components/almanac/QuestionBlock';
 import { YourNextStrip, type NextItem } from '@/components/almanac/YourNextStrip';
@@ -235,6 +236,7 @@ function TodayView() {
             {trail}
             <p className="lede" style={{ marginTop: '1rem' }}>{tr('almanac.over')}</p>
             {status}
+            <HarvestCard />
             <div className="flow2"><div className="flow2__b"><div className="o2">{next}</div></div></div>
         </main>;
     }
@@ -247,6 +249,7 @@ function TodayView() {
             <span className="mono" style={{ fontSize: '.78em' }}>{formatMinutes(minutes, language)} · Boulder</span>
         </p>
         {status}
+        <HarvestCard />
         <div className="flow2">
             <div className="flow2__a">
                 <div className="o1">
@@ -379,6 +382,9 @@ function MoreView() {
                 {supported && data?.pushKey && reminders.permission !== 'denied' && !ios && !reminders.subscribed && <button type="button" className="btn btn--primary" onClick={() => void enable()} disabled={reminders.busy}>{tr('companion.enable')}</button>}
                 {(reminders.subscribed || localGet('cohere-push-off') !== 'true') && <button type="button" className="btn btn--line" onClick={() => void disableReminders()} disabled={reminders.busy}>{tr('companion.disable')}</button>}
             </div>
+            <Link className="list-link" to="/more/notifications" data-testid="notify-settings-link" style={{ marginTop: '.8rem' }}>
+                <span>{tr('notify.settingsLink')}</span><span aria-hidden="true">→</span>
+            </Link>
         </section>
         <section style={{ marginTop: '1.4rem' }}>
             <p className="small">{tr('companion.privacy')}</p>

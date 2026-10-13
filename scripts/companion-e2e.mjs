@@ -26,19 +26,24 @@ const create=await api('/api/admin/events',{name:'Local tomorrow gathering',star
 assert.equal(create.status,200);
 const createdEvent=await create.json();
 const eventPath='/events/'+encodeURIComponent(createdEvent.did)+'/'+encodeURIComponent(createdEvent.rkey);
-// Exercise all three slots at configured local dates, concurrently and repeatedly.
-for(const [hour,slot] of [[12,'practice'],[15,'events'],[21,'question']]){
- const timestamp=Date.parse(date+`T${hour}:00:00Z`);
- const url=base+'/cdn-cgi/local/scheduled?cron='+encodeURIComponent(`0 ${hour} * * *`)+'&time='+timestamp;
- const responses=await Promise.all([fetch(url),fetch(url)]);for(const r of responses)assert.equal(r.status,200);
- await fetch(url);
+// The morning note is the only scheduled push now: the practice with its question inside it, once, at 6 AM Boulder.
+// (The old 6/9/3 slots are gone; the minute cron drives it, so fire that, concurrently and repeatedly.)
+const boulder=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const sixAm=[11,12,13,14].map(h=>Date.parse(date+`T${String(h).padStart(2,'0')}:00:00Z`)).find(t=>boulder.format(new Date(t)).replace(',','')===`${date} 06:00`);
+assert.ok(sixAm,'could not place 6 AM in Denver');
+const url=base+'/cdn-cgi/local/scheduled?cron='+encodeURIComponent('* * * * *')+'&time='+sixAm;
+const responses=await Promise.all([fetch(url),fetch(url)]);for(const r of responses)assert.equal(r.status,200);
+await fetch(url);
+{
  const {messages,errors}=await (await fetch(pushOrigin+'/messages')).json();assert.deepEqual(errors,[]);
- const matching=messages.filter(m=>m.tag===date+'-'+slot);
- assert.equal(matching.length,1,slot);assert.equal(matching[0].url,'/today');
- assert.equal(matching[0].title,slot==='practice'?'Local daily practice':slot==='question'?'Local question?':'Events today and tomorrow');
- assert.equal(matching[0].body,slot==='practice'?'A local practice only':slot==='question'?'':'Local tomorrow gathering');
+ const matching=messages.filter(m=>m.tag===date+'-morning');
+ assert.equal(matching.length,1,'one morning note');assert.equal(messages.length,1,'and nothing else');
+ assert.equal(matching[0].url,'/today');
+ assert.match(matching[0].title,/ · Local daily practice$/);
+ assert.ok(matching[0].body.startsWith('A local practice only Then ask: Local question?'),matching[0].body);
+ assert.equal(matching[0].device,device);
 }
-process.stdout.write('PASS companion: three encrypted slots, overlap claims and local event payloads\n');
+process.stdout.write('PASS companion: one encrypted morning note, overlap claims and its payload\n');
 // Today lists what is still ahead today: an event at 11:30 PM Denver, made after the push payloads were asserted.
 const nextDay=tomorrow.toISOString().slice(0,10);
 const denverClock=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});

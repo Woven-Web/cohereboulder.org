@@ -24,9 +24,15 @@ import type { EventsEnv } from "./events";
 import { handleEventDetail } from "./events";
 import { isPlaceholder } from "./event-completeness";
 import { icsEscape, icsJoin, icsTime } from "../../src/lib/icsCore";
+import { signLink } from "./notify-core";
+import { optinBlock } from "./notify-messages";
+import { linkSecret } from "./notify-send";
 
 export interface RsvpEnv extends AuthEnv, EventsEnv {
   cohere: D1Database;
+  /** Signs the one-tap "send me the evening and harvest notes" link (worker/src/notify.ts). */
+  NOTIFY_LINK_SECRET?: string;
+  VAPID_PRIVATE_KEY?: string;
   RSVP_REMINDERS_PAUSED?: string;
 }
 
@@ -318,6 +324,8 @@ export function confirmationEmail(
   row: Pick<RsvpRow, "name" | "cancel_token">,
   language: Lang,
   base: string,
+  /** The one-tap ask for the 8 PM and harvest notes; omitted for someone who already said yes. */
+  optin?: { html: string; text: string },
 ): MailMessage {
   const c = COPY[language];
   const link = `${base}/events/${event.did}/${event.rkey}`;
@@ -334,6 +342,7 @@ export function confirmationEmail(
       (gcal ? ` · <a href="${escapeHtml(gcal)}" ${A}>${escapeHtml(c.addCal)}</a>` : "") +
       `</p>` +
       (ics ? `<p ${P}>${escapeHtml(c.icsNote)}</p>` : "") +
+      (optin ? optin.html : "") +
       `<p ${P}><a href="${escapeHtml(cancel)}" ${A}>${escapeHtml(c.cancel)}</a></p>`,
     escapeHtml(c.footer),
   );
@@ -347,6 +356,7 @@ export function confirmationEmail(
     `${c.viewEvent}: ${link}`,
     ...(gcal ? [`${c.addCal}: ${gcal}`] : []),
     "",
+    ...(optin ? [optin.text, ""] : []),
     `${c.cancel}: ${cancel}`,
     "",
     c.footer,
@@ -399,6 +409,19 @@ export function reminderEmail(
     text: [c.reminderLead, "", ...blocks.map((b) => b.text + "\n"), c.reminderFooter].join("\n"),
     headers: unsubscribeHeaders(all),
   };
+}
+
+/** The one-tap ask for the evening and harvest notes, unless this address already said yes (or links can't be signed here). */
+async function optinFor(env: RsvpEnv, email: string, language: Lang, base: string): Promise<{ html: string; text: string } | undefined> {
+  const secret = linkSecret(env);
+  if (!secret) return undefined;
+  try {
+    const said = await env.cohere.prepare("SELECT 1 AS yes FROM notify_prefs WHERE person_key = ?1 AND email_optin_at IS NOT NULL").bind(`mailto:${email}`).first();
+    if (said) return undefined;
+  } catch {
+    return undefined; // before migration 0012 there is no table, and so no ask
+  }
+  return optinBlock(language, `${base}/n/${await signLink(secret, { p: `mailto:${email}`, k: "optin" }, new Date())}`);
 }
 
 // ------------------------------------------------------------ POST /api/rsvp
@@ -505,7 +528,8 @@ export async function handleCreateRsvp(
       .first<{ name: string | null; language: string; cancel_token: string }>();
     if (existing) {
       try {
-        await send(env, email, confirmationEmail(event, existing, existing.language === "es" ? "es" : "en", env.PUBLIC_BASE_URL || url.origin));
+        const base = env.PUBLIC_BASE_URL || url.origin, existingLang = existing.language === "es" ? "es" : "en";
+        await send(env, email, confirmationEmail(event, existing, existingLang, base, await optinFor(env, email, existingLang, base)));
       } catch (error) {
         console.error("rsvp confirmation resend failed:", error instanceof Error ? error.message : error);
       }
@@ -514,7 +538,8 @@ export async function handleCreateRsvp(
   }
 
   try {
-    await send(env, email, confirmationEmail(event, row, language, env.PUBLIC_BASE_URL || url.origin));
+    const base = env.PUBLIC_BASE_URL || url.origin;
+    await send(env, email, confirmationEmail(event, row, language, base, await optinFor(env, email, language, base)));
   } catch (error) {
     // The RSVP stands either way; the reminder carries the cancel link too.
     console.error("rsvp confirmation email failed:", error instanceof Error ? error.message : error);

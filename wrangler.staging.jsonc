@@ -33,6 +33,10 @@
     // "true" stops every scheduled companion push (worker/src/companion.ts).
     // Aaron flips it to "false" at launch.
     "COMPANION_PUSH_PAUSED": "true",
+    // Staging has no cron, no mail binding and no VAPID keys, so nothing can go
+    // out whatever this says; "false" only lets the settings screens behave as
+    // they will in production. Emails would be logged, never sent.
+    "NOTIFY_PAUSED": "false",
     "PUBLIC_BASE_URL": "https://cohere-signup-staging.unforced.workers.dev",
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",
