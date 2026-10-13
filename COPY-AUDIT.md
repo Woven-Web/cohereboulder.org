@@ -172,3 +172,13 @@ the new Spanish in the app, it has not had a native-speaker pass.
 
 Decision for Eileen: the Home body (What is COhere?, Choose Your Own Adventure, The Spirit of COhere, the map and
 Join the Weaving) is all existing live text. I left it, since cutting it is a design call rather than a copy-pass one.
+
+### Added after review (Uni, 10-13)
+| # | Screen | English | Español |
+|---|---|---|---|
+| 22 | Email-link opt-in page | You can turn them off from any email. | Puedes desactivarlos desde cualquier correo. |
+| 23 | Harvest photo | Photos are visible to members. | Las fotos son visibles para miembros. |
+| 24 | Board, write a post | Posts can’t be edited. | Las publicaciones no se pueden editar. |
+| 25 | Short facts, various screens | Organizers can read replies. · Only removes it here. · Opens after the event. · Check the highlighted fields. · Write a few words. · Use {email} for notifications? · Email isn't set up. · Blocked in phone settings. · Photo not usable. | (es alongside each in translations.eco.ts) |
+| 26 | Profile + People | Bringing · Offering · Curious about · Search in · {n} of 120 | Traigo · Ofrezco · Me interesa · Buscar en · {n} de 120 |
+| 27 | Notification messages (all looks) | The 3 notes were shortened in every look, not only ecology (they ship with #61, paused). | — |

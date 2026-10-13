@@ -59,7 +59,7 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
           {/* Eileen's first big photo, under the registration card (beside it on wide screens). Not lazy: it is the hero. */}
           {eco && (
             <figure className="plate plate--hero">
-              <img src={hatConversationPhoto} alt={tr("photos.hatConversation")} width={1600} height={907} fetchPriority="high" />
+              <img src={hatConversationPhoto} alt={tr("photos.hatConversation")} width={1600} height={907} {...({ fetchpriority: "high" } as Record<string, string>)} />
             </figure>
           )}
 

@@ -340,5 +340,5 @@
 
 
 /* ---------- Copy pass: a string cut to "" collapses the block it sat in ---------- */
-.alm.eco :is(p,li,div,span,h2,h3,small,figcaption,blockquote,dd,dt):empty{display:none}
+.alm.eco :is(p,li,div,span,h2,h3,small,figcaption,blockquote,dd,dt):not([class*="mark"]):not([class*="dot"]):not([class*="line"]):not([class*="grab"]):not([class*="sun"]):not(.box):not([aria-hidden="true"]):not([role]):empty{display:none}
 .alm.eco ul:not(:has(> li:not(:empty))){display:none}
