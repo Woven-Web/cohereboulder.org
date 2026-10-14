@@ -50,7 +50,7 @@ export function UpcomingEventsHome() {
               <li key={`${event.did}/${event.rkey}`} className="upnext__item">
                 <p className="upnext__when mono">{[formatEventDate(event.startsAt, language), formatEventTimeRange(event.startsAt, event.endsAt, language)].filter(Boolean).join(" · ")}</p>
                 <h3 className="ev__title"><Link to={eventPath(event)}>{event.name}</Link></h3>
-                {where && <p className="ev__meta">{where}</p>}
+                {where && !eco && <p className="ev__meta">{where}</p>}
               </li>
             );
           })}
