@@ -27,6 +27,7 @@
 
 /* ---------- Tokens ---------- */
 .alm.eco{
+  --eco-paper-hsl:43 38% 89%; --eco-sky-hsl:46 39% 94%; --eco-rule-hsl:41 29% 77%; --eco-mist-hsl:135 7% 56%; --eco-night-hsl:135 19% 18%;
   --forest:#1e463b; --ochre:#9a6f20; --teal:#35625f; --rust:#b2552c;
   --cream:#f3ecdc; --cream-light:#f6f2e6; --cream-deep:#ebe3ce; --cardc:#fdfaf3;
   --thread-sage:#8c9888; --thread-ochre:#c4b08c; --thread-rust:#c8a48a;
@@ -353,7 +354,7 @@
 .alm .week__head em{margin-left:auto;font-style:normal;font-size:.7rem;color:var(--ink-2)}
 .alm .week__col[data-today] .week__head{border-bottom-color:var(--deep);color:var(--deep)}
 .alm .week__col[data-today]{background:hsl(var(--eco-rule-hsl)/.18);border-radius:10px}
-.alm .week__ev{display:block;padding:3px 6px;min-height:40px;background:var(--cardc);border:1px solid hsl(var(--eco-rule-hsl));border-left:3px solid var(--water);border-radius:8px;text-decoration:none;color:inherit}
+.alm .week__ev{display:block;padding:3px 6px;min-height:40px;background:var(--cardc,#fff);border:1px solid hsl(var(--eco-rule-hsl));border-left:3px solid var(--water);border-radius:8px;text-decoration:none;color:inherit}
 .alm .week__ev[data-mine]{border-left-color:var(--deep);background:hsl(var(--eco-rule-hsl)/.12)}
 .alm .week__ev:hover,.alm .week__ev:focus-visible{border-color:var(--deep)}
 .alm .week__ev .mono{display:block;font-size:.66rem;line-height:1.25;color:var(--deep);white-space:nowrap}
