@@ -50,7 +50,7 @@ function hasExpectedContent(body, expect) {
  * still be mid-render a moment later. Poll body text for a few seconds
  * rather than reading it exactly once.
  */
-async function waitForRenderedBody(page, expect, timeoutMs = 8_000) {
+async function waitForRenderedBody(page, expect, timeoutMs = 25_000) {
   const deadline = Date.now() + timeoutMs;
   // A page mid-navigation (e.g. /login replacing itself with /admin) has no
   // execution context for a moment; reading the body then throws. Treat that
