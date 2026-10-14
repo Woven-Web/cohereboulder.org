@@ -24,7 +24,7 @@ export function resolveFlag<T extends string>(search: string, stored: string | n
 }
 
 function read(key: string): string | null {
-  try { return typeof window === "undefined" ? null : window.sessionStorage.getItem(key); } catch { return null; }
+  try { return typeof window === "undefined" ? null : (window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key)); } catch { return null; }
 }
 
 function useFlag<T extends string>(key: string, param: string, allowed: readonly T[], fallback: T): T {
@@ -34,7 +34,7 @@ function useFlag<T extends string>(key: string, param: string, allowed: readonly
   const asked = new URLSearchParams(search).get(param);
   useEffect(() => {
     if (asked && allowed.includes(asked as T)) {
-      try { window.sessionStorage.setItem(key, asked); } catch { /* private mode: the query still works */ }
+      try { window.localStorage.setItem(key, asked); } catch { /* private mode: the query still works */ }
     }
   }, [asked, key, allowed]);
   return value;
