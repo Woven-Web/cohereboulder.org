@@ -2,13 +2,13 @@
  "id":"/today",
  "name":"COhere Boulder",
  "short_name":"COhere",
- "description":"The daily companion for COhere Boulder, October 15–25, 2026: one practice and one question a day, your events, and the community calendar. No account needed.",
+ "description":"COhere Boulder, October 15–25, 2026.",
  "lang":"en",
  "start_url":"/today",
  "scope":"/",
  "display":"standalone",
- "theme_color":"#F5F0E3",
- "background_color":"#F5F0E3",
+ "theme_color":"#F3ECDC",
+ "background_color":"#F3ECDC",
  "categories":["lifestyle","social","events"],
  "icons":[
   {"src":"/cohere-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
@@ -16,8 +16,8 @@
   {"src":"/cohere-icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
  ],
  "screenshots":[
-  {"src":"/screenshots/today-narrow.png","sizes":"1080x2340","type":"image/png","form_factor":"narrow","label":"Today: the day’s practice, with “I did it” a thumb away"},
-  {"src":"/screenshots/calendar-narrow.png","sizes":"1080x2340","type":"image/png","form_factor":"narrow","label":"Calendar: pick a day on the hex trail, see your events"},
-  {"src":"/screenshots/today-wide.png","sizes":"1920x1080","type":"image/png","form_factor":"wide","label":"Today on a tablet or laptop, two columns"}
+  {"src":"/screenshots/today-narrow.png","sizes":"1080x2340","type":"image/png","form_factor":"narrow","label":"Today"},
+  {"src":"/screenshots/calendar-narrow.png","sizes":"1080x2340","type":"image/png","form_factor":"narrow","label":"Calendar"},
+  {"src":"/screenshots/today-wide.png","sizes":"1920x1080","type":"image/png","form_factor":"wide","label":"Today"}
  ]
 }

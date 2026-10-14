@@ -28,8 +28,8 @@ it('manifest, brand icons, Apple metadata and private-safe service worker exist'
     expect(manifest.orientation).toBeUndefined();
     expect(manifest.id).toBe('/today');
     expect(manifest.description.length).toBeGreaterThan(20);
-    expect(manifest.theme_color).toBe('#F5F0E3');
-    expect(readFileSync('index.html', 'utf8')).toContain('content="#F5F0E3"');
+    expect(manifest.theme_color).toBe('#F3ECDC');
+    expect(readFileSync('index.html', 'utf8')).toContain('content="#F3ECDC"');
     expect((manifest.screenshots as { form_factor: string; src: string }[]).map(s => s.form_factor).sort()).toEqual(['narrow', 'narrow', 'wide']);
     for (const shot of manifest.screenshots as { src: string }[]) expect(existsSync('public' + shot.src)).toBe(true);
     expect(readFileSync('index.html', 'utf8')).toContain('apple-touch-icon');
