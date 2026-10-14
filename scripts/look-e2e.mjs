@@ -34,7 +34,7 @@ const browser = await chromium.launch();
 const SIZES = [[360, 780], [390, 844], [1280, 800]];
 
 async function session({ width, height, when }) {
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, serviceWorkers: "block" });
   if (when) await context.clock.setFixedTime(new Date(when));
   // Embedded films and the PDF viewer are not under test.
   await context.route("https://www.youtube.com/**", (r) => r.fulfill({ contentType: "text/html", body: "" }));
