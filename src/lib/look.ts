@@ -14,6 +14,8 @@ export type Look = (typeof LOOKS)[number];
 export type TrailVariant = (typeof TRAILS)[number];
 
 const LOOK_KEY = "cohere-look";
+/** Staging shows the ecology look by default (Aaron, 10-14); production stays classic. ?look=classic still works. */
+const DEFAULT_LOOK: Look = typeof window !== "undefined" && window.location.hostname.startsWith("cohere-signup-staging.") ? "ecology" : "classic";
 const TRAIL_KEY = "cohere-trail";
 
 /** The query value if it is one of `allowed`, else the stored value, else `fallback`. */
@@ -40,7 +42,7 @@ function useFlag<T extends string>(key: string, param: string, allowed: readonly
   return value;
 }
 
-export const useLook = (): Look => useFlag(LOOK_KEY, "look", LOOKS, "classic");
+export const useLook = (): Look => useFlag(LOOK_KEY, "look", LOOKS, DEFAULT_LOOK);
 export const useTrailVariant = (): TrailVariant => useFlag(TRAIL_KEY, "trail", TRAILS, "zigzag");
 
 /** The class the Almanac root carries for this look: "" for classic and almanac, "eco" for ecology. */
@@ -48,4 +50,4 @@ export const lookClass = (look: Look): string => (look === "ecology" ? " eco" : 
 
 /** Is the ecology look on right now? For code with no hook: the query value, else the stored one. */
 export const isEcoLook = (): boolean =>
-  typeof window !== "undefined" && resolveFlag(window.location.search, read(LOOK_KEY), "look", LOOKS, "classic") === "ecology";
+  typeof window !== "undefined" && resolveFlag(window.location.search, read(LOOK_KEY), "look", LOOKS, DEFAULT_LOOK) === "ecology";
