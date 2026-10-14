@@ -14,8 +14,9 @@ export type Look = (typeof LOOKS)[number];
 export type TrailVariant = (typeof TRAILS)[number];
 
 const LOOK_KEY = "cohere-look";
-/** Staging shows the ecology look by default (Aaron, 10-14); production stays classic. ?look=classic still works. */
-const DEFAULT_LOOK: Look = typeof window !== "undefined" && window.location.hostname.startsWith("cohere-signup-staging.") ? "ecology" : "classic";
+/** The ecology look is the default everywhere (Aaron, 10-14). Local test servers (localhost / 127.0.0.1)
+ *  keep classic so the hermetic e2e lanes still exercise it; ?look=classic still works anywhere. */
+const DEFAULT_LOOK: Look = typeof window !== "undefined" && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) ? "ecology" : "classic";
 const TRAIL_KEY = "cohere-trail";
 
 /** The query value if it is one of `allowed`, else the stored value, else `fallback`. */

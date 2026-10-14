@@ -100,7 +100,7 @@ for (const { path, expect, finalPath } of PAGES) {
   page.on("pageerror", (error) => consoleErrors.push(String(error)));
 
   try {
-    const response = await page.goto(url, { waitUntil: "networkidle", timeout: 45_000 });
+    const response = await page.goto(url, { waitUntil: "load", timeout: 45_000 });
     const body = await waitForRenderedBody(page, expect);
 
     if (body?.includes("Something went wrong")) {
