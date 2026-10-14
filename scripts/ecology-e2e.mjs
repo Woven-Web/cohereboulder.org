@@ -123,9 +123,9 @@ for (const [w, h] of SIZES) {
     check((await overflow(page)) <= 0, `${label} has no horizontal overflow at ${w} (${await overflow(page)}px)`);
     check(await page.locator(".eco-ridges").count() > 0, `${label} shows the ridges at ${w}`);
     const fam = await page.locator("h1").first().evaluate((el) => getComputedStyle(el).fontFamily);
-    check(/Bricolage/.test(fam), `${label}: the title is in Bricolage Grotesque at ${w}`);
+    check(/Lora/.test(fam), `${label}: the title is in Lora (Benya DS) at ${w}`);
     const body = await page.locator("main p:not(.eyebrow):not(.folio):not(.mono)").first().evaluate((el) => getComputedStyle(el).fontFamily);
-    check(/Figtree/.test(body) || /Newsreader/.test(body), `${label}: body text is Figtree (or the Newsreader heart line) at ${w}`);
+    check(/Poppins/.test(body) || /Lora/.test(body), `${label}: body text is Poppins (or the Lora heart line) at ${w}`);
     // Register is on the first phone screen.
     const reg = page.locator(".mast .mast__register").first();
     const rb = await reg.boundingBox();
@@ -264,7 +264,7 @@ for (const [w, h] of SIZES) {
     await page.locator(".trail__ticks i").first().waitFor({ timeout: 8000 }).catch(() => {});
     check(await page.locator(".trail__ticks i").count() >= 1, `calendar: the RSVP shows a berry dot on its day at ${w}`);
     const dot = await page.locator(".trail__ticks i").first().evaluate((el) => getComputedStyle(el).backgroundColor);
-    check(dot !== "rgba(0, 0, 0, 0)" && dot === await page.evaluate(() => { const d = document.createElement("div"); d.style.color = "hsl(var(--brand-berry))"; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; }), `calendar: the dot is the berry token at ${w}`);
+    check(dot !== "rgba(0, 0, 0, 0)" && dot === await page.evaluate(() => { const d = document.createElement("div"); d.style.color = "#b2552c"; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; }), `calendar: the dot is the berry token at ${w}`);
     const seg = page.getByRole("group").filter({ has: page.getByRole("button", { name: /My events/ }) });
     check(await seg.count() > 0, `calendar: My events / All events is there at ${w}`);
     await page.getByRole("button", { name: /My events/ }).click();

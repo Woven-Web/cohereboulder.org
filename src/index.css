@@ -29,11 +29,11 @@ All colors MUST be HSL.
 
     /* Ecology look (?look=ecology): pale sky and leaf-tinted ground, plus the far
        ridge and night blue the landscape needs. Same palette family as above. */
-    --eco-paper-hsl: 138 28% 96%;
-    --eco-sky-hsl:   180 38% 92%;
-    --eco-rule-hsl:  160 24% 80%;
-    --eco-mist-hsl:  197 42% 74%;
-    --eco-night-hsl: 219 48% 27%;
+    --eco-paper-hsl: 43 38% 89%;   /* cream #f3ecdc */
+    --eco-sky-hsl:   46 39% 94%;   /* cream-light #f6f2e6 */
+    --eco-rule-hsl:  41 29% 77%;   /* a hairline between cream-deep and thread-ochre */
+    --eco-mist-hsl:  135 7% 56%;   /* thread-sage #8c9888 */
+    --eco-night-hsl: 135 19% 18%;  /* ink #243428 */
 
     --background: 140 25% 98%;
     --foreground: 219 35% 16%;

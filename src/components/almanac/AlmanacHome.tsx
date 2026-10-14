@@ -137,7 +137,7 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             <img className="photo" src={singingCirclePhoto} alt="People standing arm in arm, singing together from song sheets" loading="lazy" width={1280} height={720} />
           </div>
           {/* Three depths of involvement — pick the one that fits this year */}
-          <ul className="depths">
+          <ul className="depths ways">
             {["participate", "contribute", "lead"].map((key) => (
               <li key={key}>
                 <h3 className="h3"><Hex />{tr(`chooseAdventure.${key}.title`)}</h3>
