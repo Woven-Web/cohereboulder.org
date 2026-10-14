@@ -53,7 +53,7 @@ setsid node node_modules/wrangler/bin/wrangler.js dev --port "$P_WORKER" --inspe
   --var "REGENOS_BASE_URL:http://127.0.0.1:$P_MOCK" \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
   --var "VAPID_PUBLIC_KEY:$PUBLIC_KEY" --var "VAPID_PRIVATE_KEY:$PRIVATE_KEY" --var VAPID_SUBJECT:mailto:test@example.test \
-  --var COMPANION_PUSH_PAUSED:false --var NOTIFY_PAUSED:false \
+  --var COMPANION_PUSH_PAUSED:false --var NOTIFY_PAUSED:false --var ADMIN_EMAIL_LOGIN:true \
   --var "NOTIFY_LINK_SECRET:$NOTIFY_LINK_SECRET" \
   --var COMPANION_LOCAL_TEST_MODE:true --var "COMPANION_LOCAL_PUSH_MOCK:http://127.0.0.1:$P_PUSH" \
   --var "COMPANION_START_DATE:$START" --var "COMPANION_END_DATE:$END" \

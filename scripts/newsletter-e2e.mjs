@@ -83,7 +83,7 @@ async function adminGet(path) {
   return { status: res.status(), body: await res.json() };
 }
 async function adminPost(path, data) {
-  const res = await api.post(path, { headers: cookie, data });
+  const res = await api.post(path, { headers: { ...cookie, Origin: target }, data });
   return { status: res.status(), body: await res.json() };
 }
 async function runCron(time) {
@@ -110,7 +110,7 @@ try {
   );
   const anon = await api.get("/api/admin/newsletters");
   expect(anon.status() === 401, `anonymous newsletter API is refused (${anon.status()})`);
-  const anonImport = await api.post("/api/admin/import/beehiiv", { data: { csv: "email\nx@y.org", apply: true } });
+  const anonImport = await api.post("/api/admin/import/beehiiv", { headers: { Origin: target }, data: { csv: "email\nx@y.org", apply: true } });
   expect(anonImport.status() === 401, `anonymous import is refused (${anonImport.status()})`);
 
   // ── 1. Beehiiv import, through the UI ────────────────────────────────────

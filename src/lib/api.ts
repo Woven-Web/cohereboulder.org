@@ -264,3 +264,17 @@ export const putMyProfileExtras = (extras: ProfileExtras) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(extras),
   });
+
+export interface MeStatus {
+  signedIn: boolean;
+  handle: string | null;
+  /** Builder or higher in the COhere scene: the portal at /admin opens for them. */
+  organizer: boolean;
+  steward: boolean;
+}
+
+export async function fetchMe(): Promise<MeStatus> {
+  const response = await fetch(`${API_BASE}/api/me`, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) throw new Error("Account status unavailable");
+  return response.json();
+}

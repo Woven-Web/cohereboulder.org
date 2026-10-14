@@ -323,7 +323,7 @@ try {
 
     const write = await fetch(new URL("/api/admin/events", badBase), {
       method: "POST",
-      headers: { cookie, "Content-Type": "application/json" },
+      headers: { cookie, Origin: new URL(badBase).origin, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Should not land", startsAt: new Date().toISOString() }),
     });
     const writeBody = await write.json();
@@ -359,7 +359,7 @@ try {
     expect(list.status === 200, "the events list still works with no service token at all");
     const write = await fetch(new URL("/api/admin/events", noTokenBase), {
       method: "POST",
-      headers: { cookie, "Content-Type": "application/json" },
+      headers: { cookie, Origin: new URL(noTokenBase).origin, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Should not land", startsAt: new Date().toISOString() }),
     });
     const body = await write.json();

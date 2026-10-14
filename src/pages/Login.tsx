@@ -31,9 +31,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useInvalidateRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { createCustodialAccount, setSignupProfile, verifySignupToken } from "@/lib/regenos";
 
-import { signInDestination } from "@/lib/appRouting";
+import { isWorkerPage, safeReturnPath, signInDestination } from "@/lib/appRouting";
+import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 
-type Stage = "verifying" | "chooseHandle" | "creating" | "done" | "invalid";
+type Stage = "verifying" | "signIn" | "chooseHandle" | "creating" | "done" | "invalid";
 
 export default function Login() {
   const { tr } = useLanguage();
@@ -43,6 +44,9 @@ export default function Login() {
   const { data: config } = useSiteConfig();
 
   const token = params.get("token");
+  // Someone sent here to sign in (the admin portal does) rather than to pick a
+  // handle: show the email step first, and carry them back afterwards.
+  const returnTo = safeReturnPath(params.get("returnTo"));
   // Start neutral until /api/config answers: a no-token visit is either the
   // beta-mode entrance (beginSignup already proved the email and sent the
   // browser here to pick a handle) or, with the lane off, nothing at all.
@@ -59,7 +63,7 @@ export default function Login() {
   useEffect(() => {
     if (!config) return;
     if (config.regenosLoginEnabled) {
-      if (!token) setStage("chooseHandle");
+      if (!token) setStage(returnTo ? "signIn" : "chooseHandle");
       return;
     }
     if (!token) {
@@ -67,7 +71,7 @@ export default function Login() {
       return;
     }
     setStage("invalid");
-  }, [config, token]);
+  }, [config, token, returnTo]);
 
   useEffect(() => {
     if (!token || redeemed.current) return;
@@ -90,6 +94,10 @@ export default function Login() {
       const registration = await fetchMyRegistration().catch(() => ({ registered: null }));
       const destination = signInDestination(params.get("returnTo") ?? localStorage.getItem("cohere:returnTo"), registration.registered === true);
       localStorage.removeItem("cohere:returnTo");
+      if (isWorkerPage(destination)) {
+        window.location.replace(destination);
+        return;
+      }
       navigate(destination, { replace: true });
     } catch (err) {
       // A taken handle (upstream 409) or a validation 400 — say what upstream
@@ -127,6 +135,8 @@ export default function Login() {
                 </p>
               </CardContent>
             </Card>
+          ) : stage === "signIn" ? (
+            <RegenosSignInPanel returnTo={returnTo ?? undefined} />
           ) : stage === "done" ? (
             <Card>
               <CardContent className="p-8 text-center space-y-3">
