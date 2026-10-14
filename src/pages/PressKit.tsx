@@ -1,5 +1,4 @@
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
@@ -125,8 +124,7 @@ const PressKit = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <SitePage>
       <main className="py-20">
         {/* Hero Section */}
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
@@ -486,8 +484,7 @@ const PressKit = () => {
           </Card>
         </section>
       </main>
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

@@ -1,5 +1,4 @@
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Users, MapPin } from "lucide-react";
@@ -7,8 +6,7 @@ import { Link } from "react-router-dom";
 
 const Archive = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <SitePage>
       <main>
         {/* Hero Section */}
         <section className="py-20 bg-gradient-to-br from-earth-light to-background">
@@ -210,8 +208,7 @@ const Archive = () => {
           </div>
         </section>
       </main>
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

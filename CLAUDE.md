@@ -32,14 +32,22 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /api/events[/…]      community calendar, proxied from regenOS (public)
         ├── /api/config          what the SPA needs to know (regenOS flag + DID)
         ├── /xrpc/:nsid          regenOS sign-in/event-write proxy — 404s unless
-        │                        REGENOS_LOGIN_ENABLED="true" (default: off)
+        │                        REGENOS_LOGIN_ENABLED="true" (on in wrangler.jsonc;
+        │                        off in staging; the code default if unset is off)
         ├── /api/submit/:slug    a submission + confirmation   (public)
         ├── /  (POST)            legacy email-only capture     (public)
         ├── /unsubscribe         opt-out page, POST-confirmed  (public)
         ├── /api/auth/*          portal identity (me); email-code sign-in only if ADMIN_EMAIL_LOGIN
         ├── /api/admin/*         admin JSON, behind the session cookie
         │     ├── …/events[/:did/:rkey[/attendance]]   the community calendar
-        │     └── …/access[/invite|role|revoke]        who may host on it
+        │     ├── …/access[/invite|role|revoke]        who may host on it
+        │     └── …/board[/hide|unhide|remove|approve|settings|reports/:id/dismiss]
+        ├── /api/board/reports   a member reports a Board post     (regenOS session)
+        ├── /api/notify/*        notification settings, device health, signed email links (session or token)
+        ├── /n/:token            emailed-link pages (SPA); POST = RFC 8058 one-click unsubscribe
+        ├── /api/harvests[/…]    members' event harvests (D1; members only)
+        ├── /api/me/rsvp-visibility · /api/me/rsvps · /api/members/:did/rsvps
+        │                        who sees my RSVPs on my profile   (regenOS session)
         └── /admin               the admin portal, one self-contained HTML page
                ↓
         D1 `cohere`  +  KV: COHERE_AUTH (sessions), SIGNUPS (legacy mirror)
@@ -106,7 +114,7 @@ Read these before "verifying" anything.
 
 ## The data model — read this before changing any form
 
-Five tables (`worker/schema.sql`), designed so **the questions are data, not
+Five core tables (`worker/schema.sql`; the members area adds its own, below), designed so **the questions are data, not
 code**:
 
 | Table | Holds |
@@ -147,6 +155,64 @@ A field definition looks like:
 `type` is one of `text`, `textarea`, `email`, `tel`, `radio`, `checkbox`,
 `checkboxes`. Keys `full_name`, `email`, `phone`, `orgs` map onto `people`
 columns; everything else lands in the answers JSON.
+
+## Members area (Board · People · Profile)
+
+Signed-in festival members only. Posts and profiles are regenOS **circle
+records** (member-owned, `coop.lexicon.post` / `coop.lexicon.profile`), read and
+written through the `/xrpc` proxy (`worker/src/regenos-auth.ts`), which pins
+every circle call to `REGENOS_COLLECTIVE_DID` and refuses non-web links in a
+profile. regenOS answers a non-member with an **empty page**, so the gate is
+decided from the public roster (`src/hooks/useCircleAccess.ts`) — never render
+"no posts" for someone who simply isn't a member.
+
+Moderation is COhere-side (regenOS has no circle-post hide we can call): D1
+`board_reports` / `board_moderation` / `board_settings`, applied by
+`worker/src/board-moderation.ts` to every `listCirclePosts` / `getCircleThread`
+response as it passes the proxy. A hide does **not** remove the post from
+regenOS — only from this site. The `approval` setting (default off) holds new
+posts from non-stewards until approved. `/admin`'s Board tab drives it, behind
+the same gate as Access. `profile_rsvp_visibility` (D1, keyed by the owner's
+DID, written only from the verified session) is applied by
+`worker/src/rsvp-visibility.ts` to a profile's regenOS RSVP list; email RSVPs
+are never linked to a profile. All of it lives in migration `0011_members.sql`.
+
+Test it against `scripts/regenos-mock.mjs` (it models the circle XRPCs and four
+extra sessions: `mock-peer`, `mock-steward`, `mock-outsider`, `mock-builder`);
+lanes 10–12 of `scripts/ci-e2e.sh` are `board-e2e`, `people-e2e`,
+`rsvp-visibility-e2e`.
+
+## Notifications and Harvest
+
+Three notes, built in `worker/src/notify-*.ts` and driven by the every-minute cron:
+the **morning note** (6 AM Boulder: the day's practice with its question inside it, then
+today's events, your RSVPs first), the **harvest invitation** (about an hour after an
+event you RSVP'd to ends) and the **8 PM "ready for tomorrow"**. They replace the old
+anonymous 6/9/3 companion pushes; `runCompanionCron` is now housekeeping only.
+
+- **Master switch:** `NOTIFY_PAUSED` runs the senders only when it is exactly `"false"`
+  (`"true"` in `wrangler.jsonc`; unset also means off). It covers push AND email.
+  `COMPANION_PUSH_PAUSED="true"` additionally stops pushes. Staging has no cron, no mail
+  binding and no VAPID keys, so nothing can go out; an email send with no transport is logged.
+- **Who:** `notify_prefs` is keyed by a person_key (the regenOS DID, else `mailto:<verified
+  email>`); `notify_devices` tracks each push subscription's health (live / suspect /
+  expired; a 404/410 expires at once, 3 failures or 2 across days make it suspect, no sign
+  of life for 14 days downgrades it, the service worker reports "shown"). The pure rules
+  (defaults, channel choice, fallback, timing, signed links) are in `notify-core.ts`.
+- **Defaults:** all three on by push for people with the app installed and a live phone.
+  Email-only people: morning is opt-in; harvest and 8 PM only after the one-tap ask in the RSVP
+  confirmation. Push chosen but not live falls back to email at send time (never both); the
+  first fallback says so in settings and on top of that email. Dedupe: `notify_ledger`.
+- **Links:** every email carries signed `/n/<token>` links (settings 30 days, unsubscribe never
+  expires) and `List-Unsubscribe` one-click headers. Pages never change anything on load; a
+  button POSTs. The secret is `NOTIFY_LINK_SECRET` (falls back to a key derived from the VAPID
+  private key); without either, no email is sent.
+- **Harvest** lives in D1 (`harvests`, `harvest_photos`), not as circle posts: it needs a photo,
+  an edit and an event reference, and the proxy lends none of those. Reports and steward hiding
+  reuse `board_reports` / `board_moderation` with the key `cohere:harvest/<id>`.
+- **Tests:** `notify-core|send|test`, `harvest.test.ts`; `scripts/notify-e2e.sh` (lane 13)
+  drives it in a browser against `MOCK_NOTIFY=1` regenos-mock and the loopback push receiver.
+- Worker code is not covered by `npm run typecheck` (it only reads `src/`); vitest is its check.
 
 ## Admin access
 
@@ -369,11 +435,13 @@ return 200 and the API is same-origin.
   `REGENOS_COLLECTIVE_DID` points at the COhere Boulder scene
   (`did:plc:w54s52ycbw5lreyhlzexredb`, minted 2026-08-30). Smoke-test locally
   with `npx wrangler dev --var REGENOS_COLLECTIVE_DID:<scene did>`.
-- **Phase 2 (sign-in + on-site event hosting) is built but INERT.** The whole
-  lane — the `/xrpc` proxy (`worker/src/regenos-auth.ts`), the calendar page's
-  sign-in panel and event form, and `/login` — is dead until
-  `REGENOS_LOGIN_ENABLED` is set to `"true"` in `wrangler.jsonc` vars. Do not
-  flip it before regenOS's `ALLOWED_APP_ORIGINS` includes
+- **Phase 2 (sign-in + on-site event hosting) is LIVE in production config.**
+  The whole lane — the `/xrpc` proxy (`worker/src/regenos-auth.ts`), the
+  calendar page's sign-in panel and event form, and `/login` — runs because
+  `wrangler.jsonc` sets `REGENOS_LOGIN_ENABLED` to `"true"` (staging sets
+  `"false"`, and an unset var also means off, with every `/xrpc` route a 404).
+  The rule that mattered when it was off still holds for any new origin: do not
+  enable it on one before regenOS's `ALLOWED_APP_ORIGINS` includes
   `https://cohereboulder.org`: until then beginSignup's magic links would point
   at scenius.social and set their cookie there, stranding people mid-sign-in.
   The proxy exists because regenOS's `__Host-rs_session` cookie can only land

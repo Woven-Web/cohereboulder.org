@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { useLook } from "@/lib/look";
 import { useSiteConfig } from "@/hooks/useRegenos";
 
 import { openSignInDialog } from "@/lib/signin";
@@ -26,12 +28,10 @@ export default function Join() {
   const { tr } = useLanguage();
   const { data: config } = useSiteConfig();
   const loginOn = config?.regenosLoginEnabled === true;
+  const alm = useLook() !== "classic";
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <main className="py-16">
+  const main = (
+    <main className={alm ? "page skin" : "py-16"}>
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card className="shadow-warm">
             <CardContent className="p-8 text-center space-y-4">
@@ -66,7 +66,13 @@ export default function Join() {
           </Card>
         </div>
       </main>
+  );
+  if (alm) return <AlmanacShell site>{main}</AlmanacShell>;
 
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      {main}
       <Footer />
     </div>
   );

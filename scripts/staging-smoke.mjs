@@ -9,20 +9,20 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    for (const [path, text] of [["/", "Weaving Our Resilience"], ["/events", "Community Calendar"], ["/register", "Register"], ["/board", "The COhere Board opens soon"]]) {
-      const response = await page.goto(new URL(path, base).href, { waitUntil: "networkidle" });
+    for (const [path, text] of [["/", "Weaving Our Resilience"], ["/events", "Boulder time"], ["/register", "Register"], ["/board", "A members-only space"]]) {
+      const response = await page.goto(new URL(path + "?look=classic", base).href, { waitUntil: "load" });
       assert.equal(response.status(), 200);
       await page.getByText(text, { exact: false }).filter({ visible: true }).first().waitFor();
       if (path === "/register") await page.locator('input[type="email"]').first().waitFor();
       assert.equal(await page.getByText("Something went wrong").count(), 0);
       assert.deepEqual(errors, [], `${width} ${path}: page errors`);
       assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /scenius\.social/i, `${width} ${path} en: hosted suffix`);
-      await page.getByRole("button", { name: "En/Es", exact: true }).click();
-      const spanish = { "/": "Tejiendo Nuestra Resiliencia", "/events": "Calendario comunitario", "/register": "Regístrate para recibir novedades", "/board": "El tablón de COhere abre pronto" };
+      await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).click();
+      const spanish = { "/": "Tejiendo Nuestra Resiliencia", "/events": "Hora de Boulder", "/register": "Regístrate para recibir novedades", "/board": "El foro de COhere abre pronto" };
       await page.getByText(spanish[path], { exact: false }).filter({ visible: true }).first().waitFor();
       assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /scenius\.social/i, `${width} ${path} es: hosted suffix`);
       assert.deepEqual(errors, [], `${width} ${path} es: page errors`);
-      await page.getByRole("button", { name: "Es/En", exact: true }).click();
+      await page.getByRole("button", { name: /^(Es\/En|En)$/ }).click();
       console.log(`ok ${width} ${path}: en/es rendered, 0 page errors, no hosted suffix`);
     }
     await page.close();

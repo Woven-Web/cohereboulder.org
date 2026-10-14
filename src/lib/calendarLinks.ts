@@ -2,7 +2,8 @@ import type { CommunityEvent } from "./events";
 import { locationLine } from "./events";
 
 /** Google Calendar's event editor URL; never mutates a calendar on its own. */
-export function googleCalendarEventUrl(event: CommunityEvent): string | null {
+/** `pageUrl`, when given, is appended to the details so the entry links back to the event page. */
+export function googleCalendarEventUrl(event: CommunityEvent, pageUrl?: string): string | null {
   if (!event.startsAt) return null;
   const start = new Date(event.startsAt);
   if (Number.isNaN(start.getTime())) return null;
@@ -14,7 +15,8 @@ export function googleCalendarEventUrl(event: CommunityEvent): string | null {
   url.searchParams.set("action", "TEMPLATE");
   url.searchParams.set("dates", `${stamp(start)}/${stamp(end)}`);
   url.searchParams.set("text", event.name);
-  if (event.description) url.searchParams.set("details", event.description);
+  const details = [event.description, pageUrl].filter(Boolean).join("\n\n");
+  if (details) url.searchParams.set("details", details);
   const where = locationLine(event.location);
   if (where) url.searchParams.set("location", where);
   return url.toString();

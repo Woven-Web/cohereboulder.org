@@ -1,0 +1,99 @@
+import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { Avatar } from "@/components/members/Avatar";
+import { MembersGate } from "@/components/members/MembersGate";
+import { MembersNav } from "@/components/members/MembersNav";
+import { ProfileRsvpList } from "@/components/members/ProfileRsvpList";
+import { SourceMark } from "@/components/members/SourceMark";
+import { useCircleAccess } from "@/hooks/useCircleAccess";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { MEMBER_RSVPS_KEY } from "@/hooks/useRsvpVisibility";
+import { fetchMemberProfileExtras, fetchMemberRsvps } from "@/lib/api";
+import { EXTRA_KEYS, PEOPLE_EXTRAS_KEY, entryName, linkLabel, safeLink } from "@/lib/people";
+
+export default function Person() {
+  return (
+    <AlmanacShell>
+      <PersonView />
+    </AlmanacShell>
+  );
+}
+
+function PersonView() {
+  const { tr } = useLanguage();
+  const { did = "" } = useParams();
+  const access = useCircleAccess();
+  const member = access.status === "member";
+  const entry = access.entryOf(did);
+  // What this person lets members see: the Worker applies their "who sees my RSVPs" setting.
+  const going = useQuery({ queryKey: [...MEMBER_RSVPS_KEY, did], queryFn: () => fetchMemberRsvps(did), enabled: member && Boolean(entry), staleTime: 30_000, retry: 1 });
+  const extrasQuery = useQuery({ queryKey: PEOPLE_EXTRAS_KEY, queryFn: fetchMemberProfileExtras, enabled: member && Boolean(entry), staleTime: 30_000, retry: 1 });
+  const lines = extrasQuery.data?.extras[did];
+  const mine = Boolean(access.did) && did === access.did;
+  const name = entry ? entryName(entry, access.nameOf(did)) : access.nameOf(did);
+  const links = (entry?.record.links ?? []).flatMap((href) => {
+    const safe = safeLink(href);
+    return safe ? [safe] : [];
+  });
+
+  let body;
+  if (!member) body = <MembersGate status={access.status as Exclude<typeof access.status, "member">} onRetry={access.retry} />;
+  else if (access.directory.isLoading) body = <p className="small" role="status" style={{ padding: "2rem 0" }}>{tr("members.loading")}</p>;
+  else if (!entry) {
+    body = (
+      <div className="empty" style={{ marginTop: "1rem" }} data-testid="person-missing"><span className="empty__mark" aria-hidden="true" />
+        <h1 className="h3">{tr(mine ? "members.people.makeMine" : "members.people.notHereTitle")}</h1>
+        <p className="small">{tr(mine ? "members.people.mineEmpty" : "members.people.notHereBody")}</p>
+        {mine && <Link className="btn btn--primary" to="/profile">{tr("members.people.makeMine")}</Link>}
+      </div>
+    );
+  } else {
+    body = (
+      <article data-testid="person" className="profile profile--page">
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginTop: "1rem" }}>
+          <Avatar did={did} name={name} size="lg" ghost={entry.profileSource === "publicFallback"} />
+          <div style={{ minWidth: 0 }}>
+            <h1 className="h2" style={{ overflowWrap: "anywhere" }}>{name}</h1>
+            <SourceMark source={entry.profileSource} />
+          </div>
+        </div>
+        {entry.profileSource === "publicFallback" && <p className="small" style={{ marginTop: ".8rem", fontStyle: "italic" }}>{tr("members.people.publicSays")}</p>}
+        <p className="lede" style={{ marginTop: "1rem", whiteSpace: "pre-line" }}>{entry.record.bio || tr("members.people.noBio")}</p>
+        {lines && EXTRA_KEYS.some((key) => lines[key]) && (
+          <dl style={{ marginTop: "1rem" }} data-testid="person-extras">
+            {EXTRA_KEYS.map((key) => lines[key] ? (
+              <div key={key} style={{ marginTop: ".4rem" }}><dt className="eyebrow">{tr(`members.extras.${key}`)}</dt><dd style={{ margin: 0, overflowWrap: "anywhere" }}>{lines[key]}</dd></div>
+            ) : null)}
+          </dl>
+        )}
+        {links.length > 0 && (
+          <section style={{ marginTop: "1rem" }}>
+            <h2 className="eyebrow">{tr("members.people.links")}</h2>
+            <div className="linkrow">
+              {links.map((href) => <a key={href} href={href} target="_blank" rel="noopener noreferrer nofollow">{linkLabel(href)}</a>)}
+            </div>
+          </section>
+        )}
+        <section style={{ marginTop: "1.2rem" }} data-testid="person-going" aria-labelledby="going-title">
+          <h2 className="eyebrow" id="going-title">{tr("members.rsvp.profileHeading")}</h2>
+          {going.isLoading ? <p className="small" role="status">{tr("members.loading")}</p>
+            : going.isError ? <p className="small">{tr("members.rsvp.profileError")}</p>
+            : going.data?.rsvps.length ? <ProfileRsvpList rsvps={going.data.rsvps} />
+            : <p className="small">{tr("members.rsvp.profileNone")}</p>}
+          {mine && <p className="small"><Link className="link" to="/profile#rsvps">{tr("members.rsvp.sheetAll")}</Link></p>}
+        </section>
+        {mine && <p style={{ marginTop: "1.2rem" }}><Link className="btn btn--line btn--sm" to="/profile">{tr("members.people.editMine")}</Link></p>}
+        <p className="vis-note" style={{ marginTop: "1.4rem" }}><span><b>{tr("members.people.privacy")}</b></span></p>
+      </article>
+    );
+  }
+
+  return (
+    <main className="page">
+      <Link className="link" to="/people">&larr; {tr("members.people.back")}</Link>
+      {member && <MembersNav current={mine ? "me" : "people"} />}
+      {body}
+    </main>
+  );
+}

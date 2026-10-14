@@ -1,5 +1,4 @@
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +10,7 @@ import { SupportSection } from "@/components/SupportSection";
 
 const Archive2024 = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <SitePage>
       <main>
         {/* Archive Header */}
         <section className="py-12 bg-gradient-to-br from-earth-light to-background">
@@ -330,8 +328,7 @@ const Archive2024 = () => {
           </div>
         </section>
       </main>
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

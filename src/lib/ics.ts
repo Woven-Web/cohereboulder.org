@@ -4,33 +4,7 @@
 // event on their phone without subscribing to everything.
 
 import { locationLine, type CommunityEvent } from "./events";
-
-/** RFC 5545 §3.3.11: escape backslash, semicolon, comma, then newlines. */
-function icsEscape(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\r?\n/g, "\\n");
-}
-
-/** RFC 5545 §3.1: fold lines over 75 octets, continuation lines start with a space. */
-function foldLine(line: string): string {
-  const MAX = 75;
-  if (line.length <= MAX) return line;
-  const parts: string[] = [line.slice(0, MAX)];
-  let rest = line.slice(MAX);
-  while (rest.length > 0) {
-    parts.push(rest.slice(0, MAX - 1));
-    rest = rest.slice(MAX - 1);
-  }
-  return parts.join("\r\n ");
-}
-
-/** UTC "floating" instant in `YYYYMMDDTHHmmssZ` form. */
-function icsDateTime(iso: string): string {
-  return new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-}
+import { icsEscape, icsJoin, icsTime } from "./icsCore";
 
 function icsAddressLine(location: CommunityEvent["location"]): string | null {
   if (!location) return null;
@@ -55,7 +29,7 @@ export function buildEventIcs(
     : new Date(start.getTime() + 60 * 60 * 1000);
 
   const uid = `${event.rkey}.${event.did}@cohereboulder.org`;
-  const stamp = icsDateTime(new Date().toISOString());
+  const stamp = icsTime(new Date().toISOString());
   const where = icsAddressLine(event.location);
 
   const lines = [
@@ -66,8 +40,8 @@ export function buildEventIcs(
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${stamp}`,
-    `DTSTART:${icsDateTime(start.toISOString())}`,
-    `DTEND:${icsDateTime(end.toISOString())}`,
+    `DTSTART:${icsTime(start.toISOString())}`,
+    `DTEND:${icsTime(end.toISOString())}`,
     `SUMMARY:${icsEscape(event.name)}`,
     ...(event.description ? [`DESCRIPTION:${icsEscape(event.description)}`] : []),
     ...(where ? [`LOCATION:${icsEscape(where)}`] : []),
@@ -83,7 +57,7 @@ export function buildEventIcs(
     "END:VCALENDAR",
   ];
 
-  return lines.map(foldLine).join("\r\n") + "\r\n";
+  return icsJoin(lines);
 }
 
 /** Filesystem-safe-ish filename stem from an event name. */

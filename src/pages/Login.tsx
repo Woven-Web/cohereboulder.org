@@ -21,8 +21,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 // routes entirely (see CLAUDE.md's architecture diagram) — a client-side
 // <Link>/navigate to it would just render this app's own 404 instead of
 // reaching the real admin portal, so it needs a genuine page load.
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -109,8 +108,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <SitePage>
 
       <main className="py-12">
         <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
@@ -194,8 +192,6 @@ export default function Login() {
           )}
         </div>
       </main>
-
-      <Footer />
-    </div>
+    </SitePage>
   );
 }

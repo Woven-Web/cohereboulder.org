@@ -68,11 +68,17 @@ const SERVICE_TOKEN = "mock-token";
 const SERVICE_DID = "did:plc:mockservice";
 
 /** The seeded roster: the site's own identity, its minter, and one builder. */
+const PEER_DID = "did:plc:mockpeer";
+const PEER_HANDLE = "pia.mock.test";
+const OUTSIDER_DID = "did:plc:mockoutsider";
+const OUTSIDER_HANDLE = "ollie.mock.test";
+const STEWARD_DID = "did:plc:mockji";
 const members = new Map([
   [SERVICE_DID, { did: SERVICE_DID, handle: "cohere-site.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockji", { did: "did:plc:mockji", handle: "claudeji.scenius.social", kind: "person", name: null, role: "steward" }],
   ["did:plc:mockbuilder", { did: "did:plc:mockbuilder", handle: "rosa.mock.test", kind: "person", name: "Rosa Mock", role: "builder" }],
   [USER_DID, { did: USER_DID, handle: USER_HANDLE, kind: "person", name: null, role: "builder" }],
+  [PEER_DID, { did: PEER_DID, handle: PEER_HANDLE, kind: "person", name: "Pia Mock", role: "member" }],
   ["did:plc:mocksteward", { did: "did:plc:mocksteward", handle: "sam.mock.test", kind: "person", name: "Sam Mock", role: "steward" }],
   ["did:plc:mockmember", { did: "did:plc:mockmember", handle: "mel.mock.test", kind: "person", name: "Mel Mock", role: "member" }],
 ]);
@@ -90,11 +96,6 @@ const sawCookies = [];
 function sessionToken(req) {
   const m = /(?:^|;\s*)__Host-rs_session=([^;]*)/.exec(req.headers.cookie ?? "");
   return m ? m[1] : null;
-}
-function personaOf(req) {
-  const token = sessionToken(req);
-  if (!token || expiredSessions.has(token)) return null;
-  return PERSONAS[token] ?? { did: USER_DID, handle: USER_HANDLE };
 }
 
 /** Seeded RSVPs, keyed by rkey. Counts plus CONFIRMED guests, as production. */
@@ -175,6 +176,25 @@ function seedEvent() {
 }
 seedEvent();
 
+/**
+ * Who a `__Host-rs_session` cookie names. Any value is the default mock user
+ * (sess-1, mock-member, ...); these name the other people the members-area
+ * lanes need: a fellow member, a steward-authored session, and a signed-in
+ * person who is NOT on the collective's roster.
+ */
+const SESSION_PEOPLE = {
+  "mock-peer": { did: PEER_DID, handle: PEER_HANDLE },
+  "mock-steward": { did: STEWARD_DID, handle: "claudeji.scenius.social" },
+  "mock-outsider": { did: OUTSIDER_DID, handle: OUTSIDER_HANDLE },
+  // Rosa: on the roster, and with only a PUBLIC profile (the publicFallback case).
+  "mock-builder": { did: "did:plc:mockbuilder", handle: "rosa.mock.test" },
+};
+function sessionPerson(req) {
+  const value = sessionToken(req);
+  if (value === null || expiredSessions.has(value)) return null;
+  return PERSONAS[value] ?? SESSION_PEOPLE[value] ?? { did: USER_DID, handle: USER_HANDLE };
+}
+
 function hasCookie(req, name) {
   return (req.headers.cookie ?? "").split(";").some((p) => p.trim().startsWith(`${name}=`));
 }
@@ -238,7 +258,158 @@ const ANON_ONLY = new Set([
  * The signed-in mock user's own RSVPs, keyed by rkey → seat state. Read back
  * as getEventAttendance.mySeat (auth-only upstream: anonymous ⇒ null).
  */
-const mySeats = new Map();
+const mySeats = new Map(); // `${did}|${rkey}` → seat state, one entry per signed-in person
+const seatKey = (req, rkey) => `${sessionPerson(req)?.did ?? ""}|${rkey}`;
+/** Confirmed guests: the seeded ones plus every signed-in person holding a confirmed seat. */
+function guestsFor(rkey, seeded) {
+  const out = [...seeded];
+  for (const [key, state] of mySeats) {
+    const [did, seatRkey] = key.split("|");
+    if (seatRkey === rkey && state === "confirmed") out.push({ did, handle: [...members.values()].find((m) => m.did === did)?.handle ?? null });
+  }
+  return out;
+}
+
+
+// ------------------------------------------------------- members area (circle)
+// regenOS main #167: member-owned circle posts. Mirrors the contract the Worker
+// relies on — every method needs a session; reads answer a non-member an EMPTY
+// page (never an error); lists run in ascending record-URI order with an
+// exclusive cursor; unknown record fields are refused; a delete only ever
+// touches the caller's own post.
+const POST_COLLECTION = "coop.lexicon.post";
+const POST_FIELDS = new Set(["text", "facets", "title", "subject", "reply", "tags", "langs", "createdAt"]);
+const circlePosts = new Map();
+let tidCounter = 0;
+function nextTid() {
+  tidCounter += 1;
+  return `3m${String(tidCounter).padStart(8, "0")}`;
+}
+function seedPost(author, text, extra = {}, minutesAgo = 0) {
+  const rkey = nextTid();
+  const uri = `at://${author}/${POST_COLLECTION}/${rkey}`;
+  circlePosts.set(uri, {
+    uri, cid: `bafy${rkey}`, author, spaceUri: `at://${author}/coop.lexicon.space.circle/${SCENE_DID}`,
+    record: { text, createdAt: new Date(Date.now() - minutesAgo * 60_000).toISOString(), ...extra },
+  });
+  return uri;
+}
+function seedCircle() {
+  const ride = seedPost(PEER_DID, "Two seats open from Longmont to Saturday's work day. Leaving 8:15, back by dark.", { title: "Seats to Saturday", tags: ["rideshare"], langs: ["en"] }, 60 * 26);
+  seedPost(USER_DID, "Count me in for one of them!", { reply: { root: { uri: ride, cid: `bafy${ride.split("/").pop()}` }, parent: { uri: ride, cid: `bafy${ride.split("/").pop()}` } }, langs: ["en"] }, 60 * 25);
+  seedPost(PEER_DID, "Spare squash, a lot of it. Come get some.", { tags: ["offers", "harvest"], langs: ["en"] }, 60 * 5);
+  seedPost("did:plc:mockbuilder", "Gracias a todas las personas que cocinaron el domingo.", { tags: ["gratitude"], langs: ["es"] }, 60 * 2);
+}
+seedCircle();
+
+// Profiles. A contextual (COhere) profile replaces the whole record; a member
+// with none shows their PUBLIC `self` profile as `publicFallback`. The mock's
+// default user starts with neither, so the editor's empty state is reachable.
+const PROFILE_FIELDS = new Set(["displayName", "bio", "avatar", "links", "createdAt"]);
+const circleProfiles = new Map();
+const publicProfiles = new Map([
+  ["did:plc:mockbuilder", { displayName: "Rosa Mock", bio: "Seed saver and fiddler. Find me at the Thursday market.", createdAt: "2026-09-01T00:00:00.000Z" }],
+]);
+function seedProfiles() {
+  circleProfiles.set(PEER_DID, {
+    uri: `at://${PEER_DID}/coop.lexicon.profile/${SCENE_DID}`, cid: "bafyprofilepeer", author: PEER_DID,
+    spaceUri: `at://${PEER_DID}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+    record: { displayName: "Pia Mock", bio: "I keep bees near Lyons and grow too much squash.", links: ["https://example.org/pia"], createdAt: "2026-09-02T00:00:00.000Z" },
+  });
+}
+seedProfiles();
+
+// MOCK_RICH_SEED=1 — a fuller roster for visual QA (never set by the e2e lanes).
+if (process.env.MOCK_RICH_SEED === "1") {
+  const people = [
+    ["did:plc:mockmara", "mara.mock.test", "Mara Okonkwo", "Mycologist and tea person. Ask me about the oyster logs behind the library.", "https://example.org/mara"],
+    ["did:plc:mockteo", "teo.mock.test", "Teo Ramírez", "Carpenter, cook, and keeper of the long table. Happy to lend tools and hands.", null],
+    ["did:plc:mocklin", "lin.mock.test", "Lin Aoki", "I run a small seed library out of a bicycle trailer.", "https://example.org/lin"],
+    ["did:plc:mockdev", "dev.mock.test", "Devika Rao", "Sound healer and watershed volunteer. Boulder Creek mornings.", null],
+    ["did:plc:mockwren", "wren.mock.test", "Wren Calloway", "New to the Front Range, here to listen and carry chairs.", null],
+  ];
+  for (const [did, handle, name, bio, link] of people) {
+    members.set(did, { did, handle, kind: "person", name, role: "member" });
+    circleProfiles.set(did, {
+      uri: `at://${did}/coop.lexicon.profile/${SCENE_DID}`, cid: `bafyprofile${handle}`, author: did,
+      spaceUri: `at://${did}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+      record: { displayName: name, bio, ...(link ? { links: [link] } : {}), createdAt: "2026-09-03T00:00:00.000Z" },
+    });
+  }
+  const soon = (days, name, description, place) => {
+    const startsAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
+    const rkey = `ev-rich${days}`;
+    events.set(rkey, {
+      uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
+      value: { name, description, createdAt: new Date().toISOString(), startsAt, mode: "community.lexicon.calendar.event#inperson",
+        locations: [{ $type: "community.lexicon.location.address", name: place, locality: "Boulder", region: "CO", country: "US" }] },
+    });
+    seedAttendance(rkey);
+    return rkey;
+  };
+  const eTable = soon(3, "Long Table Supper", "A shared meal under the cottonwoods. Bring a dish and a chair.", "Eben G. Fine Park");
+  const eCreek = soon(9, "Creek Walk and Listening Circle", "A slow walk along Boulder Creek, ending in a circle.", "Boulder Creek Path");
+  for (const did of ["did:plc:mockmara", "did:plc:mockteo", "did:plc:mocklin", "did:plc:mockdev", PEER_DID]) {
+    mySeats.set(`${did}|ev-seed1`, "confirmed");
+    mySeats.set(`${did}|${eTable}`, "confirmed");
+  }
+  mySeats.set(`did:plc:mockmara|${eCreek}`, "confirmed");
+  seedPost("did:plc:mockmara", "Anyone have a spare 10x10 canopy for the Saturday tea table? I can trade you a jar of reishi honey.", { title: "Canopy wanted", tags: ["requests"], langs: ["en"] }, 60 * 9);
+  seedPost("did:plc:mockteo", "Long table build day is Thursday at 3. Bring a drill if you have one, and gloves.", { title: "Long table build day", tags: ["offers", "building"], langs: ["en"] }, 60 * 14);
+  seedPost("did:plc:mocklin", "Seeds for the autumn swap are sorted into envelopes. Kale, calendula, three kinds of beans. Come early; the beans go fast.", { tags: ["harvest"], langs: ["en"] }, 60 * 3);
+  seedPost(STEWARD_DID, "Welcome, everyone. Be kind, stay curious, and tell us if a post doesn't feel right. Use Report on any post.", { title: "Welcome to the Board", tags: ["welcome"], langs: ["en"] }, 60 * 40);
+}
+
+// MOCK_NOTIFY=1 — what the notifications/harvest lane needs (never set by the older lanes):
+//  * two events that just ended (90 minutes ago, and yesterday) the default user and Pia both
+//    RSVP'd to, so the harvest composer, the Today card and the invitation have something to be about;
+//  * Pia has a verified contact email (getMyContactPref); the default user has none.
+const CONTACT_EMAILS = new Map();
+if (process.env.MOCK_NOTIFY === "1") {
+  const ended = (rkey, name, hoursAgo, lengthH, place, description) => {
+    const endsAt = new Date(Date.now() - hoursAgo * 3600_000);
+    events.set(rkey, {
+      uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
+      value: { name, description, createdAt: new Date(endsAt.getTime() - 7 * 86_400_000).toISOString(),
+        startsAt: new Date(endsAt.getTime() - lengthH * 3600_000).toISOString(), endsAt: endsAt.toISOString(),
+        mode: "community.lexicon.calendar.event#inperson",
+        locations: [{ $type: "community.lexicon.location.address", name: place, locality: "Boulder", region: "CO", country: "US" }] },
+    });
+    seedAttendance(rkey);
+    mySeats.set(`${USER_DID}|${rkey}`, "confirmed");
+    mySeats.set(`${PEER_DID}|${rkey}`, "confirmed");
+  };
+  ended("ev-ended1", "Honoring Water | with Angelique", 1.5, 1.25, "Boulder Creek Path", "A slow walk to our local waters.");
+  ended("ev-ended2", "Soup Night at the Barn", 20, 2, "The Old Barn", "Bring a bowl.");
+  CONTACT_EMAILS.set(PEER_DID, "pia@example.test");
+}
+
+function circleSubject(req, res, url) {
+  const person = sessionPerson(req);
+  if (!person) {
+    json(res, 401, { error: "AuthRequired", message: "sign in first" });
+    return null;
+  }
+  if (req.method === "GET" && url.searchParams.get("collective") !== SCENE_DID) {
+    json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+    return null;
+  }
+  return person;
+}
+
+function pageOf(records, url) {
+  const cursor = url.searchParams.get("cursor");
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50) || 50, 100);
+  const sorted = records.sort((a, b) => (a.uri < b.uri ? -1 : 1)).filter((r) => !cursor || r.uri > cursor);
+  const slice = sorted.slice(0, limit);
+  return { records: slice, ...(sorted.length > limit ? { cursor: slice[slice.length - 1].uri } : {}) };
+}
+
+/** What `person` may read: their own posts, plus those of current members — and only if they are a member. */
+function readableCirclePosts(person) {
+  if (!members.has(person.did)) return [];
+  return [...circlePosts.values()].filter((p) => p.author === person.did || members.has(p.author));
+}
 
 /** What the last proposeInvite carried, for the e2e script to inspect. */
 let lastInvite = null;
@@ -282,7 +453,7 @@ const server = http.createServer(async (req, res) => {
       const rkey = url.searchParams.get("eventRkey") ?? "";
       const seats = attendance.get(rkey);
       if (!seats) return json(res, 404, { error: "NotFound", message: "no such event" });
-      return json(res, 200, { ...seats, mySeat: signedIn ? (mySeats.get(rkey) ?? null) : null });
+      return json(res, 200, { ...seats, guests: guestsFor(rkey, seats.guests ?? []), mySeat: signedIn ? (mySeats.get(seatKey(req, rkey)) ?? null) : null });
     }
 
     case "social.scenius.getSceneMembers": {
@@ -344,10 +515,118 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    case "social.scenius.listCirclePosts": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      const tag = url.searchParams.get("tag");
+      const subject = url.searchParams.get("subject");
+      const root = url.searchParams.get("root");
+      const matching = readableCirclePosts(person).filter(
+        (p) =>
+          (!tag || (p.record.tags ?? []).includes(tag)) &&
+          (!subject || p.record.subject?.uri === subject) &&
+          (!root || p.record.reply?.root?.uri === root),
+      );
+      return json(res, 200, pageOf(matching, url));
+    }
+
+    case "social.scenius.getCircleThread": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      const root = url.searchParams.get("root");
+      const readable = readableCirclePosts(person);
+      if (!readable.some((p) => p.uri === root && !p.record.reply)) {
+        return json(res, 404, { error: "NotFound", message: "no readable root post in that collective" });
+      }
+      return json(res, 200, pageOf(readable.filter((p) => p.uri === root || p.record.reply?.root?.uri === root), url));
+    }
+
+    case "social.scenius.createCirclePost": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const post = input.post;
+      if (!post || typeof post !== "object") return json(res, 400, { error: "InvalidRequest", message: "post is required" });
+      const unknown = Object.keys(post).find((k) => !POST_FIELDS.has(k));
+      if (unknown) return json(res, 400, { error: "InvalidRequest", message: `unknown field ${unknown}` });
+      if (typeof post.text !== "string" || !post.text.trim()) return json(res, 400, { error: "InvalidRequest", message: "text must not be empty" });
+      if (Array.from(post.text).length > 20000) return json(res, 400, { error: "InvalidRequest", message: "text is too long" });
+      if (post.reply && !circlePosts.has(post.reply.root?.uri) ) {
+        return json(res, 400, { error: "InvalidRequest", message: "reply root must be a readable post in this collective" });
+      }
+      if (post.reply && circlePosts.get(post.reply.root.uri).record.reply) {
+        return json(res, 400, { error: "InvalidRequest", message: "root must really be a root" });
+      }
+      const rkey = nextTid();
+      const uri = `at://${person.did}/${POST_COLLECTION}/${rkey}`;
+      circlePosts.set(uri, {
+        uri, cid: `bafy${rkey}`, author: person.did, spaceUri: `at://${person.did}/coop.lexicon.space.circle/${SCENE_DID}`,
+        record: { ...post, createdAt: post.createdAt ?? new Date().toISOString() },
+      });
+      return json(res, 200, { uri, cid: `bafy${rkey}` });
+    }
+
+    case "social.scenius.deleteCirclePost": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const uri = `at://${person.did}/${POST_COLLECTION}/${input.rkey}`;
+      return json(res, 200, { deleted: circlePosts.delete(uri) });
+    }
+
+    case "social.scenius.listCircleProfiles": {
+      const person = circleSubject(req, res, url);
+      if (!person) return;
+      if (!members.has(person.did)) return json(res, 200, { records: [] });
+      const rows = [];
+      for (const did of members.keys()) {
+        const own = circleProfiles.get(did);
+        if (own) rows.push(own);
+        else if (publicProfiles.has(did)) {
+          rows.push({
+            uri: `at://${did}/coop.lexicon.profile/self`, cid: `bafypublic${did.slice(-6)}`, author: did,
+            record: publicProfiles.get(did), profileSource: "publicFallback",
+          });
+        }
+      }
+      return json(res, 200, pageOf(rows, url));
+    }
+
+    case "social.scenius.putCircleProfile": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      const profile = input.profile;
+      if (!profile || typeof profile !== "object") return json(res, 400, { error: "InvalidRequest", message: "profile is required" });
+      const unknown = Object.keys(profile).find((k) => !PROFILE_FIELDS.has(k));
+      if (unknown) return json(res, 400, { error: "InvalidRequest", message: `unknown field ${unknown}` });
+      if (profile.displayName && Array.from(profile.displayName).length > 64) return json(res, 400, { error: "InvalidRequest", message: "displayName too long" });
+      if (profile.bio && Array.from(profile.bio).length > 256) return json(res, 400, { error: "InvalidRequest", message: "bio too long" });
+      if (profile.links && profile.links.length > 10) return json(res, 400, { error: "InvalidRequest", message: "too many links" });
+      const uri = `at://${person.did}/coop.lexicon.profile/${SCENE_DID}`;
+      circleProfiles.set(person.did, {
+        uri, cid: `bafyprofile${person.did.slice(-6)}${Date.now().toString(36)}`, author: person.did,
+        spaceUri: `at://${person.did}/coop.lexicon.space.circle/${SCENE_DID}`, profileSource: "contextual",
+        record: { ...profile, createdAt: profile.createdAt ?? new Date().toISOString() },
+      });
+      return json(res, 200, { uri, cid: circleProfiles.get(person.did).cid });
+    }
+
+    case "social.scenius.deleteCircleProfile": {
+      const person = sessionPerson(req);
+      if (!person || asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
+      const input = await readBody(req);
+      if (input.collective !== SCENE_DID) return json(res, 400, { error: "InvalidRequest", message: "collective is not a known circle" });
+      return json(res, 200, { deleted: circleProfiles.delete(person.did) });
+    }
+
     case "social.scenius.getMyContactPref": {
-      const who = personaOf(req);
-      const channels = who?.email ? [{ kind: "email", address: who.email, verified: true }] : [];
-      return json(res, who ? 200 : 401, { channels });
+      const who = sessionPerson(req);
+      const email = who?.email ?? CONTACT_EMAILS.get(who?.did);
+      return json(res, who ? 200 : 401, { channels: email ? [{ kind: "email", address: email, verified: true }] : [] });
     }
 
     case "social.scenius.getSession": {
@@ -362,7 +641,7 @@ const server = http.createServer(async (req, res) => {
         // calling origin. The proxy must drop anything that isn't `__Host-rs_`.
         ["set-cookie", `cohere_session=mock-hijack; ${COOKIE_ATTRS}`],
       ];
-      const who = personaOf(req);
+      const who = sessionPerson(req);
       if (who) return json(res, 200, { did: who.did, handle: who.handle, kind: "user" }, headers);
       return json(res, 200, {}, headers);
     }
@@ -434,15 +713,15 @@ const server = http.createServer(async (req, res) => {
       if (!["going", "notgoing", "interested"].includes(input.intent)) {
         return json(res, 400, { error: "InvalidRequest", message: "unknown intent" });
       }
-      const before = mySeats.get(input.eventRkey) ?? null;
+      const before = mySeats.get(seatKey(req, input.eventRkey)) ?? null;
       let state = "none";
       if (input.intent === "going") state = seats.attendance === "approval" ? "requested" : "confirmed";
       if (before === "confirmed") seats.confirmed -= 1;
       if (before === "requested") seats.requested -= 1;
       if (state === "confirmed") seats.confirmed += 1;
       if (state === "requested") seats.requested += 1;
-      if (state === "none") mySeats.delete(input.eventRkey);
-      else mySeats.set(input.eventRkey, state);
+      if (state === "none") mySeats.delete(seatKey(req, input.eventRkey));
+      else mySeats.set(seatKey(req, input.eventRkey), state);
       return json(res, 200, { state, decidedBy: "self" });
     }
 

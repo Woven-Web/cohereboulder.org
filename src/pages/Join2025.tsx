@@ -1,5 +1,4 @@
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
@@ -19,8 +18,7 @@ const Join2025 = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-earth-light/20">
-      <Navigation />
+    <SitePage classic="min-h-screen bg-gradient-to-b from-background to-earth-light/20">
 
       {/* Hero Section */}
       <section className="relative py-20 px-4">
@@ -318,9 +316,7 @@ const Join2025 = () => {
           </div>
         </div>
       </section>
-
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 

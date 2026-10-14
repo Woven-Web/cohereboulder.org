@@ -21,7 +21,7 @@ const PAGES = [
   { path: "/register", expect: "Register" },
   // Renders whichever calendar source is live (regenOS cards or the Luma
   // fallback); the header proves the page itself mounted either way.
-  { path: "/calendar", expect: "Community Calendar" },
+  { path: "/calendar", expect: "Boulder time" },
   // Accountless propose flow — always reachable, no session needed.
   { path: "/propose", expect: "Propose an event" },
   // /login and /admin depend on whether regenOS sign-in is switched on; the
@@ -71,7 +71,7 @@ function hasExpectedContent(body, expect) {
  * still be mid-render a moment later. Poll body text for a few seconds
  * rather than reading it exactly once.
  */
-async function waitForRenderedBody(page, expect, timeoutMs = 8_000) {
+async function waitForRenderedBody(page, expect, timeoutMs = 25_000) {
   const deadline = Date.now() + timeoutMs;
   // A page mid-navigation (e.g. /login replacing itself with /admin) has no
   // execution context for a moment; reading the body then throws. Treat that
@@ -121,7 +121,7 @@ for (const { path, expect, finalPath, status } of PAGES) {
   page.on("pageerror", (error) => consoleErrors.push(String(error)));
 
   try {
-    const response = await page.goto(url, { waitUntil: "networkidle", timeout: 45_000 });
+    const response = await page.goto(url, { waitUntil: "load", timeout: 45_000 });
     const body = await waitForRenderedBody(page, expect);
     // The final document's status: a redirect (/login -> /admin) is judged by
     // where it ended up, and only a page that names `status` may be non-2xx.

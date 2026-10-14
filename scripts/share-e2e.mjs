@@ -56,7 +56,7 @@ try {
         assert.equal(await input.evaluate(el => el.selectionEnd - el.selectionStart), expected.length);
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      await page.getByRole('button', { name: 'En/Es', exact: true }).last().click();
+      await page.getByRole('button', { name: /^(En\/Es|Es)$/ }).last().click();
       await page.getByRole('button', { name: 'Compartir evento', exact: true }).waitFor();
       if (mode === 'copy' || mode === 'native-failure') await page.getByRole('status').filter({ hasText: 'Enlace copiado' }).waitFor();
       if (mode === 'denied') await page.getByRole('status').filter({ hasText: 'Copia este enlace para compartir el evento:' }).waitFor();

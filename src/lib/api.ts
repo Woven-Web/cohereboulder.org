@@ -187,11 +187,83 @@ export async function createEmailRsvp(payload: EmailRsvpPayload): Promise<{ alre
   return { already: body.already === true };
 }
 
+export interface CompanionDaily {date:string;title:string;body:string;title_es?:string;body_es?:string;question?:string;question_es?:string;}
+export interface CompanionQuest {id:string;title:string;description:string;title_es?:string;description_es?:string;start_date:string;end_date:string;}
+export interface CompanionToday {date:string;daily:CompanionDaily|null;quests:CompanionQuest[];pushKey:string|null;start:string;end:string;}
+export async function companionRequest<T = {ok:boolean}>(path:string,body?:unknown,method=body?'POST':'GET'):Promise<T>{
+ const response=await fetch(`${API_BASE}/api/companion/${path}`,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin'});
+ if(!response.ok)throw new Error(String(response.status));return response.json();
+}
+export async function companionEvents():Promise<import('./events').CommunityEvent[]>{
+ const response=await fetch(`${API_BASE}/api/events`);if(!response.ok)throw new Error('events unavailable');
+ const data=await response.json() as {events?:import('./events').CommunityEvent[]};return data.events??[];
+}
+
 export async function fetchMyRegistration(): Promise<{ registered: boolean | null }> {
   const response = await fetch(`${API_BASE}/api/me/registration`, { credentials: "same-origin", cache: "no-store" });
   if (!response.ok) throw new Error("Registration status unavailable");
   return response.json();
 }
+
+// ---------------------------------------------------- members: RSVP visibility
+// Who sees a member's RSVPs on their profile (worker/src/rsvp-visibility.ts).
+// The Worker takes the owner from the regenOS session cookie; nothing here
+// names a person except the profile being looked at.
+
+export type RsvpVisibilityMode = "members" | "nobody";
+
+export interface RsvpVisibility {
+  mode: RsvpVisibilityMode;
+  hiddenEvents: string[];
+}
+
+export interface ProfileRsvp {
+  uri: string;
+  did: string;
+  rkey: string;
+  name: string;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+async function memberJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: "same-origin", cache: "no-store", ...init });
+  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+  return response.json() as Promise<T>;
+}
+
+export const fetchRsvpVisibility = () => memberJson<RsvpVisibility>("/api/me/rsvp-visibility");
+
+export const fetchMyProfileRsvps = () =>
+  memberJson<{ visibility: RsvpVisibility; rsvps: (ProfileRsvp & { hidden: boolean })[] }>("/api/me/rsvps");
+
+/** What members see on this person's profile (their setting already applied). */
+export const fetchMemberRsvps = (did: string) =>
+  memberJson<{ rsvps: ProfileRsvp[] }>(`/api/members/${encodeURIComponent(did)}/rsvps`);
+
+function putVisibility(body: { mode: RsvpVisibilityMode } | { event: string; hidden: boolean }) {
+  return memberJson<RsvpVisibility>("/api/me/rsvp-visibility", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+export const setRsvpVisibilityMode = (mode: RsvpVisibilityMode) => putVisibility({ mode });
+export const setEventHidden = (event: string, hidden: boolean) => putVisibility({ event, hidden });
+
+// ------------------------------------------------ members: profile extras
+// "Bringing / Offering / Curious about" (worker/src/profile-extras.ts).
+export type ExtraKey = "bringing" | "offering" | "curious";
+export type ProfileExtras = Record<ExtraKey, string>;
+
+export const fetchMyProfileExtras = () => memberJson<ProfileExtras>("/api/me/profile-extras");
+export const fetchMemberProfileExtras = () => memberJson<{ extras: Record<string, ProfileExtras> }>("/api/members/profile-extras");
+export const putMyProfileExtras = (extras: ProfileExtras) =>
+  memberJson<ProfileExtras>("/api/me/profile-extras", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(extras),
+  });
 
 export interface MeStatus {
   signedIn: boolean;

@@ -4,9 +4,13 @@ import {
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { EmailSignup } from "@/components/EmailSignup";
+import { useLook } from "@/lib/look";
+import { AlmanacFooter, BareChrome } from "@/components/almanac/SiteChrome";
 
 export const Footer = () => {
   const { tr, language, setLanguage } = useLanguage();
+  // Pages that have not been restyled still get the new foot under ?look=almanac.
+  if (useLook() !== "classic") return <BareChrome><AlmanacFooter /></BareChrome>;
 
   return (
     <footer className="bg-earth-warm text-primary-foreground">

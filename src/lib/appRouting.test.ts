@@ -29,6 +29,11 @@ describe("app routing", () => {
   it("defaults sign-ins and home landings to events", () => { expect(signInDestination(null)).toBe("/events"); expect(signInDestination("/")).toBe("/events"); });
   it("preserves explicit internal return paths and rejects external redirects", () => { expect(signInDestination("/events/did:plc:a/event?x=1")).toBe("/events/did:plc:a/event?x=1"); expect(signInDestination("//evil.test")).toBe("/events"); expect(signInDestination("https://evil.test")).toBe("/events"); });
   it("marks event details and the board under their tabs", () => { expect(activeAppTab("/events/a/b")).toBe("events"); expect(activeAppTab("/board")).toBe("board"); expect(activeAppTab("/about")).toBeNull(); });
+  it("keeps the members area (threads, People, profiles) under the Board tab", () => {
+    for (const path of ["/board/did%3Aplc%3Aa/3k", "/people", "/people/did%3Aplc%3Aa", "/profile"]) expect(activeAppTab(path)).toBe("board");
+    expect(activeAppTab("/boardwalk")).toBeNull();
+  });
+  it("keeps Today lit for its quests, and More has its own tab", () => { for (const path of ["/today", "/quests"]) expect(activeAppTab(path)).toBe("today"); expect(activeAppTab("/more")).toBe("more"); });
 });
 
 it("redirects only an explicit sign-in landing", () => {

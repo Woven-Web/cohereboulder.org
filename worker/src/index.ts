@@ -1,3 +1,7 @@
+import { companionRoute, runCompanionCron, type CompanionEnv } from "./companion";
+import { handleNotify, type NotifyRouteEnv } from "./notify";
+import { runNotifyCron, type NotifyEnv } from "./notify-send";
+import { handleHarvests, type HarvestEnv } from "./harvest";
 // COhere member API + admin portal.
 //
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
@@ -14,6 +18,9 @@ import { crossSiteRefusal } from "./csrf";
 import { handleAdminEventImage, handleEventImage } from "./event-images";
 import { handleMyRegistration } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
+import { handleAdminBoard, handleCreateReport } from "./board";
+import { handleMemberProfileExtras, handleMyProfileExtras } from "./profile-extras";
+import { handleMemberRsvps, handleMyRsvps, handleMyRsvpVisibility } from "./rsvp-visibility";
 import { ADMIN_PAGE } from "./admin-page";
 import { handleMe } from "./me";
 import {
@@ -83,7 +90,7 @@ import {
   type AuthEnv,
 } from "./auth";
 
-interface Env extends AuthEnv, AdminGateEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
+interface Env extends CompanionEnv, NotifyEnv, HarvestEnv, AuthEnv, AdminGateEnv, EventsEnv, RegenosAuthEnv, RegenosServiceEnv, ProposalsEnv, RsvpEnv, CheckinEnv, NewsletterEnv, ResendWebhookEnv {
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
@@ -450,6 +457,40 @@ export default {
       return json({ error: "not found" }, 404);
     }
 
+    // Members Board: a member's report of a post. Public route; the reporter is
+    // the regenOS DID from the verified session (worker/src/board.ts).
+    if (path === "/api/board/reports") return handleCreateReport(request, env);
+
+    // Who sees a member's RSVPs on their profile (worker/src/rsvp-visibility.ts).
+    // The owner is always the verified regenOS session, never a request field.
+    if (path === "/api/me/rsvp-visibility") return handleMyRsvpVisibility(request, env);
+    if (path === "/api/me/rsvps") return handleMyRsvps(request, env);
+    // Bringing / offering / curious: COhere-side profile extras (worker/src/profile-extras.ts).
+    if (path === "/api/me/profile-extras") return handleMyProfileExtras(request, env);
+    if (path === "/api/members/profile-extras") return handleMemberProfileExtras(request, env);
+    const memberRsvps = /^\/api\/members\/([^/]+)\/rsvps$/.exec(path);
+    if (memberRsvps) {
+      let target: string;
+      try {
+        target = decodeURIComponent(memberRsvps[1]);
+      } catch {
+        return json({ error: "not found" }, 404);
+      }
+      return handleMemberRsvps(request, env, target);
+    }
+
+    // Notification settings, device health, and the signed email links
+    // (worker/src/notify.ts), and members' harvests (worker/src/harvest.ts).
+    {
+      const notify = await handleNotify(request, env as unknown as NotifyRouteEnv, url);
+      if (notify) return notify;
+      const harvest = await handleHarvests(request, env, url);
+      if (harvest) return harvest;
+    }
+
+    if (path.startsWith("/api/companion/")) return companionRoute(request, env);
+    if (path.startsWith("/api/admin/companion/")) return companionRoute(request, env, (await resolveAdminAccess(env, request)).state === "organizer", true);
+
     // --------------------------------------------------------------- admin API
 
     if (path.startsWith("/api/admin/") || path === "/list") {
@@ -742,6 +783,11 @@ export default {
       if (path === "/api/admin/access" || path.startsWith("/api/admin/access/")) {
         if (!canManageAccess(session)) return json({ error: ACCESS_REFUSED }, 403);
       }
+      // The Board tab: reports queue, hide/remove, approval switch. Same gate as
+      // Access — any signed-in organizer, all of whom are stewards of the calendar.
+      const boardResponse = await handleAdminBoard(request, env, path, session.email ?? "unknown");
+      if (boardResponse) return boardResponse;
+
       if (request.method === "GET" && path === "/api/admin/access") {
         return handleAdminAccessList(env);
       }
@@ -1119,10 +1165,20 @@ export default {
     // own title/description; every page its own canonical), plus immutable
     // caching for hashed /assets/*. Best-effort: falls back to the file as-is.
     const asset = await env.ASSETS.fetch(request);
-    return decorateAssetResponse(request, asset, env);
+    const decorated = await decorateAssetResponse(request, asset, env);
+    if (path.startsWith("/n/")) {
+      // Emailed-link pages carry a bearer token in the URL: keep them out of search and out of Referer headers.
+      const out = new Response(decorated.body, decorated);
+      out.headers.set("X-Robots-Tag", "noindex, nofollow");
+      out.headers.set("Referrer-Policy", "no-referrer");
+      out.headers.set("Cache-Control", "no-store");
+      return out;
+    }
+    return decorated;
   },
 
-  // Two schedules (wrangler.jsonc `triggers.crons`):
+  // Companion runs at 12:00, 15:00 and 21:00 UTC, with minute ticks for retries.
+  // Its errors are contained so the existing schedules still run:
   //  - "0 15 * * *", daily at 15:00 UTC — 9am in Boulder during MDT, 8am after
   //    DST ends. Day-before RSVP reminders and the 30-day RSVP purge. Safe to
   //    run twice: rows are claimed before sending (worker/src/rsvps.ts). Also
@@ -1132,6 +1188,12 @@ export default {
   //    when idle: two indexed SELECTs.
   async scheduled(controller: { scheduledTime: number; cron?: string }, env: Env): Promise<void> {
     const now = new Date(controller.scheduledTime);
+    try { await runCompanionCron(env, now); } catch { console.error("companion cron failed"); }
+    // Morning note, harvest invites and the 8 PM note: a no-op unless NOTIFY_PAUSED is "false".
+    try {
+      const sent = await runNotifyCron(env, now);
+      if (sent.sent || sent.skipped) console.info("notify cron:", JSON.stringify(sent));
+    } catch (error) { console.error("notify cron failed:", error instanceof Error ? error.message : error); }
     if (controller.cron === NEWSLETTER_CRON) {
       const result = await runNewsletterCron(env, now);
       if (result.started || result.sent || result.failed || result.skipped || result.retried || result.completed || result.aborted) {
@@ -1139,6 +1201,7 @@ export default {
       }
       return;
     }
+    if (controller.cron !== "0 15 * * *") return;
     // Door check-ins share the RSVPs' 30-days-after-the-event retention. Run
     // first and on its own, so a regenOS hiccup in the reminder pass can never
     // keep check-in rows past their deletion date.

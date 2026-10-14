@@ -1,28 +1,29 @@
 import { displayHandle } from "@/lib/handles";
 import { ShareEvent } from "@/components/ShareEvent";
 import { EventRsvp } from "@/components/EventRsvp";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { AddressBlock } from "@/components/almanac/AddressBlock";
+import { SeatBadge } from "@/components/almanac/SeatBadge";
+import { seatOf } from "@/components/almanac/seat";
+import { useMyEvents } from "@/lib/myEvents";
+import { formatDay } from "@/lib/festival";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarPlus, Clock, ExternalLink, MapPin } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
-  eventPath,
+  denverDateKey,
   fetchCommunityEvent,
   formatEventDate,
   formatEventEnd,
   formatEventTimeRange,
   locationLine,
 } from "@/lib/events";
-import { downloadEventIcs } from "@/lib/ics";
-import { googleCalendarEventUrl } from "@/lib/calendarLinks";
+import { AddToCalendar } from "@/components/AddToCalendar";
+import { HarvestSection } from "@/components/harvest/HarvestSection";
 // The event API doesn't carry a per-event image today, so a detail page
 // gets a tasteful COhere still as a banner instead of a blank header — real
 // footage, never AI/stock, per Eileen's rule. Picked deterministically per
@@ -73,179 +74,106 @@ export default function EventDetail() {
 
   const event = data?.event ?? null;
   const date = event ? formatEventDate(event.startsAt, language) : null;
+  const dayKey = event ? denverDateKey(event.startsAt) : null;
   const time = event ? formatEventTimeRange(event.startsAt, event.endsAt, language) : null;
   const until = event ? formatEventEnd(event.startsAt, event.endsAt, language) : null;
-  const where = event ? locationLine(event.location) : null;
+  const where = event ? (event.location?.name?.trim() || locationLine(event.location)) : null;
+  const mine = useMyEvents(event ? [event] : undefined);
+  const myItem = event ? mine.items.find((i) => i.event.did === event.did && i.event.rkey === event.rkey) : undefined;
   const badged = event?.status && BADGED_STATUSES.has(event.status);
   const cancelled = event?.status === "cancelled";
 
-  function handleAddToCalendar() {
-    if (!event) return;
-    downloadEventIcs(event, `${window.location.origin}${eventPath(event)}`);
-  }
+  const paragraphs = event?.description ? event.description.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean) : [];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <main className="py-12 [&_button]:min-h-11">
-        <div className="max-w-[800px] mx-auto px-4">
-          <Link
-            to="/calendar"
-            className="inline-flex min-h-11 items-center gap-2 text-sm text-primary hover:underline mb-6"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {tr("calendar.events.backToCalendar")}
-          </Link>
-
-          {isLoading ? (
-            <p className="text-center text-muted-foreground py-16">
-              {tr("calendar.events.loading")}
-            </p>
-          ) : isError ? (
-            // Transient failure (the Worker's 503, a network blip) — say "try
-            // again", not "removed"; the event may be perfectly fine.
-            <Card>
-              <CardContent className="p-8 text-center">
-                <h1 className="text-2xl font-bold text-foreground mb-3">
-                  {tr("calendar.events.unavailableTitle")}
-                </h1>
-                <p className="text-muted-foreground">
-                  {tr("calendar.events.unavailableBody")}
-                </p>
-              </CardContent>
-            </Card>
-          ) : !event ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <h1 className="text-2xl font-bold text-foreground mb-3">
-                  {tr("calendar.events.notFoundTitle")}
-                </h1>
-                <p className="text-muted-foreground">
-                  {tr("calendar.events.notFoundBody")}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <article>
-              <div className="relative rounded-lg overflow-hidden shadow-warm mb-8">
-                <img
-                  src={event.imageUrl || bannerFor(`${event.did}/${event.rkey}`)}
-                  alt={event.imageUrl ? event.name : tr("calendar.events.bannerAlt")}
-                  data-testid="event-banner"
-                  className="aspect-video md:aspect-[21/9] w-full object-cover object-[center_30%]"
-                />
-              </div>
-
-              <header className="mb-8">
-                <p className="text-sm font-semibold uppercase tracking-wide text-primary mb-2">
-                  {date ?? tr("calendar.events.undated")}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <h1
-                    className={`text-3xl lg:text-4xl font-bold text-foreground ${cancelled ? "line-through opacity-70" : ""}`}
-                  >
-                    {event.name}
-                  </h1>
-                  {badged && (
-                    <Badge className="text-sm" variant={cancelled ? "destructive" : "secondary"}>
-                      {tr(`calendar.events.status.${event.status}`)}
-                    </Badge>
-                  )}
-                  {event.mode && KNOWN_MODES.has(event.mode) && (
-                    <Badge className="text-sm" variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {time && (
-                    <p className="text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-4 w-4 shrink-0" />
-                      {time}
-                      {until && (
-                        <span>
-                          · {tr("calendar.events.until")} {until}
-                        </span>
-                      )}
-                    </p>
-                  )}
-                  {where && (
-                    <p className="text-muted-foreground flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0" />
-                      {where}
-                    </p>
-                  )}
-                  {event.hostName && (
-                    <p className="text-muted-foreground text-sm">
-                      {tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}
-                    </p>
-                  )}
-                </div>
-              </header>
-
-              {event.description && (
-                <p className="text-foreground leading-relaxed whitespace-pre-line max-w-[65ch] mb-8">
-                  {event.description}
-                </p>
-              )}
-
-              <EventRsvp key={`rsvp-${event.did}/${event.rkey}`} event={event} />
-
-              {event.uris.length > 0 && (
-                <div className="mb-8">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                    {tr("calendar.events.links")}
-                  </h2>
-                  <ul className="space-y-2">
-                    {event.uris.map((link) => (
-                      <li key={link.uri}>
-                        <a
-                          href={link.uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-11 items-center gap-2 text-primary hover:underline break-all"
-                        >
-                          {link.name || link.uri}
-                          <ExternalLink className="h-4 w-4 shrink-0" />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
-                {event.startsAt && !Number.isNaN(Date.parse(event.startsAt)) && !cancelled && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-11 w-full gap-2">
-                        <CalendarPlus className="h-4 w-4" />
-                        {tr("calendar.events.addToCalendar")}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {googleCalendarEventUrl(event) && (
-                        <DropdownMenuItem className="min-h-11" asChild>
-                          <a href={googleCalendarEventUrl(event)!} target="_blank" rel="noopener noreferrer">
-                            {tr("calendar.events.googleCalendar")}
-                          </a>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="min-h-11" onSelect={handleAddToCalendar}>
-                        {tr("calendar.events.appleOtherCalendar")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+    <AlmanacShell>
+      <main className="page" style={{ paddingTop: 0 }}>
+        {isLoading ? (
+          <p className="small" style={{ padding: "3rem 0", textAlign: "center" }}>{tr("calendar.events.loading")}</p>
+        ) : isError ? (
+          // Transient failure (the Worker's 503, a network blip): say "try
+          // again", not "removed"; the event may be perfectly fine.
+          <div className="empty" style={{ marginTop: "1rem" }}>
+            <Link className="link" to="/calendar">← {tr("almanac.back")}</Link>
+            <h1 className="h3">{tr("calendar.events.unavailableTitle")}</h1>
+            <p className="lede">{tr("calendar.events.unavailableBody")}</p>
+          </div>
+        ) : !event ? (
+          <div className="empty" style={{ marginTop: "1rem" }}>
+            <Link className="link" to="/calendar">← {tr("almanac.back")}</Link>
+            <h1 className="h3">{tr("calendar.events.notFoundTitle")}</h1>
+            <p className="lede">{tr("calendar.events.notFoundBody")}</p>
+          </div>
+        ) : (
+          <article className="flow2">
+            <div className="flow2__a">
+              <header className="o1">
+                <Link className="link" to="/calendar" style={{ marginTop: ".4rem" }}>← {tr("almanac.back")}</Link>
+                <p className="folio" style={{ marginTop: ".3rem" }}>{dayKey ? formatDay(dayKey, language, true) : date ?? tr("calendar.events.undated")}</p>
+                {(time || until) && (
+                  <p className="mono" style={{ fontSize: ".85em", color: "var(--deep)" }}>
+                    {time}{until && <> · {tr("calendar.events.until")} {until}</>}
+                  </p>
                 )}
-                {data?.icsUrl && <div className="min-w-0"><CalendarSubscribe feedUrl={data.icsUrl} compact /></div>}
+                <h1 className={`h1${cancelled ? " line-through opacity-70" : ""}`} style={{ margin: ".4rem 0 .5rem" }}>{event.name}</h1>
+                {(badged || (event.mode && KNOWN_MODES.has(event.mode) && event.mode !== "inperson")) && (
+                  <p style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".4rem" }}>
+                    {badged && <Badge className="text-sm" variant={cancelled ? "destructive" : "secondary"}>{tr(`calendar.events.status.${event.status}`)}</Badge>}
+                    {event.mode && event.mode !== "inperson" && KNOWN_MODES.has(event.mode) && <Badge className="text-sm" variant="outline">{tr(`calendar.events.mode.${event.mode}`)}</Badge>}
+                  </p>
+                )}
+                {where && <p className="ev__meta" style={{ fontSize: "1em" }}>{where}</p>}
+                {event.hostName && <p className="ev__meta">{tr("calendar.events.hostedBy")} {displayHandle(event.hostName)}</p>}
+                {myItem && <p style={{ marginTop: ".6rem" }}><SeatBadge seat={seatOf(myItem)} /></p>}
+              </header>
+              <div className="o3">
+                {paragraphs.length > 0 && <div className="eyebrow" style={{ marginTop: "1.6rem" }}>{tr("almanac.about")}</div>}
+                {paragraphs.map((p, i) => <p key={i} className="lede whitespace-pre-line" style={{ marginTop: ".8rem", maxWidth: "65ch" }}>{p}</p>)}
+                {event.uris.length > 0 && (
+                  <div style={{ marginTop: "1.4rem" }}>
+                    <h2 className="eyebrow">{tr("calendar.events.links")}</h2>
+                    <ul>
+                      {event.uris.map((link) => (
+                        <li key={link.uri}>
+                          <a className="link break-all" href={link.uri} target="_blank" rel="noopener noreferrer">
+                            {link.name || link.uri} <ExternalLink className="ml-1 inline h-4 w-4 shrink-0" aria-hidden />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <HarvestSection event={event} />
+                <p className="note">{tr("almanac.sourceNote")}</p>
               </div>
-            </article>
-          )}
-        </div>
+            </div>
+            <div className="flow2__b">
+              <div className="o2" style={{ marginTop: "1rem" }}>
+                <EventRsvp key={`rsvp-${event.did}/${event.rkey}`} event={event} />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-1">
+                  <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
+                  <AddToCalendar event={event} className="h-11 w-full" />
+                  {data?.icsUrl && <div className="min-w-0"><CalendarSubscribe feedUrl={data.icsUrl} compact /></div>}
+                </div>
+              </div>
+              <div className="o4" style={{ marginTop: "1.6rem" }}>
+                {event.location && <div className="eyebrow" style={{ marginBottom: ".7rem" }}>{tr("almanac.where")}</div>}
+                <AddressBlock location={event.location} />
+                <figure className="photo photo--always">
+                  <div>
+                    <img
+                      src={event.imageUrl || bannerFor(`${event.did}/${event.rkey}`)}
+                      alt={event.imageUrl ? event.name : tr("calendar.events.bannerAlt")}
+                      data-testid="event-banner"
+                      loading="lazy"
+                    />
+                  </div>
+                </figure>
+              </div>
+            </div>
+          </article>
+        )}
       </main>
-
-      <Footer />
-    </div>
+    </AlmanacShell>
   );
 }

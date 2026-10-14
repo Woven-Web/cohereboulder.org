@@ -1,3 +1,5 @@
+import { translations } from "../../src/lib/translations";
+const companionCopy = (key: keyof typeof translations.companionAdmin) => { const copy = translations.companionAdmin[key]; return copy.en + " / " + copy.es; };
 // The admin portal, served as a single self-contained page from GET /admin.
 // No build step and no framework: it fetches the admin API with the key the
 // organizer types in, held in sessionStorage for the tab's lifetime only.
@@ -85,7 +87,8 @@ export const ADMIN_PAGE = `<!doctype html>
   .stat .k { font-size: 0.75rem; color: var(--ink-3); }
 
   .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--hair); overflow-x: auto; }
-  .tab { flex-shrink: 0; white-space: nowrap; min-height: 2.75rem; background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem;
+  .tab { flex: none; white-space: nowrap; min-height: 2.75rem; }
+  .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem;
          color: var(--ink-3); font-size: 0.9rem; }
   .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); font-weight: 600; }
 
@@ -238,19 +241,37 @@ export const ADMIN_PAGE = `<!doctype html>
       <button class="tab" role="tab" aria-selected="true" data-tab="people">People</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="events">Events</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="proposals">Proposals<span class="pill" id="proposalbadge" style="margin-left:0.35rem"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="companion">${companionCopy("tab")}</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="forms">Forms</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="funnel">Funnel</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="newsletter">Newsletter</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="board">Board<span class="pill" id="boardbadge" style="margin-left:0.35rem"></span></button>
       <button class="tab" role="tab" aria-selected="false" data-tab="access">Access</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="admins">Organizers</button>
     </div>
 
+    <section id="tab-companion" class="hidden" style="flex-direction:column;gap:1rem">
+      <h2>${companionCopy("heading")}</h2>
+      <p>${companionCopy("intro")}</p>
+      <label>${companionCopy("content")} <select id="comp-kind"><option value="daily">${companionCopy("daily")}</option><option value="quest">${companionCopy("quest")}</option></select></label>
+      <label>${companionCopy("existing")} <select id="comp-existing"><option value="">${companionCopy("new")}</option></select></label>
+      <label>JSON <textarea id="comp-json" rows="12" aria-label="${companionCopy("json")}"></textarea></label>
+      <div><button id="comp-new">${companionCopy("new")}</button> <button id="comp-save">${companionCopy("save")}</button> <button id="comp-delete">${companionCopy("delete")}</button></div>
+      <p id="comp-message" role="status"></p>
+      <h3>${companionCopy("totals")}</h3><pre id="comp-totals"></pre>
+      <h3>${companionCopy("replies")}</h3><p>${companionCopy("repliesIntro")}</p>
+      <button id="comp-replies">${companionCopy("load")}</button> <button id="comp-next" disabled>${companionCopy("next")}</button>
+      <a id="comp-csv" href="/api/admin/companion/replies.csv" download>${companionCopy("csv")}</a>
+      <div class="table-scroll"><table><thead><tr><th>${companionCopy("date")}</th><th>${companionCopy("name")}</th><th>${companionCopy("reply")}</th></tr></thead><tbody id="comp-reply-rows"></tbody></table></div>
+    </section>
     <section id="tab-people" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="toolbar">
         <input type="search" id="q" placeholder="Search name, email, org, or any answer…">
         <button class="chip" data-filter="all" aria-pressed="true">Everyone</button>
         <button class="chip" data-filter="register-2025" aria-pressed="false">Registered 2025</button>
-        <button class="chip" data-filter="signup-2026" aria-pressed="false">2026 list</button>
+        <button class="chip" data-filter="register-2026" aria-pressed="false">Registered 2026</button>
+        <button class="chip" data-filter="any-2026" aria-pressed="false">Either 2026 form</button>
+        <button class="chip" data-filter="signup-2026" aria-pressed="false">Email-only 2026 list</button>
         <button class="chip" data-filter="host" aria-pressed="false">Offered to host</button>
         <button class="chip" data-filter="unsubscribed" aria-pressed="false">Unsubscribed</button>
         <button class="btn" id="exportall">Export CSV</button>
@@ -346,6 +367,44 @@ export const ADMIN_PAGE = `<!doctype html>
         <table>
           <thead><tr><th>Step</th><th>Events</th><th>Fewer than previous step</th></tr></thead>
           <tbody id="funnel-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-board" class="hidden" style="flex-direction:column;gap:1rem;">
+      <p class="muted">
+        The members Board lives on regenOS; these are COhere's own moderation tools. Hiding is reversible
+        and the author still sees their post, marked. Removing is permanent (only the author can truly delete).
+        Both act only on cohereboulder.org: the post still exists on regenOS and can be seen in other apps.
+        Reported event harvests show up here too, marked Harvest. They live in COhere itself, so hiding or removing one
+        takes it off the event page (and its photo with it) and the author still sees it, marked.
+      </p>
+      <div class="toolbar">
+        <label style="display:flex;align-items:center;gap:0.5rem">
+          <input type="checkbox" id="boardapproval"> Hold new posts for steward approval
+        </label>
+        <span class="muted" id="boardmsg"></span>
+      </div>
+      <p class="muted" id="boardapprovalnote">Off. Posts appear as soon as they are written. Turning it on holds each new post from a non-steward until you approve it; posts already on the Board are not affected.</p>
+      <h3>Reports</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Post</th><th>Reported</th><th></th></tr></thead>
+          <tbody id="boardreports"></tbody>
+        </table>
+      </div>
+      <h3 id="boardpendingtitle">Waiting for approval</h3>
+      <div class="table-scroll" id="boardpendingwrap">
+        <table>
+          <thead><tr><th>Post</th><th>Held since</th><th></th></tr></thead>
+          <tbody id="boardpending"></tbody>
+        </table>
+      </div>
+      <h3>Hidden and removed</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Post</th><th>Status</th><th></th></tr></thead>
+          <tbody id="boardhidden"></tbody>
         </table>
       </div>
     </section>
@@ -674,13 +733,15 @@ export const ADMIN_PAGE = `<!doctype html>
   function renderStats() {
     var subscribed = people.filter(function (p) { return p.subscribed; }).length;
     var reg2025 = people.filter(function (p) { return submissionOf(p, "register-2025"); }).length;
+    var reg2026 = people.filter(function (p) { return submissionOf(p, "register-2026"); }).length;
     var sig2026 = people.filter(function (p) { return submissionOf(p, "signup-2026"); }).length;
     var hosts = people.filter(wantsToHost).length;
     var tiles = [
       [people.length, "people"],
       [subscribed, "on the email list"],
       [reg2025, "registered in 2025"],
-      [sig2026, "on the 2026 list"],
+      [reg2026, "registered for 2026"],
+      [sig2026, "on the email-only 2026 list"],
       [hosts, "offered to host"]
     ];
     el("stats").innerHTML = tiles.map(function (t) {
@@ -692,6 +753,8 @@ export const ADMIN_PAGE = `<!doctype html>
   function matches(person) {
     if (filter === "register-2025" && !submissionOf(person, "register-2025")) return false;
     if (filter === "signup-2026" && !submissionOf(person, "signup-2026")) return false;
+    if (filter === "register-2026" && !submissionOf(person, "register-2026")) return false;
+    if (filter === "any-2026" && !submissionOf(person, "register-2026") && !submissionOf(person, "signup-2026")) return false;
     if (filter === "host" && !wantsToHost(person)) return false;
     if (filter === "unsubscribed" && person.subscribed) return false;
     if (!query) return true;
@@ -1441,6 +1504,105 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   });
 
+  // ======================================================== the Board tab
+
+  var boardData = { reports: [], hidden: [], pending: [], settings: { approval: false } };
+
+  function boardLink(uri) {
+    var parts = uri.replace("at://", "").split("/coop.lexicon.post/");
+    return parts.length === 2 ? "/board/" + encodeURIComponent(parts[0]) + "/" + encodeURIComponent(parts[1]) : "/board";
+  }
+
+  function boardPostCell(uri, excerpt, authorDid, link) {
+    var harvest = uri.indexOf("cohere:harvest/") === 0;
+    return '<div>' + (harvest ? '<span class="pill">Harvest</span> ' : "") + (excerpt ? esc(excerpt) + (harvest ? "" : ' <span class="muted" style="font-size:0.8em">(supplied by the reporter, not verified)</span>') : '<span class="muted">(text not captured)</span>') + "</div>" +
+      '<div class="muted" style="font-size:0.8em">' + esc(authorDid || "") +
+      (harvest
+        ? (link ? ' · <a href="' + esc(link) + '" target="_blank" rel="noopener">open the event page</a>' : " · deleted")
+        : ' · <a href="' + boardLink(uri) + '" target="_blank" rel="noopener">open on the Board</a>') + "</div>";
+  }
+
+  function loadBoard() {
+    return api("/api/admin/board").then(function (r) { return r.json(); }).then(function (data) {
+      boardData = data;
+      renderBoard();
+    }).catch(function (e) {
+      el("boardmsg").textContent = e.message;
+    });
+  }
+
+  function renderBoard() {
+    var open = boardData.reports.length;
+    el("boardbadge").textContent = open ? String(open) : "";
+    el("boardapproval").checked = !!boardData.settings.approval;
+    el("boardapprovalnote").textContent = boardData.settings.approval
+      ? "On. New posts from non-stewards are held here until you approve them. Switching it off lets new posts through again."
+      : "Off. Posts appear as soon as they are written. Turning it on holds each new post from a non-steward until you approve it; posts already on the Board are not affected.";
+    el("boardreports").innerHTML = boardData.reports.length ? boardData.reports.map(function (r) {
+      var why = r.reasons.map(function (x) { return x.replace("_", " "); }).join(", ");
+      var notes = r.notes.map(function (n) { return '<div class="muted">\u201c' + esc(n) + '\u201d</div>'; }).join("");
+      return "<tr><td>" + boardPostCell(r.postUri, r.excerpt, r.authorDid, r.link) + "</td>" +
+        "<td>" + r.reporters + (r.reporters === 1 ? " report" : " reports") + "<br>" + esc(why) + notes +
+        '<div class="muted">' + esc(new Date(r.firstAt).toLocaleString()) + "</div></td>" +
+        '<td style="min-width:11rem">' +
+        '<button class="btn" data-board="hide" data-uri="' + esc(r.postUri) + '">Hide</button> ' +
+        '<button class="btn" data-board="remove" data-uri="' + esc(r.postUri) + '">Remove</button> ' +
+        '<button class="btn" data-board="dismiss" data-id="' + r.id + '">Dismiss</button></td></tr>';
+    }).join("") : '<tr><td colspan="3" class="muted">No open reports.</td></tr>';
+    var showPending = boardData.settings.approval || boardData.pending.length > 0;
+    el("boardpendingtitle").style.display = showPending ? "" : "none";
+    el("boardpendingwrap").style.display = showPending ? "" : "none";
+    el("boardpending").innerHTML = boardData.pending.length ? boardData.pending.map(function (p) {
+      return "<tr><td>" + boardPostCell(p.uri, p.excerpt, p.author_did, p.link) + "</td>" +
+        "<td>" + esc(new Date(p.created_at).toLocaleString()) + "</td>" +
+        '<td style="min-width:9rem"><button class="btn primary" data-board="approve" data-uri="' + esc(p.uri) + '">Approve</button> ' +
+        '<button class="btn" data-board="remove" data-uri="' + esc(p.uri) + '">Remove</button></td></tr>';
+    }).join("") : '<tr><td colspan="3" class="muted">Nothing is waiting.</td></tr>';
+    el("boardhidden").innerHTML = boardData.hidden.length ? boardData.hidden.map(function (h) {
+      return "<tr><td>" + boardPostCell(h.uri, h.excerpt, h.author_did, h.link) + "</td>" +
+        "<td><span class='pill'>" + esc(h.state) + "</span>" +
+        (h.note ? '<div class="muted">' + esc(h.note) + "</div>" : "") +
+        '<div class="muted">' + esc(h.actor || "") + " · " + esc(new Date(h.updated_at).toLocaleString()) + "</div></td>" +
+        "<td>" + (h.state === "hidden" ? '<button class="btn" data-board="unhide" data-uri="' + esc(h.uri) + '">Unhide</button>' : '<span class="muted">permanent</span>') + "</td></tr>";
+    }).join("") : '<tr><td colspan="3" class="muted">Nothing hidden.</td></tr>';
+  }
+
+  function boardPost(path, body) {
+    el("boardmsg").textContent = "";
+    return api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) })
+      .then(function () { return loadBoard(); })
+      .catch(function (e) { el("boardmsg").textContent = e.message; });
+  }
+
+  el("tab-board").addEventListener("click", function (event) {
+    var button = event.target.closest ? event.target.closest("[data-board]") : null;
+    if (!button) return;
+    var action = button.getAttribute("data-board"), uri = button.getAttribute("data-uri");
+    if (action === "hide") {
+      var note = prompt("Why is this being hidden? (optional, kept for the record; the author is only told a steward hid it)");
+      if (note === null) return;
+      boardPost("/api/admin/board/hide", { uri: uri, note: note });
+    } else if (action === "remove") {
+      var why = prompt("Remove this post for good? Say why (required). This cannot be undone here; only the author can truly delete it.");
+      if (!why) return;
+      boardPost("/api/admin/board/remove", { uri: uri, note: why });
+    } else if (action === "unhide") {
+      boardPost("/api/admin/board/unhide", { uri: uri });
+    } else if (action === "approve") {
+      boardPost("/api/admin/board/approve", { uri: uri });
+    } else if (action === "dismiss") {
+      boardPost("/api/admin/board/reports/" + button.getAttribute("data-id") + "/dismiss");
+    }
+  });
+
+  el("boardapproval").addEventListener("change", function () {
+    var on = el("boardapproval").checked;
+    el("boardmsg").textContent = "";
+    api("/api/admin/board/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval: on }) })
+      .then(function () { return loadBoard(); })
+      .catch(function (e) { el("boardmsg").textContent = e.message; el("boardapproval").checked = !on; });
+  });
+
   // ======================================================== the Access tab
 
   var ROLES = [["member", "Member"], ["builder", "Builder"],
@@ -2129,13 +2291,52 @@ export const ADMIN_PAGE = `<!doctype html>
     }).then(function () { el("sendinvite").disabled = false; });
   });
 
+  var compData = { daily: [], quests: [] }, compNext = null, compAfter = "";
+  function newCompanion() {
+    var date = new Date().toISOString().slice(0,10);
+    var value = el("comp-kind").value === "daily"
+      ? { type:"daily", date:date, title:"", body:"", title_es:"", body_es:"", question:"", question_es:"" }
+      : { type:"quest", id:"", title:"", description:"", title_es:"", description_es:"", start_date:date, end_date:date };
+    el("comp-json").value = JSON.stringify(value,null,2);
+  }
+  function fillCompanion() {
+    var daily = el("comp-kind").value === "daily";
+    el("comp-existing").innerHTML = '<option value="">${companionCopy("new")}</option>' + compData[daily ? "daily" : "quests"].map(function(r){ var id = daily ? r.date : r.id; return '<option value="'+esc(id)+'">'+esc(id+' — '+r.title)+'</option>'; }).join("");
+    newCompanion();
+  }
+  function loadCompanion() {
+    api("/api/admin/companion/content").then(function(r){return r.json();}).then(function(d){ compData=d; fillCompanion(); el("comp-totals").textContent=JSON.stringify(d.totals,null,2); }).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-kind").addEventListener("change", fillCompanion);
+  el("comp-existing").addEventListener("change", function(){
+    var daily=el("comp-kind").value === "daily", id=el("comp-existing").value;
+    var row=compData[daily ? "daily" : "quests"].find(function(r){return (daily ? r.date : r.id) === id;});
+    if(row) el("comp-json").value=JSON.stringify(Object.assign({type:daily?"daily":"quest"},row),null,2); else newCompanion();
+  });
+  el("comp-new").addEventListener("click",newCompanion);
+  function saveCompanion(method) {
+    var body;try{body=JSON.parse(el("comp-json").value);}catch(e){el("comp-message").textContent="${companionCopy("invalid")}";return;}
+    api("/api/admin/companion/content",{method:method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(){el("comp-message").textContent="${companionCopy("saved")}";loadCompanion();}).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-save").addEventListener("click",function(){saveCompanion("PUT");});
+  el("comp-delete").addEventListener("click",function(){if(confirm("${companionCopy("confirm")}"))saveCompanion("DELETE");});
+  function loadCompanionReplies(after) {
+    compAfter=after || "";
+    api("/api/admin/companion/replies?after="+encodeURIComponent(compAfter)).then(function(r){return r.json();}).then(function(d){
+      el("comp-reply-rows").innerHTML=d.replies.map(function(r){return "<tr><td>"+esc(r.date)+"</td><td>"+esc(r.name)+"</td><td>"+esc(r.reply)+"</td></tr>";}).join("");
+      compNext=d.next;el("comp-next").disabled=!compNext;el("comp-csv").href="/api/admin/companion/replies.csv?after="+encodeURIComponent(compAfter);
+    }).catch(function(e){el("comp-message").textContent=e.message;});
+  }
+  el("comp-replies").addEventListener("click",function(){loadCompanionReplies("");});
+  el("comp-next").addEventListener("click",function(){if(compNext)loadCompanionReplies(compNext);});
+
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
     tab.addEventListener("click", function () {
       var name = tab.getAttribute("data-tab");
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.setAttribute("aria-selected", String(t === tab));
       });
-      ["people", "events", "proposals", "forms", "funnel", "newsletter", "access", "admins"].forEach(function (n) {
+      ["people", "events", "proposals", "forms", "funnel", "newsletter", "board", "access", "admins", "companion"].forEach(function (n) {
         var section = el("tab-" + n);
         section.classList.toggle("hidden", n !== name);
         section.style.display = n === name ? "flex" : "none";
@@ -2144,8 +2345,10 @@ export const ADMIN_PAGE = `<!doctype html>
       if (name === "events") loadEvents();
       if (name === "proposals") loadProposals();
       if (name === "access") loadAccess();
+      if (name === "board") loadBoard();
       if (name === "funnel") openFunnel();
       if (name === "newsletter") loadNewsletters();
+      if (name === "companion") loadCompanion();
     });
   });
 

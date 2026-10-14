@@ -5,14 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Users, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AlmanacShell } from "@/components/almanac/AlmanacShell";
+import { useLook } from "@/lib/look";
 
 const About = () => {
   const { tr } = useLanguage();
+  const alm = useLook() !== "classic";
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main>
+  const main = (
+    <main className={alm ? "page skin" : undefined}>
         {/* Hero Section */}
         <section className="py-20 bg-gradient-to-br from-earth-light to-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -335,6 +336,13 @@ const About = () => {
           </div>
         </section>
       </main>
+  );
+  if (alm) return <AlmanacShell site>{main}</AlmanacShell>;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      {main}
       <Footer />
     </div>
   );

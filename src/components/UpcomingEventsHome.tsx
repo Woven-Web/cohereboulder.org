@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/EventCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { fetchCommunityCalendar } from "@/lib/events";
+import { eventPath, fetchCommunityCalendar, formatEventDate, formatEventTimeRange, locationLine } from "@/lib/events";
+import { useLook } from "@/lib/look";
+import { duringGathering } from "@/components/almanac/format";
 
 /** How many cards the homepage teaser shows before pointing to /calendar. */
 const HOME_EVENT_COUNT = 4;
@@ -18,6 +20,9 @@ const HOME_EVENT_COUNT = 4;
  */
 export function UpcomingEventsHome() {
   const { language } = useLanguage();
+  const look = useLook();
+  const almanac = look !== "classic";
+  const eco = look === "ecology";
   const tr = (key: string) => getTranslation(key, language);
 
   const { data } = useQuery({
@@ -27,7 +32,33 @@ export function UpcomingEventsHome() {
 
   if (!data || data.source !== "regenos" || data.events.length === 0) return null;
 
-  const upcoming = data.events.slice(0, HOME_EVENT_COUNT);
+  // Under the ecology look this is the "what's on" strip near the top: events that
+  // have not finished, soonest first, so today's come before the rest.
+  const now = Date.now();
+  const unfinished = eco ? data.events.filter((e) => e.status !== "cancelled" && Date.parse(e.endsAt ?? e.startsAt ?? "") >= now) : data.events;
+  const upcoming = (unfinished.length > 0 ? unfinished : data.events).slice(0, HOME_EVENT_COUNT);
+
+  if (almanac) {
+    return (
+      <section className="band" data-testid="home-events">
+        <h2 className="h2">{eco ? tr(duringGathering() ? "look.home.onToday" : "look.home.comingUp") : tr("home.upcomingEvents.title")}</h2>
+        <p className="lede">{tr("home.upcomingEvents.subtitle")}</p>
+        <ul className="upnext">
+          {upcoming.map((event) => {
+            const where = locationLine(event.location);
+            return (
+              <li key={`${event.did}/${event.rkey}`} className="upnext__item">
+                <p className="upnext__when mono">{[formatEventDate(event.startsAt, language), formatEventTimeRange(event.startsAt, event.endsAt, language)].filter(Boolean).join(" · ")}</p>
+                <h3 className="ev__title"><Link to={eventPath(event)}>{event.name}</Link></h3>
+                {where && !eco && <p className="ev__meta">{where}</p>}
+              </li>
+            );
+          })}
+        </ul>
+        <Link className="link" to="/calendar">{tr("home.upcomingEvents.seeFullCalendar")} <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" /></Link>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-white">

@@ -1,3 +1,8 @@
+import Companion from "./pages/Companion";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
+import NotifyLink from "./pages/NotifyLink";
+import Tomorrow from "./pages/Tomorrow";
+import { StandaloneMode } from "./components/StandaloneMode";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +12,10 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppSession } from "@/components/AppSession";
 import Board from "./pages/Board";
+import BoardThread from "./pages/BoardThread";
+import People from "./pages/People";
+import Person from "./pages/Person";
+import ProfileEdit from "./pages/ProfileEdit";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import CoCreate from "./pages/CoCreate";
@@ -40,11 +49,22 @@ const App = () => (
           <ScrollToTop />
           <AppSession />
           <Routes>
+            <Route path="/today" element={<Companion />} />
+            <Route path="/quests" element={<Companion />} />
+            <Route path="/more" element={<Companion />} />
+            <Route path="/more/notifications" element={<NotificationSettingsPage />} />
+            <Route path="/tomorrow" element={<Tomorrow />} />
+            {/* A link in one of our notification emails: signed in nowhere, the token says who. */}
+            <Route path="/n/:token" element={<NotifyLink />} />
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/co-create" element={<CoCreate />} />
             <Route path="/events" element={<Calendar />} />
             <Route path="/board" element={<Board />} />
+            <Route path="/board/:did/:rkey" element={<BoardThread />} />
+            <Route path="/people" element={<People />} />
+            <Route path="/people/:did" element={<Person />} />
+            <Route path="/profile" element={<ProfileEdit />} />
             <Route path="/home" element={<Index />} />
             <Route path="/calendar" element={<Calendar />} />
             {/* Accountless — anyone can suggest an event; an organizer
@@ -68,6 +88,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <StandaloneMode />
         </BrowserRouter>
       </TooltipProvider>
     </LanguageProvider>

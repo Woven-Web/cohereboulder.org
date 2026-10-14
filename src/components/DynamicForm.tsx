@@ -232,7 +232,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
     const completionLinkLabel =
       completion && (spanish && completion.link_label_es ? completion.link_label_es : completion.link_label);
     return (
-      <Card className="max-w-2xl mx-auto shadow-warm">
+      <Card className="df-card max-w-2xl mx-auto shadow-warm">
         <CardContent className="pt-10 pb-10 text-center space-y-4">
           <CheckCircle2 className="h-12 w-12 mx-auto text-nature-green" />
           <h2 className="text-2xl font-bold">
@@ -271,7 +271,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   }
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-warm">
+    <Card className="df-card max-w-2xl mx-auto shadow-warm">
       <CardHeader>
         <h2 className="text-2xl font-semibold leading-none tracking-tight">{formTitle(definition, language)}</h2>
         {intro}
@@ -430,7 +430,7 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
             />
           </div>
 
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+          {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
           {/* Counted on click, not on submit: native validation can stop the form before onSubmit ever runs. */}
           <Button

@@ -185,3 +185,14 @@ describe("buildEventIcs — day-before reminder", () => {
     expect(ics).toContain("DESCRIPTION:Tomorrow: Tea\\; talk\\, walk");
   });
 });
+
+describe("buildEventIcs — octet folding", () => {
+  it("folds multi-byte text by octets, never splitting a character", () => {
+    const description = "Café ñandú 🌿 ".repeat(20);
+    const ics = buildEventIcs({ ...baseEvent, description }, SITE_URL) as string;
+    for (const line of ics.split("\r\n")) {
+      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+    }
+    expect(ics.replace(/\r\n /g, "")).toContain(`DESCRIPTION:${description}`);
+  });
+});

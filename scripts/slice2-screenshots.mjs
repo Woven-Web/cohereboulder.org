@@ -22,7 +22,7 @@ for (const signedIn of [false, true]) {
     for (const lang of ['en','es']) {
       for (const route of ['events','board']) {
         await page.goto(`${base}/${route}`, { waitUntil: 'networkidle' });
-        if (lang === 'es') await page.getByRole('button', { name: 'En/Es' }).filter({ visible: true }).click();
+        if (lang === 'es') await page.getByRole('button', { name: /^(En\/Es|Es)$/ }).filter({ visible: true }).click();
         if (width >= 768 && !await page.getByTestId('header-tabs').isVisible()) throw new Error('Header tabs hidden');
         if (signedIn && width === 390) {
           const account = page.getByRole('button', { name: 'tester.mock.test', exact: true });
@@ -86,7 +86,7 @@ for (const signedIn of [false, true]) {
     await page.setViewportSize({ width:390, height:844 });
     for (const lang of ['en','es']) {
       await page.goto(`${base}/board`, { waitUntil:'networkidle' });
-      if (lang === 'es') await page.getByRole('button', { name:'En/Es' }).filter({ visible:true }).click();
+      if (lang === 'es') await page.getByRole('button', { name: /^(En\/Es|Es)$/ }).filter({ visible:true }).click();
       await page.getByRole('button', { name:lang === 'es' ? 'Únete a COhere' : 'Join COhere', exact:true }).click();
       await page.waitForTimeout(300);
       const close = await page.getByRole('dialog').getByRole('button', { name: lang === 'es' ? 'Cerrar diálogo' : 'Close dialog' }).boundingBox();
@@ -95,7 +95,7 @@ for (const signedIn of [false, true]) {
       await page.keyboard.press('Escape');
       await context.request.post(`${base}/xrpc/social.scenius.beginSignup`, { data:{ email:'handle@example.test' } });
       await page.goto(`${base}/login?token=tok-good`, { waitUntil:'networkidle' });
-      if (lang === 'es') await page.getByRole('button', { name:'En/Es' }).filter({ visible:true }).click();
+      if (lang === 'es') await page.getByRole('button', { name: /^(En\/Es|Es)$/ }).filter({ visible:true }).click();
       await page.locator('#signup-handle').fill('firefly');
       await page.screenshot({ path:`${out}/handle-390-${lang}.png`, fullPage:true });
     }

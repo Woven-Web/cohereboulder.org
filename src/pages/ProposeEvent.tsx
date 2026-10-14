@@ -11,8 +11,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
+import { SitePage } from "@/components/almanac/SitePage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { proposeEvent } from "@/lib/api";
+import { useLook } from "@/lib/look";
 import { EMPTY_EVENT_FORM, localInputToIso, type EventFormValues, type EventMode } from "@/lib/eventForm";
 
 const MODES: EventMode[] = ["inperson", "virtual", "hybrid"];
@@ -36,12 +36,14 @@ const EMPTY_PROPOSER: ProposerFields = { proposerName: "", proposerEmail: "", we
 
 const ProposeEvent = () => {
   const { tr } = useLanguage();
+  const alm = useLook() !== "classic";
 
   const [form, setForm] = useState<EventFormValues>(EMPTY_EVENT_FORM);
   const [proposer, setProposer] = useState<ProposerFields>(EMPTY_PROPOSER);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [missing, setMissing] = useState<{ name?: boolean; startsAt?: boolean }>({});
 
   function set<K extends keyof EventFormValues>(key: K) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -57,10 +59,19 @@ const ProposeEvent = () => {
     setProposer(EMPTY_PROPOSER);
     setDone(false);
     setError(null);
+    setMissing({});
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The Almanac form checks for itself (noValidate) so the problem is written on the page, not in a bubble.
+    const gaps = { name: !form.name.trim(), startsAt: !localInputToIso(form.startsAt) };
+    setMissing(gaps);
+    if (alm && (gaps.name || gaps.startsAt)) {
+      setError(tr("proposeEvent.missingError"));
+      document.getElementById(gaps.name ? "pe-name" : "pe-starts")?.focus();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -95,8 +106,7 @@ const ProposeEvent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-earth-light/20">
-      <Navigation />
+    <SitePage classic="min-h-screen bg-gradient-to-b from-background to-earth-light/20">
 
       <section className="py-16 px-4">
         <div className="max-w-2xl mx-auto space-y-8">
@@ -122,9 +132,9 @@ const ProposeEvent = () => {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <Card className={alm ? "df-card" : undefined}>
               <CardContent className="p-6">
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} noValidate={alm} className="space-y-5">
                   {/* Honeypot — hidden from people, catnip for bots. */}
                   <div className="hidden" aria-hidden="true">
                     <label htmlFor="propose-website">Website</label>
@@ -140,7 +150,8 @@ const ProposeEvent = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="pe-name">{tr("proposeEvent.nameLabel")}</Label>
-                    <Input id="pe-name" value={form.name} onChange={set("name")} required maxLength={200} />
+                    <Input id="pe-name" value={form.name} onChange={set("name")} required maxLength={200} aria-invalid={missing.name || undefined} aria-describedby={missing.name ? "pe-name-err" : undefined} />
+                    {missing.name && <p id="pe-name-err" className="field-err">{tr("proposeEvent.nameRequired")}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -164,7 +175,10 @@ const ProposeEvent = () => {
                         value={form.startsAt}
                         onChange={set("startsAt")}
                         required
+                        aria-invalid={missing.startsAt || undefined}
+                        aria-describedby={missing.startsAt ? "pe-starts-err" : undefined}
                       />
+                      {missing.startsAt && <p id="pe-starts-err" className="field-err">{tr("proposeEvent.startsRequired")}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="pe-ends">{tr("proposeEvent.endsLabel")}</Label>
@@ -237,7 +251,7 @@ const ProposeEvent = () => {
                     </div>
                   </div>
 
-                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  {error && <p role="alert" className="text-sm text-destructive form-err">{error}</p>}
 
                   <Button
                     id="pe-submit"
@@ -255,9 +269,7 @@ const ProposeEvent = () => {
           )}
         </div>
       </section>
-
-      <Footer />
-    </div>
+    </SitePage>
   );
 };
 
