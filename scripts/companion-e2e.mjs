@@ -45,11 +45,16 @@ await fetch(url);
 }
 process.stdout.write('PASS companion: one encrypted morning note, overlap claims and its payload\n');
 // Today lists what is still ahead today: an event at 11:30 PM Denver, made after the push payloads were asserted.
+// The browser that checks it is frozen at noon Denver (below), never the wall clock: within three hours of
+// the start the row's heading gains an "in N min" chip, and from 11:30 PM the event is "underway", not later.
+// It runs six hours so the Worker, which drops ended events by real time, keeps it all day.
 const nextDay=tomorrow.toISOString().slice(0,10);
 const denverClock=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const eveningStart=['05','06'].map(h=>`${nextDay}T${h}:30:00Z`).find(iso=>denverClock.format(new Date(iso)).replace(',','')===`${date} 23:30`);
 assert.ok(eveningStart,'could not place an evening event in Denver');
-assert.equal((await api('/api/admin/events',{name:'Local evening gathering',startsAt:eveningStart,endsAt:new Date(Date.parse(eveningStart)+1800000).toISOString()},'POST',true)).status,200);
+const denverNoon=['18','19'].map(h=>`${date}T${h}:00:00Z`).find(iso=>denverClock.format(new Date(iso)).replace(',','')===`${date} 12:00`);
+assert.ok(denverNoon,'could not place noon in Denver');
+assert.equal((await api('/api/admin/events',{name:'Local evening gathering',startsAt:eveningStart,endsAt:new Date(Date.parse(eveningStart)+6*3600000).toISOString()},'POST',true)).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'=local formula',name:'<script>local</script>'})).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'again'})).status,429);
 const csv=await api('/api/admin/companion/replies.csv',undefined,'GET',true);assert.match(await csv.text(),/'=local formula/);
@@ -62,8 +67,16 @@ try{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/today');await page.getByRole('heading',{name:'Local daily practice',exact:true}).waitFor();
  await page.getByRole('button',{name:'Es',exact:true}).click();await page.getByRole('heading',{name:'Práctica local',exact:true}).waitFor();await page.getByRole('button',{name:'En',exact:true}).click();
- await page.getByRole('heading',{name:'Local evening gathering',exact:true}).waitFor();
- assert.equal(await page.getByRole('heading',{name:'Local tomorrow gathering'}).count(),0);
+ {
+  const noonContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
+  await noonContext.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+  const noon=await noonContext.newPage();noon.on('pageerror',e=>errors.push(e.message));
+  await noon.clock.setFixedTime(new Date(denverNoon));
+  await noon.goto(base+'/today');
+  await noon.getByRole('heading',{name:'Local evening gathering',exact:true}).waitFor();
+  assert.equal(await noon.getByRole('heading',{name:'Local tomorrow gathering'}).count(),0);
+  await noonContext.close();
+ }
  await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.localCopied=value;}}});});
  await page.getByRole('button',{name:'Send it to someone',exact:true}).click();await page.getByRole('status').filter({hasText:'Question copied'}).waitFor();assert.equal(await page.evaluate(()=>window.localCopied),'Local question?');
  await page.getByRole('button',{name:'Write an answer',exact:true}).click();await page.getByLabel('Your reply', {exact:true}).fill('Browser local reply');await page.getByRole('button',{name:'Send reply',exact:true}).click();await page.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
