@@ -340,8 +340,11 @@
 .alm .sheet__body .btn{margin-top:var(--sp-3)}
 .alm .sheet__fine{font-size:var(--fs-small);color:var(--ink-2);margin:var(--sp-2) 0 0;line-height:1.4}
 .alm .times{margin:var(--sp-4) 0 var(--sp-2);border-top:var(--rule-w) solid var(--hair)}
-.alm .times li{display:grid;grid-template-columns:calc(4 * var(--u)) 1fr;gap:var(--sp-3);align-items:baseline;padding:calc(.6 * var(--u)) 0;border-bottom:var(--rule-w) solid var(--hair)}
-.alm .times b{font:500 calc(.85 * var(--u))/1 var(--mono)}
+.alm .times__label{margin:var(--sp-4) 0 0;font-weight:600}
+.alm .times__label+.times{margin-top:var(--sp-2)}
+.alm .times li{display:grid;grid-template-columns:1fr;gap:2px;padding:calc(.6 * var(--u)) 0;border-bottom:var(--rule-w) solid var(--hair)}
+.alm .times b{font:500 calc(.85 * var(--u))/1.2 var(--mono)}
+.alm .times span{font-size:var(--fs-small);line-height:1.35;color:var(--ink-2)}
 .alm .steps{counter-reset:s;margin:var(--sp-4) 0 var(--sp-2);display:grid;gap:var(--sp-4)}
 .alm .steps li{display:grid;grid-template-columns:28px 1fr;gap:var(--sp-3);align-items:start;font-size:var(--fs-body);line-height:1.4}
 .alm .steps li::before{counter-increment:s;content:counter(s);font:500 calc(.85 * var(--u))/1 var(--mono);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ink);display:grid;place-items:center}
@@ -423,8 +426,8 @@
   .alm .hscroll{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
 }
 .alm .post{padding:var(--sp-4) 0;border-top:var(--rule-w) solid var(--rule)}
-.alm .post__by{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
-.alm .post__by b{font-weight:600;font-size:calc(1.02 * var(--u));line-height:1.1}
+.alm .post__by{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex-wrap:wrap}
+.alm .post__by b{font-weight:600;font-size:calc(1.02 * var(--u));line-height:1.1;min-width:0;overflow-wrap:anywhere}
 .alm .post__by a{text-decoration:none;display:flex;align-items:center;gap:var(--sp-2);min-width:0}
 .alm .post__by time{margin-left:auto;font:500 calc(.72 * var(--u))/1 var(--mono);color:var(--ink-2);white-space:nowrap}
 .alm .post__title{font-weight:600;font-size:var(--fs-h3);line-height:1.14;margin-top:var(--sp-3);text-wrap:balance}

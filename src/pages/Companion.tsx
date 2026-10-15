@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogPortal } from '@/components/ui/dialog';
 import { QuestCelebration } from '@/components/QuestCelebration';
@@ -79,10 +79,23 @@ function TodayView() {
     const { date, minutes } = useDenverClock(() => { void refetch(); void refetchEvents(); });
     const mine = useMyEvents(events.data);
     const done = usePracticeDone();
-    const { offer } = useInstallOffer();
+    const { offer, installed: isInstalled } = useInstallOffer();
+    const pushState = useReminders();
+    const navigate = useNavigate();
     const [reply, setReply] = useState(''), [name, setName] = useState(''), [answered, setAnswered] = useState(false), [writing, setWriting] = useState(false);
     const [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
     const [checks] = useState<string[]>(questChecks);
+    // "Remind me" never silently does nothing: offerInstall() answers false when there is
+    // nothing to offer (already on, blocked, or push unavailable), and that used to be the end of it.
+    const remindMe = () => {
+        if (offer('manual')) return;
+        if (pushState.subscribed) toast(tr('almanac.remindersOnToast'));
+        else navigate('/more');
+    };
+    const remindOn = pushState.subscribed && pushState.permission === 'granted';
+    const remindButton = isInstalled && remindOn ? null : (
+        <button type="button" className="btn btn--primary btn--block" style={eco ? undefined : { marginTop: '1rem' }} onClick={remindMe}>{tr('almanac.remindFirst')}</button>
+    );
     const replyRef = useRef<HTMLTextAreaElement>(null);
     const offerTimer = useRef<number>();
     useEffect(() => () => window.clearTimeout(offerTimer.current), []);
@@ -215,7 +228,7 @@ function TodayView() {
             <div className="flow2">
                 <div className="flow2__a"><div className="o1">
                     {eco ? (
-                        <button type="button" className="btn btn--primary btn--block" onClick={() => offer('manual')}>{tr('almanac.remindFirst')}</button>
+                        remindButton
                     ) : (
                     <div className="sample-box" data-testid="sample-day">
                         <span className="sample-flag sample-box__flag">{tr('almanac.sampleDay')}</span>
@@ -224,7 +237,7 @@ function TodayView() {
                             <h2 className="h1 practice__title" id="sample-title">{sample.title}</h2>
                             <p className="practice__body">{sample.body}</p>
                         </section>
-                        <button type="button" className="btn btn--primary btn--block" style={{ marginTop: '1rem' }} onClick={() => offer('manual')}>{tr('almanac.remindFirst')}</button>
+                        {remindButton}
                     </div>
                     )}
                 </div></div>
