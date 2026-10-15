@@ -14,9 +14,9 @@ import { handleHarvests, type HarvestEnv } from "./harvest";
 // People persist across years; each year's questions live in `forms` as data and
 // each person's answers live in `submissions` as JSON. See schema.sql.
 
-import { crossSiteRefusal } from "./csrf";
+import { crossSiteRefusal, refuseCrossSiteWrite } from "./csrf";
 import { handleAdminEventImage, handleEventImage } from "./event-images";
-import { handleMyRegistration } from "./registration";
+import { handleMyRegistration, readRegistrant } from "./registration";
 import { handleAdminFunnel, handleFunnelEvent, recordSubmitted } from "./funnel";
 import { handleAdminBoard, handleCreateReport } from "./board";
 import { handleMemberProfileExtras, handleMyProfileExtras } from "./profile-extras";
@@ -35,7 +35,7 @@ import {
 } from "./admin-gate";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
-import { handleXrpcProxy, isRegenosLoginEnabled, type RegenosAuthEnv } from "./regenos-auth";
+import { handleXrpcProxy, isRegenosLoginEnabled, relayableCookies, type RegenosAuthEnv } from "./regenos-auth";
 // --- admin event + access management (feat/admin-events-access) ---
 import {
   handleAdminAccessInvite,
@@ -94,6 +94,8 @@ interface Env extends CompanionEnv, NotifyEnv, HarvestEnv, AuthEnv, AdminGateEnv
   SIGNUPS: KVNamespace;
   cohere: D1Database;
   COHERE_AUTH: KVNamespace;
+  /** "true" adds registered, signed-in people to the COhere scene as members (worker/src/registration.ts). Off by default. */
+  AUTO_MEMBER_ON_SIGNIN?: string;
   /** The built SPA. The Worker routes first, then falls through to here. */
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
@@ -182,20 +184,28 @@ function parseCompletion(raw: unknown): unknown {
   }
 }
 
-/** Insert the person if they're new, otherwise fill in any blanks we just learned. */
+/**
+ * Insert the person if they're new, otherwise fill in any blanks we just
+ * learned. Only `owner` (a signed-in submit whose email came from the verified
+ * session) may replace a name, phone or orgs already on file — anyone can type
+ * any email into a public form.
+ */
 async function upsertPerson(
   env: Env,
   fields: { email: string; name?: string | null; phone?: string | null; orgs?: string | null; source: string },
+  owner = false,
 ): Promise<string> {
   const now = new Date().toISOString();
+  const keep = (column: string) =>
+    owner ? `COALESCE(excluded.${column}, people.${column})` : `COALESCE(people.${column}, excluded.${column})`;
   await env.cohere
     .prepare(
       `INSERT INTO people (id, email, name, phone, orgs, subscribed, unsubscribe_token, source, created_at, updated_at)
        VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?7, ?8, ?8)
        ON CONFLICT(email) DO UPDATE SET
-         name       = COALESCE(excluded.name, people.name),
-         phone      = COALESCE(excluded.phone, people.phone),
-         orgs       = COALESCE(excluded.orgs, people.orgs),
+         name       = ${keep("name")},
+         phone      = ${keep("phone")},
+         orgs       = ${keep("orgs")},
          updated_at = excluded.updated_at`,
     )
     .bind(
@@ -235,6 +245,26 @@ async function recordSubmission(
     )
     .bind(crypto.randomUUID(), personId, formSlug, event, JSON.stringify(data), now)
     .run();
+}
+
+/** Store a first submission; false (and nothing written) if one already exists. */
+async function recordFirstSubmission(
+  env: Env,
+  personId: string,
+  formSlug: string,
+  event: string | null,
+  data: Record<string, unknown>,
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const result = await env.cohere
+    .prepare(
+      `INSERT INTO submissions (id, person_id, form_slug, event, data, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+       ON CONFLICT(person_id, form_slug) DO NOTHING`,
+    )
+    .bind(crypto.randomUUID(), personId, formSlug, event, JSON.stringify(data), now)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
 }
 
 /** Plain, self-contained page for the opt-out flow — no site assets involved. */
@@ -306,7 +336,7 @@ export default {
     // handler — "inert when off" means every method on /xrpc/* is a 404, with
     // nothing (not even a preflight 204) hinting the surface exists.
     if (url.pathname === "/api/me") return handleMe(env, request);
-    if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env);
+    if (url.pathname === "/api/me/registration") return handleMyRegistration(request, env, ctx);
 
     if (path === "/xrpc" || path.startsWith("/xrpc/")) {
       return handleXrpcProxy(request, env, url);
@@ -1046,27 +1076,65 @@ export default {
       if (!form) return json({ error: "unknown form" }, 404, cors);
       if (!form.active) return json({ error: "this form is closed" }, 410, cors);
 
-      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      // Signed in with a verified email, the registration is the caller's own
+      // and the email comes from the session, never the body. The session is
+      // a cookie, so this write refuses cross-site callers.
+      if (relayableCookies(request.headers.get("Cookie"))) {
+        const refused = refuseCrossSiteWrite(request);
+        if (refused) return refused;
+      }
+      const registrant = await readRegistrant(request, env);
+      if (registrant.kind === "unavailable") {
+        return json({ error: "We couldn't confirm your account right now. Please try again in a moment." }, 503, cors);
+      }
+      const owner = registrant.kind === "verified";
+
+      const email = owner
+        ? registrant.email
+        : typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       if (!EMAIL_RE.test(email) || email.length > 254) {
         return json({ error: "invalid email" }, 400, cors);
       }
 
+      // Anyone else never overwrites an existing registration. The answer is
+      // the ordinary success plus one flag, so the page can offer sign-in; no
+      // name, no answers, and no email goes out.
+      const already = await env.cohere
+        .prepare(
+          `SELECT 1 AS found FROM submissions s JOIN people p ON p.id = s.person_id
+           WHERE p.email = ?1 AND s.form_slug = ?2 LIMIT 1`,
+        )
+        .bind(email, formSlug)
+        .first<{ found: number }>();
+      if (already && !owner) return json({ ok: true, alreadyRegistered: true }, 200, cors);
+
       const answers = (body.answers ?? {}) as Record<string, unknown>;
-      const personId = await upsertPerson(env, {
-        email,
-        name: str(body.name, 200),
-        phone: str(body.phone, 60),
-        orgs: str(body.orgs, 300),
-        source: `form:${formSlug}`,
-      });
-      await recordSubmission(env, personId, formSlug, form.event, answers);
+      const personId = await upsertPerson(
+        env,
+        {
+          email,
+          name: str(body.name, 200),
+          phone: str(body.phone, 60),
+          orgs: str(body.orgs, 300),
+          source: `form:${formSlug}`,
+        },
+        owner,
+      );
+      const updated = owner && Boolean(already);
+      if (owner) {
+        await recordSubmission(env, personId, formSlug, form.event, answers);
+      } else if (!(await recordFirstSubmission(env, personId, formSlug, form.event, answers))) {
+        // Lost a race with another submit for the same email: same answer as above.
+        return json({ ok: true, alreadyRegistered: true }, 200, cors);
+      }
       // Off the request path: a slow counter must never delay a registration.
-      ctx.waitUntil(recordSubmitted(env, formSlug));
+      if (!updated) ctx.waitUntil(recordSubmitted(env, formSlug));
 
       // Confirmation mail, if this form defines one. Copy lives in the
       // database alongside the questions, so it is editable without a deploy.
-      // Failing to send must not fail the registration itself.
-      if (form.confirm_subject) {
+      // Failing to send must not fail the registration itself. An edit to an
+      // existing registration is not confirmed again.
+      if (form.confirm_subject && !updated) {
         try {
           const person = await env.cohere
             .prepare(`SELECT name, unsubscribe_token FROM people WHERE id = ?1`)
@@ -1102,7 +1170,7 @@ export default {
           .run();
       }
 
-      return json({ ok: true }, 200, cors);
+      return json(updated ? { ok: true, updated: true } : { ok: true }, 200, cors);
     }
 
     // Legacy "stay in the loop" capture. Writes D1 and KV so nothing is lost

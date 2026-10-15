@@ -40,6 +40,7 @@ it("redirects only an explicit sign-in landing", () => {
   expect(shouldRedirectToApp(true, "/", "?signedIn=1")).toBe(true);
   expect(signInDestination("/register", true)).toBe("/events");
   expect(signInDestination("/register", false)).toBe("/register");
+  expect(signInDestination("/register?edit=1", true)).toBe("/register?edit=1");
 });
 
 describe("the admin portal is a Worker page, not an SPA route", () => {

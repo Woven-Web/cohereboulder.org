@@ -391,6 +391,11 @@ export async function handleXrpcProxy(
 
 /** Who regenOS says this browser is — the DID, from the verified session, or null. */
 export async function readVerifiedSessionDid(request: Request, env: RegenosAuthEnv): Promise<string | null> {
+  return (await readVerifiedSession(request, env))?.did ?? null;
+}
+
+/** The verified session's DID and handle, or null (signed out, lane off, or regenOS unreachable). */
+export async function readVerifiedSession(request: Request, env: RegenosAuthEnv): Promise<{ did: string; handle: string | null } | null> {
   const base = env.REGENOS_BASE_URL?.trim().replace(/\/+$/, "");
   if (!isRegenosLoginEnabled(env) || !base) return null;
   const headers = new Headers();
@@ -406,8 +411,8 @@ export async function readVerifiedSessionDid(request: Request, env: RegenosAuthE
       headers, redirect: "manual", signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     if (!response.ok) return null;
-    const data = (await response.json()) as { did?: unknown };
-    return typeof data.did === "string" ? data.did : null;
+    const data = (await response.json()) as { did?: unknown; handle?: unknown };
+    return typeof data.did === "string" ? { did: data.did, handle: typeof data.handle === "string" ? data.handle : null } : null;
   } catch {
     return null;
   }

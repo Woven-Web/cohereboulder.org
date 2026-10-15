@@ -10,6 +10,7 @@ import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { BOARD_POSTS_QUERY_KEY, fetchPosts, postPath, splitFeed } from "@/lib/board";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 import { RegistrationAction } from "@/components/RegistrationAction";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { HexTrail } from "./HexTrail";
 import { YourNextStrip, type NextItem } from "./YourNextStrip";
 import { seatOf } from "./seat";
@@ -47,7 +48,7 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
       {/* Signed out the one ask stays within reach, above the fold; signed in, your next event takes its place. */}
       {signedIn
         ? <YourNextStrip items={next} total={mine.items.length} today={today} />
-        : <RegistrationAction className="btn btn--primary homelive__register" anonymousKey="hero.registerHere" />}
+        : <><RegistrationAction className="btn btn--primary homelive__register" anonymousKey="hero.registerHere" /><SignInPrompt /></>}
       {isEcoLook() ? (
         <figure className="plate plate--hero">
           <img src={hatConversationPhoto} alt={tr("photos.hatConversation")} width={1600} height={907} />

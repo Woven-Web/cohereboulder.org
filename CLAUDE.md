@@ -156,6 +156,17 @@ A field definition looks like:
 `checkboxes`. Keys `full_name`, `email`, `phone`, `orgs` map onto `people`
 columns; everything else lands in the answers JSON.
 
+**Who may change a submission** (`worker/src/registration.ts`, T-138): a
+signed-in regenOS visitor with a verified email (`getMyContactPref`) owns the
+row for that email — the Worker takes the email from the session, never the
+body, and `/register` loads their answers to edit (`GET
+/api/me/registration?detail=1`). Anyone else never overwrites: an email that
+already has a submission for that form gets `{ok:true, alreadyRegistered:true}`,
+nothing is stored or mailed, and the page offers sign-in. An unsigned submit only
+fills blank `people` columns. `AUTO_MEMBER_ON_SIGNIN` (`"false"` in both
+configs) adds a registered, signed-in DID that is not on the roster as a scene
+`member`, once (KV marker `automember:<did>`).
+
 ## Members area (Board · People · Profile)
 
 Signed-in festival members only. Posts and profiles are regenOS **circle

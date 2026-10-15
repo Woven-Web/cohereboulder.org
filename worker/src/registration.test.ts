@@ -14,7 +14,7 @@ function session(data: { did?: string; email?: string; emailVerified?: boolean }
 }
 it.each([true, false])("returns only the caller's registration: %s", async (registered) => {
   session({ did: "did:plc:me", email: " Verified@Test.com " });
-  first.mockResolvedValue(registered ? { "1": 1 } : null);
+  first.mockResolvedValue(registered ? { name: "A", phone: null, orgs: null, subscribed: 1, data: "{}" } : null);
   const response = await handleMyRegistration(request(), env as never);
   expect(await response.json()).toEqual({ registered });
   expect(bind).toHaveBeenCalledWith("verified@test.com");

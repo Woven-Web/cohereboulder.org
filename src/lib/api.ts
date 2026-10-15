@@ -73,13 +73,25 @@ export async function fetchForm(slug: string): Promise<FormDefinition> {
   return response.json();
 }
 
-export async function submitForm(slug: string, payload: SubmitPayload): Promise<void> {
+/**
+ * How a submit landed. `alreadyRegistered`: the email already had a
+ * registration and nothing was stored (sign in to change it). `updated`: a
+ * signed-in person's own registration was edited.
+ */
+export interface SubmitOutcome {
+  alreadyRegistered: boolean;
+  updated: boolean;
+}
+
+export async function submitForm(slug: string, payload: SubmitPayload): Promise<SubmitOutcome> {
   const response = await fetch(`${API_BASE}/api/submit/${encodeURIComponent(slug)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(await readError(response));
+  const body = (await response.json().catch(() => ({}))) as { alreadyRegistered?: unknown; updated?: unknown };
+  return { alreadyRegistered: body.alreadyRegistered === true, updated: body.updated === true };
 }
 
 const funnelSent = new Set<string>();
@@ -202,6 +214,27 @@ export async function companionEvents():Promise<import('./events').CommunityEven
 export async function fetchMyRegistration(): Promise<{ registered: boolean | null }> {
   const response = await fetch(`${API_BASE}/api/me/registration`, { credentials: "same-origin", cache: "no-store" });
   if (!response.ok) throw new Error("Registration status unavailable");
+  return response.json();
+}
+
+/** A signed-in person's own registration, to edit. `email` is the verified one from their account. */
+export interface SavedRegistration {
+  registered: boolean | null;
+  email?: string;
+  name?: string | null;
+  phone?: string | null;
+  orgs?: string | null;
+  subscribed?: boolean | null;
+  answers?: Record<string, unknown>;
+}
+
+export async function fetchMyRegistrationDetail(): Promise<SavedRegistration> {
+  const response = await fetch(`${API_BASE}/api/me/registration?detail=1`, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) {
+    // Read the refusal anyway: an unread body leaves the request open.
+    await response.text().catch(() => "");
+    throw new Error("Registration unavailable");
+  }
   return response.json();
 }
 

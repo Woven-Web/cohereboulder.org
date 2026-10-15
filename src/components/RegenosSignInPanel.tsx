@@ -24,12 +24,12 @@ import { useInvalidateRegenosSession } from "@/hooks/useRegenos";
 type Stage = "idle" | "checkEmail";
 
 /** `embedded`: inside a dialog that already has its own title and frame. */
-export function RegenosSignInPanel({ embedded = false, returnTo }: { embedded?: boolean; returnTo?: string } = {}) {
+export function RegenosSignInPanel({ embedded = false, returnTo, initialEmail }: { embedded?: boolean; returnTo?: string; initialEmail?: string } = {}) {
   const { tr } = useLanguage();
   const navigate = useNavigate();
   const invalidateSession = useInvalidateRegenosSession();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
   const [stage, setStage] = useState<Stage>("idle");
   const [returning, setReturning] = useState(false);
   const [busy, setBusy] = useState(false);

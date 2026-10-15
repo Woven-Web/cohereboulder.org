@@ -106,6 +106,17 @@ export const translations = {
     alreadyJoined: { en: "Already joined?", es: "¿Ya te uniste?" },
     registered: { en: "You’re registered", es: "Ya estás registrado/a" },
     registerGathering: { en: "Register for the gathering", es: "Regístrate para el encuentro" },
+    // Registration and sign-in together (T-138).
+    alreadyRegistered: { en: "Already registered?", es: "¿Ya te registraste?" },
+    updateRegistration: { en: "Update your registration", es: "Actualiza tu registro" },
+    saveChanges: { en: "Save changes", es: "Guardar cambios" },
+    registrationUpdated: { en: "Your registration is updated.", es: "Tu registro está actualizado." },
+    emailAlreadyRegistered: {
+      en: "This email is already registered. Sign in to change your registration.",
+      es: "Este correo ya está registrado. Inicia sesión para cambiar tu registro.",
+    },
+    createAccountToRsvp: { en: "Create your account to RSVP to events", es: "Crea tu cuenta para confirmar asistencia a eventos" },
+    youreSignedIn: { en: "You're signed in", es: "Ya iniciaste sesión" },
     handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
   },
   // Strings only the ?look=almanac public site and the ?trail=row variant use.
@@ -1070,6 +1081,7 @@ export const translations = {
         en: "This address had already RSVP'd — you're all set. We'll remind you the morning before.",
         es: "Esta dirección ya había confirmado — todo listo. Te recordaremos la mañana anterior.",
       },
+      signInToRsvp: { en: "Sign in to RSVP", es: "Inicia sesión para confirmar" },
       orSignIn: {
         en: "or sign in to RSVP with your COhere account",
         es: "o inicia sesión para confirmar con tu cuenta COhere",

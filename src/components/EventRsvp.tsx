@@ -7,7 +7,8 @@
 //
 // Anonymous: an inline name + email form posting to /api/rsvp
 // (worker/src/rsvps.ts), which confirms by email and reminds the morning
-// before. With the lane on, a secondary link opens the nav's sign-in dialog.
+// before. With the lane on, "Sign in to RSVP" comes first and opens the nav's
+// sign-in dialog; the email form is the second option.
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -190,13 +191,22 @@ function EmailRsvpForm({ event, offerSignIn }: { event: CommunityEvent; offerSig
   );
 
   if (!open) {
+    // With the lane on, signing in comes first; the email RSVP stays right under it.
     return (
       <div className="space-y-2">
-        <Button variant="rsvp" className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2" onClick={() => setOpen(true)}>
+        {offerSignIn && (
+          <Button variant="rsvp" className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2 lg:mr-2" data-testid="rsvp-sign-in" onClick={openSignInDialog}>
+            {tr("calendar.rsvp.signInToRsvp")}
+          </Button>
+        )}
+        <Button
+          variant={offerSignIn ? "outline" : "rsvp"}
+          className="h-11 min-w-[88px] px-4 w-full lg:w-auto gap-2"
+          onClick={() => setOpen(true)}
+        >
           {tr("calendar.rsvp.button")}
         </Button>
         <p className="text-sm text-muted-foreground">{tr("calendar.rsvp.emailHint")}</p>
-        {signInLink}
       </div>
     );
   }

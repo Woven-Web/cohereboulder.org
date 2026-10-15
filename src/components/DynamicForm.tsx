@@ -9,7 +9,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { fetchForm, sendFunnelEvent, submitForm, type FormField, type FormDefinition } from "@/lib/api";
+import {
+  fetchForm,
+  sendFunnelEvent,
+  submitForm,
+  type FormField,
+  type FormDefinition,
+  type SavedRegistration,
+  type SubmitOutcome,
+} from "@/lib/api";
+import { OTHER, PERSON_FIELDS, valuesFromSaved, type FormValue } from "@/lib/registrationPrefill";
 import { REACHED_RATIO, countsAsReached } from "@/lib/funnel";
 import { formTitle } from "@/lib/formTitle";
 
@@ -17,18 +26,7 @@ import { formTitle } from "@/lib/formTitle";
 // reword a label or add a question from the admin portal and it appears here
 // on the next page load — see workers/email-signup/README.md.
 
-/** Fields that map onto columns of `people` rather than into the answers blob. */
-const PERSON_FIELDS: Record<string, "name" | "email" | "phone" | "orgs"> = {
-  full_name: "name",
-  email: "email",
-  phone: "phone",
-  orgs: "orgs",
-};
-
-type Value = string | boolean | string[];
-
-/** Sentinel for a radio's appended "Other" choice, so localisation stays trivial. */
-const OTHER = "__other__";
+type Value = FormValue;
 
 // The completion link comes from the database, and React will happily render a
 // javascript: href. The Worker rejects bad schemes on write; this is the same
@@ -79,9 +77,26 @@ interface DynamicFormProps {
   intro?: React.ReactNode;
   successTitle?: string;
   successMessage?: string;
+  /** A signed-in person's own registration: prefilled, with the email locked to their account's. */
+  saved?: SavedRegistration | null;
+  /** Replaces the submit button's label (e.g. when editing). */
+  submitLabel?: string;
+  /** Rendered inside the thank-you card, under its copy, with the email just registered. */
+  successExtra?: (email: string) => React.ReactNode;
+  /** Replaces the thank-you card for an "already registered" or "updated" outcome; null keeps it. */
+  renderOutcome?: (outcome: SubmitOutcome, email: string) => React.ReactNode | null;
 }
 
-export const DynamicForm = ({ slug, intro, successTitle, successMessage }: DynamicFormProps) => {
+export const DynamicForm = ({
+  slug,
+  intro,
+  successTitle,
+  successMessage,
+  saved,
+  submitLabel,
+  successExtra,
+  renderOutcome,
+}: DynamicFormProps) => {
   const queryClient = useQueryClient();
   const { language } = useLanguage();
   const spanish = language === "es";
@@ -94,6 +109,9 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   const [website, setWebsite] = useState(""); // honeypot
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<SubmitOutcome | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const lockedEmail = saved?.email ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +140,17 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
       cancelled = true;
     };
   }, [slug, spanish]);
+
+  // A signed-in person editing: their saved answers over the blank form, once
+  // per loaded definition — a later refetch must not undo what they've typed.
+  const prefilledFor = useRef<FormDefinition | null>(null);
+  useEffect(() => {
+    if (!definition || !saved || prefilledFor.current === definition) return;
+    prefilledFor.current = definition;
+    const prefill = valuesFromSaved(definition.fields, saved, spanish);
+    setValues((previous) => ({ ...previous, ...prefill.values }));
+    setOtherTexts((previous) => ({ ...previous, ...prefill.otherTexts }));
+  }, [definition, saved, spanish]);
 
   // Funnel counts (counts only, see worker/src/funnel.ts): one `view` when the
   // open form renders, then `reached:<key>` the first time a question is
@@ -194,9 +223,13 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
       else answers[field.key] = value;
     }
 
+    // Signed in, the Worker takes the email from the account anyway.
+    const email = lockedEmail ?? person.email;
     try {
-      await submitForm(slug, { ...person, email: person.email, website, answers, subscribed });
-      await queryClient.invalidateQueries({ queryKey: ["my-registration"] });
+      const result = await submitForm(slug, { ...person, email, website, answers, subscribed });
+      setSubmittedEmail(email.trim());
+      setOutcome(result);
+      if (!result.alreadyRegistered) await queryClient.invalidateQueries({ queryKey: ["my-registration"] });
       setStatus("success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -222,6 +255,9 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
   }
 
   if (status === "success") {
+    const custom = outcome && renderOutcome?.(outcome, submittedEmail);
+    if (custom) return <>{custom}</>;
+    const extra = successExtra?.(submittedEmail);
     // The completion screen lives in the database next to the questions
     // (`forms.completion`); the props are only the fallback for forms without one.
     const completion = definition.completion;
@@ -251,12 +287,13 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
             </p>
           )}
           {completion?.link && isSafeLink(completion.link) && (
-            <Button asChild size="lg" variant="community" className="mt-2">
+            <Button asChild size="lg" variant={extra ? "outline" : "community"} className="mt-2">
               <a href={completion.link} target="_blank" rel="noreferrer">
                 {completionLinkLabel ?? completion.link}
               </a>
             </Button>
           )}
+          {extra}
         </CardContent>
       </Card>
     );
@@ -344,7 +381,9 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
                     id={id}
                     type={field.type}
                     required={field.required}
-                    value={String(value ?? "")}
+                    value={field.key === "email" && lockedEmail ? lockedEmail : String(value ?? "")}
+                    readOnly={field.key === "email" && Boolean(lockedEmail)}
+                    className={field.key === "email" && lockedEmail ? "bg-muted text-muted-foreground" : undefined}
                     onChange={(e) => setValue(field.key, e.target.value)}
                   />
                 )}
@@ -444,9 +483,10 @@ export const DynamicForm = ({ slug, intro, successTitle, successMessage }: Dynam
               ? spanish
                 ? "Enviando…"
                 : "Submitting…"
-              : spanish
-                ? "Enviar Registro"
-                : "Submit Registration"}
+              : submitLabel ??
+                (spanish
+                  ? "Enviar Registro"
+                  : "Submit Registration")}
           </Button>
         </form>
       </CardContent>
