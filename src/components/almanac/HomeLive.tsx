@@ -5,7 +5,7 @@ import { useCompanionToday } from "@/lib/useCompanionToday";
 import { companionEvents } from "@/lib/api";
 import { useMyEvents } from "@/lib/myEvents";
 import { currentDenverDate } from "@/lib/companion";
-import { FESTIVAL_DATES, dayNumber, formatDay, practiceDoneDays } from "@/lib/festival";
+import { dayNumber, formatDay, practiceDoneDays } from "@/lib/festival";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { BOARD_POSTS_QUERY_KEY, fetchPosts, postPath, splitFeed } from "@/lib/board";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
@@ -42,7 +42,7 @@ export function HomeLive({ signedIn }: { signedIn: boolean }) {
 
   return (
     <section className="homelive" data-testid="home-live">
-      <p className="folio">{n >= 1 && n <= 11 ? `${fill(tr("almanac.dayOf"), { n })} · ` : ""}{FESTIVAL_DATES.includes(today) ? formatDay(today, language) : formatDay(FESTIVAL_DATES[0], language)}</p>
+      <p className="folio">{n >= 1 && n <= 11 ? `${fill(tr("almanac.dayOf"), { n })} · ` : ""}{formatDay(today, language)}</p>
       <h1 className="h1 homelive__title">{tr("look.home.title")}</h1>
       {/* Signed out the one ask stays within reach, above the fold; signed in, your next event takes its place. */}
       {signedIn
