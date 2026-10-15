@@ -117,6 +117,8 @@ export const translations = {
     },
     createAccountToRsvp: { en: "Create your account to RSVP to events", es: "Crea tu cuenta para confirmar asistencia a eventos" },
     youreSignedIn: { en: "You're signed in", es: "Ya iniciaste sesión" },
+    registrationLoadFailed: { en: "We couldn't load your registration.", es: "No pudimos cargar tu registro." },
+    tryAgain: { en: "Try again", es: "Intentar de nuevo" },
     handleHint: { en: "Your handle is your public account name. Use lowercase letters, numbers and hyphens.", es: "Tu identificador es el nombre público de tu cuenta. Usa letras minúsculas, números y guiones." },
   },
   // Strings only the ?look=almanac public site and the ?trail=row variant use.
@@ -583,6 +585,10 @@ export const translations = {
     exploreMap: { en: "Explore the Map", es: "Explora el Mapa" },
     addProject: { en: "Add Your Project", es: "Añade Tu Proyecto" },
     suggestAdditions: { en: "Suggest Additions", es: "Sugerir Adiciones" },
+    suggestionAlreadyReceived: {
+      en: "We already have a suggestion from this email.",
+      es: "Ya tenemos una sugerencia de este correo.",
+    },
   },
 
   // Join Section

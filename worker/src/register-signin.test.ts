@@ -40,8 +40,8 @@ function ctx() {
   return { ctx: { waitUntil: (p: Promise<unknown>) => void pending.push(p), passThroughOnException() {} } as unknown as Ctx, pending };
 }
 
-function submit(body: Record<string, unknown>, cookie?: string, headers: Record<string, string> = {}) {
-  return new Request("https://cohere.test/api/submit/register-2026", {
+function submit(body: Record<string, unknown>, cookie?: string, headers: Record<string, string> = {}, slug = "register-2026") {
+  return new Request(`https://cohere.test/api/submit/${slug}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: "https://cohere.test", ...(cookie ? { Cookie: cookie } : {}), ...headers },
     body: JSON.stringify(body),
@@ -194,6 +194,32 @@ describe("signed in with a verified email", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("clears phone or orgs the owner sent empty, and keeps a field not sent at all", async () => {
+    const res = await worker.fetch(
+      submit({ name: "Ana Original", phone: "", orgs: "  ", answers: { diet: "vegan" } }, "__Host-rs_session=sess-ana"),
+      env(),
+      ctx().ctx,
+    );
+    expect(await res.json()).toEqual({ ok: true, updated: true });
+    expect(person("ana@test.com")).toMatchObject({ name: "Ana Original", phone: null, orgs: null });
+
+    cohere.raw.prepare(`UPDATE people SET phone = '555-0100', orgs = 'Garden Co' WHERE email = 'ana@test.com'`).run();
+    await worker.fetch(submit({ name: "Ana Again", answers: {} }, "__Host-rs_session=sess-ana"), env(), ctx().ctx);
+    expect(person("ana@test.com")).toMatchObject({ name: "Ana Again", phone: "555-0100", orgs: "Garden Co" });
+  });
+
+  it("an unsigned submit never clears: empty fields only fill blanks", async () => {
+    cohere.raw
+      .prepare(
+        `INSERT INTO people (id, email, name, phone, orgs, subscribed, unsubscribe_token, source, created_at, updated_at)
+         VALUES ('p-cy', 'cy@test.com', 'Cy Kept', '333', 'Cy Org', 1, 'tok-cy', 'signup:website', 'x', 'x')`,
+      )
+      .run();
+    const res = await worker.fetch(submit({ email: "cy@test.com", name: "", phone: "", orgs: "", answers: {} }), env(), ctx().ctx);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(person("cy@test.com")).toMatchObject({ name: "Cy Kept", phone: "333", orgs: "Cy Org" });
+  });
+
   it("asks to try again when the session's email cannot be read", async () => {
     upstreamDown = true;
     const res = await worker.fetch(submit({ email: "ana@test.com", name: "X", answers: {} }, "__Host-rs_session=sess-ana"), env(), ctx().ctx);
@@ -209,6 +235,41 @@ describe("signed in with a verified email", () => {
     );
     expect(res.status).toBe(403);
     expect(person("ana@test.com").name).toBe("Ana Original");
+  });
+});
+
+describe("map-suggestion", () => {
+  const suggestions = (email: string) =>
+    (cohere.raw
+      .prepare(`SELECT s.data FROM submissions s JOIN people p ON p.id = s.person_id WHERE p.email = ? AND s.form_slug = 'map-suggestion'`)
+      .all(email) as { data: string }[]).map((r) => JSON.parse(r.data));
+  const suggest = (body: Record<string, unknown>, cookie?: string) =>
+    worker.fetch(submit(body, cookie, {}, "map-suggestion"), env(), ctx().ctx);
+
+  beforeEach(() => {
+    cohere.raw
+      .prepare(
+        `INSERT INTO forms (slug, title, fields, active, created_at, updated_at)
+         VALUES ('map-suggestion', 'Suggest', '[]', 1, 'x', 'x')`,
+      )
+      .run();
+  });
+
+  it("says a second suggestion from the same email was not stored, and keeps the first", async () => {
+    expect(await (await suggest({ email: "bo@test.com", orgs: "Seed Library", answers: { organization_name: "Seed Library" } })).json()).toEqual({ ok: true });
+    const second = await suggest({ email: "bo@test.com", orgs: "Tool Share", answers: { organization_name: "Tool Share" } });
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({ ok: true, alreadyRegistered: true });
+    expect(suggestions("bo@test.com")).toEqual([{ organization_name: "Seed Library" }]);
+  });
+
+  it("signed in, a suggestion neither replaces an earlier one nor rewrites the person's details", async () => {
+    await suggest({ email: "ana@test.com", answers: { organization_name: "Seed Library" } });
+    const res = await suggest({ name: "", orgs: "Tool Share", answers: { organization_name: "Tool Share" } }, "__Host-rs_session=sess-ana");
+    expect(await res.json()).toEqual({ ok: true, alreadyRegistered: true });
+    expect(suggestions("ana@test.com")).toEqual([{ organization_name: "Seed Library" }]);
+    expect(person("ana@test.com")).toMatchObject({ name: "Ana Original", phone: "555-0100", orgs: "Garden Co" });
+    expect(answers("ana@test.com")).toEqual([{ diet: "vegan" }]);
   });
 });
 

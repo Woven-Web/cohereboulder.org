@@ -22,6 +22,8 @@ export function SuggestAdditionForm() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** One suggestion per email is kept; a second one is not stored, and we say so. */
+  const [alreadyReceived, setAlreadyReceived] = useState(false);
   const [formData, setFormData] = useState({
     organizationName: "",
     website: "",
@@ -31,12 +33,14 @@ export function SuggestAdditionForm() {
   });
 
   const handleFormOpen = () => {
+    setAlreadyReceived(false);
     setOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setAlreadyReceived(false);
 
     try {
       // Basic validation
@@ -48,7 +52,7 @@ export function SuggestAdditionForm() {
         throw new Error("Please provide a contact email");
       }
 
-      await submitForm("map-suggestion", {
+      const outcome = await submitForm("map-suggestion", {
         email: formData.contactEmail,
         name: formData.contactName,
         orgs: formData.organizationName,
@@ -58,6 +62,10 @@ export function SuggestAdditionForm() {
           description: formData.description,
         },
       });
+      if (outcome.alreadyRegistered) {
+        setAlreadyReceived(true);
+        return;
+      }
 
       toast({
         title: language === "es" ? "¡Gracias!" : "Thank you!",
@@ -218,6 +226,12 @@ export function SuggestAdditionForm() {
                 </p>
               </div>
             </div>
+
+            {alreadyReceived && (
+              <p className="text-sm" role="status" data-testid="suggestion-already">
+                {tr("ecosystem.suggestionAlreadyReceived")}
+              </p>
+            )}
 
             <div className="flex gap-3 justify-end">
               <Button

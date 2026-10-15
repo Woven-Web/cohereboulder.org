@@ -38,6 +38,10 @@ const Registration = () => {
   const saved = mine.data?.email ? mine.data : null;
   const editing = saved?.registered === true;
   const waiting = laneOn && (sessionLoading || (Boolean(did) && mine.isLoading));
+  // A blank form would save over their registration if regenOS came back
+  // before they pressed submit, so a signed-in visitor gets no form until the
+  // saved answers load.
+  const loadFailed = laneOn && Boolean(did) && mine.isError && !mine.data;
 
   const card = (children: React.ReactNode, testId: string) => (
     <Card className="df-card max-w-2xl mx-auto shadow-warm" data-testid={testId}>
@@ -100,6 +104,17 @@ const Registration = () => {
     <div className="flex justify-center py-16 text-muted-foreground">
       <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
     </div>
+  ) : loadFailed ? (
+    card(
+      <>
+        <p className="text-lg">{tr("app.registrationLoadFailed")}</p>
+        <Button size="lg" variant="community" disabled={mine.isFetching} onClick={() => void mine.refetch()}>
+          {mine.isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
+          {tr("app.tryAgain")}
+        </Button>
+      </>,
+      "register-load-failed",
+    )
   ) : (
     <DynamicForm
       // A new identity is a new form: signing in from the "already registered" card reloads it as theirs.

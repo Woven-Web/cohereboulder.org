@@ -130,6 +130,14 @@ function json(data: unknown, status: number, extra: Record<string, string> = {})
 
 const ACCESS_REFUSED = "Managing who can host is for stewards of the COhere scene.";
 
+/**
+ * Forms that are a suggestion box rather than a registration. `submissions`
+ * keeps one row per person per form, so a second suggestion from the same
+ * email is not stored; the answer says so (`alreadyRegistered`) instead of
+ * thanking them for something that was dropped.
+ */
+const SUGGESTION_FORMS = new Set(["map-suggestion"]);
+
 function str(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
 }
@@ -188,7 +196,8 @@ function parseCompletion(raw: unknown): unknown {
  * Insert the person if they're new, otherwise fill in any blanks we just
  * learned. Only `owner` (a signed-in submit whose email came from the verified
  * session) may replace a name, phone or orgs already on file — anyone can type
- * any email into a public form.
+ * any email into a public form. For the owner, a field sent empty (null)
+ * clears the column and a field not sent at all (undefined) keeps it.
  */
 async function upsertPerson(
   env: Env,
@@ -196,8 +205,12 @@ async function upsertPerson(
   owner = false,
 ): Promise<string> {
   const now = new Date().toISOString();
-  const keep = (column: string) =>
-    owner ? `COALESCE(excluded.${column}, people.${column})` : `COALESCE(people.${column}, excluded.${column})`;
+  const keep = (column: "name" | "phone" | "orgs") =>
+    !owner
+      ? `COALESCE(people.${column}, excluded.${column})`
+      : fields[column] === undefined
+        ? `people.${column}`
+        : `excluded.${column}`;
   await env.cohere
     .prepare(
       `INSERT INTO people (id, email, name, phone, orgs, subscribed, unsubscribe_token, source, created_at, updated_at)
@@ -1087,9 +1100,12 @@ export default {
       if (registrant.kind === "unavailable") {
         return json({ error: "We couldn't confirm your account right now. Please try again in a moment." }, 503, cors);
       }
-      const owner = registrant.kind === "verified";
+      const verified = registrant.kind === "verified";
+      // A suggestion box is not an identity record: a signed-in suggestion
+      // neither replaces an earlier one nor rewrites the person's details.
+      const owner = verified && !SUGGESTION_FORMS.has(formSlug);
 
-      const email = owner
+      const email = verified
         ? registrant.email
         : typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       if (!EMAIL_RE.test(email) || email.length > 254) {
@@ -1109,13 +1125,15 @@ export default {
       if (already && !owner) return json({ ok: true, alreadyRegistered: true }, 200, cors);
 
       const answers = (body.answers ?? {}) as Record<string, unknown>;
+      // Sent but empty clears (for the owner); not sent at all keeps.
+      const sent = (key: string, max: number) => (key in body ? str(body[key], max) : undefined);
       const personId = await upsertPerson(
         env,
         {
           email,
-          name: str(body.name, 200),
-          phone: str(body.phone, 60),
-          orgs: str(body.orgs, 300),
+          name: sent("name", 200),
+          phone: sent("phone", 60),
+          orgs: sent("orgs", 300),
           source: `form:${formSlug}`,
         },
         owner,

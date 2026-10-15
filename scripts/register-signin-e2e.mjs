@@ -10,6 +10,8 @@
 //                                   an edit saves; AUTO_MEMBER_ON_SIGNIN adds them as member
 //   4. signed in, body email      → ignored; the session's email is the one written
 //   5. signed out prompts         → Home "Already registered? Sign in", RSVP "Sign in to RSVP" first
+//   6. saved answers fail to load → no form to submit; "Try again" loads them prefilled
+//   7. a second map suggestion    → not stored, and the dialog says so instead of thanking
 //
 // Seeded by scripts/ci-e2e.sh before the Worker starts (ana@ and reg@ registered).
 // Usage: E2E_PERSIST_DIR=<dir> node scripts/register-signin-e2e.mjs <worker-url> <mock-url>
@@ -211,6 +213,59 @@ try {
     await signIn.click();
     await page.getByRole("dialog").locator("#regenos-email-dialog").waitFor();
     ok("Home and the event RSVP offer sign-in first; the email RSVP stays");
+    await context.close();
+  }
+
+  // ── 6. signed in, the saved registration fails to load, then loads ───────────
+  step = "detail load failure";
+  {
+    const { context, page } = await persona("sess-registrant");
+    let failing = true;
+    await page.route(
+      (url) => url.pathname === "/api/me/registration" && url.searchParams.get("detail") === "1",
+      (route) => (failing ? route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"down"}' }) : route.continue()),
+    );
+    await page.goto(`${target}/register`);
+    const failed = page.getByTestId("register-load-failed");
+    await failed.getByText("We couldn't load your registration.").waitFor({ timeout: 20_000 });
+    for (const name of ["Save changes", "Submit Registration"]) {
+      expect((await page.getByRole("button", { name }).count()) === 0, `no "${name}" button while the saved answers are missing`);
+    }
+    expect((await page.locator("#field-full_name").count()) === 0, "no blank form");
+    failing = false;
+    await failed.getByRole("button", { name: "Try again" }).click();
+    await page.getByTestId("register-editing").waitFor({ timeout: 15_000 });
+    expect((await page.locator("#field-email").inputValue()) === "reg@cohere.test", "email prefilled after retry");
+    expect((await page.locator("#field-how_did_you_hear").inputValue()) === "a friend", "saved answer prefilled after retry");
+    ok("signed in: a failed load shows Try again and no form; the retry prefills");
+    await context.close();
+  }
+
+  // ── 7. map suggestions: one per email, and a second one says so ─────────────
+  step = "map suggestion repeat";
+  {
+    const { context, page } = await persona(null);
+    await page.goto(`${target}/`, { waitUntil: "networkidle" });
+    const suggest = async (org) => {
+      await page.getByRole("button", { name: "Suggest Additions" }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.locator("#organizationName").fill(org);
+      await dialog.locator("#description").fill("They share seeds.");
+      await dialog.locator("#contactEmail").fill("sage@cohere.test");
+      const response = page.waitForResponse((r) => r.url().includes("/api/submit/map-suggestion"));
+      await dialog.getByRole("button", { name: "Submit Suggestion" }).click();
+      return (await response).json();
+    };
+    expect(JSON.stringify(await suggest("Seed Library")) === '{"ok":true}', "first suggestion stored");
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    expect(JSON.stringify(await suggest("Tool Share")) === '{"ok":true,"alreadyRegistered":true}', "second suggestion flagged");
+    await page.getByTestId("suggestion-already").getByText("We already have a suggestion from this email.").waitFor();
+    expect((await page.getByRole("dialog").locator("#organizationName").inputValue()) === "Tool Share", "their text stays in the dialog");
+    const stored = d1(
+      `SELECT s.data FROM submissions s JOIN people p ON p.id = s.person_id WHERE p.email = 'sage@cohere.test' AND s.form_slug = 'map-suggestion'`,
+    );
+    expect(stored.length === 1 && JSON.parse(stored[0].data).organization_name === "Seed Library", `first suggestion kept: ${JSON.stringify(stored)}`);
+    ok("a second map suggestion from the same email is not stored, and the dialog says so");
     await context.close();
   }
 

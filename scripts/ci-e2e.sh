@@ -484,7 +484,9 @@ npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --command \
      ('p-reg','reg@cohere.test','Reg Original',NULL,NULL,1,'tok-reg','form:register-2026','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');
    INSERT INTO submissions (id, person_id, form_slug, event, data, created_at, updated_at) VALUES
      ('s-ana','p-ana','register-2026','october2026','{\"how_did_you_hear\":\"a flyer\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z'),
-     ('s-reg','p-reg','register-2026','october2026','{\"how_did_you_hear\":\"the radio\",\"attending_invocation\":\"Yes\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');" >/dev/null
+     ('s-reg','p-reg','register-2026','october2026','{\"how_did_you_hear\":\"the radio\",\"attending_invocation\":\"Yes\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');
+   INSERT INTO forms (slug, title, fields, active, created_at, updated_at) VALUES
+     ('map-suggestion','Suggest an addition','[]',1,'2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');" >/dev/null
 MOCK_SETMEMBERSHIP_ADDS=1 start_mock ${P28966} "$PWA_SCRATCH/pwa-merge-mock-16.log"
 start_worker ${P28967} ${P28245} "$PWA_SCRATCH/pwa-merge-worker-16.log" \
   --var REGENOS_LOGIN_ENABLED:true \

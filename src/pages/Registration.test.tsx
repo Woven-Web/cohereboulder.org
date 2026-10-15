@@ -7,13 +7,25 @@ const state = vi.hoisted(() => ({
   config: { regenosLoginEnabled: false },
   session: null as { did: string | null } | null,
   mine: undefined as unknown,
+  /** The detail query failed (after its retry); `refetch` is the page's Try again. */
+  mineError: false,
+  refetch: (() => {}) as () => void,
   formProps: null as Record<string, unknown> | null,
+  buttons: [] as Record<string, unknown>[],
 }));
 vi.mock("@/hooks/useRegenos", () => ({
   useSiteConfig: () => ({ data: state.config }),
   useRegenosSession: () => ({ data: state.session, isLoading: false }),
 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: state.mine, isLoading: false }) }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: state.mine, isLoading: false, isError: state.mineError, isFetching: false, refetch: () => state.refetch() }),
+}));
+vi.mock("@/components/ui/button", () => ({
+  Button: (props: Record<string, unknown>) => {
+    state.buttons.push(props);
+    return <button>{props.children as React.ReactNode}</button>;
+  },
+}));
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ tr: (key: string) => key, language: "en" }) }));
 vi.mock("@/components/Navigation", () => ({ Navigation: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
@@ -30,7 +42,10 @@ beforeEach(() => {
   state.config.regenosLoginEnabled = false;
   state.session = null;
   state.mine = undefined;
+  state.mineError = false;
+  state.refetch = () => {};
   state.formProps = null;
+  state.buttons = [];
 });
 
 describe("registration sign-in affordance", () => {
@@ -71,5 +86,32 @@ describe("registration sign-in affordance", () => {
     expect(wrap(outcome({ alreadyRegistered: true, updated: false }, "a@test.com"))).toContain("app.emailAlreadyRegistered");
     expect(outcome({ alreadyRegistered: false, updated: false }, "a@test.com")).toBeNull();
     expect(wrap(extra("a@test.com"))).toContain("app.createAccountToRsvp");
+  });
+
+  it("signed in, saved answers failed to load: no form to submit, a Try again that loads them", () => {
+    state.config.regenosLoginEnabled = true;
+    state.session = { did: "did:plc:me" };
+    state.mineError = true;
+    const saved = { registered: true, email: "me@test.com", answers: { a: "b" } };
+    state.refetch = () => {
+      state.mineError = false;
+      state.mine = saved;
+    };
+    const html = render();
+    expect(html).toContain("app.registrationLoadFailed");
+    expect(state.formProps).toBeNull(); // no DynamicForm, so no submit button
+
+    const retry = state.buttons.find((b) => b.children && JSON.stringify(b.children).includes("app.tryAgain"));
+    (retry!.onClick as () => void)();
+    expect(render()).not.toContain("app.registrationLoadFailed");
+    expect(state.formProps?.saved).toEqual(saved);
+    expect(state.formProps?.submitLabel).toBe("app.saveChanges");
+  });
+
+  it("signed out, the detail query never decides: the form is there", () => {
+    state.config.regenosLoginEnabled = true;
+    state.mineError = true;
+    expect(render()).not.toContain("app.registrationLoadFailed");
+    expect(state.formProps).not.toBeNull();
   });
 });
