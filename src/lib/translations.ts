@@ -246,6 +246,7 @@ export const translations = {
     sourceNote: { en: "Title, time, place and description come from the COhere community calendar. Times are Boulder time.", es: "Título, hora, lugar y descripción vienen de la agenda comunitaria de COhere. Horas de Boulder." },
     // Install & reminders
     sheetClose: { en: "Close", es: "Cerrar" },
+    installTitleSignedin: { en: "Add COhere to your home screen", es: "Agrega COhere a tu pantalla de inicio" },
     installTitleDidit: { en: "Keep today’s practice with you", es: "Lleva la práctica de hoy contigo" },
     installTitleReminders: { en: "Get the day’s reminders", es: "Recibe los recordatorios del día" },
     installBody: { en: "Add COhere to your home screen. One practice a day, right where you’ll see it.", es: "Agrega COhere a tu pantalla de inicio. Una práctica al día, justo donde la verás." },
