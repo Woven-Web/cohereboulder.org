@@ -36,7 +36,10 @@ const fail = (m) => {
 const email = `myevents-${Date.now().toString(36)}@example.org`;
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ baseURL: target, acceptDownloads: true });
+// Frozen before the gathering: Oct 15–25 the Calendar opens on today, but the mock seeds events
+// relative to the wall clock. Pinned, the default view is every upcoming date on any day.
+const context = await browser.newContext({ baseURL: target, acceptDownloads: true, serviceWorkers: "block" });
+await context.clock.setFixedTime(new Date("2026-10-01T18:00:00Z"));
 const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 

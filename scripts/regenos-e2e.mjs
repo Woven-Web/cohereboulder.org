@@ -36,7 +36,12 @@ function fail(message) {
 
 const browser = await chromium.launch();
 async function localContext() {
-  const ctx = await browser.newContext({ timezoneId: "UTC" });
+  const ctx = await browser.newContext({ timezoneId: "UTC", serviceWorkers: "block" });
+  // Frozen before the gathering: from Oct 15–25 the Calendar opens on today's day, but the mock
+  // seeds its events relative to the wall clock. Pinning the browser's date keeps the default
+  // "every upcoming date" view whatever day this runs (and after the gathering ends).
+  // setSystemTime, not setFixedTime: this lane waits out a query's staleTime, so time must keep flowing.
+  await ctx.clock.setSystemTime(new Date("2026-10-01T18:00:00Z"));
   // All browser API traffic belongs on the local Worker. External media is
   // not under test and must never make this lane depend on third-party hosts.
   await ctx.route("**/*", route => {
