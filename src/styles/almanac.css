@@ -426,8 +426,8 @@
   .alm .hscroll{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
 }
 .alm .post{padding:var(--sp-4) 0;border-top:var(--rule-w) solid var(--rule)}
-.alm .post__by{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
-.alm .post__by b{font-weight:600;font-size:calc(1.02 * var(--u));line-height:1.1}
+.alm .post__by{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex-wrap:wrap}
+.alm .post__by b{font-weight:600;font-size:calc(1.02 * var(--u));line-height:1.1;min-width:0;overflow-wrap:anywhere}
 .alm .post__by a{text-decoration:none;display:flex;align-items:center;gap:var(--sp-2);min-width:0}
 .alm .post__by time{margin-left:auto;font:500 calc(.72 * var(--u))/1 var(--mono);color:var(--ink-2);white-space:nowrap}
 .alm .post__title{font-weight:600;font-size:var(--fs-h3);line-height:1.14;margin-top:var(--sp-3);text-wrap:balance}
