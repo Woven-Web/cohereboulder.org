@@ -45,6 +45,10 @@
 //   sess-member   mel.mock.test   member
 //   sess-outsider otto.mock.test  signed in, not on the roster at all
 //   sess-expired  getSession answers {} (a lapsed session)
+//   sess-registrant reg.mock.test  signed in, verified email reg@cohere.test, NOT on
+//                 the roster (registration editing + AUTO_MEMBER_ON_SIGNIN)
+// MOCK_SETMEMBERSHIP_ADDS=1 lets setMembership add someone not yet on the roster
+// (unset, it answers 404 as before — whether production adds is unverified).
 // Peepholes (not AppView methods): /__setRole?did=…&role=… changes a roster
 // role (role=none removes it), /__expire?token=…&on=1|0 expires or restores a
 // session, and /__sawCookies lists every Cookie header the mock was sent.
@@ -89,6 +93,7 @@ const PERSONAS = {
   "sess-builder": { did: "did:plc:mockbuilder", handle: "rosa.mock.test", email: "rosa@cohere.test" },
   "sess-member": { did: "did:plc:mockmember", handle: "mel.mock.test" },
   "sess-outsider": { did: "did:plc:mockoutsider", handle: "otto.mock.test" },
+  "sess-registrant": { did: "did:plc:mockregistrant", handle: "reg.mock.test", email: "reg@cohere.test" },
 };
 const expiredSessions = new Set(["sess-expired"]);
 const sawCookies = [];
@@ -481,6 +486,11 @@ const server = http.createServer(async (req, res) => {
       if (!asService) return json(res, 401, { error: "AuthRequired", message: "sign in first" });
       const input = await readBody(req);
       const existing = members.get(input.member);
+      if (!existing && process.env.MOCK_SETMEMBERSHIP_ADDS === "1" && typeof input.member === "string") {
+        const known = Object.values(PERSONAS).find((p) => p.did === input.member);
+        members.set(input.member, { did: input.member, handle: known?.handle ?? null, kind: "person", name: null, role: input.role });
+        return json(res, 200, { ok: true, role: input.role });
+      }
       if (!existing) {
         return json(res, 404, { error: "NotFound", message: "that person is not a member" });
       }

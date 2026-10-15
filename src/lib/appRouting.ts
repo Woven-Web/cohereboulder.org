@@ -11,7 +11,9 @@ export function isWorkerPage(path: string): boolean {
 }
 export function signInDestination(path: string | null, registered = false): string {
   const safe = safeReturnPath(path);
-  return registered && safe?.split(/[?#]/)[0] === "/register" ? "/events" : safe ?? "/events";
+  // Registered people land on the calendar, unless they signed in to edit (/register?edit=1).
+  const url = safe ? new URL(safe, "https://cohere.invalid") : null;
+  return registered && url?.pathname === "/register" && !url.searchParams.has("edit") ? "/events" : safe ?? "/events";
 }
 export type AppTab = "today" | "events" | "board" | "more";
 /** The ecology look's destinations: the same six on a phone's bottom bar and in the wide masthead. */

@@ -41,7 +41,8 @@
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",
     "REGENOS_WEB_URL": "https://scenius.social",
-    "REGENOS_LOGIN_ENABLED": "false"
+    "REGENOS_LOGIN_ENABLED": "false",
+    "AUTO_MEMBER_ON_SIGNIN": "false"
   },
   "d1_databases": [
     {

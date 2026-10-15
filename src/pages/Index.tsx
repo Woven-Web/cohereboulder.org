@@ -1,4 +1,5 @@
 import { RegistrationAction } from "@/components/RegistrationAction";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -80,6 +81,7 @@ const Index = () => {
                 <Button asChild size="lg" variant={signedIn ? "outline" : "community"} className="w-full">
                   <RegistrationAction anonymousKey="hero.registerHere" />
                 </Button>
+                <SignInPrompt className="mt-2" />
               </CardContent>
             </Card>
 

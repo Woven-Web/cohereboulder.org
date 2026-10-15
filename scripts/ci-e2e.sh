@@ -76,6 +76,9 @@ P28243=$(( 28243 + E2E_PORT_OFFSET ))
 P28244=$(( 28244 + E2E_PORT_OFFSET ))
 P28964=$(( 28964 + E2E_PORT_OFFSET ))
 P28965=$(( 28965 + E2E_PORT_OFFSET ))
+P28966=$(( 28966 + E2E_PORT_OFFSET ))
+P28967=$(( 28967 + E2E_PORT_OFFSET ))
+P28245=$(( 28245 + E2E_PORT_OFFSET ))
 PWA_WORKER_PORT="${PWA_WORKER_PORT:-8898}"
 PWA_MOCK_PORT="${PWA_MOCK_PORT:-10048}"
 PWA_PUSH_PORT="${PWA_PUSH_PORT:-10049}"
@@ -465,6 +468,41 @@ cleanup
 PIDS=()
 rm -rf "$PERSIST_DIR-ecology"
 echo "::endgroup::"
+# --- 16. register-signin-e2e.mjs: registration and sign-in together (T-138) --
+# Seeds two registrations BEFORE the Worker starts (a wrangler d1 write against
+# a running dev server can take it down). Signed out never overwrites; signed in
+# edits your own; AUTO_MEMBER_ON_SIGNIN on, against a mock whose setMembership
+# may add a new member. The form row has no confirmation mail, and beginSignup
+# goes to the mock.
+echo "::group::register-signin-e2e (registration + sign-in lane)"
+WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-regsignin")
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
+npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --command \
+  "INSERT INTO people (id, email, name, phone, orgs, subscribed, unsubscribe_token, source, created_at, updated_at) VALUES
+     ('p-ana','ana@cohere.test','Ana Original','555-0100','Garden Co',1,'tok-ana','form:register-2026','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z'),
+     ('p-reg','reg@cohere.test','Reg Original',NULL,NULL,1,'tok-reg','form:register-2026','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');
+   INSERT INTO submissions (id, person_id, form_slug, event, data, created_at, updated_at) VALUES
+     ('s-ana','p-ana','register-2026','october2026','{\"how_did_you_hear\":\"a flyer\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z'),
+     ('s-reg','p-reg','register-2026','october2026','{\"how_did_you_hear\":\"the radio\",\"attending_invocation\":\"Yes\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');
+   INSERT INTO forms (slug, title, fields, active, created_at, updated_at) VALUES
+     ('map-suggestion','Suggest an addition','[]',1,'2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');" >/dev/null
+MOCK_SETMEMBERSHIP_ADDS=1 start_mock ${P28966} "$PWA_SCRATCH/pwa-merge-mock-16.log"
+start_worker ${P28967} ${P28245} "$PWA_SCRATCH/pwa-merge-worker-16.log" \
+  --var REGENOS_LOGIN_ENABLED:true \
+  --var REGENOS_BASE_URL:http://127.0.0.1:${P28966} \
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var REGENOS_SERVICE_TOKEN:mock-token \
+  --var AUTO_MEMBER_ON_SIGNIN:true
+if ! E2E_PERSIST_DIR="$PERSIST_DIR-regsignin" node scripts/register-signin-e2e.mjs http://127.0.0.1:${P28967} http://127.0.0.1:${P28966}; then
+  tail -80 "$PWA_SCRATCH/pwa-merge-worker-16.log"
+  fail=1
+fi
+cleanup
+PIDS=()
+rm -rf "$PERSIST_DIR-regsignin"
+echo "::endgroup::"
+
 # --- 15. notify-e2e: notifications + Harvest ---------------------------------
 # Self-contained (its own scratch, servers and ports): see scripts/notify-e2e.sh.
 echo "::group::notify-e2e (notifications + harvest lane)"

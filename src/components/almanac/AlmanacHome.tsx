@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { RegistrationAction } from "@/components/RegistrationAction";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { SuggestAdditionForm } from "@/components/SuggestAdditionForm";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -54,6 +55,7 @@ export function AlmanacHome({ signedIn }: { signedIn: boolean }) {
             {/* A week out, registering is the one call to action here; the
                 email-only subscribe lives in the footer. */}
             <RegistrationAction className={cta} anonymousKey="hero.registerHere" />
+            <SignInPrompt />
           </div>
 
           {/* Eileen's first big photo, under the registration card (beside it on wide screens). Not lazy: it is the hero. */}

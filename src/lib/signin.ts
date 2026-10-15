@@ -3,8 +3,19 @@
 
 export const OPEN_SIGNIN_EVENT = "cohere:open-signin";
 
+/** What the dialog starts with: an email to fill in, and where to land after. */
+export interface SignInPrefill {
+  email?: string;
+  returnTo?: string;
+}
+
 export function openSignInDialog() {
-  const path = window.location.pathname + window.location.search + window.location.hash;
+  openSignInWith({});
+}
+
+/** The same dialog, with the email already filled in (e.g. just registered with it). */
+export function openSignInWith({ email, returnTo }: SignInPrefill) {
+  const path = returnTo ?? window.location.pathname + window.location.search + window.location.hash;
   localStorage.setItem("cohere:returnTo", path);
-  window.dispatchEvent(new Event(OPEN_SIGNIN_EVENT));
+  window.dispatchEvent(new CustomEvent<SignInPrefill>(OPEN_SIGNIN_EVENT, { detail: { email, returnTo: path } }));
 }

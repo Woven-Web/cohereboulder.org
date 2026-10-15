@@ -29,7 +29,7 @@ import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { signOut } from "@/lib/regenos";
-import { OPEN_SIGNIN_EVENT, openSignInDialog } from "@/lib/signin";
+import { OPEN_SIGNIN_EVENT, openSignInDialog, type SignInPrefill } from "@/lib/signin";
 
 export function AccountControl({ variant = "desktop", onNavigate }: { variant?: "desktop" | "mobile"; onNavigate?: () => void }) {
   const { tr } = useLanguage();
@@ -38,12 +38,16 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
   const { data: session } = useRegenosSession(enabled);
   const invalidateSession = useInvalidateRegenosSession();
   const [open, setOpen] = useState(false);
+  const [prefill, setPrefill] = useState<SignInPrefill>({});
   const signedIn = Boolean(session?.did);
 
   // Only the desktop instance listens, so one request opens one dialog.
   useEffect(() => {
     if (variant !== "desktop") return;
-    const listener = () => setOpen(true);
+    const listener = (event: Event) => {
+      setPrefill((event as CustomEvent<SignInPrefill | undefined>).detail ?? {});
+      setOpen(true);
+    };
     window.addEventListener(OPEN_SIGNIN_EVENT, listener);
     return () => window.removeEventListener(OPEN_SIGNIN_EVENT, listener);
   }, [variant]);
@@ -131,7 +135,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
             <DialogTitle className="px-5 sm:pl-0">{tr("nav.signInDialogTitle")}</DialogTitle>
             <DialogDescription>{tr("nav.signInDialogBody")}</DialogDescription>
           </DialogHeader>
-          <RegenosSignInPanel embedded />
+          <RegenosSignInPanel embedded initialEmail={prefill.email} returnTo={prefill.returnTo} />
         </DialogContent>
       </Dialog>
     </>

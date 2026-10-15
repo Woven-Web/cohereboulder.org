@@ -80,6 +80,11 @@ const PROTECTED_HANDLES: Record<string, string> = {
   "claudeji.scenius.social": "ClaudeJi",
 };
 
+/** Whether a handle is one of the site's own accounts (see PROTECTED_HANDLES). */
+export function protectedHandle(handle: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PROTECTED_HANDLES, handle);
+}
+
 // ----------------------------------------------------------------- plumbing
 
 function json(data: unknown, status: number): Response {

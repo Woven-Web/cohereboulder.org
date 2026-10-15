@@ -1,19 +1,117 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import Registration from "./Registration";
 
-const config = vi.hoisted(() => ({ regenosLoginEnabled: false }));
-vi.mock("@/hooks/useRegenos", () => ({ useSiteConfig: () => ({ data: config }) }));
+const state = vi.hoisted(() => ({
+  config: { regenosLoginEnabled: false },
+  session: null as { did: string | null } | null,
+  mine: undefined as unknown,
+  /** The detail query failed (after its retry); `refetch` is the page's Try again. */
+  mineError: false,
+  refetch: (() => {}) as () => void,
+  formProps: null as Record<string, unknown> | null,
+  buttons: [] as Record<string, unknown>[],
+}));
+vi.mock("@/hooks/useRegenos", () => ({
+  useSiteConfig: () => ({ data: state.config }),
+  useRegenosSession: () => ({ data: state.session, isLoading: false }),
+}));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: state.mine, isLoading: false, isError: state.mineError, isFetching: false, refetch: () => state.refetch() }),
+}));
+vi.mock("@/components/ui/button", () => ({
+  Button: (props: Record<string, unknown>) => {
+    state.buttons.push(props);
+    return <button>{props.children as React.ReactNode}</button>;
+  },
+}));
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ tr: (key: string) => key, language: "en" }) }));
 vi.mock("@/components/Navigation", () => ({ Navigation: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
-vi.mock("@/components/DynamicForm", () => ({ DynamicForm: () => null }));
+vi.mock("@/components/DynamicForm", () => ({
+  DynamicForm: (props: Record<string, unknown>) => {
+    state.formProps = props;
+    return null;
+  },
+}));
+
+const render = () => renderToStaticMarkup(<MemoryRouter><Registration /></MemoryRouter>);
+
+beforeEach(() => {
+  state.config.regenosLoginEnabled = false;
+  state.session = null;
+  state.mine = undefined;
+  state.mineError = false;
+  state.refetch = () => {};
+  state.formProps = null;
+  state.buttons = [];
+});
 
 describe("registration sign-in affordance", () => {
   it.each([false, true])("honors regenosLoginEnabled=%s", (enabled) => {
-    config.regenosLoginEnabled = enabled;
-    const html = renderToStaticMarkup(<Registration />);
-    expect(html.includes("app.alreadyJoined")).toBe(enabled);
+    state.config.regenosLoginEnabled = enabled;
+    const html = render();
+    expect(html.includes("app.alreadyRegistered")).toBe(enabled);
     expect(html.includes("nav.signIn")).toBe(enabled);
+  });
+
+  it("signed in and registered: no sign-in line, the form is theirs to update", () => {
+    state.config.regenosLoginEnabled = true;
+    state.session = { did: "did:plc:me" };
+    state.mine = { registered: true, email: "me@test.com", answers: { a: "b" } };
+    const html = render();
+    expect(html).not.toContain("app.alreadyRegistered");
+    expect(renderToStaticMarkup(<>{state.formProps?.intro}</>)).toContain("app.updateRegistration");
+    expect(state.formProps?.saved).toEqual(state.mine);
+    expect(state.formProps?.submitLabel).toBe("app.saveChanges");
+  });
+
+  it("signed in, not yet registered: the email is prefilled but it is a new registration", () => {
+    state.config.regenosLoginEnabled = true;
+    state.session = { did: "did:plc:me" };
+    state.mine = { registered: false, email: "me@test.com", answers: {} };
+    expect(render()).not.toContain("app.alreadyRegistered");
+    expect(state.formProps?.intro).toBeUndefined();
+    expect(state.formProps?.saved).toEqual(state.mine);
+    expect(state.formProps?.submitLabel).toBeUndefined();
+  });
+
+  it("offers sign-in for an email that is already registered, and an account after a new one", () => {
+    state.config.regenosLoginEnabled = true;
+    render();
+    const outcome = state.formProps!.renderOutcome as (o: unknown, email: string) => React.ReactNode;
+    const extra = state.formProps!.successExtra as (email: string) => React.ReactNode;
+    const wrap = (node: React.ReactNode) => renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter>);
+    expect(wrap(outcome({ alreadyRegistered: true, updated: false }, "a@test.com"))).toContain("app.emailAlreadyRegistered");
+    expect(outcome({ alreadyRegistered: false, updated: false }, "a@test.com")).toBeNull();
+    expect(wrap(extra("a@test.com"))).toContain("app.createAccountToRsvp");
+  });
+
+  it("signed in, saved answers failed to load: no form to submit, a Try again that loads them", () => {
+    state.config.regenosLoginEnabled = true;
+    state.session = { did: "did:plc:me" };
+    state.mineError = true;
+    const saved = { registered: true, email: "me@test.com", answers: { a: "b" } };
+    state.refetch = () => {
+      state.mineError = false;
+      state.mine = saved;
+    };
+    const html = render();
+    expect(html).toContain("app.registrationLoadFailed");
+    expect(state.formProps).toBeNull(); // no DynamicForm, so no submit button
+
+    const retry = state.buttons.find((b) => b.children && JSON.stringify(b.children).includes("app.tryAgain"));
+    (retry!.onClick as () => void)();
+    expect(render()).not.toContain("app.registrationLoadFailed");
+    expect(state.formProps?.saved).toEqual(saved);
+    expect(state.formProps?.submitLabel).toBe("app.saveChanges");
+  });
+
+  it("signed out, the detail query never decides: the form is there", () => {
+    state.config.regenosLoginEnabled = true;
+    state.mineError = true;
+    expect(render()).not.toContain("app.registrationLoadFailed");
+    expect(state.formProps).not.toBeNull();
   });
 });
