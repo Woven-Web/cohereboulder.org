@@ -112,7 +112,7 @@ export const ecoCopy: Record<string, Pair> = {
   "look.home.latestBoard": ["Latest on the Board", "Lo último en el Tablón"],
   "look.home.openBoard": ["Open the Board", "Abrir el Tablón"],
 
-  "almanac.allMine": ["All {n} events", "Todos los {n} eventos"],
+  "almanac.allMine": ["All events · {n}", "Todos los eventos · {n}"],
   "almanac.installPair": ["Add to home screen", "Añadir a la pantalla de inicio"],
   "almanac.installRow": ["Add to home screen", "Añadir a la pantalla de inicio"],
   "almanac.questionCopied": ["Copied.", "Copiado."],
@@ -294,9 +294,6 @@ export const ecoCopy: Record<string, Pair> = {
   "almanac.installTitleReminders": ["Get reminders", "Recibir recordatorios"],
   "almanac.installBody": CUT,
   "almanac.remindersOnlyBody": CUT,
-  "almanac.time6": CUT,
-  "almanac.time9": CUT,
-  "almanac.time15": CUT,
   "almanac.installFine": CUT,
   "almanac.setTitle": ["Done.", "Listo."],
   "almanac.setBody": CUT,

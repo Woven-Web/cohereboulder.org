@@ -86,7 +86,7 @@
 .alm.eco .lang button{border-radius:22px;min-width:46px}
 .alm.eco .lang button[aria-pressed=true]{background:var(--deep);color:#fff;text-decoration:none}
 .alm.eco .mast__register{background:var(--rust);color:#fff;border-radius:var(--pill);box-shadow:none;font-family:var(--head);font-weight:700}
-.alm.eco .mast__register[role=status]{background:var(--leaf);border:1.5px solid var(--deep)}
+.alm.eco .mast__register[role=status]{background:var(--leaf);color:var(--ink);border:1.5px solid var(--deep)}
 .alm.eco .mast .tabs a{color:var(--ink-2)}
 .eco-ridges{position:relative;display:block;height:var(--ridge-h);margin:0 calc(var(--gutter) * -1);overflow:hidden;pointer-events:none}
 .eco-ridges svg{position:absolute;inset:0;width:100%;height:100%;max-width:none}
