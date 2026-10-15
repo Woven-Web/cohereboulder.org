@@ -57,7 +57,9 @@ async function runCron(request, time) {
 }
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ baseURL: target });
+// Frozen before the gathering, so the Calendar shows every upcoming date (see myevents-e2e).
+const context = await browser.newContext({ baseURL: target, serviceWorkers: "block" });
+await context.clock.setFixedTime(new Date("2026-10-01T18:00:00Z"));
 const page = await context.newPage();
 page.on("pageerror", (error) => fail(`uncaught page error — ${error}`));
 
