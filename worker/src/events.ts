@@ -216,12 +216,34 @@ function withCors(response: Response, cors: Record<string, string>): Response {
   return out;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How long an ended event stays in the list behind `?past=1`. */
+const RECENT_PAST_DAYS = 14;
+
+/** Drops ended events from a full listing unless the caller asked for the recent past. */
+async function shapeListing(res: Response, withPast: boolean): Promise<Response> {
+  if (withPast) return res;
+  const body = (await res.clone().json()) as { events: CommunityEvent[] };
+  const now = Date.now();
+  const events = body.events.filter((e) => {
+    const start = e.startsAt ? Date.parse(e.startsAt) : NaN;
+    if (Number.isNaN(start)) return true;
+    const end = e.endsAt ? Date.parse(e.endsAt) : NaN;
+    return (Number.isNaN(end) ? start : end) >= now;
+  });
+  const out = new Response(JSON.stringify({ ...body, events }), res);
+  out.headers.set("content-type", "application/json");
+  return out;
+}
+
 /** The Cache API's default namespace; workers-types aren't wired in this repo. */
 const edgeCache = (caches as unknown as { default: Cache }).default;
 
 /**
  * GET /api/events — the collective's upcoming public calendar, soonest first,
- * undated events last. Never 500s:
+ * undated events last. `?past=1` also keeps events that ended within the last
+ * RECENT_PAST_DAYS (the Calendar page shows yesterday's events, their harvests
+ * and the festival's earlier days). Never 500s:
  *   unconfigured (no scene yet)  → { events: [], unconfigured: true }
  *   upstream failure of any kind → { events: [], degraded: true }
  *   otherwise                    → { events, icsUrl }
@@ -240,9 +262,13 @@ export async function handleEventsList(
   // The listing is viewer-independent by design, so one edge-cached copy per
   // hostname serves everyone. (The Cache API is a no-op on workers.dev — it
   // engages on the real domain.)
+  // The cached copy always carries the recent past; the plain listing is
+  // filtered down from it per request, so one cache entry (and the one purge
+  // after a write) serves both.
+  const withPast = new URL(request.url).searchParams.get("past") === "1";
   const cacheKey = new Request(new URL("/api/events", request.url).toString());
   const cached = await edgeCache.match(cacheKey);
-  if (cached) return withCors(cached, cors);
+  if (cached) return withCors(await shapeListing(cached, withPast), cors);
 
   const upstream = new URL(`${base}/xrpc/social.scenius.getEvents`);
   upstream.searchParams.set("scene", scene);
@@ -278,7 +304,7 @@ export async function handleEventsList(
       const endMs = event.endsAt ? Date.parse(event.endsAt) : NaN;
       // "Upcoming" includes in-progress: an event ends when it ends, not when
       // it starts. Rows come back in index order, NOT start order — sort here.
-      if ((Number.isNaN(endMs) ? startMs : endMs) < now) continue;
+      if ((Number.isNaN(endMs) ? startMs : endMs) < now - RECENT_PAST_DAYS * DAY_MS) continue;
       dated.push({ event, startMs });
     }
     // Sort on the parsed instant, not the string — ISO strings with mixed UTC
@@ -291,7 +317,7 @@ export async function handleEventsList(
       { "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
     );
     await edgeCache.put(cacheKey, response.clone());
-    return withCors(response, cors);
+    return withCors(await shapeListing(response, withPast), cors);
   } catch (err) {
     console.warn("regenOS getEvents failed — degrading:", err instanceof Error ? err.message : err);
     return json({ events: [], degraded: true }, 200, { ...cors, ...NO_STORE });

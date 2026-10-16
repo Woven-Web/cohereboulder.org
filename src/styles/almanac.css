@@ -677,3 +677,8 @@
 
 .alm .closed{margin-top:var(--sp-3);padding:var(--sp-4);border:1px dashed var(--hair);font-size:var(--fs-small);line-height:1.45;color:var(--ink-2)}
 .alm .closed b{color:var(--ink)}
+
+/* An event row never grows past its card: the text column may shrink, and a long title, place or word wraps inside it. */
+.alm .ev{grid-template-columns:calc(4.7 * var(--u)) minmax(0,1fr)}
+.alm .ev>div{min-width:0}
+.alm :is(.ev__title,.ev__meta,.ev__desc){overflow-wrap:anywhere}

@@ -70,7 +70,7 @@ try {
 
   step = "default";
   await mp.goto("/calendar", { waitUntil: "networkidle" });
-  const everyDate = mp.getByRole("button", { name: "Show every upcoming date" });
+  const everyDate = mp.getByRole("button", { name: "Show every date" });
   if (await everyDate.count()) await everyDate.click();
   const card = mp.getByTestId("event-card").filter({ hasText: EVENT });
   await card.waitFor({ timeout: 15_000 });

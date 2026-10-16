@@ -292,6 +292,7 @@ export const ecoCopy: Record<string, Pair> = {
   "almanac.emptyMineTitle": ["No RSVPs yet.", "Aún no hay RSVP."],
   "almanac.emptyMineBody": CUT,
   "almanac.emptyDay": ["No events.", "Sin eventos."],
+  "almanac.emptyMineDay": ["None of yours.", "Ninguno tuyo."],
   "almanac.openMaps": ["Open in Maps", "Abrir en Mapas"],
   "almanac.addressTba": ["Address TBA", "Dirección por confirmar"],
   "almanac.noStreet": ["No street address.", "Sin dirección."],

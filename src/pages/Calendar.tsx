@@ -26,7 +26,7 @@ import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/use
 import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
-import { useMyEvents, removeMyEvent } from "@/lib/myEvents";
+import { useMyEvents, removeMyEvent, eventKey } from "@/lib/myEvents";
 import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 const VIEW_KEY = "cohere.calendar.view";
@@ -43,8 +43,8 @@ export default function CalendarPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["community-calendar"],
-    queryFn: fetchCommunityCalendar,
+    queryKey: ["community-calendar", "with-past"],
+    queryFn: () => fetchCommunityCalendar({ past: true }),
   });
 
   // The regenOS hosting lane — entirely absent until the Worker's
@@ -59,26 +59,26 @@ export default function CalendarPage() {
   const mine = useMyEvents(data?.events);
   const [params, setParams] = useSearchParams();
   const dayParam = isFestivalDate(params.get("day") ?? "") ? params.get("day") : null;
-  const [explicitMode, setExplicitMode] = useState<"my" | "all" | null>(null);
+  // Every date is listed by default; "My events" narrows the same day's list to what you RSVP'd to.
+  const [mode, setMode] = useState<"my" | "all">("all");
   const [allDates, setAllDates] = useState(false);
-  const [myPick, setMyPick] = useState<string | null>(null);
   const [showMonth, setShowMonth] = useState(false);
   // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.
   const [chosenView, setChosenView] = useState<"day" | "week" | null>(readView);
+  // Picking a day (picker, trail, the week's header, or a link with ?day=) shows that day, whichever view is the default. It lasts this visit and does not overwrite the stored choice.
+  const [dayFocus, setDayFocus] = useState(() => Boolean(dayParam));
   const xl = useMedia("(min-width: 1024px)");
   // Only the ecology look defaults to the week; every other look keeps the day list unless the visitor picks the week.
   const eco = useLook() === "ecology";
-  const view: "day" | "week" = chosenView ?? (xl && eco ? "week" : "day");
+  const view: "day" | "week" = dayFocus ? "day" : chosenView ?? (xl && eco ? "week" : "day");
   function setView(next: "day" | "week") {
+    setDayFocus(false);
     setChosenView(next);
     try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }
   }
   const hasMine = mine.items.length > 0;
-  // My events is the default view whenever there is anything in it; a day
-  // chosen from Today's trail means "show me that day" instead.
-  const mode: "my" | "all" = explicitMode ?? (dayParam ? "all" : hasMine ? "my" : "all");
   const showingMine = hasMine && mode === "my";
-  // Inside the festival the picker opens on today; outside it, every upcoming date.
+  // Inside the festival the picker opens on today; outside it, every date.
   const selectedDay = dayParam ?? (allDates ? null : isFestivalDate(today) ? today : null);
   const done = useMemo(() => practiceDoneDays(), []);
   const counts = useMemo(() => {
@@ -86,34 +86,18 @@ export default function CalendarPage() {
     for (const i of mine.items) { const d = denverDateKey(i.event.startsAt); if (d) out[d] = (out[d] ?? 0) + 1; }
     return out;
   }, [mine.items]);
-  const firstMineDay = useMemo(() => {
-    const upcoming = mine.items.find((i) => i.event.status !== "cancelled" && i.event.startsAt && Date.parse(i.event.endsAt ?? i.event.startsAt) > Date.now());
-    return denverDateKey((upcoming ?? mine.items[0])?.event.startsAt ?? null);
-  }, [mine.items]);
   const nextItems = useMemo(() => mine.items
     .filter((i) => i.event.status !== "cancelled" && i.event.startsAt && Date.parse(i.event.endsAt ?? i.event.startsAt) > Date.now())
     .map((i) => ({ event: i.event, seat: seatOf(i) })), [mine.items]);
 
   function pickDay(date: string) {
-    if (showingMine && !weekMode) {
-      if (counts[date]) {
-        setMyPick(date);
-        window.requestAnimationFrame(() => document.getElementById(`g-${date}`)?.scrollIntoView({ block: "start" }));
-        return;
-      }
-      setExplicitMode("all");
-    }
+    setDayFocus(true);
     setAllDates(false);
     setParams({ day: date }, { replace: true });
   }
   function showEveryDate() {
-    setExplicitMode("all");
     setAllDates(true);
     setParams({}, { replace: true });
-  }
-  function setMode(next: "my" | "all") {
-    setExplicitMode(next);
-    if (next === "my") setParams({}, { replace: true });
   }
 
   const allEvents = data?.events ?? [];
@@ -121,7 +105,9 @@ export default function CalendarPage() {
   // The week needs a day to anchor on: the chosen one, today in the festival, else day one.
   const weekDay = selectedDay ?? (isFestivalDate(today) ? today : FESTIVAL_DATES[0]);
   const dayEvents = selectedDay ? allEvents.filter((e) => denverDateKey(e.startsAt) === selectedDay) : allEvents;
-  const listed = showingMine ? mine.items.map((i) => i.event) : dayEvents;
+  const mineKeys = new Set(mine.items.map((i) => eventKey(i.event)));
+  const dayMineCount = dayEvents.filter((e) => mineKeys.has(eventKey(e))).length;
+  const listed = showingMine ? dayEvents.filter((e) => mineKeys.has(eventKey(e))) : dayEvents;
   const itemFor = (event: CommunityEvent) => mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did);
   const byDay = new Map<string, CommunityEvent[]>();
   for (const e of listed) { const k = denverDateKey(e.startsAt) ?? ""; byDay.set(k, [...(byDay.get(k) ?? []), e]); }
@@ -244,7 +230,7 @@ export default function CalendarPage() {
               today={today}
               done={done}
               counts={counts}
-              selected={showingMine ? myPick ?? firstMineDay : selectedDay}
+              selected={selectedDay}
               onSelect={pickDay}
             />
             <div className={`flow2 flow2--side${hasMine ? "" : " flow2--solo"}`} style={{ marginTop: ".4rem" }}>
@@ -253,8 +239,8 @@ export default function CalendarPage() {
                   {hasMine && (
                     <div data-testid="my-events-toggle">
                       <div className="seg" role="group" aria-label={tr("almanac.segLabel")}>
-                        <button type="button" aria-pressed={showingMine} onClick={() => setMode("my")}>{tr("calendar.events.myEventsFilter")}<span className="count">{mine.items.length}</span></button>
-                        <button type="button" aria-pressed={!showingMine} onClick={() => setMode("all")}>{tr("almanac.allEvents")}<span className="count">{allEvents.length}</span></button>
+                        <button type="button" aria-pressed={!showingMine} onClick={() => setMode("all")}>{tr("almanac.allEvents")}<span className="count">{dayEvents.length}</span></button>
+                        <button type="button" aria-pressed={showingMine} onClick={() => setMode("my")}>{tr("calendar.events.myEventsFilter")}<span className="count">{dayMineCount}</span></button>
                       </div>
                     </div>
                   )}
@@ -279,21 +265,23 @@ export default function CalendarPage() {
                   )}
                   {weekMode ? (
                     <CalendarWeek
-                      events={showingMine ? mine.items.map((i) => i.event) : allEvents}
-                      mineKeys={showingMine ? undefined : new Set(mine.items.map((i) => `${i.event.did}/${i.event.rkey}`))}
+                      events={showingMine ? allEvents.filter((e) => mineKeys.has(eventKey(e))) : allEvents}
+                      mineKeys={showingMine ? undefined : mineKeys}
                       day={weekDay}
                       today={today}
-                      onPick={(date) => { setView("day"); pickDay(date); }}
+                      onPick={pickDay}
                       onWeek={(date) => { setAllDates(false); setParams({ day: date }, { replace: true }); }}
                     />
-                  ) : !showingMine && selectedDay ? (
+                  ) : selectedDay ? (
                     <>
                       <div className="agenda-head">
                         <h2 className="h2" style={{ fontSize: "calc(1.5 * var(--u))" }}>{formatDay(selectedDay, language, true)}</h2>
-                        <span className="mono small" style={{ fontSize: ".78em", whiteSpace: "nowrap" }}>{countLabel(dayEvents.length)}</span>
+                        <span className="mono small" style={{ fontSize: ".78em", whiteSpace: "nowrap" }} data-testid="agenda-count">
+                          {hasMine && <>{tr(showingMine ? "calendar.events.myEventsFilter" : "almanac.allEvents")} · </>}{countLabel(listed.length)}
+                        </span>
                       </div>
-                      {dayEvents.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
-                      <div className="cal-list">{dayEvents.map(row)}</div>
+                      {listed.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr(showingMine && dayEvents.length > 0 ? "almanac.emptyMineDay" : "almanac.emptyDay")}</p>}
+                      <div className="cal-list">{listed.map(row)}</div>
                       <button type="button" className="link" style={{ marginTop: ".6rem", display: "block" }} onClick={showEveryDate}>{tr("almanac.showEveryDate")}</button>
                     </>
                   ) : (

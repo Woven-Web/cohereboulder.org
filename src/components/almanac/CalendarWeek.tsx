@@ -26,6 +26,7 @@ export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: P
   const days = weekOf(day);
   const first = FESTIVAL_DATES.indexOf(days[0]) === 0;
   const other = first ? FESTIVAL_DATES[7] : FESTIVAL_DATES[0];
+  const now = Date.now();
   const live = events.filter((e) => e.status !== "cancelled");
   const label = fill(tr("look.weekOf"), { a: formatDay(days[0], language), b: formatDay(days[days.length - 1], language) });
   return (
@@ -47,7 +48,7 @@ export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: P
               </button>
               {list.length === 0 && <p className="week__none" aria-label={tr("look.weekEmpty")}>·</p>}
               {list.map((e) => (
-                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined}>
+                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined} data-past={Date.parse(e.endsAt ?? e.startsAt ?? "") < now ? "" : undefined}>
                   <span className="mono">{e.startsAt ? formatMinutes(denverMinutes(new Date(e.startsAt)), language) : ""}</span>
                   <b>{e.name}</b>
                 </Link>

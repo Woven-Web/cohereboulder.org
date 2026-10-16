@@ -183,6 +183,9 @@
   .alm .mast:has(.mast__register) .mast__end{gap:var(--sp-1)}
   /* No room for Register and Sign in together: Register stays, the account control moves to the footer on phones. */
   .alm .mast:has(.mast__register) .mast__end>button{display:none}
+  /* A long label ("Register for the gathering") wraps to two lines instead of running under the wordmark. */
+  .alm .mast__register{min-width:0;white-space:normal;text-align:center;line-height:1.1;padding-block:.25rem;font-size:.9rem}
+  .alm .mast__end{min-width:0;flex:1 1 auto;justify-content:flex-end}
 }
 @media (min-width:768px){.alm .foot__account{display:none}}
 .alm .foot__account{margin-top:var(--sp-2)}

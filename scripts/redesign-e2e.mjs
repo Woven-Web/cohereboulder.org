@@ -256,7 +256,7 @@ for (const [w, h] of [[390, 844], [360, 780], [1200, 1600], [1600, 1200]]) {
     await page.keyboard.press('Enter');
     await page.getByRole('option', { name: /^Sunday Oct 18/ }).and(page.locator('[aria-selected=true]')).waitFor();
     ok('arrows move focus and Enter selects a day');
-    await page.getByRole('button', { name: 'Show every upcoming date' }).click();
+    await page.getByRole('button', { name: 'Show every date' }).click();
     check((await page.getByTestId('event-card').count()) === 38, 'every upcoming date lists all 38 events');
     await page.getByRole('option', { name: /^Saturday Oct 17/ }).click();
     const first = page.getByTestId('event-card').filter({ hasText: 'Climatique Free Market' });

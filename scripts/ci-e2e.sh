@@ -545,6 +545,14 @@ if ! bash scripts/notify-e2e.sh; then
 fi
 echo "::endgroup::"
 
+# --- 17. calendar-desktop-e2e: day click, past days, All/My events, no overflow ---
+# Self-contained (its own scratch, servers and ports): see scripts/calendar-desktop-e2e.sh.
+echo "::group::calendar-desktop-e2e (laptop calendar lane)"
+if ! WALK=0 bash scripts/calendar-desktop-e2e.sh; then
+  fail=1
+fi
+echo "::endgroup::"
+
 rm -rf "$PERSIST_DIR"
 
 if [ "$fail" -ne 0 ]; then

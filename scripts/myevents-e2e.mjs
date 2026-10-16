@@ -55,7 +55,7 @@ try {
   step = "rsvp";
   await page.goto("/calendar", { waitUntil: "networkidle" });
   // During the festival the picker opens on today; count every upcoming date.
-  const everyDate = page.getByRole("button", { name: "Show every upcoming date" });
+  const everyDate = page.getByRole("button", { name: "Show every date" });
   if (await everyDate.count()) await everyDate.click();
   const cards = await page.getByTestId("event-card").count();
   await page.getByRole("button", { name: "RSVP", exact: true }).first().click();
@@ -86,13 +86,15 @@ try {
   step = "my events";
   await page.goto("/calendar", { waitUntil: "networkidle" });
   await page.getByTestId("my-events-toggle").waitFor({ timeout: 10_000 });
-  if ((await page.getByTestId("event-card").count()) !== 1) fail("My events should list just the RSVP'd event by default");
+  if ((await page.getByRole("button", { name: /^All events/ }).getAttribute("aria-pressed")) !== "true") fail("All events should be the default");
+  await page.getByRole("button", { name: /^My events/ }).click();
+  if ((await page.getByTestId("event-card").count()) !== 1) fail("My events should list just the RSVP'd event");
   if (!(await page.getByText("Events you RSVP'd to on this device").count())) fail("source note missing");
   await page.getByRole("button", { name: /^All events/ }).click();
   if (await everyDate.count()) await everyDate.click();
   if ((await page.getByTestId("event-card").count()) !== cards) fail("All did not restore the full list");
   await page.getByRole("button", { name: /^My events/ }).click();
-  ok("/calendar defaults to My events with the source note; All restores the list");
+  ok("/calendar defaults to All events; My events narrows to the RSVP with the source note; All restores the list");
 
   step = "your next";
   await page.goto("/today", { waitUntil: "networkidle" });
@@ -104,6 +106,7 @@ try {
 
   step = "remove";
   await page.goto("/calendar", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /^My events/ }).click();
   await page.getByTestId("my-events-remove").click();
   await page.getByTestId("my-events-toggle").waitFor({ state: "detached", timeout: 10_000 });
   const again = await context.request.post("/api/rsvp", { data: { did: "did:plc:mockscene", rkey: "ev-seed1", email } });
