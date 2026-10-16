@@ -665,5 +665,15 @@
 .alm .hvcard p{font-size:var(--fs-small);color:var(--ink-2);line-height:1.4}
 .alm .hvcard__acts{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:center}
 .alm .hvcard__acts .btn{flex:1 1 11rem}
+.alm .notifybar{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:40px;padding:var(--sp-1) var(--sp-4);background:var(--paper-3);border-bottom:var(--rule-w) solid var(--berry);color:var(--ink);font-size:var(--fs-small);font-weight:600;text-decoration:none}
+.alm .notifybar:hover,.alm .notifybar:focus-visible{background:var(--paper-2,var(--paper-3))}
+.alm .hvmenu{position:relative;display:inline-flex;margin-left:auto}
+.alm .hvmenu__btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1.5px solid var(--ink);border-radius:var(--r-2);background:var(--paper);color:var(--ink)}
+.alm .hvmenu__btn[aria-expanded=true]{background:var(--ink);color:var(--paper)}
+.alm .hvmenu__list{position:absolute;right:0;bottom:calc(100% + 4px);z-index:20;min-width:9rem;display:grid;border:1.5px solid var(--ink);border-radius:var(--r-2);background:var(--paper);box-shadow:0 3px 0 var(--ink)}
+.alm .hvmenu__list button{min-height:44px;padding:0 var(--sp-4);text-align:left;font-weight:600;font-size:calc(1.02 * var(--u))}
+.alm .hvmenu__list button+button{border-top:var(--rule-w) solid var(--hair)}
+.alm .hvmenu__list button:hover,.alm .hvmenu__list button:focus-visible{background:var(--paper-3)}
+
 .alm .closed{margin-top:var(--sp-3);padding:var(--sp-4);border:1px dashed var(--hair);font-size:var(--fs-small);line-height:1.45;color:var(--ink-2)}
 .alm .closed b{color:var(--ink)}

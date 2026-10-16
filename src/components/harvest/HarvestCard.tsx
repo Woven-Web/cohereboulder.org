@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useShell } from "@/components/almanac/shell-context";
+import { HarvestMenu } from "@/components/harvest/HarvestMenu";
 import { fill } from "@/components/almanac/format";
 import { useCircleAccess } from "@/hooks/useCircleAccess";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { currentDenverDate } from "@/lib/companion";
 import { eventPath, type CommunityEvent } from "@/lib/events";
-import { MY_HARVESTS_KEY, RECENT_EVENTS_KEY, dismissHarvestCard, dismissedHarvestCards, fetchMyHarvests, fetchRecentEvents } from "@/lib/harvest";
+import { HARVESTS_KEY, MY_HARVESTS_KEY, RECENT_EVENTS_KEY, dismissHarvestCard, dismissedHarvestCards, fetchMyHarvests, fetchRecentEvents } from "@/lib/harvest";
 import { eventKey, lookupSeats, useMyEvents } from "@/lib/myEvents";
 import { shortName } from "@/components/harvest/names";
 
@@ -20,6 +22,9 @@ const denver = (iso: string | null) =>
  */
 export function HarvestCard() {
   const { tr } = useLanguage();
+  const { toast } = useShell();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const access = useCircleAccess();
   const member = access.status === "member";
   const recent = useQuery({ queryKey: RECENT_EVENTS_KEY, queryFn: fetchRecentEvents, enabled: member, staleTime: 60_000, retry: 1 });
@@ -65,6 +70,15 @@ export function HarvestCard() {
         <div className="hvcard__acts">
           <Link className="btn btn--line btn--sm" to={`${base}#mine`}>{tr("notify.harvest.cardSee")}</Link>
           <button type="button" className="link" onClick={() => setDismissed(dismissHarvestCard(eventKey(target)))}>{tr("notify.harvest.cardNotNow")}</button>
+          <HarvestMenu
+            harvestId={shared.get(eventKey(target))!}
+            onEdit={() => navigate(`${base}#edit`)}
+            onDeleted={() => {
+              void queryClient.invalidateQueries({ queryKey: HARVESTS_KEY });
+              void queryClient.invalidateQueries({ queryKey: MY_HARVESTS_KEY });
+              toast(tr("notify.harvest.deleted"));
+            }}
+          />
         </div>
       </section>
     );

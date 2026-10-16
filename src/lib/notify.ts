@@ -16,10 +16,13 @@ export interface NoteView {
   channel: Channel;
   chosen: Channel | null;
   pushAvailable: boolean;
+  /** The two toggles: does it go to the phone, does it go by email. */
+  phone: boolean;
+  email: boolean;
 }
 
 export interface SettingsView {
-  email: { address: string | null; verified: boolean };
+  email: { address: string | null; verified: boolean; registered: boolean };
   push: {
     status: PushStatus;
     installed: boolean;
@@ -34,7 +37,11 @@ export interface SettingsView {
   locale: "en" | "es";
 }
 
-export type SettingsPatch = Partial<Record<NotifyType, { on?: boolean; channel?: Channel | null }>> & { language?: "en" | "es" };
+export type SettingsPatch = Partial<Record<NotifyType, { on?: boolean; channel?: Channel | null; channels?: { phone: boolean; email: boolean } }>> & { language?: "en" | "es" };
+
+/** Does anything reach this person? A note that is on, and a phone or an address for it to go to. */
+export const receivesNothing = (view: SettingsView): boolean =>
+  view.nothingReaches || NOTIFY_TYPES.every((type) => !view.notes[type].on);
 
 export class NotifyError extends Error {
   status: number;

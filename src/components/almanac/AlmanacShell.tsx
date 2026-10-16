@@ -6,6 +6,7 @@ import { EcoRidges } from "./EcoRidges";
 import { SignedInInstallInvite } from "./SignedInInstallInvite";
 import { useLocation } from "react-router-dom";
 import { InstallSheet } from "./InstallSheet";
+import { NotifyStatusBar } from "@/components/notify/NotifyStatusBar";
 import { lookClass, useLook } from "@/lib/look";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
 import { useDeviceSync } from "@/hooks/useDeviceSync";
@@ -44,6 +45,7 @@ export function AlmanacShell({ children, after, site = false, ridges = true }: {
       <div className={`alm${lookClass(look)}`} ref={rootRef}>
         <div className={`app${hasBar ? " has-bar" : ""}`}>
           <AlmanacMast register={site || look === "ecology"} />
+          <NotifyStatusBar />
           {/* Ecology only: the landscape under the masthead. Screens that draw their own (Today, Calendar, Home) hide it with CSS or ridges={false}. */}
           {look === "ecology" && ridges && <EcoRidges />}
           {children}
