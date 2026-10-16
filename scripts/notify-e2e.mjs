@@ -111,12 +111,15 @@ const pages = [];
  * A browser as a person: signed in as `session` (a __Host-rs_session value), optionally with the
  * installed app (standalone display mode, notification permission granted, one push subscription).
  */
-async function persona(session, { app = false, device = randomUUID(), endpoint = keys.endpoint, viewport = { width: 390, height: 844 } } = {}) {
+async function persona(session, { app = false, device = randomUUID(), endpoint = keys.endpoint, viewport = { width: 390, height: 844 }, look = null } = {}) {
   const context = await browser.newContext({ baseURL: target, viewport, serviceWorkers: "block" });
   await context.route("**/*", (route) => (new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort()));
   if (session) await context.addCookies([{ name: "__Host-rs_session", value: session, domain: "127.0.0.1", path: "/", secure: true, httpOnly: true, sameSite: "Lax" }]);
-  await context.addInitScript(({ device, app, endpoint, keys }) => {
-    localStorage.setItem("cohere-companion-device", device);
+  await context.addInitScript(({ device, app, endpoint, keys, look }) => {
+    try {
+      localStorage.setItem("cohere-companion-device", device);
+      if (look) localStorage.setItem("cohere-look", look);
+    } catch { return; } // an opaque-origin frame (a blocked embed) has no storage
     if (!app) return;
     localStorage.setItem("cohere-push-off", "false");
     const original = window.matchMedia.bind(window);
@@ -128,7 +131,7 @@ async function persona(session, { app = false, device = randomUUID(), endpoint =
     const registration = { pushManager: { getSubscription: async () => sub, subscribe: async () => sub } };
     Object.defineProperty(navigator.serviceWorker, "ready", { value: Promise.resolve(registration) });
     navigator.serviceWorker.getRegistration = async () => registration;
-  }, { device, app, endpoint, keys });
+  }, { device, app, endpoint, keys, look });
   const page = await context.newPage();
   page.on("pageerror", (e) => fail(`uncaught page error — ${e}`));
   pages.push(page);
@@ -141,7 +144,11 @@ async function register(device, endpoint = keys.endpoint) {
 }
 
 const noSideways = (page, label) =>
-  page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1).then((fits) => expect(fits, `no sideways scroll: ${label}`));
+  page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const wide = [...document.querySelectorAll("body *")].filter((el) => el.getBoundingClientRect().right > width + 1).slice(0, 4).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)}`);
+    return { fits: document.documentElement.scrollWidth <= width + 1, wide, scroll: document.documentElement.scrollWidth, width };
+  }).then(({ fits, wide, scroll, width }) => expect(fits, `no sideways scroll: ${label}${fits ? "" : ` (${scroll} > ${width}: ${wide.join(", ")})`}`));
 const shot = async (page, name) => { if (shotsDir) await page.screenshot({ path: `${shotsDir}/${name}.png`, fullPage: true }); };
 const note = (page, type) => page.getByTestId(`note-${type}`);
 const reachText = (page) => page.getByTestId("notify-reach").innerText();
@@ -172,7 +179,7 @@ try {
   }
   await note(peer.page, "morning").getByRole("switch").click();
   await peer.page.waitForFunction(() => document.querySelector('[data-testid="note-morning"]')?.getAttribute("data-on") === "true");
-  expect(await note(peer.page, "morning").getByRole("button", { name: "Push", exact: true }).isDisabled(), "Push is greyed out without the app");
+  expect(await note(peer.page, "morning").getByRole("button", { name: "Phone", exact: true }).isDisabled(), "Push is greyed out without the app");
   expect((await note(peer.page, "morning").innerText()).includes("Push needs the app on this phone"), "…and says why");
   await shot(peer.page, "notify-settings-notinstalled-390x844");
   await noSideways(peer.page, "settings, no app");
@@ -215,8 +222,15 @@ try {
   await shot(installed.page, "notify-settings-390x844");
   await noSideways(installed.page, "settings, installed");
 
+  // Phone and Email are two toggles: Email on top of Phone is "both", then switching Phone off leaves email only.
+  const pressed = (type, which) => note(installed.page, type).getByRole("button", { name: which, exact: true }).getAttribute("aria-pressed");
   await note(installed.page, "harvest").getByRole("button", { name: "Email", exact: true }).click();
+  await installed.page.waitForFunction(() => document.querySelector('[data-testid="harvest-email"]')?.getAttribute("aria-pressed") === "true");
+  expect((await pressed("harvest", "Phone")) === "true" && (await pressed("harvest", "Email")) === "true", "Email on top of Phone is both");
+  expect(sql(`SELECT also_email FROM notify_prefs WHERE person_key = '${PEER}'`)[0]?.also_email === "harvest", "both is stored as harvest in also_email");
+  await note(installed.page, "harvest").getByRole("button", { name: "Phone", exact: true }).click();
   await installed.page.waitForFunction(() => document.querySelector('[data-testid="note-harvest"]')?.getAttribute("data-channel") === "email");
+  expect((await pressed("harvest", "Phone")) === "false" && (await pressed("harvest", "Email")) === "true", "switching Phone off leaves email only");
   expect((await note(installed.page, "harvest").innerText()).includes("You chose this."), "choosing Email says 'You chose this.'");
   await note(installed.page, "evening").getByRole("switch").click();
   await installed.page.waitForFunction(() => document.querySelector('[data-testid="note-evening"]')?.getAttribute("data-on") === "false");
@@ -224,8 +238,9 @@ try {
   await installed.page.getByTestId("notify-reach").waitFor();
   expect((await note(installed.page, "harvest").getAttribute("data-channel")) === "email" && (await note(installed.page, "evening").getAttribute("data-on")) === "false", "the channel and the switch persisted");
   await note(installed.page, "evening").getByRole("switch").click(); // back on
-  await note(installed.page, "harvest").getByRole("button", { name: "Push", exact: true }).click();
-  await installed.page.waitForFunction(() => document.querySelector('[data-testid="note-harvest"]')?.getAttribute("data-channel") === "push");
+  await note(installed.page, "harvest").getByRole("button", { name: "Phone", exact: true }).click(); // both
+  await note(installed.page, "harvest").getByRole("button", { name: "Email", exact: true }).click(); // phone only
+  await installed.page.waitForFunction(() => document.querySelector('[data-testid="note-harvest"]')?.getAttribute("data-channel") === "push" && document.querySelector('[data-testid="harvest-email"]')?.getAttribute("aria-pressed") === "false");
 
   // ── 3. Push breaks, and comes back ───────────────────────────────────────────
   step = "push breaks";
@@ -236,7 +251,7 @@ try {
   expect(reach.includes("Push stopped working on this phone. We switched you to email."), "broken: the line says push stopped and we switched to email");
   expect(await installed.page.getByTestId("turn-push-back-on").isVisible(), "…with 'Turn push back on'");
   expect((await note(installed.page, "morning").getAttribute("data-channel")) === "email", "the effective channel is email while the stored choice stays push");
-  expect(await note(installed.page, "morning").getByRole("button", { name: "Push", exact: true }).isDisabled(), "Push is greyed out while broken");
+  expect(await note(installed.page, "morning").getByRole("button", { name: "Phone", exact: true }).isDisabled(), "Push is greyed out while broken");
   await shot(installed.page, "notify-settings-pushfailed-390x844");
   const before = (await pushMessages()).messages.length;
   await installed.page.getByTestId("turn-push-back-on").click();
@@ -325,7 +340,7 @@ try {
   expect((await guestSettings.page.getByTestId("notify-guest").innerText()).includes(`sam-${stamp}@example.org`), "guest settings are for that address");
   await note(guestSettings.page, "evening").getByRole("switch").click();
   await guestSettings.page.waitForFunction(() => document.querySelector('[data-testid="note-evening"]')?.getAttribute("data-on") === "true");
-  expect(await note(guestSettings.page, "evening").getByRole("button", { name: "Push", exact: true }).isDisabled(), "guest settings: no push");
+  expect(await note(guestSettings.page, "evening").getByRole("button", { name: "Phone", exact: true }).isDisabled(), "guest settings: no push");
   expect(sql(`SELECT evening_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].evening_on === 1, "guest settings save, no sign-in");
   await shot(guestSettings.page, "notify-settings-guest-390x844");
 
@@ -377,7 +392,8 @@ try {
   });
   expect(photoOk, "the photo loads for its author (members-only route, same cookie)");
   await shot(author.page, "harvest-mine-390x844");
-  await author.page.getByRole("button", { name: "Edit", exact: true }).click();
+  await author.page.getByTestId("harvest-menu").click();
+  await author.page.getByTestId("harvest-menu-edit").click();
   await author.page.getByTestId("harvest-editor").waitFor();
   await author.page.locator("#hv-t").fill("I stood at the pond in the cold and said the name of our ditch out loud. I want to know where it begins.");
   await shot(author.page, "harvest-edit-390x844");
@@ -432,8 +448,47 @@ try {
   await signedOut.page.locator('[data-testid="harvest-section"][data-state="not-yet"]').waitFor({ timeout: 15_000 });
   ok("an event that hasn't ended says 'Harvests open when the event ends.'");
 
+  // The ⋯ menu in the ecology look, on the event page and on Today: screenshots, Escape, and the confirm step.
+  const eco = await persona("sess-1", { look: "ecology" });
+  await eco.page.goto(`${eventHref}?look=ecology`, { waitUntil: "networkidle" });
+  const menuButton = eco.page.getByTestId("harvest-menu");
+  await menuButton.waitFor({ timeout: 15_000 });
+  expect((await menuButton.getAttribute("aria-label")) === "Harvest options", "the ⋯ is a button with an aria-label");
+  expect(await eco.page.getByRole("button", { name: "Edit", exact: true }).count() === 0 && await eco.page.getByRole("button", { name: "Delete", exact: true }).count() === 0, "no loose Edit / Delete buttons on the card");
+  await menuButton.click();
+  await eco.page.getByRole("menu").waitFor();
+  expect((await menuButton.getAttribute("aria-expanded")) === "true", "the ⋯ opens a menu with Edit and Delete");
+  await shot(eco.page, "harvest-menu-open-event-390x844");
+  await eco.page.keyboard.press("Escape");
+  await eco.page.getByRole("menu").waitFor({ state: "detached" });
+  expect(await eco.page.evaluate(() => document.activeElement?.getAttribute("data-testid")) === "harvest-menu", "Escape closes the menu and focus returns to the ⋯");
+  await menuButton.click();
+  await eco.page.getByTestId("harvest-menu-delete").click();
+  await eco.page.getByTestId("harvest-delete-yes").waitFor();
+  expect((await eco.page.getByRole("dialog").innerText()).includes("Delete this harvest?"), "Delete asks \"Delete this harvest?\" first");
+  expect(sql("SELECT COUNT(*) AS n FROM harvests")[0].n === 1, "…and nothing is deleted yet");
+  await shot(eco.page, "harvest-delete-confirm-390x844");
+  await eco.page.getByTestId("harvest-delete-cancel").click();
+  await eco.page.getByRole("dialog").waitFor({ state: "detached" });
+  expect(sql("SELECT COUNT(*) AS n FROM harvests")[0].n === 1, "Cancel keeps the harvest");
+  expect(await eco.page.evaluate(() => document.activeElement?.getAttribute("data-testid")) === "harvest-menu", "…and focus returns to the ⋯");
+  await eco.page.goto("/today?look=ecology", { waitUntil: "networkidle" });
+  await eco.page.getByTestId("harvest-card").locator('[data-testid="harvest-menu"]').waitFor({ timeout: 20_000 });
+  await eco.page.getByTestId("harvest-card").getByTestId("harvest-menu").click();
+  await shot(eco.page, "harvest-menu-open-today-390x844");
+  await eco.page.getByTestId("harvest-menu-delete").click();
+  await eco.page.getByTestId("harvest-delete-yes").waitFor();
+  await shot(eco.page, "harvest-delete-confirm-today-390x844");
+  await eco.page.getByTestId("harvest-delete-cancel").click();
+  expect(sql("SELECT COUNT(*) AS n FROM harvests")[0].n === 1, "Today's card: Cancel keeps it too");
+  await eco.page.getByTestId("harvest-card").getByTestId("harvest-menu").click();
+  await eco.page.getByTestId("harvest-menu-edit").click();
+  await eco.page.getByTestId("harvest-editor").waitFor({ timeout: 15_000 });
+  ok("Today's card: Edit opens the editor on the event page");
+
   // Delete, then write another.
-  await author.page.getByRole("button", { name: "Delete", exact: true }).click();
+  await author.page.getByTestId("harvest-menu").click();
+  await author.page.getByTestId("harvest-menu-delete").click();
   await shot(author.page, "harvest-delete-390x844");
   await author.page.getByTestId("harvest-delete-yes").click();
   await author.page.getByTestId("harvest-composer").waitFor({ timeout: 15_000 });
@@ -462,6 +517,46 @@ try {
   await shot(small.page, "notify-settings-360x780");
   await small.page.goto("/tomorrow", { waitUntil: "networkidle" });
   await shot(small.page, "notify-tomorrow-360x780");
+
+  // ── 8. Email by default for people registered for 2026, and the status bar ───
+  step = "email by default";
+  const bea = "bea@example.test";
+  sqlRun(`INSERT INTO people (id, email, name, subscribed, unsubscribe_token, created_at, updated_at) VALUES ('p-bea-${stamp}','${bea}','Bea',1,'tok-bea-${stamp}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z')`);
+  sqlRun(`INSERT INTO submissions (id, person_id, form_slug, data, created_at, updated_at) VALUES ('s-bea-${stamp}','p-bea-${stamp}','register-2026','{}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z')`);
+  const registered = await persona("mock-builder", { look: "ecology" });
+  await registered.page.goto("/more/notifications?look=ecology", { waitUntil: "networkidle" });
+  await registered.page.getByTestId("notify-reach").waitFor({ timeout: 15_000 });
+  expect((await reachText(registered.page)).includes(bea), "registered: their registration address is the one we write to");
+  expect((await note(registered.page, "evening").getAttribute("data-on")) === "true" && (await note(registered.page, "evening").getAttribute("data-channel")) === "email", "registered: the 8 PM note is on, by email, with nothing switched");
+  expect((await note(registered.page, "morning").getAttribute("data-on")) === "false" && (await note(registered.page, "harvest").getAttribute("data-on")) === "false", "registered: the morning note and the harvest invitation stay off");
+  expect((await registered.page.getByTestId("evening-email").getAttribute("aria-pressed")) === "true" && (await registered.page.getByTestId("evening-phone").getAttribute("aria-pressed")) === "false", "registered: Email is pressed, Phone is not");
+  expect(sql(`SELECT COUNT(*) AS n FROM notify_prefs WHERE person_key = 'did:plc:mockbuilder' AND evening_on IS NOT NULL`)[0].n === 0, "…and no preference row was written to get there");
+  await shot(registered.page, "me-notifications-registered-390x844");
+  // (The ecology masthead's language switcher already runs ~20px past a 390px phone, with or without these
+  // screens; it is reported, not asserted here. What these screens add must fit.)
+  expect(await registered.page.evaluate(() => [...document.querySelectorAll('main *')].every((el) => el.getBoundingClientRect().right <= document.documentElement.clientWidth + 1)), "settings, registered, ecology: nothing in the page body runs past the phone");
+
+  await registered.page.goto("/today?look=ecology", { waitUntil: "networkidle" });
+  await registered.page.locator("main").waitFor();
+  await registered.page.waitForTimeout(500);
+  expect(await registered.page.getByTestId("notify-status-bar").count() === 0, "status bar: hidden while they get the 8 PM email");
+  await registered.page.goto("/more/notifications?look=ecology", { waitUntil: "networkidle" });
+  await note(registered.page, "evening").getByRole("switch").click();
+  await registered.page.waitForFunction(() => document.querySelector('[data-testid="note-evening"]')?.getAttribute("data-on") === "false");
+  await registered.page.goto("/today?look=ecology", { waitUntil: "networkidle" });
+  const bar = registered.page.getByTestId("notify-status-bar");
+  await bar.waitFor({ timeout: 15_000 });
+  expect((await bar.innerText()).includes("You’re not getting notifications."), "status bar: says so in plain words when every note is off");
+  await shot(registered.page, "status-bar-today-390x844");
+  expect(await bar.evaluate((el) => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= document.documentElement.clientWidth + 1; }), "status bar: fits the phone, edge to edge");
+  await bar.click();
+  await registered.page.getByTestId("notify-reach").waitFor({ timeout: 15_000 });
+  expect(registered.page.url().includes("/more/notifications"), "status bar: opens the notification settings");
+  await note(registered.page, "evening").getByRole("switch").click();
+  await registered.page.waitForFunction(() => document.querySelector('[data-testid="note-evening"]')?.getAttribute("data-on") === "true");
+  await registered.page.goto("/", { waitUntil: "networkidle" });
+  await registered.page.waitForTimeout(500);
+  expect(await registered.page.getByTestId("notify-status-bar").count() === 0, "status bar: gone again once a note is on");
 } catch (error) {
   fail(`stopped: ${error instanceof Error ? error.stack ?? error.message : error}`);
 } finally {

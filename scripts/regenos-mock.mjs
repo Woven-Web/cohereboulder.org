@@ -387,6 +387,8 @@ if (process.env.MOCK_NOTIFY === "1") {
   ended("ev-ended1", "Honoring Water | with Angelique", 1.5, 1.25, "Boulder Creek Path", "A slow walk to our local waters.");
   ended("ev-ended2", "Soup Night at the Barn", 20, 2, "The Old Barn", "Bring a bowl.");
   CONTACT_EMAILS.set(PEER_DID, "pia@example.test");
+  // A builder who registered for 2026 (the e2e inserts the registration): the email-by-default screens.
+  CONTACT_EMAILS.set("did:plc:mockbuilder", "bea@example.test");
 }
 
 function circleSubject(req, res, url) {
