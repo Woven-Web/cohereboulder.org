@@ -100,7 +100,8 @@ export function InstallSheet() {
     </>
   );
 
-  const title = ios ? tr("almanac.iosTitle")
+  const title = sheet.reason === "signedin" && !showSet ? tr("almanac.installTitleSignedin")
+    : ios ? tr("almanac.iosTitle")
     : showSet ? tr("almanac.setTitle")
     : sheet.reason === "reminders" ? tr("almanac.installTitleReminders") : tr("almanac.installTitleDidit");
   const description = ios ? tr("almanac.iosBody")

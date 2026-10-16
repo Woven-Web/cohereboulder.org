@@ -1,6 +1,6 @@
 // When to offer "Add to home screen & get reminders". Offered at most once on
 // its own (after the first "I did it", or when someone first asks for a
-// reminder), never when the app is already installed, and never again after
+// reminder, or after a signed-in phone landing), never when the app is already installed, and never again after
 // "Not now". The More page keeps a quiet entry that always works.
 import { useSyncExternalStore } from "react";
 import { localGet, localSet } from "@/lib/companion";
@@ -8,7 +8,13 @@ import { localGet, localSet } from "@/lib/companion";
 export const INSTALL_DISMISSED_KEY = "cohere-install-dismissed";
 export const INSTALL_OFFERED_KEY = "cohere-install-offered";
 
-export type OfferReason = "didit" | "reminders" | "manual";
+export type OfferReason = "didit" | "reminders" | "manual" | "signedin";
+
+/** Only app reading routes, including the public Home landing, may volunteer it. */
+export function signedInInstallEligible(ctx: { pathname: string; signedIn: boolean; phone: boolean; installPath: boolean }): boolean {
+  return ctx.signedIn && ctx.phone && ctx.installPath &&
+    /^(?:\/|\/home|\/today|\/quests|\/more|\/tomorrow|\/calendar|\/events(?:\/[^/]+\/[^/]+)?|\/board(?:\/[^/]+\/[^/]+)?|\/people(?:\/[^/]+)?)$/.test(ctx.pathname);
+}
 
 export interface OfferContext {
   installed: boolean;

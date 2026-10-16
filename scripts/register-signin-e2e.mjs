@@ -16,6 +16,7 @@
 // Seeded by scripts/ci-e2e.sh before the Worker starts (ana@ and reg@ registered).
 // Usage: E2E_PERSIST_DIR=<dir> node scripts/register-signin-e2e.mjs <worker-url> <mock-url>
 
+import { checkInstallInvite } from "./install-invite-check.mjs";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 
@@ -268,6 +269,10 @@ try {
     ok("a second map suggestion from the same email is not stored, and the dialog says so");
     await context.close();
   }
+
+  step = "signed-in phone install invitation";
+  await checkInstallInvite(browser, target);
+  ok("signed-in phone: Home invitation, dismissal persists, registration excluded");
 
   console.log("register-signin-e2e passed.");
 } catch (error) {
