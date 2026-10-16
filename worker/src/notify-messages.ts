@@ -71,8 +71,11 @@ const T = {
     because: (name: string, to: string) => `${name} · ${to}`,
     change: "Change your settings", unsub: () => "Unsubscribe", tomorrowPractice: "Tomorrow’s practice",
     fellBack: "Push failed. Sent by email.", fellBackLink: "Turn push back on",
-    subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Ready for tomorrow: ${n} event${n === 1 ? "" : "s"} on ${d}`,
+    subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`,
     subjectHarvest: (n: string) => `How was ${n}?`,
+    subjectDigest: (d: string) => `Tomorrow at COhere: ${d}`,
+    shareHarvest: "Share a harvest", newHarvests: "New harvests today",
+    harvestsToday: (n: number) => (n === 1 ? "1 person shared a harvest today" : `${n} people shared harvests today`),
     testTitle: "Push is working", testBody: "Test from COhere.",
     verifySubject: "Confirm your email", verifyHeading: "Is this your email?", verifyBody: "Confirm this address.",
     verifyLink: "Yes, use this address", verifyFoot: "If you didn’t ask for this, ignore it.",
@@ -95,8 +98,11 @@ const T = {
     because: (name: string, to: string) => `${name} · ${to}`,
     change: "Cambiar tus ajustes", unsub: () => "Darte de baja", tomorrowPractice: "La práctica de mañana",
     fellBack: "Falló el push. Enviado por correo.", fellBackLink: "Reactivar los avisos push",
-    subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Lista para mañana: ${n} evento${n === 1 ? "" : "s"} el ${d}`,
+    subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`,
     subjectHarvest: (n: string) => `¿Cómo estuvo ${n}?`,
+    subjectDigest: (d: string) => `Mañana en COhere: ${d}`,
+    shareHarvest: "Comparte una cosecha", newHarvests: "Cosechas nuevas de hoy",
+    harvestsToday: (n: number) => (n === 1 ? "1 persona compartió una cosecha hoy" : `${n} personas compartieron cosechas hoy`),
     testTitle: "El push funciona", testBody: "Prueba de COhere.",
     verifySubject: "Confirma tu correo", verifyHeading: "¿Es este tu correo?", verifyBody: "Confirma esta dirección.",
     verifyLink: "Sí, usar esta dirección", verifyFoot: "Si no lo pediste, ignóralo.",
@@ -220,6 +226,10 @@ export interface EveningInput {
   events: EventLine[];
   /** Tomorrow's practice, if the organizers wrote one. The email carries it word for word. */
   daily?: Daily | null;
+  /** Today's events that have ended and this person went to without sharing a harvest yet (email only). */
+  toShare?: EventLine[];
+  /** How many harvests were shared today (email only; a count and a link, never anyone's words). */
+  harvestsToday?: number;
   lang: Lang;
 }
 
@@ -246,21 +256,29 @@ export function eveningEmail(input: EveningInput, ctx: MailContext, rsvpLink: (e
   const c = T[ctx.lang];
   const events = ordered(input.events);
   const mine = events.filter((e) => e.going), rest = events.filter((e) => !e.going);
+  const share = input.toShare ?? [];
+  const count = input.harvestsToday ?? 0;
   const practice = input.daily?.title ? practiceLines({ date: input.date, daily: input.daily, events: [], lang: ctx.lang }) : null;
+  const ul = 'style="margin:0 0 12px;padding:0;list-style:none"';
+  const todayUrl = `${ctx.base}/today`;
   const html =
     `<p ${P}>${esc(c.readyMail(dateLabel(input.date, ctx.lang, true)))}</p>` +
     (practice ? `<h4 ${H}>${esc(c.tomorrowPractice)}</h4><p ${P}><b>${esc(practice.title)}</b><br>${esc(practice.body)}</p>` : "") +
-    (mine.length ? `<h4 ${H}>${esc(c.youreGoing)}</h4><ul style="margin:0 0 12px;padding:0;list-style:none">${mine.map((e) => eventLi(e, ctx, { href: eventUrl(ctx.base, e), label: c.details })).join("")}</ul>` : "") +
-    (rest.length ? `<h4 ${H}>${esc(c.alsoTomorrow)}</h4><ul style="margin:0 0 12px;padding:0;list-style:none">${rest.map((e) => eventLi(e, ctx, { href: rsvpLink(e), label: c.rsvp })).join("")}</ul>` : "") +
-    `<p ${P}><a href="${esc(`${ctx.base}/tomorrow`)}" ${A}>${esc(c.openTomorrow)}</a></p>`;
+    (mine.length ? `<h4 ${H}>${esc(c.youreGoing)}</h4><ul ${ul}>${mine.map((e) => eventLi(e, ctx, { href: eventUrl(ctx.base, e), label: c.details })).join("")}</ul>` : "") +
+    (rest.length ? `<h4 ${H}>${esc(c.alsoTomorrow)}</h4><ul ${ul}>${rest.map((e) => eventLi(e, ctx, { href: rsvpLink(e), label: c.rsvp })).join("")}</ul>` : "") +
+    (share.length ? `<h4 ${H}>${esc(c.shareHarvest)}</h4><ul ${ul}>${share.map((e) => eventLi({ ...e, going: false }, ctx, { href: eventUrl(ctx.base, e), label: c.share })).join("")}</ul>` : "") +
+    (count > 0 ? `<h4 ${H}>${esc(c.newHarvests)}</h4><p ${P}><a href="${esc(todayUrl)}" ${A}>${esc(c.harvestsToday(count))}</a></p>` : "") +
+    (events.length ? `<p ${P}><a href="${esc(`${ctx.base}/tomorrow`)}" ${A}>${esc(c.openTomorrow)}</a></p>` : "");
   const text = [
     c.readyMail(dateLabel(input.date, ctx.lang, true)), "",
     ...(practice ? [c.tomorrowPractice, practice.title, practice.body, ""] : []),
     ...(mine.length ? [c.youreGoing, ...mine.map((e) => eventText(e, ctx.lang, eventUrl(ctx.base, e))), ""] : []),
     ...(rest.length ? [c.alsoTomorrow, ...rest.map((e) => `${eventText(e, ctx.lang, rsvpLink(e)).replace(/\n/, `\n${c.rsvp}: `)}`), ""] : []),
-    `${c.openTomorrow}: ${ctx.base}/tomorrow`,
-  ].join("\n");
-  return frame("evening", ctx, c.readyTitle, html, text, c.subjectEvening(events.length, dateLabel(input.date, ctx.lang)));
+    ...(share.length ? [c.shareHarvest, ...share.map((e) => eventText({ ...e, going: false }, ctx.lang, eventUrl(ctx.base, e)).replace(/\n/, `\n${c.share}: `)), ""] : []),
+    ...(count > 0 ? [c.newHarvests, `${c.harvestsToday(count)}: ${todayUrl}`, ""] : []),
+    ...(events.length ? [`${c.openTomorrow}: ${ctx.base}/tomorrow`] : []),
+  ].join("\n").trimEnd();
+  return frame("evening", ctx, c.readyTitle, html, text, c.subjectDigest(dateLabel(input.date, ctx.lang, true)));
 }
 
 // ----------------------------------------------------------------- harvest

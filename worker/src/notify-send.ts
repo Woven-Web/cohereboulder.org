@@ -19,7 +19,7 @@ import { sendMail, type AuthEnv, type MailMessage } from "./auth";
 import { companionWindow, denverDate, localMock, pushConfigured, type CompanionEnv } from "./companion";
 import { toCommunityEvent, type CommunityEvent, type EventsEnv, type GetEventsRow } from "./events";
 import {
-  MORNING_AT, addDays, boulderTime, decide, emailOfKey, eveningRef, harvestDue, isLive, logTag, morningRef, signLink,
+  EVENING_AT, MORNING_AT, addDays, boulderTime, decide, emailOfKey, eventEndMs, eveningRef, harvestDue, isLive, logTag, morningRef, signLink,
   softFailure, STALE_DAYS, type DeviceRow, type LinkPayload, type NotifyType, type Reach,
 } from "./notify-core";
 import {
@@ -115,6 +115,33 @@ const whereOf = (e: CommunityEvent) => e.location?.name?.trim() || e.location?.s
 const keyOf = (e: { did: string; rkey: string }) => `${e.did}/${e.rkey}`;
 const onDate = (e: CommunityEvent, date: string) => Boolean(e.startsAt) && !Number.isNaN(Date.parse(e.startsAt!)) && denverDate(new Date(e.startsAt!)) === date;
 const byStart = (a: CommunityEvent, b: CommunityEvent) => (Date.parse(a.startsAt ?? "") || 0) - (Date.parse(b.startsAt ?? "") || 0);
+
+/** An event of the Boulder day `date` that ended before that evening's 8 PM note goes out. */
+function endedBeforeDigest(e: CommunityEvent, date: string): boolean {
+  const end = eventEndMs(e);
+  if (Number.isNaN(end)) return false;
+  const t = boulderTime(new Date(end));
+  return t.date === date && t.minutes < EVENING_AT;
+}
+
+/** Will the 8 PM note of the event's day carry its "share a harvest" line? (There is no 8 PM note on the last day.) */
+function digestCarries(e: CommunityEvent, env: NotifyEnv): boolean {
+  const end = eventEndMs(e);
+  if (Number.isNaN(end)) return false;
+  const day = boulderTime(new Date(end)).date;
+  const fest = companionWindow(env);
+  return endedBeforeDigest(e, day) && day >= addDays(fest.start, -1) && day < fest.end;
+}
+
+/** Harvests shared on a Boulder day, minus the ones a steward hid. A count only; nobody's words. */
+async function countHarvestsOn(db: D1Database, date: string): Promise<number> {
+  const rows = (await db.prepare(
+    `SELECT h.created_at FROM harvests h
+      WHERE NOT EXISTS (SELECT 1 FROM board_moderation m WHERE m.uri = 'cohere:harvest/' || h.id AND m.state IN ('hidden', 'removed'))
+        AND h.created_at >= ?1 AND h.created_at < ?2`,
+  ).bind(new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString(), new Date(Date.parse(`${date}T00:00:00Z`) + 2 * 86_400_000).toISOString()).all<{ created_at: string }>()).results;
+  return rows.filter((r) => boulderTime(new Date(r.created_at)).date === date).length;
+}
 
 // ------------------------------------------------------------------- people
 
@@ -299,7 +326,15 @@ interface Content {
   /** Which of `events` this person RSVP'd to ("did/rkey" keys). */
   goingOf(key: string): Promise<Set<string>>;
   push(lang: Lang, deviceId: string, going: Set<string>): PushPayload;
-  email(mc: MailContext, going: Set<string>, rsvpLink: (e: EventLine) => string): MailMessage;
+  /** False when a push would have nothing to say (the 8 PM push needs an event tomorrow). */
+  pushable?: boolean;
+  /** The 8 PM digest: today's ended events this person went to and has not shared a harvest for. */
+  toShare?(key: string): Promise<EventLine[]>;
+  /** Nothing in the email for this person (no event, no practice, nothing to share). */
+  emptyFor?(share: EventLine[]): boolean;
+  /** Harvest invitations only: the 8 PM digest already carries this event, for people who get it by email. */
+  inDigest?: boolean;
+  email(mc: MailContext, going: Set<string>, rsvpLink: (e: EventLine) => string, share: EventLine[]): MailMessage;
 }
 
 async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents: () => Promise<CommunityEvent[] | null>): Promise<Content | null> {
@@ -356,17 +391,30 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
 
   if (type === "evening") {
     const tomorrow = addDays(ref, 1);
-    const events = ((await loadEvents()) ?? []).filter((e) => onDate(e, tomorrow)).sort(byStart);
-    if (events.length === 0) return null;
+    const all = (await loadEvents()) ?? [];
+    const events = all.filter((e) => onDate(e, tomorrow)).sort(byStart);
     const daily = await db.prepare("SELECT * FROM companion_daily WHERE date = ?1").bind(tomorrow).first<Daily>();
+    // Today's events that ended before this note goes out: a harvest to share, per person.
+    const ended = all.filter((e) => endedBeforeDigest(e, ref)).sort(byStart);
+    if (events.length === 0 && !daily?.title && ended.length === 0) return null;
+    const harvestsToday = await countHarvestsOn(db, ref);
     return {
-      events, rsvpLinks: true,
+      events, rsvpLinks: true, pushable: events.length > 0,
       stillWanted: async () => true,
       // Account people, anyone who opted in by email, and everyone registered for 2026. Anonymous installs have no settings and no RSVPs: no 8 PM note.
       recipients: () => people(true),
       goingOf: (key) => goingFor(key, events),
+      async toShare(key) {
+        const went = await goingFor(key, ended);
+        if (went.size === 0) return [];
+        const shared = key.startsWith("did:")
+          ? new Set((await db.prepare("SELECT event_did, event_rkey FROM harvests WHERE author_did = ?1").bind(key).all<{ event_did: string; event_rkey: string }>()).results.map((r) => `${r.event_did}/${r.event_rkey}`))
+          : new Set<string>();
+        return lines(ended.filter((e) => went.has(keyOf(e)) && !shared.has(keyOf(e))), new Set());
+      },
+      emptyFor: (share) => events.length === 0 && !daily?.title && share.length === 0,
       push: (lang, deviceId, going) => eveningPush({ date: tomorrow, events: lines(events, going), lang }, deviceId),
-      email: (mc, going, rsvpLink) => eveningEmail({ date: tomorrow, events: lines(events, going), daily, lang: mc.lang }, mc, rsvpLink),
+      email: (mc, going, rsvpLink, share) => eveningEmail({ date: tomorrow, events: lines(events, going), daily, toShare: share, harvestsToday, lang: mc.lang }, mc, rsvpLink),
     };
   }
 
@@ -375,7 +423,7 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
   if (!event) return null;
   const info = { did: event.did, rkey: event.rkey, name: event.name, where: whereOf(event) };
   return {
-    events: [event], rsvpLinks: false,
+    events: [event], rsvpLinks: false, inDigest: digestCarries(event, env),
     stillWanted: async () => true,
     async recipients() {
       const [accounts, addresses] = await Promise.all([guests(event), emailGuests(event)]);
@@ -419,20 +467,30 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
 
   const lang: Lang = prefs.locale;
   const going = await content.goingOf(r.key);
+  const share = content.toShare ? await content.toShare(r.key) : [];
+  const canPush = content.pushable !== false;
+  // A harvest invitation for an event the 8 PM note already carries is not also emailed to someone who gets that note by email.
+  let digestEmail = false;
+  if (content.inDigest) {
+    const evening = decide("evening", prefs, reach);
+    digestEmail = evening.action === "email" || evening.action === "both";
+  }
 
   if (decision.action === "both") {
     // Phone and email, as chosen: a push to every live phone, then the email. The email goes whatever the push did.
     let pushed = false;
-    if (!pushPaused(env)) {
+    if (!pushPaused(env) && canPush) {
       for (const d of (await devicesOf(db, prefs.person_key)).filter((x) => isLive(x, now.getTime()))) {
         pushed = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going))) || pushed;
       }
     }
-    return emailTo(ctx, type, prefs, reach.email!, lang, going, content, false, settle, pushed ? "push+email" : "email");
+    if (digestEmail) return settle(pushed ? "sent" : "skipped", pushed ? "push" : null, false, pushed ? null : "in-digest");
+    return emailTo(ctx, type, prefs, reach.email!, lang, going, content, false, settle, share, pushed ? "push+email" : "email");
   }
 
   if (decision.action === "push") {
     if (pushPaused(env)) return settle("skipped", null, false, "push-paused");
+    if (!canPush) return settle("skipped", null, false, "nothing-to-say");
     const devices = (await devicesOf(db, prefs.person_key)).filter((d) => isLive(d, now.getTime()));
     let delivered = false;
     for (const d of devices) delivered = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going))) || delivered;
@@ -442,10 +500,12 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
       return settle("sent", "push", false, null);
     }
     // Every live phone refused. If there is an address, the note goes there instead: once, never both.
-    if (reach.email) return emailTo(ctx, type, prefs, reach.email, lang, going, content, true, settle);
+    if (reach.email && digestEmail) return settle("skipped", null, false, "in-digest");
+    if (reach.email) return emailTo(ctx, type, prefs, reach.email, lang, going, content, true, settle, share);
     return settle("failed", "push", false, "push-failed-no-email");
   }
-  return emailTo(ctx, type, prefs, reach.email!, lang, going, content, decision.fellBack, settle);
+  if (digestEmail) return settle("skipped", null, false, "in-digest");
+  return emailTo(ctx, type, prefs, reach.email!, lang, going, content, decision.fellBack, settle, share);
 }
 
 type Settle = (status: "sent" | "skipped" | "failed", channel: "push" | "email" | "push+email" | null, fellBack: boolean, reason: string | null) => Promise<void>;
@@ -457,8 +517,9 @@ async function sendPushTo(ctx: Ctx, device: DeviceWithKeys, type: NotifyType, pa
   return status >= 200 && status < 300;
 }
 
-async function emailTo(ctx: Ctx, type: NotifyType, prefs: PrefsRow, to: string, lang: Lang, going: Set<string>, content: Content, fellBack: boolean, settle: Settle, channel: "email" | "push+email" = "email"): Promise<void> {
+async function emailTo(ctx: Ctx, type: NotifyType, prefs: PrefsRow, to: string, lang: Lang, going: Set<string>, content: Content, fellBack: boolean, settle: Settle, share: EventLine[], channel: "email" | "push+email" = "email"): Promise<void> {
   const { env, now } = ctx;
+  if (content.emptyFor?.(share)) return settle("skipped", null, false, "nothing-to-say");
   if (!ctx.secret) return settle("skipped", null, false, "no-link-secret"); // an email without an unsubscribe link is never sent
   const base = baseUrl(env);
   const link = async (payload: Omit<LinkPayload, "x">) => `${base}/n/${await signLink(ctx.secret!, payload, now)}`;
@@ -472,7 +533,7 @@ async function emailTo(ctx: Ctx, type: NotifyType, prefs: PrefsRow, to: string, 
   if (content.rsvpLinks && prefs.person_key.startsWith("mailto:")) {
     for (const e of content.events) rsvp.set(keyOf(e), await link({ p: prefs.person_key, k: "rsvp", d: e.did, r: e.rkey }));
   }
-  const message = content.email(mc, going, (e) => rsvp.get(keyOf(e)) ?? `${base}/events/${encodeURIComponent(e.did)}/${encodeURIComponent(e.rkey)}`);
+  const message = content.email(mc, going, (e) => rsvp.get(keyOf(e)) ?? `${base}/events/${encodeURIComponent(e.did)}/${encodeURIComponent(e.rkey)}`, share);
   try {
     if (ctx.deps.send || hasTransport(env)) {
       await (ctx.deps.send ?? sendMail)(env, to, message);
