@@ -47,12 +47,12 @@
     "RSVP_REMINDERS_PAUSED": "true",
     // "true" stops every scheduled companion push (worker/src/companion.ts).
     // Aaron flips it to "false" at launch.
-    "COMPANION_PUSH_PAUSED": "true",
+    "COMPANION_PUSH_PAUSED": "false",
     // Master switch for the three notifications (morning note, harvest invite,
     // 8 PM "ready for tomorrow"; worker/src/notify-send.ts), by push AND email.
     // Only the exact string "false" lets them run; unset or anything else keeps
     // them off. Aaron flips it at launch, after applying migration 0012.
-    "NOTIFY_PAUSED": "true",
+    "NOTIFY_PAUSED": "false",
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",
