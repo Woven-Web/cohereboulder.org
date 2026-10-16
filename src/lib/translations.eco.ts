@@ -21,7 +21,7 @@ export const ecoCopy: Record<string, Pair> = {
   "members.gate.notMemberTitle": ["Not a member yet", "Aún no eres miembro"],
   "members.gate.notMemberBody": CUT,
   "members.gate.registeredTitle": ["Registered. Membership is being set up.", "Registro hecho. Tu membresía está en proceso."],
-  "members.gate.registeredBody": ["You don’t need to register again. Write to the organizers if this doesn’t open within a day.", "No necesitas volver a registrarte. Escribe a las organizadoras si no abre en un día."],
+  "members.gate.registeredBody": ["Nothing more to do. Write the organizers if this stays closed.", "No hay más que hacer. Escribe a las organizadoras si sigue cerrado."],
   "members.gate.checkAgain": ["Check again", "Revisar de nuevo"],
   "members.gate.point1": CUT,
   "members.gate.point2": CUT,
