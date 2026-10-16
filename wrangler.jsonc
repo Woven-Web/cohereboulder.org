@@ -53,6 +53,7 @@
     // Only the exact string "false" lets them run; unset or anything else keeps
     // them off. Aaron flips it at launch, after applying migration 0012.
     "NOTIFY_PAUSED": "false",
+    "EMAIL_DEFAULT_FROM": "2026-10-17",
     // Where emailed sign-in links point.
     "PUBLIC_BASE_URL": "https://cohereboulder.org",
     "MAIL_FROM": "COhere Boulder <cohere@wovenweb.org>",

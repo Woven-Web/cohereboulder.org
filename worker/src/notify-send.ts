@@ -38,6 +38,8 @@ export interface NotifyEnv extends CompanionEnv, AuthEnv, EventsEnv, RosterEnv {
   NOTIFY_PAUSED?: string;
   /** HMAC key for the /n/<token> links. Falls back to a key derived from the VAPID private key. */
   NOTIFY_LINK_SECRET?: string;
+  /** First Boulder date (YYYY-MM-DD) whose 8 PM note goes to registrants by default. Unset = from the start. */
+  EMAIL_DEFAULT_FROM?: string;
 }
 
 export const notifyPaused = (env: NotifyEnv) => env.NOTIFY_PAUSED !== "false";
@@ -402,7 +404,7 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
       events, rsvpLinks: true, pushable: events.length > 0,
       stillWanted: async () => true,
       // Account people, anyone who opted in by email, and everyone registered for 2026. Anonymous installs have no settings and no RSVPs: no 8 PM note.
-      recipients: () => people(true),
+      recipients: () => people(ref >= (env.EMAIL_DEFAULT_FROM ?? "")),
       goingOf: (key) => goingFor(key, events),
       async toShare(key) {
         const went = await goingFor(key, ended);
