@@ -17,7 +17,7 @@
 import { normalizeEmail, rateLimited, sendMail } from "./auth";
 import { refuseCrossSiteWrite } from "./csrf";
 import {
-  NOTIFY_TYPES, effectiveChannel, isLive, isNotifyType, isOn, pushStatus, afterHeartbeat, reviveDevice, signLink, verifyLink,
+  NOTIFY_TYPES, effectiveChannel, effectiveChannels, isLive, isNotifyType, isOn, pushStatus, afterHeartbeat, reviveDevice, signLink, verifyLink, withAlsoEmail,
   type Channel, type DeviceRow, type LinkPayload, type NotifyType, type PushStatus,
 } from "./notify-core";
 import { testPush, verifyEmail } from "./notify-messages";
@@ -49,7 +49,7 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 // ---------------------------------------------------------------- the view
 
 export interface SettingsView {
-  email: { address: string | null; verified: boolean };
+  email: { address: string | null; verified: boolean; /** Has a 2026 registration: the 8 PM note is on by email until they turn it off. */ registered: boolean };
   push: {
     status: PushStatus;
     installed: boolean;
@@ -62,7 +62,7 @@ export interface SettingsView {
   /** Push had been working and stopped: the email line and "Turn push back on" show. */
   pushBroke: boolean;
   nothingReaches: boolean;
-  notes: Record<NotifyType, { on: boolean; channel: Channel; chosen: Channel | null; pushAvailable: boolean }>;
+  notes: Record<NotifyType, { on: boolean; channel: Channel; chosen: Channel | null; pushAvailable: boolean; phone: boolean; email: boolean }>;
   locale: "en" | "es";
 }
 
@@ -77,10 +77,10 @@ export async function settingsView(env: NotifyRouteEnv, prefs: PrefsRow, now: Da
   const broke = !reach.livePush && devices.some((d) => d.installed === 1 && (d.state === "suspect" || d.state === "expired"));
   const notes = {} as SettingsView["notes"];
   for (const type of NOTIFY_TYPES) {
-    notes[type] = { on: isOn(type, prefs, reach), channel: effectiveChannel(type, prefs, reach), chosen: prefs[`${type}_channel`], pushAvailable: reach.livePush };
+    notes[type] = { on: isOn(type, prefs, reach), channel: effectiveChannel(type, prefs, reach), chosen: prefs[`${type}_channel`], pushAvailable: reach.livePush, ...effectiveChannels(type, prefs, reach) };
   }
   return {
-    email: { address: prefs.email, verified: Boolean(prefs.email && prefs.email_verified_at) },
+    email: { address: reach.email ?? prefs.email, verified: Boolean(prefs.email && prefs.email_verified_at) || reach.registered, registered: reach.registered },
     push: {
       status: pushStatus(devices, now.getTime()), installed: reach.hasApp, devices: devices.length, lastDeliveredAt: delivered,
       failedSince: notLive.reduce((n, d) => n + d.fail_count, 0),
@@ -119,7 +119,7 @@ async function sessionPerson(request: Request, env: NotifyRouteEnv): Promise<Pre
 
 // ----------------------------------------------------------------- settings
 
-type NotePatch = { on?: boolean; channel?: Channel | null };
+type NotePatch = { on?: boolean; channel?: Channel | null; channels?: { phone?: boolean; email?: boolean } };
 
 /** Apply a validated patch to a prefs row. Returns an error string for a bad one. */
 export function applyPatch(prefs: PrefsRow, body: Record<string, unknown>): string | null {
@@ -134,6 +134,14 @@ export function applyPatch(prefs: PrefsRow, body: Record<string, unknown>): stri
     if ("channel" in patch) {
       if (patch.channel !== null && patch.channel !== "push" && patch.channel !== "email") return `${type}.channel must be push, email or null`;
       prefs[`${type}_channel`] = patch.channel;
+    }
+    if ("channels" in patch) {
+      // The Phone / Email pair of toggles. Neither pressed = the note is off; both = push plus email.
+      const c = patch.channels;
+      if (!c || typeof c !== "object" || typeof c.phone !== "boolean" || typeof c.email !== "boolean") return `${type}.channels must be {phone, email} booleans`;
+      prefs[`${type}_on`] = c.phone || c.email ? 1 : 0;
+      if (c.phone || c.email) prefs[`${type}_channel`] = c.phone ? "push" : "email";
+      prefs.also_email = withAlsoEmail(prefs, type, c.phone && c.email);
     }
   }
   if ("language" in body) prefs.locale = lang(body.language);

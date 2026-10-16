@@ -1,5 +1,6 @@
 // Notifications: the D1 reads and writes behind the pure rules in notify-core.ts.
 
+import { audienceWhere } from "./newsletter";
 import {
   afterSend, emptyPrefs, emailOfKey, isLive, NOTIFY_TYPES, personKey, type Channel, type DeviceRow, type NotifyType, type Prefs, type Reach,
 } from "./notify-core";
@@ -41,15 +42,15 @@ export async function savePrefs(db: D1Database, p: PrefsRow, now: string): Promi
   await db
     .prepare(
       `INSERT INTO notify_prefs (person_key, did, morning_on, harvest_on, evening_on, morning_channel, harvest_channel, evening_channel,
-         email, email_verified_at, email_optin_at, locale, fallback_noted_at, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14)
+         email, email_verified_at, email_optin_at, locale, fallback_noted_at, also_email, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15, ?14, ?14)
        ON CONFLICT(person_key) DO UPDATE SET did = ?2, morning_on = ?3, harvest_on = ?4, evening_on = ?5,
          morning_channel = ?6, harvest_channel = ?7, evening_channel = ?8, email = ?9, email_verified_at = ?10,
-         email_optin_at = ?11, locale = ?12, fallback_noted_at = ?13, updated_at = ?14`,
+         email_optin_at = ?11, locale = ?12, fallback_noted_at = ?13, also_email = ?15, updated_at = ?14`,
     )
     .bind(
       p.person_key, p.did, p.morning_on, p.harvest_on, p.evening_on, p.morning_channel, p.harvest_channel, p.evening_channel,
-      p.email, p.email_verified_at, p.email_optin_at, p.locale, p.fallback_noted_at, now,
+      p.email, p.email_verified_at, p.email_optin_at, p.locale, p.fallback_noted_at, now, p.also_email,
     )
     .run();
 }
@@ -91,15 +92,40 @@ export async function getDevice(db: D1Database, deviceId: string): Promise<Devic
   return db.prepare("SELECT * FROM notify_devices WHERE device_id = ?1").bind(deviceId).first<DeviceRow>();
 }
 
+/** The form whose registrants are notification people by default. */
+export const REGISTRATION_FORM = "register-2026";
+
+/**
+ * Lowercased addresses with a 2026 registration who may still be written to:
+ * subscribed, and not tagged undeliverable (a spam complaint unsubscribes, a hard
+ * bounce tags). The same filter the newsletter uses.
+ */
+export async function registeredEmails(db: D1Database): Promise<Set<string>> {
+  const where = audienceWhere({ kind: "form", form: REGISTRATION_FORM });
+  const { results } = await db.prepare(`SELECT LOWER(TRIM(p.email)) AS email FROM people p WHERE ${where.sql}`).bind(...where.params).all<{ email: string }>();
+  return new Set(results.map((r) => r.email).filter(Boolean));
+}
+
+/** The address we would write to for this person, if any: the one they verified, else the one they registered with. */
+export function mailAddress(prefs: PrefsRow, registered: Set<string>): string | null {
+  const verified = prefs.email && prefs.email_verified_at ? prefs.email.trim().toLowerCase() : null;
+  if (verified) return verified;
+  const typed = (prefs.email ?? emailOfKey(prefs.person_key))?.trim().toLowerCase();
+  return typed && registered.has(typed) ? typed : null;
+}
+
 /** The reach used by every decision, from what is on file right now. */
-export async function reachOf(db: D1Database, prefs: PrefsRow, now: number): Promise<Reach> {
+export async function reachOf(db: D1Database, prefs: PrefsRow, now: number, registered: Set<string> | null = null): Promise<Reach> {
   const devices = await installedDevices(db, prefs.person_key);
   // A phone only counts as live if its push subscription is still on file.
   const keyed = new Set((await devicesOf(db, prefs.person_key)).map((d) => d.device_id));
+  const list = registered ?? (await registeredEmails(db));
+  const address = mailAddress(prefs, list);
   return {
     livePush: devices.some((d) => keyed.has(d.device_id) && isLive(d, now)),
     hasApp: devices.some((d) => d.installed === 1),
-    email: prefs.email && prefs.email_verified_at ? prefs.email : null,
+    email: address,
+    registered: Boolean(address && list.has(address)),
   };
 }
 
@@ -118,6 +144,7 @@ export async function mergeEmailPerson(db: D1Database, did: string, email: strin
     merged[`${type}_on`] = into[`${type}_on`] ?? old[`${type}_on`];
     merged[`${type}_channel`] = (into[`${type}_channel`] ?? old[`${type}_channel`]) as Channel | null;
   }
+  merged.also_email = into.also_email ?? old.also_email;
   merged.email_optin_at = into.email_optin_at ?? old.email_optin_at;
   merged.email = into.email ?? email;
   merged.email_verified_at = into.email_verified_at ?? old.email_verified_at ?? now;

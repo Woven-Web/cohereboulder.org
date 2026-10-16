@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  STALE_DAYS, afterHeartbeat, afterSend, boulderTime, decide, effectiveChannel, emptyPrefs, eveningRef, eventEndMs, harvestDue, isLive, isOn,
+  STALE_DAYS, afterHeartbeat, alsoEmail, effectiveChannels, withAlsoEmail, afterSend, boulderTime, decide, effectiveChannel, emptyPrefs, eveningRef, eventEndMs, harvestDue, isLive, isOn,
   logTag, morningRef, personKey, pushStatus, reviveDevice, signLink, softFailure, verifyLink, type DeviceRow, type Prefs, type Reach,
 } from "./notify-core";
 
@@ -11,7 +11,7 @@ const device = (over: Partial<DeviceRow> = {}): DeviceRow => ({
   last_seen_at: iso(NOW - 3600_000), last_sent_at: null, last_success_at: null, last_failure_at: null, last_shown_at: null, soft_failed_for: null, ...over,
 });
 const prefs = (over: Partial<Prefs> = {}): Prefs => ({ ...emptyPrefs(), email: "me@example.org", email_verified_at: "2026-10-01T00:00:00Z", ...over });
-const reach = (over: Partial<Reach> = {}): Reach => ({ livePush: true, hasApp: true, email: "me@example.org", ...over });
+const reach = (over: Partial<Reach> = {}): Reach => ({ livePush: true, hasApp: true, email: "me@example.org", registered: false, ...over });
 
 describe("person keys", () => {
   it("is the account when there is one, else the lower-cased verified address", () => {
@@ -271,5 +271,46 @@ describe("signed links", () => {
     const strip = btoa(JSON.stringify({ p: "did:plc:me", k: "settings" })).replace(/=+$/, "");
     const real = await signLink("secret", { p: "did:plc:me", k: "unsub" }, now);
     expect(await verifyLink("secret", `${strip}.${real.split(".")[1]}`, now)).toBeNull();
+  });
+});
+
+describe("registered for 2026, no settings", () => {
+  const reg = reach({ hasApp: false, livePush: false, registered: true });
+  it("the 8 PM note is on by email, the morning note and the harvest invitation are off", () => {
+    expect(decide("evening", prefs(), reg)).toEqual({ action: "email", fellBack: false });
+    expect(decide("morning", prefs(), reg)).toEqual({ action: "skip", reason: "off" });
+    expect(decide("harvest", prefs(), reg)).toEqual({ action: "skip", reason: "off" });
+  });
+  it("explicit settings win: off stays off, and they can turn the morning note on", () => {
+    expect(decide("evening", prefs({ evening_on: 0 }), reg)).toEqual({ action: "skip", reason: "off" });
+    expect(decide("morning", prefs({ morning_on: 1 }), reg)).toEqual({ action: "email", fellBack: false });
+  });
+  it("with the app, nothing changes: all three, by push", () => {
+    for (const type of ["morning", "harvest", "evening"] as const) expect(decide(type, prefs(), reach({ registered: true }))).toEqual({ action: "push", fellBack: false });
+  });
+  it("someone not registered and without the app still gets nothing by default", () => {
+    expect(decide("evening", prefs(), reach({ hasApp: false, livePush: false, registered: false }))).toEqual({ action: "skip", reason: "off" });
+  });
+});
+
+describe("phone and email both", () => {
+  const both = prefs({ evening_on: 1, evening_channel: "push", also_email: "evening" });
+  it("goes to the phone and the email when the phone is live", () => {
+    expect(decide("evening", both, reach())).toEqual({ action: "both" });
+    expect(effectiveChannels("evening", both, reach())).toEqual({ phone: true, email: true });
+  });
+  it("is just the email when the phone is not live, and says the phone fell back", () => {
+    expect(decide("evening", both, reach({ livePush: false }))).toEqual({ action: "email", fellBack: true });
+  });
+  it("only the notes named in also_email go twice", () => {
+    expect(decide("morning", prefs({ morning_channel: "push" }), reach())).toEqual({ action: "push", fellBack: false });
+    expect(alsoEmail(both, "evening")).toBe(true);
+    expect(alsoEmail(both, "morning")).toBe(false);
+    expect(withAlsoEmail(both, "morning", true)).toBe("morning,evening");
+    expect(withAlsoEmail(both, "evening", false)).toBeNull();
+  });
+  it("the toggles read: off is neither, email only is email", () => {
+    expect(effectiveChannels("evening", prefs({ evening_on: 0 }), reach())).toEqual({ phone: false, email: false });
+    expect(effectiveChannels("evening", prefs({ evening_channel: "email" }), reach())).toEqual({ phone: false, email: true });
   });
 });

@@ -4,7 +4,7 @@ import { companionRoute, denverDate, runCompanionCron } from './companion';
 vi.hoisted(() => { globalThis.caches = { default: { match: async () => undefined, put: async () => { } } } as unknown as CacheStorage; });
 let env: Parameters<typeof companionRoute>[1];
 afterEach(() => vi.useRealTimers());
-beforeEach(() => { vi.useFakeTimers({toFake:['Date']}); vi.setSystemTime(new Date('2026-10-15T12:00:00Z')); env = { cohere: testD1(['../migrations/0010_companion.sql', '../migrations/0012_notify.sql']) as unknown as D1Database }; });
+beforeEach(() => { vi.useFakeTimers({toFake:['Date']}); vi.setSystemTime(new Date('2026-10-15T12:00:00Z')); env = { cohere: testD1(['../schema.sql']) as unknown as D1Database }; });
 const device = '00000000-0000-4000-8000-000000000001';
 function req(path: string, body?: unknown, method = body ? 'POST' : 'GET', origin = 'https://cohereboulder.org') { return new Request('https://cohereboulder.org/api/companion/' + path, { method, headers: { 'Content-Type': 'application/json', Origin: origin }, body: body ? JSON.stringify(body) : undefined }); }
 it('uses Denver dates', () => {

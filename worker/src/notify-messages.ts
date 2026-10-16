@@ -69,7 +69,7 @@ const T = {
     harvestVis: "Harvests show your name.",
     names: { morning: "Morning note", harvest: "Harvest invitation", evening: "Ready for tomorrow" } as Record<NotifyType, string>,
     because: (name: string, to: string) => `${name} · ${to}`,
-    change: "Notification settings", unsub: () => "Unsubscribe",
+    change: "Change your settings", unsub: () => "Unsubscribe", tomorrowPractice: "Tomorrow’s practice",
     fellBack: "Push failed. Sent by email.", fellBackLink: "Turn push back on",
     subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Ready for tomorrow: ${n} event${n === 1 ? "" : "s"} on ${d}`,
     subjectHarvest: (n: string) => `How was ${n}?`,
@@ -93,7 +93,7 @@ const T = {
     harvestVis: "Las cosechas muestran tu nombre.",
     names: { morning: "Nota de la mañana", harvest: "Invitación a la cosecha", evening: "Lista para mañana" } as Record<NotifyType, string>,
     because: (name: string, to: string) => `${name} · ${to}`,
-    change: "Ajustes de notificaciones", unsub: () => "Darte de baja",
+    change: "Cambiar tus ajustes", unsub: () => "Darte de baja", tomorrowPractice: "La práctica de mañana",
     fellBack: "Falló el push. Enviado por correo.", fellBackLink: "Reactivar los avisos push",
     subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`, subjectEvening: (n: number, d: string) => `Lista para mañana: ${n} evento${n === 1 ? "" : "s"} el ${d}`,
     subjectHarvest: (n: string) => `¿Cómo estuvo ${n}?`,
@@ -218,6 +218,8 @@ export interface EveningInput {
   /** The day being described (tomorrow). */
   date: string;
   events: EventLine[];
+  /** Tomorrow's practice, if the organizers wrote one. The email carries it word for word. */
+  daily?: Daily | null;
   lang: Lang;
 }
 
@@ -244,13 +246,16 @@ export function eveningEmail(input: EveningInput, ctx: MailContext, rsvpLink: (e
   const c = T[ctx.lang];
   const events = ordered(input.events);
   const mine = events.filter((e) => e.going), rest = events.filter((e) => !e.going);
+  const practice = input.daily?.title ? practiceLines({ date: input.date, daily: input.daily, events: [], lang: ctx.lang }) : null;
   const html =
     `<p ${P}>${esc(c.readyMail(dateLabel(input.date, ctx.lang, true)))}</p>` +
+    (practice ? `<h4 ${H}>${esc(c.tomorrowPractice)}</h4><p ${P}><b>${esc(practice.title)}</b><br>${esc(practice.body)}</p>` : "") +
     (mine.length ? `<h4 ${H}>${esc(c.youreGoing)}</h4><ul style="margin:0 0 12px;padding:0;list-style:none">${mine.map((e) => eventLi(e, ctx, { href: eventUrl(ctx.base, e), label: c.details })).join("")}</ul>` : "") +
     (rest.length ? `<h4 ${H}>${esc(c.alsoTomorrow)}</h4><ul style="margin:0 0 12px;padding:0;list-style:none">${rest.map((e) => eventLi(e, ctx, { href: rsvpLink(e), label: c.rsvp })).join("")}</ul>` : "") +
     `<p ${P}><a href="${esc(`${ctx.base}/tomorrow`)}" ${A}>${esc(c.openTomorrow)}</a></p>`;
   const text = [
     c.readyMail(dateLabel(input.date, ctx.lang, true)), "",
+    ...(practice ? [c.tomorrowPractice, practice.title, practice.body, ""] : []),
     ...(mine.length ? [c.youreGoing, ...mine.map((e) => eventText(e, ctx.lang, eventUrl(ctx.base, e))), ""] : []),
     ...(rest.length ? [c.alsoTomorrow, ...rest.map((e) => `${eventText(e, ctx.lang, rsvpLink(e)).replace(/\n/, `\n${c.rsvp}: `)}`), ""] : []),
     `${c.openTomorrow}: ${ctx.base}/tomorrow`,

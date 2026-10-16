@@ -24,7 +24,7 @@ beforeEach(() => {
   mailSent = [];
   sessions = { me: { did: ME, email: "me@example.org" }, peer: { did: PEER, email: null } };
   env = {
-    cohere: testD1(["../migrations/0004_event_rsvps.sql", "../migrations/0010_companion.sql", "../migrations/0011_members.sql", "../migrations/0012_notify.sql"]),
+    cohere: testD1(["../schema.sql"]),
     COHERE_AUTH: testKV(),
     REGENOS_LOGIN_ENABLED: "true", REGENOS_BASE_URL: "https://upstream.test", REGENOS_COLLECTIVE_DID: "did:plc:mockscene",
     NOTIFY_LINK_SECRET: SECRET, PUBLIC_BASE_URL: BASE,
@@ -72,7 +72,7 @@ describe("GET/PUT /api/notify/settings", () => {
     const res = await call("GET", "/api/notify/settings");
     expect(res.status).toBe(200);
     const view = await res.json();
-    expect(view.email).toEqual({ address: "me@example.org", verified: true });
+    expect(view.email).toEqual({ address: "me@example.org", verified: true, registered: false });
     expect(view.push.status).toBe("none");
     expect(view.notes.morning).toMatchObject({ on: false, channel: "email", chosen: null });
     expect(view.nothingReaches).toBe(false);
@@ -81,8 +81,28 @@ describe("GET/PUT /api/notify/settings", () => {
   });
   it("says nothing can reach someone who has no address and no live phone", async () => {
     const view = await (await call("GET", "/api/notify/settings", undefined, "peer")).json();
-    expect(view.email).toEqual({ address: null, verified: false });
+    expect(view.email).toEqual({ address: null, verified: false, registered: false });
     expect(view.nothingReaches).toBe(true);
+  });
+  it("a registered person sees the 8 PM note on by email without touching anything, and the address as verified", async () => {
+    await env.cohere.prepare("INSERT INTO people(id,email,subscribed,unsubscribe_token,created_at,updated_at) VALUES ('p1','me@example.org',1,'t','x','x')").run();
+    await env.cohere.prepare("INSERT INTO submissions(id,person_id,form_slug,data,created_at,updated_at) VALUES ('s1','p1','register-2026','{}','x','x')").run();
+    const view = await (await call("GET", "/api/notify/settings")).json();
+    expect(view.email).toEqual({ address: "me@example.org", verified: true, registered: true });
+    expect(view.notes.evening).toMatchObject({ on: true, phone: false, email: true });
+    expect(view.notes.morning).toMatchObject({ on: false, phone: false, email: false });
+  });
+  it("the Phone / Email toggles: email only, both, and neither (which turns the note off)", async () => {
+    await addDevice(ME);
+    let view = await (await call("PUT", "/api/notify/settings", { evening: { channels: { phone: true, email: true } } })).json();
+    expect(view.notes.evening).toMatchObject({ on: true, phone: true, email: true });
+    expect(rows("SELECT evening_on, evening_channel, also_email FROM notify_prefs")).toEqual([{ evening_on: 1, evening_channel: "push", also_email: "evening" }]);
+    view = await (await call("PUT", "/api/notify/settings", { evening: { channels: { phone: false, email: true } } })).json();
+    expect(view.notes.evening).toMatchObject({ on: true, phone: false, email: true });
+    expect(rows("SELECT also_email FROM notify_prefs")).toEqual([{ also_email: null }]);
+    view = await (await call("PUT", "/api/notify/settings", { evening: { channels: { phone: false, email: false } } })).json();
+    expect(view.notes.evening).toMatchObject({ on: false, phone: false, email: false });
+    expect((await call("PUT", "/api/notify/settings", { evening: { channels: { phone: "yes" } } })).status).toBe(400);
   });
   it("with the app installed and live: all three on, push by default; this phone's status is reported", async () => {
     await addDevice(ME);

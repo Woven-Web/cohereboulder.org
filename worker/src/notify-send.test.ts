@@ -8,7 +8,7 @@ vi.hoisted(() => {
 import type { MailMessage } from "./auth";
 import type { CommunityEvent } from "./events";
 import { verifyLink } from "./notify-core";
-import { fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
+import { MAX_EMAILS_PER_TICK, fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
 import { testD1 } from "./test-d1";
 
 const MOCK = "http://127.0.0.1:10049";
@@ -40,7 +40,7 @@ beforeEach(async () => {
   receiver = createPushReceiver(MOCK);
   const k = receiver.fixture;
   env = {
-    cohere: testD1(["../migrations/0004_event_rsvps.sql", "../migrations/0010_companion.sql", "../migrations/0011_members.sql", "../migrations/0012_notify.sql"]),
+    cohere: testD1(["../schema.sql"]),
     COHERE_AUTH: {} as KVNamespace,
     NOTIFY_PAUSED: "false", NOTIFY_LINK_SECRET: SECRET, PUBLIC_BASE_URL: "https://cohereboulder.org",
     VAPID_PUBLIC_KEY: k.publicKey, VAPID_PRIVATE_KEY: k.privateKey, VAPID_SUBJECT: k.subject,
@@ -267,9 +267,10 @@ describe("the morning note", () => {
     const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
     expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:sam@example.org", k: "unsub", t: "morning" });
-    const settings = /https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+)/.exec(message.text!.split("Notification settings: ")[1])![1];
-    expect(await verifyLink(SECRET, settings, new Date())).toMatchObject({ p: "mailto:sam@example.org", k: "settings" });
-    expect(message.html).toContain("Notification settings");
+    // "Change your settings" opens Me → notifications (which asks them to sign in); it is not a signed link.
+    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
+    expect(message.html).toContain("Change your settings");
+    expect(message.html).toContain('href="https://cohereboulder.org/more/notifications"');
   });
 });
 
@@ -477,6 +478,129 @@ describe("the 8 PM note", () => {
     await runNotifyCron(env, new Date("2026-10-16T12:00:00Z"), deps);
     await runNotifyCron(env, EVENING, deps);
     expect(pushed.map((p) => p.payload.url)).toEqual(["/today", "/tomorrow"]);
+  });
+});
+
+async function addRegistered(email: string, over: { subscribed?: number; tags?: string; form?: string } = {}) {
+  const id = `p-${email}`;
+  await db().prepare("INSERT INTO people(id,email,subscribed,unsubscribe_token,tags,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?6)")
+    .bind(id, email, over.subscribed ?? 1, `tok-${email}`, over.tags ?? null, "2026-10-01T00:00:00Z").run();
+  await db().prepare("INSERT INTO submissions(id,person_id,form_slug,data,created_at,updated_at) VALUES (?1,?2,?3,'{}',?4,?4)")
+    .bind(`s-${email}`, id, over.form ?? "register-2026", "2026-10-01T00:00:00Z").run();
+}
+
+describe("email by default for people registered for 2026", () => {
+  beforeEach(async () => {
+    events = [event("a", "2026-10-17T15:00:00Z", "2026-10-17T16:00:00Z", "Honoring Water"), event("b", "2026-10-17T19:00:00Z", null, "Soup Night")];
+    await addDaily("2026-10-17");
+  });
+
+  it("a registered person with no settings gets exactly one email a day: the 8 PM note, with tomorrow's practice in it", async () => {
+    await addRegistered("rae@example.org");
+    const result = await runNotifyCron(env, EVENING, deps);
+    expect(result.sent).toBe(1);
+    expect(pushed).toHaveLength(0);
+    expect(mails).toHaveLength(1);
+    const { to, message } = mails[0];
+    expect(to).toBe("rae@example.org");
+    expect(message.subject).toBe("Ready for tomorrow: 2 events on Oct 17");
+    expect(message.text).toContain("Tomorrow’s practice");
+    expect(message.text).toContain("Learn three neighbours’ names");
+    expect(message.text).toContain("Learn the names of three neighbours. Say them out loud twice.");
+    expect(message.html).toContain("Learn the names of three neighbours. Say them out loud twice.");
+    // a one-click unsubscribe, and a settings link that asks them to sign in
+    const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
+    expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:rae@example.org", k: "unsub", t: "evening" });
+    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
+    expect(ledger()).toMatchObject([{ person_key: "mailto:rae@example.org", type: "evening", channel: "email", status: "sent" }]);
+  });
+  it("the same person gets no morning note and no harvest invitation unless they turn them on", async () => {
+    await addRegistered("rae@example.org");
+    await runNotifyCron(env, MORNING, deps); // 10-17 has a practice, so the morning run exists; they are simply not on its list
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toHaveLength(0);
+  });
+  it("a registered person who turned the 8 PM note on for the morning too gets both, by email", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", morning_on: 1 });
+    await runNotifyCron(env, MORNING, deps);
+    expect(mails).toHaveLength(1);
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(2);
+  });
+  it("sends nothing to someone who unsubscribed, was marked undeliverable, or did not register for 2026", async () => {
+    await addRegistered("gone@example.org", { subscribed: 0 });
+    await addRegistered("bounced@example.org", { tags: "friend, undeliverable" });
+    await addRegistered("old@example.org", { form: "register-2025" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toHaveLength(0);
+  });
+  it("sends nothing to someone who unsubscribed from the 8 PM note (their unsubscribe link wrote evening_on = 0)", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", evening_on: 0 });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toMatchObject([{ status: "skipped", reason: "off" }]);
+  });
+  it("one address, one email: an account and an address-keyed row for the same address do not both send", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs(ME, { email: "rae@example.org" });
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", email_optin_at: "2026-10-02T00:00:00Z" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(1);
+    expect(ledger().map((r) => r.person_key)).toEqual([ME]);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails).toHaveLength(1);
+  });
+  it("a signed-in account whose verified address is a registration is also on by default, and not sent twice", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs(ME, { email: "rae@example.org" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails.map((m) => m.to)).toEqual(["rae@example.org"]);
+    expect(ledger()).toMatchObject([{ person_key: ME, channel: "email", status: "sent" }]);
+  });
+  it("people with the app keep today's defaults: all three notes by push, and a registration adds no email", async () => {
+    await addRegistered("rae@example.org");
+    await addDevice(ME);
+    await addPrefs(ME, { email: "rae@example.org" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(pushed).toHaveLength(1);
+    expect(mails).toHaveLength(0);
+    await runNotifyCron(env, MORNING, deps);
+    expect(pushed).toHaveLength(2);
+    expect(mails).toHaveLength(0);
+  });
+  it("someone who is not registered and has no settings gets nothing at all", async () => {
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(pushed).toHaveLength(0);
+  });
+  it("phone and email both: a push to the live phone and the email, one ledger row", async () => {
+    await addRegistered("rae@example.org");
+    await addDevice(ME);
+    await addPrefs(ME, { email: "rae@example.org", evening_on: 1, evening_channel: "push" });
+    await db().prepare("UPDATE notify_prefs SET also_email = 'evening' WHERE person_key = ?1").bind(ME).run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(pushed).toHaveLength(1);
+    expect(mails).toHaveLength(1);
+    expect(ledger()).toMatchObject([{ person_key: ME, channel: "push+email", status: "sent" }]);
+  });
+  it("caps emails per tick and finishes the run on the next ticks, logging totals", async () => {
+    for (let i = 0; i < 95; i++) await addRegistered(`p${String(i).padStart(3, "0")}@example.org`);
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(MAX_EMAILS_PER_TICK);
+    expect(all("SELECT * FROM notify_runs WHERE completed_at IS NOT NULL")).toHaveLength(0);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails).toHaveLength(MAX_EMAILS_PER_TICK * 2);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 120_000), deps);
+    expect(mails).toHaveLength(95);
+    expect(new Set(mails.map((m) => m.to)).size).toBe(95);
+    expect(all("SELECT * FROM notify_runs WHERE completed_at IS NOT NULL")).toHaveLength(1);
+    expect(info.mock.calls.map((c) => String(c[0]))).toContain("notify evening 2026-10-16 done: 95 sent/email");
+    info.mockRestore();
   });
 });
 
