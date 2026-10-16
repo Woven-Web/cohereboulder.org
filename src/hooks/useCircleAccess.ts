@@ -7,11 +7,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { fetchMyRegistration } from "@/lib/api";
 import { fetchSceneRoster } from "@/lib/regenos";
 import { shortDid } from "@/lib/board";
 import { PEOPLE_QUERY_KEY, fetchDirectory, type DirectoryEntry } from "@/lib/people";
 
-export type CircleStatus = "loading" | "off" | "signed-out" | "not-member" | "member" | "error";
+export type CircleStatus = "loading" | "off" | "signed-out" | "not-member" | "registered-not-member" | "member" | "error";
 
 export const SCENE_ROSTER_QUERY_KEY = ["scene-roster"] as const;
 
@@ -29,6 +30,23 @@ export function useCircleAccess() {
     retry: 1,
   });
 
+  const onRoster = roster.data?.members.some((m) => m.did === did) ?? false;
+  // Not on the roster: ask whether they are registered. That read also makes the
+  // Worker attempt the member grant (AUTO_MEMBER_ON_SIGNIN), so the roster is
+  // read again once it answers; a grant that landed lets them straight in.
+  const needsRegistration = laneOn && Boolean(did) && roster.isSuccess && !onRoster;
+  const registration = useQuery({
+    queryKey: ["my-registration", did, "gate"],
+    queryFn: async () => {
+      const result = await fetchMyRegistration();
+      if (result.registered === true) await roster.refetch();
+      return result;
+    },
+    enabled: needsRegistration,
+    staleTime: 0,
+    retry: 1,
+  });
+
   let status: CircleStatus;
   if (configLoading) status = "loading";
   else if (!laneOn || !collective) status = "off";
@@ -36,7 +54,9 @@ export function useCircleAccess() {
   else if (!did) status = "signed-out";
   else if (roster.isLoading) status = "loading";
   else if (roster.isError || !roster.data) status = "error";
-  else status = roster.data.members.some((m) => m.did === did) ? "member" : "not-member";
+  else if (onRoster) status = "member";
+  else if (registration.isLoading) status = "loading";
+  else status = registration.data?.registered === true ? "registered-not-member" : "not-member";
 
   // The directory is only asked for once the gate says "member"; regenOS
   // would answer anyone else with an empty page anyway.
@@ -54,5 +74,5 @@ export function useCircleAccess() {
     return entryOf(target)?.record.displayName?.trim() || member?.name || member?.handle || shortDid(target);
   };
 
-  return { status, did, collective, roster: roster.data, directory, entryOf, nameOf, retry: () => roster.refetch() };
+  return { status, did, collective, roster: roster.data, directory, entryOf, nameOf, retry: () => { void registration.refetch(); return roster.refetch(); } };
 }

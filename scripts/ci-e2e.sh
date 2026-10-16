@@ -503,6 +503,40 @@ PIDS=()
 rm -rf "$PERSIST_DIR-regsignin"
 echo "::endgroup::"
 
+# --- 17. board-gate-e2e.mjs: registered non-member at the Board gate --------
+# Same seeds as lane 16. "grants": the mock lets setMembership add people, so
+# AUTO_MEMBER_ON_SIGNIN lets the registrant in. "fails": it refuses, so the gate
+# must say "registered, being set up" with no Register button. Fresh mock each.
+echo "::group::board-gate-e2e (registered non-member lane)"
+for gate_mode in grants fails; do
+  WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-boardgate")
+  rm -rf "$PERSIST_DIR-boardgate"
+  npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
+  npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
+  npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --command \
+    "INSERT INTO people (id, email, name, phone, orgs, subscribed, unsubscribe_token, source, created_at, updated_at) VALUES
+       ('p-reg','reg@cohere.test','Reg Original',NULL,NULL,1,'tok-reg','form:register-2026','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');
+     INSERT INTO submissions (id, person_id, form_slug, event, data, created_at, updated_at) VALUES
+       ('s-reg','p-reg','register-2026','october2026','{\"how_did_you_hear\":\"the radio\"}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z');" >/dev/null
+  if [ "$gate_mode" = grants ]; then export MOCK_SETMEMBERSHIP_ADDS=1; else unset MOCK_SETMEMBERSHIP_ADDS; fi
+  start_mock ${P28966} "$PWA_SCRATCH/pwa-merge-mock-17-$gate_mode.log"
+  start_worker ${P28967} ${P28245} "$PWA_SCRATCH/pwa-merge-worker-17-$gate_mode.log" \
+    --var REGENOS_LOGIN_ENABLED:true \
+    --var REGENOS_BASE_URL:http://127.0.0.1:${P28966} \
+    --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+    --var REGENOS_SERVICE_TOKEN:mock-token \
+    --var AUTO_MEMBER_ON_SIGNIN:true
+  if ! node scripts/board-gate-e2e.mjs http://127.0.0.1:${P28967} http://127.0.0.1:${P28966} "$gate_mode"; then
+    tail -80 "$PWA_SCRATCH/pwa-merge-worker-17-$gate_mode.log"
+    fail=1
+  fi
+  cleanup
+  PIDS=()
+done
+unset MOCK_SETMEMBERSHIP_ADDS
+rm -rf "$PERSIST_DIR-boardgate"
+echo "::endgroup::"
+
 # --- 15. notify-e2e: notifications + Harvest ---------------------------------
 # Self-contained (its own scratch, servers and ports): see scripts/notify-e2e.sh.
 echo "::group::notify-e2e (notifications + harvest lane)"
