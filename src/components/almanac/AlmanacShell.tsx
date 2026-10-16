@@ -3,7 +3,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Ctx } from "./shell-context";
 import { AlmanacFooter, AlmanacMast } from "./SiteChrome";
 import { EcoRidges } from "./EcoRidges";
+import { SignedInInstallInvite } from "./SignedInInstallInvite";
+import { useLocation } from "react-router-dom";
 import { InstallSheet } from "./InstallSheet";
+import { NotifyStatusBar } from "@/components/notify/NotifyStatusBar";
 import { lookClass, useLook } from "@/lib/look";
 import { probeSubscription, syncReminderLanguage, useReminders } from "@/lib/reminders";
 import { useDeviceSync } from "@/hooks/useDeviceSync";
@@ -14,6 +17,8 @@ import { useDeviceSync } from "@/hooks/useDeviceSync";
  * Almanac tokens; the rest of the site is untouched.
  */
 export function AlmanacShell({ children, after, site = false, ridges = true }: { children: ReactNode; after?: ReactNode; site?: boolean; ridges?: boolean }) {
+  const { pathname } = useLocation();
+  const installAllowed = !/^\/(register|login|admin)(?:\/|$)/.test(pathname);
   const { language } = useLanguage();
   const look = useLook();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -40,14 +45,15 @@ export function AlmanacShell({ children, after, site = false, ridges = true }: {
       <div className={`alm${lookClass(look)}`} ref={rootRef}>
         <div className={`app${hasBar ? " has-bar" : ""}`}>
           <AlmanacMast register={site || look === "ecology"} />
+          <NotifyStatusBar />
           {/* Ecology only: the landscape under the masthead. Screens that draw their own (Today, Calendar, Home) hide it with CSS or ridges={false}. */}
           {look === "ecology" && ridges && <EcoRidges />}
           {children}
           {(site || look === "ecology") && <AlmanacFooter />}
         </div>
         {after}
-        {/* The public site asks for one thing, a registration; no install prompt on top of it. */}
-        {!site && <InstallSheet />}
+        {installAllowed && (!site || pathname === "/" || pathname === "/home") && <InstallSheet />}
+        {installAllowed && <SignedInInstallInvite />}
         {/* The live region stays mounted so screen readers announce the text when it appears. */}
         <div className="toast" role="status">{message}</div>
       </div>

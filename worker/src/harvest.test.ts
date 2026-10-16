@@ -32,7 +32,7 @@ beforeEach(() => {
   nowMs = Date.now();
   recentEvents = [];
   env = {
-    cohere: testD1(["../migrations/0011_members.sql", "../migrations/0012_notify.sql"]), COHERE_AUTH: testKV(),
+    cohere: testD1(["../schema.sql"]), COHERE_AUTH: testKV(),
     REGENOS_LOGIN_ENABLED: "true", REGENOS_BASE_URL: "https://upstream.test", REGENOS_COLLECTIVE_DID: SCENE,
   } as never;
   lookup = async (_e, _d, rkey) => (rkey === "water" ? ended("water", 90) : rkey === "other" ? ended("other", 30) : rkey === "running" ? { kind: "ok", event: { ...(ended("running", 0) as Extract<LiveLookup, { kind: "ok" }>).event, endsAt: new Date(nowMs + 3600_000).toISOString() } } : rkey === "off" ? { kind: "ok", event: { ...(ended("off", 90) as Extract<LiveLookup, { kind: "ok" }>).event, status: "cancelled" } } : rkey === "down" ? { kind: "unavailable" } : { kind: "gone" });

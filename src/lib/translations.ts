@@ -79,6 +79,8 @@ export const translations = {
     enabled: { en: "Daily notifications are on.", es: "Las notificaciones diarias están activadas." },
     disabled: { en: "Notifications are unavailable while organizers configure delivery.", es: "Las notificaciones no están disponibles mientras se configura el envío." },
     denied: { en: "Notifications are blocked. Change permission in your browser or device settings, then return here.", es: "Las notificaciones están bloqueadas. Cambia el permiso en los ajustes de tu navegador o dispositivo y vuelve aquí." },
+    iosNeedsInstall: { en: "On iPhone, notifications work from the app on your Home Screen. Add COhere to your Home Screen, then open it from there.", es: "En iPhone, las notificaciones funcionan desde la app en tu pantalla de inicio. Añade COhere a tu pantalla de inicio y ábrela desde ahí." },
+    pushLoadError: { en: "Couldn’t check notifications. Reload to try again.", es: "No se pudo comprobar las notificaciones. Recarga para intentarlo de nuevo." },
     unsupported: { en: "This browser does not support Web Push.", es: "Este navegador no admite Web Push." },
     off: { en: "Daily notifications are off.", es: "Las notificaciones diarias están desactivadas." },
     privacy: { en: "No account or email is required. This device gets a random ID that links its replies, quest reports and notification subscription, so it is pseudonymous rather than anonymous. Replies may include an optional name; please avoid sensitive information. Replies, quest reports, subscriptions and delivery records are deleted after the gathering ends plus 30 days. You can turn off notifications here at any time.", es: "No se requiere cuenta ni correo. Este dispositivo recibe un identificador aleatorio que vincula sus respuestas, misiones y suscripción, por lo que es seudónimo y no anónimo. Puedes añadir un nombre a tu respuesta; evita información sensible. Las respuestas, misiones, suscripciones y registros de envío se eliminan 30 días después del encuentro. Puedes desactivar las notificaciones aquí en cualquier momento." },
@@ -246,6 +248,7 @@ export const translations = {
     sourceNote: { en: "Title, time, place and description come from the COhere community calendar. Times are Boulder time.", es: "Título, hora, lugar y descripción vienen de la agenda comunitaria de COhere. Horas de Boulder." },
     // Install & reminders
     sheetClose: { en: "Close", es: "Cerrar" },
+    installTitleSignedin: { en: "Add COhere to your home screen", es: "Agrega COhere a tu pantalla de inicio" },
     installTitleDidit: { en: "Keep today’s practice with you", es: "Lleva la práctica de hoy contigo" },
     installTitleReminders: { en: "Get the day’s reminders", es: "Recibe los recordatorios del día" },
     installBody: { en: "Add COhere to your home screen. One practice a day, right where you’ll see it.", es: "Agrega COhere a tu pantalla de inicio. Una práctica al día, justo donde la verás." },

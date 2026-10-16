@@ -275,8 +275,10 @@ function NoteRow({ type, view, guest, busy, onChange }: { type: NotifyType; view
   const labelId = `n-${type}`;
   const pushOK = note.pushAvailable && !guest;
   const selected: Channel = note.channel;
+  const toggle = (which: "phone" | "email") => onChange({ [type]: { channels: { phone: note.phone, email: note.email, [which]: !note[which] } } });
 
   const why = note.on && selected === "email" && !hasEmail ? { text: tr("notify.why.noEmail"), warn: true }
+    : note.on && view.email.registered && !note.chosen && !pushOK && note.email ? { text: tr("notify.why.registered"), warn: false }
     : !pushOK ? { text: view.pushBroke ? tr("notify.why.pushBroke") : guest ? tr("notify.why.guestNeedsApp") : tr("notify.why.needsApp"), warn: false }
     : { text: note.chosen ? tr("notify.why.chose") : tr("notify.why.byDefault"), warn: false };
 
@@ -296,8 +298,8 @@ function NoteRow({ type, view, guest, busy, onChange }: { type: NotifyType; view
       <div className="nset__ch">
         <p className="small" id={`${labelId}-c`}>{tr("notify.sendBy")}</p>
         <div className="seg" role="group" aria-labelledby={`${labelId}-c`}>
-          <button type="button" aria-pressed={selected === "push"} disabled={!pushOK || busy} onClick={() => onChange({ [type]: { channel: "push" } })}>{tr("notify.push")}</button>
-          <button type="button" aria-pressed={selected === "email"} disabled={busy} onClick={() => onChange({ [type]: { channel: "email" } })}>{tr("notify.email")}</button>
+          <button type="button" aria-pressed={note.phone} data-testid={`${type}-phone`} disabled={!pushOK || busy} onClick={() => toggle("phone")}>{tr("notify.phone")}</button>
+          <button type="button" aria-pressed={note.email} data-testid={`${type}-email`} disabled={busy} onClick={() => toggle("email")}>{tr("notify.email")}</button>
         </div>
         <p className={`nset__why${why.warn ? "" : " m"}`}>{why.text}</p>
       </div>

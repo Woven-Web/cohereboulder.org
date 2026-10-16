@@ -17,7 +17,7 @@ if (!target) {
 
 // Paths worth proving, and a string that must appear once each has rendered.
 const PAGES = [
-  { path: "/", expect: "Weaving Our Resilience" },
+  { path: "/", expect: "COhere" },
   { path: "/register", expect: "Register" },
   // Renders whichever calendar source is live (regenOS cards or the Luma
   // fallback); the header proves the page itself mounted either way.

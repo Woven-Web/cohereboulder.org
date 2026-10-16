@@ -364,7 +364,7 @@ function QuestsView() {
 function MoreView() {
     const { tr, language } = useLanguage();
     const meLabel = useLook() === 'ecology' ? tr('almanac.tabs.me') : tr('companion.more');
-    const { data } = useCompanionToday();
+    const { data, isLoading, isError } = useCompanionToday();
     const reminders = useReminders();
     const { ios, installed, prompt, offer } = useInstallOffer();
     const supported = reminderSupport(data?.pushKey) || (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined');
@@ -377,7 +377,10 @@ function MoreView() {
         // Only when there is an install to offer: the reminders themselves are already on.
         if (getReminderState().subscribed && prompt) offer('reminders');
     }
-    const status = tr('companion.' + (!supported ? 'unsupported' : !data?.pushKey ? 'disabled' : reminders.permission === 'denied' ? 'denied' : reminders.subscribed ? 'enabled' : 'off'));
+    // Say why, in plain words. iPhone only allows push from the installed app, so a Safari tab there is not "unsupported".
+    // "Unavailable" is for when the server really has no push key; a failed or pending fetch is not that.
+    const statusKey = ios && !installed ? 'iosNeedsInstall' : !supported ? 'unsupported' : isError ? 'pushLoadError' : isLoading ? '' : !data?.pushKey ? 'disabled' : reminders.permission === 'denied' ? 'denied' : reminders.subscribed ? 'enabled' : 'off';
+    const status = statusKey ? tr('companion.' + statusKey) : '';
 
     return <main className="page page--read">
         <h1 className="h1" style={{ margin: '.8rem 0 .2rem' }}>{meLabel}</h1>

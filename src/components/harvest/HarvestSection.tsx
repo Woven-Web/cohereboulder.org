@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BottomSheet } from "@/components/almanac/BottomSheet";
 import { fill } from "@/components/almanac/format";
 import { useShell } from "@/components/almanac/shell-context";
 import { Avatar } from "@/components/members/Avatar";
@@ -12,12 +11,13 @@ import { currentDenverDate } from "@/lib/companion";
 import type { CommunityEvent } from "@/lib/events";
 import { dayNumber, formatDay } from "@/lib/festival";
 import { eventKey } from "@/lib/myEvents";
+import { HarvestMenu } from "@/components/harvest/HarvestMenu";
 import { shortName } from "@/components/harvest/names";
 import { fetchMySeat, XrpcError } from "@/lib/regenos";
 import { useCompanionToday } from "@/lib/useCompanionToday";
 import { openSignInDialog } from "@/lib/signin";
 import {
-  HARVESTS_KEY, HARVEST_TEXT_MAX, eventEndedAt, MY_HARVESTS_KEY, createHarvest, deleteHarvest, editHarvest, fetchHarvests, harvestUri, photoUrl, shrinkPhoto,
+  HARVESTS_KEY, HARVEST_TEXT_MAX, eventEndedAt, MY_HARVESTS_KEY, createHarvest, editHarvest, fetchHarvests, harvestUri, photoUrl, shrinkPhoto,
   type Harvest,
 } from "@/lib/harvest";
 
@@ -84,11 +84,15 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
   const list = useQuery({ queryKey: key, queryFn: () => fetchHarvests(event.did, event.rkey), retry: 1, staleTime: 15_000 });
   const seat = useQuery({ queryKey: ["harvest-seat", did, eventKey(event)], queryFn: () => fetchMySeat(event.did, event.rkey), retry: 0, staleTime: 5 * 60_000 });
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState<Harvest | null>(null);
   const [reporting, setReporting] = useState<Harvest | null>(null);
 
   // Arriving from the Today card or a push (#composer / #mine): bring that part into view once it exists.
   const loaded = !list.isLoading && !list.isError;
+  const hasMine = (list.data ?? []).some((h) => h.mine);
+  // The ⋯ → Edit on Today's card lands here with #edit: open the editor once.
+  useEffect(() => {
+    if (loaded && hasMine && window.location.hash === "#edit") setEditing(true);
+  }, [loaded, hasMine]);
   useEffect(() => {
     if (!loaded || !["#composer", "#mine"].includes(window.location.hash)) return;
     const timer = window.setTimeout(() => (document.getElementById(window.location.hash.slice(1)) ?? document.getElementById("mine") ?? document.getElementById("composer"))?.scrollIntoView({ block: "center" }), 80);
@@ -119,7 +123,7 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
               {editing ? (
                 <Editor harvest={mine} onDone={() => { setEditing(false); refresh(); }} onCancel={() => setEditing(false)} />
               ) : (
-                <MineCard harvest={mine} name={nameOf(did)} onEdit={() => setEditing(true)} onDelete={() => setDeleting(mine)} />
+                <MineCard harvest={mine} name={nameOf(did)} onEdit={() => setEditing(true)} onDeleted={() => { setEditing(false); refresh(); toast(tr("notify.harvest.deleted")); }} />
               )}
             </div>
           ) : (
@@ -154,7 +158,6 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
           )}
         </>
       )}
-      <DeleteHarvestSheet harvest={deleting} onClose={() => setDeleting(null)} onDeleted={() => { setDeleting(null); setEditing(false); refresh(); toast(tr("notify.harvest.deleted")); }} />
       <ReportSheet
         open={reporting !== null}
         onOpenChange={(open) => !open && setReporting(null)}
@@ -250,7 +253,7 @@ function Composer({ event, onShared }: { event: CommunityEvent; onShared: () => 
   );
 }
 
-function MineCard({ harvest, name, onEdit, onDelete }: { harvest: Harvest; name: string; onEdit: () => void; onDelete: () => void }) {
+function MineCard({ harvest, name, onEdit, onDeleted }: { harvest: Harvest; name: string; onEdit: () => void; onDeleted: () => void }) {
   const { tr, language } = useLanguage();
   return (
     <article className="post post--own" data-testid="harvest-mine" id={`harvest-${harvest.id}`}>
@@ -264,8 +267,7 @@ function MineCard({ harvest, name, onEdit, onDelete }: { harvest: Harvest; name:
       {harvest.hasPhoto && <figure className="ph ph--sm"><img src={photoUrl(harvest.id)} alt={tr("notify.harvest.photoAlt")} /></figure>}
       <div className="post__foot">
         <span className="hash">{tr("notify.harvest.visible").replace(/\.$/, "")}</span>
-        <button type="button" className="link" onClick={onEdit}>{tr("notify.harvest.edit")}</button>
-        <button type="button" className="link" onClick={onDelete}>{tr("notify.harvest.delete")}</button>
+        <HarvestMenu harvestId={harvest.id} onEdit={onEdit} onDeleted={onDeleted} />
       </div>
     </article>
   );
@@ -300,21 +302,5 @@ function Editor({ harvest, onDone, onCancel }: { harvest: Harvest; onDone: () =>
         <button type="button" className="btn btn--quiet" onClick={onCancel}>{tr("notify.harvest.cancel")}</button>
       </div>
     </form>
-  );
-}
-
-function DeleteHarvestSheet({ harvest, onClose, onDeleted }: { harvest: Harvest | null; onClose: () => void; onDeleted: () => void }) {
-  const { tr } = useLanguage();
-  const { toast } = useShell();
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteHarvest(id),
-    onSuccess: onDeleted,
-    onError: () => toast(tr("notify.harvest.deleteFailed")),
-  });
-  return (
-    <BottomSheet open={harvest !== null} onOpenChange={(open) => !open && onClose()} title={tr("notify.harvest.deleteTitle")} description={tr("notify.harvest.deleteBody")}>
-      <button type="button" className="btn btn--primary btn--block" disabled={!harvest || remove.isPending} data-testid="harvest-delete-yes" onClick={() => harvest && remove.mutate(harvest.id)}>{tr("notify.harvest.deleteYes")}</button>
-      <button type="button" className="btn btn--quiet btn--block" onClick={onClose}>{tr("notify.harvest.deleteKeep")}</button>
-    </BottomSheet>
   );
 }

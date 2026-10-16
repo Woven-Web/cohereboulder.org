@@ -8,7 +8,7 @@ vi.hoisted(() => {
 import type { MailMessage } from "./auth";
 import type { CommunityEvent } from "./events";
 import { verifyLink } from "./notify-core";
-import { fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
+import { MAX_EMAILS_PER_TICK, fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
 import { testD1 } from "./test-d1";
 
 const MOCK = "http://127.0.0.1:10049";
@@ -40,7 +40,7 @@ beforeEach(async () => {
   receiver = createPushReceiver(MOCK);
   const k = receiver.fixture;
   env = {
-    cohere: testD1(["../migrations/0004_event_rsvps.sql", "../migrations/0010_companion.sql", "../migrations/0011_members.sql", "../migrations/0012_notify.sql"]),
+    cohere: testD1(["../schema.sql"]),
     COHERE_AUTH: {} as KVNamespace,
     NOTIFY_PAUSED: "false", NOTIFY_LINK_SECRET: SECRET, PUBLIC_BASE_URL: "https://cohereboulder.org",
     VAPID_PUBLIC_KEY: k.publicKey, VAPID_PRIVATE_KEY: k.privateKey, VAPID_SUBJECT: k.subject,
@@ -267,9 +267,10 @@ describe("the morning note", () => {
     const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
     expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:sam@example.org", k: "unsub", t: "morning" });
-    const settings = /https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+)/.exec(message.text!.split("Notification settings: ")[1])![1];
-    expect(await verifyLink(SECRET, settings, new Date())).toMatchObject({ p: "mailto:sam@example.org", k: "settings" });
-    expect(message.html).toContain("Notification settings");
+    // "Change your settings" opens Me → notifications (which asks them to sign in); it is not a signed link.
+    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
+    expect(message.html).toContain("Change your settings");
+    expect(message.html).toContain('href="https://cohereboulder.org/more/notifications"');
   });
 });
 
@@ -457,7 +458,7 @@ describe("the 8 PM note", () => {
     await runNotifyCron(env, EVENING, deps);
     expect(mails).toHaveLength(1);
     const { message } = mails[0];
-    expect(message.subject).toBe("Ready for tomorrow: 4 events on Oct 17");
+    expect(message.subject).toBe("Tomorrow at COhere: Saturday, October 17");
     const going = /You’re going\n([^\n]+)\n(https:\/\/\S+)/.exec(message.text!);
     expect(going![1]).toMatch(/Soup Night.*· going/);
     const rsvpLinks = [...message.text!.matchAll(/RSVP: I’m going: (https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+))/g)];
@@ -477,6 +478,129 @@ describe("the 8 PM note", () => {
     await runNotifyCron(env, new Date("2026-10-16T12:00:00Z"), deps);
     await runNotifyCron(env, EVENING, deps);
     expect(pushed.map((p) => p.payload.url)).toEqual(["/today", "/tomorrow"]);
+  });
+});
+
+async function addRegistered(email: string, over: { subscribed?: number; tags?: string; form?: string } = {}) {
+  const id = `p-${email}`;
+  await db().prepare("INSERT INTO people(id,email,subscribed,unsubscribe_token,tags,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?6)")
+    .bind(id, email, over.subscribed ?? 1, `tok-${email}`, over.tags ?? null, "2026-10-01T00:00:00Z").run();
+  await db().prepare("INSERT INTO submissions(id,person_id,form_slug,data,created_at,updated_at) VALUES (?1,?2,?3,'{}',?4,?4)")
+    .bind(`s-${email}`, id, over.form ?? "register-2026", "2026-10-01T00:00:00Z").run();
+}
+
+describe("email by default for people registered for 2026", () => {
+  beforeEach(async () => {
+    events = [event("a", "2026-10-17T15:00:00Z", "2026-10-17T16:00:00Z", "Honoring Water"), event("b", "2026-10-17T19:00:00Z", null, "Soup Night")];
+    await addDaily("2026-10-17");
+  });
+
+  it("a registered person with no settings gets exactly one email a day: the 8 PM note, with tomorrow's practice in it", async () => {
+    await addRegistered("rae@example.org");
+    const result = await runNotifyCron(env, EVENING, deps);
+    expect(result.sent).toBe(1);
+    expect(pushed).toHaveLength(0);
+    expect(mails).toHaveLength(1);
+    const { to, message } = mails[0];
+    expect(to).toBe("rae@example.org");
+    expect(message.subject).toBe("Tomorrow at COhere: Saturday, October 17");
+    expect(message.text).toContain("Tomorrow’s practice");
+    expect(message.text).toContain("Learn three neighbours’ names");
+    expect(message.text).toContain("Learn the names of three neighbours. Say them out loud twice.");
+    expect(message.html).toContain("Learn the names of three neighbours. Say them out loud twice.");
+    // a one-click unsubscribe, and a settings link that asks them to sign in
+    const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
+    expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:rae@example.org", k: "unsub", t: "evening" });
+    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
+    expect(ledger()).toMatchObject([{ person_key: "mailto:rae@example.org", type: "evening", channel: "email", status: "sent" }]);
+  });
+  it("the same person gets no morning note and no harvest invitation unless they turn them on", async () => {
+    await addRegistered("rae@example.org");
+    await runNotifyCron(env, MORNING, deps); // 10-17 has a practice, so the morning run exists; they are simply not on its list
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toHaveLength(0);
+  });
+  it("a registered person who turned the 8 PM note on for the morning too gets both, by email", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", morning_on: 1 });
+    await runNotifyCron(env, MORNING, deps);
+    expect(mails).toHaveLength(1);
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(2);
+  });
+  it("sends nothing to someone who unsubscribed, was marked undeliverable, or did not register for 2026", async () => {
+    await addRegistered("gone@example.org", { subscribed: 0 });
+    await addRegistered("bounced@example.org", { tags: "friend, undeliverable" });
+    await addRegistered("old@example.org", { form: "register-2025" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toHaveLength(0);
+  });
+  it("sends nothing to someone who unsubscribed from the 8 PM note (their unsubscribe link wrote evening_on = 0)", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", evening_on: 0 });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(ledger()).toMatchObject([{ status: "skipped", reason: "off" }]);
+  });
+  it("one address, one email: an account and an address-keyed row for the same address do not both send", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs(ME, { email: "rae@example.org" });
+    await addPrefs("mailto:rae@example.org", { email: "rae@example.org", email_optin_at: "2026-10-02T00:00:00Z" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(1);
+    expect(ledger().map((r) => r.person_key)).toEqual([ME]);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails).toHaveLength(1);
+  });
+  it("a signed-in account whose verified address is a registration is also on by default, and not sent twice", async () => {
+    await addRegistered("rae@example.org");
+    await addPrefs(ME, { email: "rae@example.org" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails.map((m) => m.to)).toEqual(["rae@example.org"]);
+    expect(ledger()).toMatchObject([{ person_key: ME, channel: "email", status: "sent" }]);
+  });
+  it("people with the app keep today's defaults: all three notes by push, and a registration adds no email", async () => {
+    await addRegistered("rae@example.org");
+    await addDevice(ME);
+    await addPrefs(ME, { email: "rae@example.org" });
+    await runNotifyCron(env, EVENING, deps);
+    expect(pushed).toHaveLength(1);
+    expect(mails).toHaveLength(0);
+    await runNotifyCron(env, MORNING, deps);
+    expect(pushed).toHaveLength(2);
+    expect(mails).toHaveLength(0);
+  });
+  it("someone who is not registered and has no settings gets nothing at all", async () => {
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+    expect(pushed).toHaveLength(0);
+  });
+  it("phone and email both: a push to the live phone and the email, one ledger row", async () => {
+    await addRegistered("rae@example.org");
+    await addDevice(ME);
+    await addPrefs(ME, { email: "rae@example.org", evening_on: 1, evening_channel: "push" });
+    await db().prepare("UPDATE notify_prefs SET also_email = 'evening' WHERE person_key = ?1").bind(ME).run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(pushed).toHaveLength(1);
+    expect(mails).toHaveLength(1);
+    expect(ledger()).toMatchObject([{ person_key: ME, channel: "push+email", status: "sent" }]);
+  });
+  it("caps emails per tick and finishes the run on the next ticks, logging totals", async () => {
+    for (let i = 0; i < 95; i++) await addRegistered(`p${String(i).padStart(3, "0")}@example.org`);
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(MAX_EMAILS_PER_TICK);
+    expect(all("SELECT * FROM notify_runs WHERE completed_at IS NOT NULL")).toHaveLength(0);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails).toHaveLength(MAX_EMAILS_PER_TICK * 2);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 120_000), deps);
+    expect(mails).toHaveLength(95);
+    expect(new Set(mails.map((m) => m.to)).size).toBe(95);
+    expect(all("SELECT * FROM notify_runs WHERE completed_at IS NOT NULL")).toHaveLength(1);
+    expect(info.mock.calls.map((c) => String(c[0]))).toContain("notify evening 2026-10-16 done: 95 sent/email");
+    info.mockRestore();
   });
 });
 
@@ -522,12 +646,14 @@ describe("the harvest invitation", () => {
     expect(pushed).toHaveLength(0);
   });
   it("an email RSVP who said yes once gets it by email; one who never said yes does not", async () => {
+    // ends 8:30 PM, after the 8 PM note: the separate invitation stays
+    events = [event("water", "2026-10-17T00:30:00Z", "2026-10-17T02:30:00Z", "Honoring Water | with Angelique")];
     await addPrefs("mailto:sam@example.org", { email: "sam@example.org", email_optin_at: "2026-10-12T00:00:00Z" });
     await addPrefs("mailto:no@example.org", { email: "no@example.org" });
     for (const email of ["sam@example.org", "no@example.org", "stranger@example.org"]) {
       await db().prepare("INSERT INTO event_rsvps(id,event_did,event_rkey,event_name,event_starts_at,email,cancel_token,created_at) VALUES (?1,'did:plc:mockscene','water','Honoring Water','2026-10-16T15:00:00Z',?2,?1,'2026-10-12T00:00:00Z')").bind(`id-${email}`, email).run();
     }
-    await runNotifyCron(env, new Date("2026-10-16T17:15:00Z"), deps);
+    await runNotifyCron(env, new Date("2026-10-17T03:35:00Z"), deps);
     expect(mails.map((m) => m.to)).toEqual(["sam@example.org"]);
     expect(mails[0].message.subject).toBe("How was Honoring Water?");
     expect(mails[0].message.text).toContain("https://cohereboulder.org/events/did%3Aplc%3Amockscene/water");
@@ -556,5 +682,150 @@ describe("device sweeps", () => {
     expect(rows[D2ID]).toMatchObject({ state: "live", fail_count: 1 });
     await sweepDevices(env, new Date("2026-10-18T11:55:00Z"));
     expect(all("SELECT fail_count FROM notify_devices WHERE device_id = ?".replace("?", `'${D2ID}'`))[0].fail_count).toBe(1);
+  });
+});
+
+describe("the 8 PM note as the one daily email", () => {
+  // Today is Fri Oct 16 (Boulder). Water ended 10:15 AM and Tea 2 PM; Late ends 9 PM; tomorrow has three events.
+  const water = event("water", "2026-10-16T15:00:00Z", "2026-10-16T16:15:00Z", "Honoring Water | with Angelique");
+  const tea = event("tea", "2026-10-16T19:00:00Z", "2026-10-16T20:00:00Z", "Tea Circle");
+  const late = event("late", "2026-10-17T01:00:00Z", "2026-10-17T03:00:00Z", "Night Walk");
+  const tomorrow = [
+    event("a", "2026-10-17T15:00:00Z", "2026-10-17T16:00:00Z", "Honoring Water"),
+    event("b", "2026-10-17T19:00:00Z", null, "Soup Night"),
+    event("c", "2026-10-17T21:00:00Z", null, "Song Circle"),
+  ];
+  const SAM = "mailto:sam@example.org";
+  const rsvp = (email: string, rkey: string) =>
+    db().prepare("INSERT INTO event_rsvps(id,event_did,event_rkey,event_name,event_starts_at,email,cancel_token,created_at) VALUES (?1,'did:plc:mockscene',?2,'x','2026-10-16T15:00:00Z',?3,?1,'2026-10-12T00:00:00Z')").bind(`${rkey}-${email}`, rkey, email).run();
+  const harvest = (id: string, author: string, rkey: string, createdAt = "2026-10-16T22:00:00Z") =>
+    db().prepare("INSERT INTO harvests(id,event_did,event_rkey,event_name,author_did,body,created_at) VALUES (?1,'did:plc:mockscene',?2,'x',?3,'PRIVATE WORDS',?4)").bind(id, rkey, author, createdAt).run();
+  beforeEach(async () => {
+    events = [water, tea, late, ...tomorrow];
+    await addDaily("2026-10-17");
+    await addPrefs(SAM, { email: "sam@example.org", email_optin_at: "2026-10-12T00:00:00Z" });
+    await rsvp("sam@example.org", "water");
+    await rsvp("sam@example.org", "late");
+  });
+
+  it("carries every section in order: practice, going, also, share a harvest, new harvests, footer", async () => {
+    await rsvp("sam@example.org", "a");
+    await harvest("h1", "did:plc:x", "tea");
+    await harvest("h2", "did:plc:y", "tea");
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(1);
+    const { message } = mails[0];
+    expect(message.subject).toBe("Tomorrow at COhere: Saturday, October 17");
+    const t = message.text!;
+    const order = ["Tomorrow’s practice", "You’re going", "Also tomorrow", "Share a harvest", "New harvests today", "Change your settings"].map((h) => t.indexOf(h));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+    expect(t).toContain("Learn the names of three neighbours. Say them out loud twice.");
+    expect(t).toMatch(/Honoring Water.*· going/);
+    // water (ended 10 AM, went) is to share; late (ends 9 PM) and tea (did not go) are not
+    const share = t.slice(t.indexOf("Share a harvest"), t.indexOf("New harvests today"));
+    expect(share).toContain("Honoring Water | with Angelique");
+    expect(share).toContain("Share harvest: https://cohereboulder.org/events/did%3Aplc%3Amockscene/water");
+    expect(share).not.toContain("Night Walk");
+    expect(share).not.toContain("Tea Circle");
+    expect(t).toContain("2 people shared harvests today: https://cohereboulder.org/today");
+    expect(message.html).toContain("Share harvest");
+  });
+  it("leaves out a section that is empty", async () => {
+    events = tomorrow;
+    await runNotifyCron(env, EVENING, deps);
+    const t = mails[0].message.text!;
+    expect(t).toContain("Tomorrow’s practice");
+    expect(t).toContain("Also tomorrow");
+    for (const gone of ["You’re going", "Share a harvest", "New harvests today"]) expect(t).not.toContain(gone);
+    mails.length = 0;
+    await db().prepare("DELETE FROM companion_daily").run();
+    await db().prepare("DELETE FROM notify_ledger").run();
+    await db().prepare("DELETE FROM notify_runs").run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails[0].message.text).not.toContain("Tomorrow’s practice");
+  });
+  it("does not offer a harvest already shared, and says nothing of an event they did not go to", async () => {
+    await harvest("h1", "did:plc:sam", "water");
+    await db().prepare("UPDATE notify_prefs SET did = NULL WHERE person_key = ?1").bind(SAM).run();
+    // an account person who shared: no share section; the count still shows
+    await addPrefs(ME, { email: "me@example.org", evening_channel: "email", evening_on: 1 });
+    guests["did:plc:mockscene/water"] = [ME];
+    await harvest("h2", ME, "water");
+    await runNotifyCron(env, EVENING, deps);
+    const mine = mails.find((m) => m.to === "me@example.org")!.message.text!;
+    expect(mine).not.toContain("Share a harvest");
+    expect(mine).toContain("2 people shared harvests today");
+  });
+  it("never puts a harvest's words, or its author, in the email", async () => {
+    await harvest("h1", "did:plc:x", "tea");
+    await runNotifyCron(env, EVENING, deps);
+    const { message } = mails[0];
+    expect(message.text).not.toContain("PRIVATE WORDS");
+    expect(message.html).not.toContain("PRIVATE WORDS");
+    expect(message.text).not.toContain("did:plc:x");
+    expect(message.text).toContain("1 person shared a harvest today");
+  });
+  it("a hidden harvest is not counted", async () => {
+    await harvest("h1", "did:plc:x", "tea");
+    await db().prepare("INSERT INTO board_moderation(uri,state,created_at,updated_at) VALUES ('cohere:harvest/h1','hidden','2026-10-16T23:00:00Z','2026-10-16T23:00:00Z')").run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails[0].message.text).not.toContain("New harvests today");
+  });
+  it("sends on a day with a practice tomorrow and no events", async () => {
+    events = [];
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(1);
+    const t = mails[0].message.text!;
+    expect(t).toContain("Tomorrow’s practice");
+    expect(t).not.toContain("Open tomorrow in COhere");
+    expect(t).not.toContain("Also tomorrow");
+  });
+  it("sends on a day with only a harvest to share, and nothing when there is truly nothing", async () => {
+    events = [water];
+    await db().prepare("DELETE FROM companion_daily").run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(1);
+    expect(mails[0].message.text).toContain("Share a harvest");
+    mails.length = 0;
+    await db().prepare("DELETE FROM notify_ledger").run();
+    await db().prepare("DELETE FROM notify_runs").run();
+    await db().prepare("DELETE FROM event_rsvps").run();
+    await runNotifyCron(env, EVENING, deps);
+    expect(mails).toHaveLength(0);
+  });
+  it("a push person on a practice-only day gets no 8 PM push", async () => {
+    events = [];
+    await addDevice(ME);
+    await addPrefs(ME);
+    await runNotifyCron(env, EVENING, deps);
+    expect(pushed).toHaveLength(0);
+  });
+  it("the harvest email is not sent again for an event the digest carried (ended before 8 PM), and is for one ending later", async () => {
+    // ended 10:15 AM → digest carries it → the 11:15 AM harvest invitation is not emailed
+    await runNotifyCron(env, new Date("2026-10-16T17:15:00Z"), deps);
+    expect(mails).toHaveLength(0);
+    expect(all("SELECT reason FROM notify_ledger WHERE type = 'harvest'")).toEqual([{ reason: "in-digest" }]);
+    // ... and the digest has it, once
+    await runNotifyCron(env, EVENING, deps);
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails.filter((m) => m.message.text!.includes("Share a harvest"))).toHaveLength(1);
+    // ended 9 PM → the digest cannot carry it → the separate invitation goes
+    await runNotifyCron(env, new Date("2026-10-17T04:05:00Z"), deps);
+    const harvestMails = mails.filter((m) => m.message.subject.startsWith("How was"));
+    expect(harvestMails.map((m) => m.message.subject)).toEqual(["How was Night Walk?"]);
+  });
+  it("someone whose 8 PM note is off still gets the separate harvest email", async () => {
+    await db().prepare("UPDATE notify_prefs SET evening_on = 0 WHERE person_key = ?1").bind(SAM).run();
+    await runNotifyCron(env, new Date("2026-10-16T17:15:00Z"), deps);
+    expect(mails.map((m) => m.message.subject)).toEqual(["How was Honoring Water?"]);
+  });
+  it("a push harvest invitation is unchanged by the digest", async () => {
+    await addDevice(ME);
+    await addPrefs(ME);
+    guests["did:plc:mockscene/water"] = [ME];
+    await runNotifyCron(env, new Date("2026-10-16T17:15:00Z"), deps);
+    expect(pushed).toHaveLength(1);
+    expect(pushed[0].payload.title).toBe("How was Honoring Water?");
   });
 });

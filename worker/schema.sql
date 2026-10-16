@@ -324,6 +324,7 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
   morning_channel   TEXT CHECK (morning_channel IN ('push', 'email')),
   harvest_channel   TEXT CHECK (harvest_channel IN ('push', 'email')),
   evening_channel   TEXT CHECK (evening_channel IN ('push', 'email')),
+  also_email        TEXT,               -- note types that also go by email on top of push (0014)
   email             TEXT,
   email_verified_at TEXT,
   email_optin_at    TEXT,               -- the one-tap ask in the RSVP confirmation (harvest + 8 PM emails)

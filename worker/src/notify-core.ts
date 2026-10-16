@@ -153,6 +153,8 @@ export interface Prefs {
   morning_channel: Channel | null;
   harvest_channel: Channel | null;
   evening_channel: Channel | null;
+  /** Comma-separated note types that also go by email when the channel is push ("both"). */
+  also_email: string | null;
   email: string | null;
   email_verified_at: string | null;
   email_optin_at: string | null;
@@ -160,7 +162,7 @@ export interface Prefs {
 
 export const emptyPrefs = (): Prefs => ({
   morning_on: null, harvest_on: null, evening_on: null,
-  morning_channel: null, harvest_channel: null, evening_channel: null,
+  morning_channel: null, harvest_channel: null, evening_channel: null, also_email: null,
   email: null, email_verified_at: null, email_optin_at: null,
 });
 
@@ -169,13 +171,26 @@ export interface Reach {
   livePush: boolean;
   /** The person has installed the app on some phone, live or not. */
   hasApp: boolean;
-  /** A verified address we may write to. */
+  /** A verified address we may write to, or the address they registered with. */
   email: string | null;
+  /** Has a 2026 registration and has not unsubscribed from COhere mail. */
+  registered: boolean;
+}
+
+/** Does this note also go by email, on top of push? */
+export const alsoEmail = (prefs: Pick<Prefs, "also_email">, type: NotifyType): boolean => (prefs.also_email ?? "").split(",").includes(type);
+
+export function withAlsoEmail(prefs: Pick<Prefs, "also_email">, type: NotifyType, on: boolean): string | null {
+  const next = new Set((prefs.also_email ?? "").split(",").filter(isNotifyType));
+  if (on) next.add(type);
+  else next.delete(type);
+  return next.size ? NOTIFY_TYPES.filter((t) => next.has(t)).join(",") : null;
 }
 
 export type Decision =
   | { action: "push"; fellBack: false }
   | { action: "email"; fellBack: boolean }
+  | { action: "both" }
   | { action: "skip"; reason: "off" | "unreachable" | "no-app-no-optin" };
 
 /** Is this note on? Explicit settings win; otherwise the defaults from the brief. */
@@ -184,6 +199,8 @@ export function isOn(type: NotifyType, prefs: Prefs, reach: Reach): boolean {
   if (explicit !== null && explicit !== undefined) return explicit === 1;
   // People who installed the app did so for this: all three on.
   if (reach.hasApp) return true;
+  // Registered for 2026: the 8 PM note (tomorrow's events and practice) by email, until they turn it off.
+  if (reach.registered && type === "evening") return true;
   // Email-only: the morning note is opt-in; the other two need the one-tap ask.
   if (type === "morning") return false;
   return prefs.email_optin_at !== null;
@@ -202,9 +219,18 @@ export function decide(type: NotifyType, prefs: Prefs, reach: Reach): Decision {
   const stored = prefs[`${type}_channel`];
   // Someone with the app who never picked a channel is, by default, a push person.
   const wantsPush = stored === "push" || (stored === null && reach.hasApp);
+  // Phone and email both: the phone if it is live, and the email either way.
+  if (wantsPush && alsoEmail(prefs, type) && reach.email) return reach.livePush ? { action: "both" } : { action: "email", fellBack: reach.hasApp };
   if (wantsPush && reach.livePush) return { action: "push", fellBack: false };
   if (reach.email) return { action: "email", fellBack: wantsPush && reach.hasApp };
   return { action: "skip", reason: "unreachable" };
+}
+
+/** Which of the two toggles settings shows as pressed, mirroring `decide` without the on/off. */
+export function effectiveChannels(type: NotifyType, prefs: Prefs, reach: Reach): { phone: boolean; email: boolean } {
+  const on = isOn(type, prefs, reach);
+  const channel = effectiveChannel(type, prefs, reach);
+  return { phone: on && channel === "push", email: on && (channel === "email" || alsoEmail(prefs, type)) };
 }
 
 /** The channel settings should show as selected, mirroring `decide` without the on/off. */
