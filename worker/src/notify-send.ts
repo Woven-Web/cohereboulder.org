@@ -369,7 +369,7 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
     return going;
   };
   const lines = (events: CommunityEvent[], going: Set<string>): EventLine[] =>
-    events.map((e) => ({ did: e.did, rkey: e.rkey, name: e.name, startsAt: e.startsAt, endsAt: e.endsAt, where: whereOf(e), going: going.has(keyOf(e)) }));
+    events.map((e) => ({ did: e.did, rkey: e.rkey, name: e.name, startsAt: e.startsAt, endsAt: e.endsAt, where: whereOf(e), description: e.description, going: going.has(keyOf(e)) }));
   const people = async (withRegistered = false): Promise<Recipient[]> =>
     (await peopleFor(env, await registeredEmails(db), withRegistered)).map((p) => ({ key: p.key, person: p }));
 

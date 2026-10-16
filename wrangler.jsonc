@@ -79,7 +79,7 @@
     // "true" adds a signed-in person whose verified email is registered for
     // register-2026 to the COhere scene as a member, once, with the service
     // token (worker/src/registration.ts). Off until the organizers decide.
-    "AUTO_MEMBER_ON_SIGNIN": "false"
+    "AUTO_MEMBER_ON_SIGNIN": "true"
   },
   "d1_databases": [
     {

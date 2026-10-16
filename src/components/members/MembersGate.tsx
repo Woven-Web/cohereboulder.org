@@ -32,6 +32,15 @@ export function MembersGate({ status, onRetry }: Props) {
       </div>
     );
   }
+  if (status === "registered-not-member") {
+    return (
+      <div className="gate" data-testid="members-gate" data-gate="registered-not-member">
+        <h2 className="h3">{tr("members.gate.registeredTitle")}</h2>
+        <p className="lede">{tr("members.gate.registeredBody")}</p>
+        {onRetry && <div className="gate__acts"><button type="button" className="btn btn--line btn--sm" onClick={onRetry}>{tr("members.gate.checkAgain")}</button></div>}
+      </div>
+    );
+  }
   const signedOut = status === "signed-out";
   return (
     <div className="gate" data-testid="members-gate" data-gate={status}>

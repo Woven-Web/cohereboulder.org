@@ -15,6 +15,8 @@ export interface EventLine {
   startsAt: string | null;
   endsAt: string | null;
   where: string | null;
+  /** The event's own description, verbatim from the record; the digest shows a short preview. */
+  description?: string | null;
   /** The person RSVP'd (account RSVP, or an email RSVP for this address). */
   going: boolean;
 }
@@ -52,17 +54,40 @@ export function dateLabel(date: string, lang: Lang, long = false): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
+/**
+ * A 1–2 line preview of an event's own words: markup and markdown stripped,
+ * cut on a word boundary near `max` characters. Nothing is written or reworded.
+ */
+export function preview(description: string | null | undefined, max = 160): string {
+  const plain = (description ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/(\*\*|__|~~|`)/g, "")
+    .replace(/(^|\s)[*_]+|[*_]+(?=\s|$)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  const chars = Array.from(plain);
+  if (chars.length <= max) return plain;
+  const cut = chars.slice(0, max).join("");
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.\-–—]+$/, "")}…`;
+}
+
 const sentences = (s: string) => (s.match(/[^.!?]+[.!?]+/g) ?? [s]).map((x) => x.trim()).filter(Boolean);
 
 const T = {
   en: {
     day: "Day", thenAsk: "Then ask:", settings: "Settings", openToday: "Open Today", rsvpTomorrow: "RSVP for tomorrow", share: "Share harvest",
     going: "going", more: (n: number) => `+ ${n} more event${n === 1 ? "" : "s"} today`, moreTomorrow: (n: number) => `+ ${n} more`,
-    youreGoing: "You’re going", eventsToday: "Today’s events", also: "Also", alsoToday: "Also today", alsoTomorrow: "Also tomorrow", yourEvents: "Your events today",
+    youreGoing: "You’re going", eventsToday: "Today’s events", also: "Also", alsoToday: "Also today", yourEvents: "Your events today",
     practice: "Today’s practice", dayOf: (n: number, d: string) => `Day ${n} of 11 · ${d}`, openTodayLink: "Open Today in COhere",
     details: "Details", imGoing: "I’m going", rsvp: "RSVP: I’m going",
     readyTitle: "Ready for tomorrow?", readyBody: (n: number, d: string, m: number) => `${n} event${n === 1 ? "" : "s"} · ${d} · going to ${m}`,
-    readyMail: (d: string) => d, openTomorrow: "Open tomorrow in COhere",
+    readyMail: (d: string) => d, tomorrowEvents: "Tomorrow’s events", todaysHarvests: "Today’s harvests", rsvpd: "✓ RSVP’d", sentTo: (to: string) => `Sent to ${to}`,
     harvestTitle: (n: string) => `How was ${n}?`, harvestBody: "Share your harvest.", harvestLine: "",
     harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
     harvestAsk: "How was it?", harvestLink: "Share your harvest",
@@ -74,7 +99,6 @@ const T = {
     subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`,
     subjectHarvest: (n: string) => `How was ${n}?`,
     subjectDigest: (d: string) => `Tomorrow at COhere: ${d}`,
-    shareHarvest: "Share a harvest", newHarvests: "New harvests today",
     harvestsToday: (n: number) => (n === 1 ? "1 person shared a harvest today" : `${n} people shared harvests today`),
     testTitle: "Push is working", testBody: "Test from COhere.",
     verifySubject: "Confirm your email", verifyHeading: "Is this your email?", verifyBody: "Confirm this address.",
@@ -85,11 +109,11 @@ const T = {
   es: {
     day: "Día", thenAsk: "Luego pregúntate:", settings: "Ajustes", openToday: "Abrir Hoy", rsvpTomorrow: "RSVP para mañana", share: "Compartir cosecha",
     going: "voy", more: (n: number) => `+ ${n} evento${n === 1 ? "" : "s"} más hoy`, moreTomorrow: (n: number) => `+ ${n} más`,
-    youreGoing: "Vas a", eventsToday: "Los eventos de hoy", also: "También", alsoToday: "También hoy", alsoTomorrow: "También mañana", yourEvents: "Tus eventos de hoy",
+    youreGoing: "Vas a", eventsToday: "Los eventos de hoy", also: "También", alsoToday: "También hoy", yourEvents: "Tus eventos de hoy",
     practice: "La práctica de hoy", dayOf: (n: number, d: string) => `Día ${n} de 11 · ${d}`, openTodayLink: "Abrir Hoy en COhere",
     details: "Detalles", imGoing: "Voy", rsvp: "RSVP: voy",
     readyTitle: "¿Lista para mañana?", readyBody: (n: number, d: string, m: number) => `${n} evento${n === 1 ? "" : "s"} · ${d} · voy a ${m}`,
-    readyMail: (d: string) => d, openTomorrow: "Abrir mañana en COhere",
+    readyMail: (d: string) => d, tomorrowEvents: "Los eventos de mañana", todaysHarvests: "Las cosechas de hoy", rsvpd: "✓ RSVP hecho", sentTo: (to: string) => `Enviado a ${to}`,
     harvestTitle: (n: string) => `¿Cómo estuvo ${n}?`, harvestBody: "Comparte tu cosecha.", harvestLine: "",
     harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
     harvestAsk: "¿Cómo estuvo?", harvestLink: "Comparte tu cosecha",
@@ -101,7 +125,6 @@ const T = {
     subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`,
     subjectHarvest: (n: string) => `¿Cómo estuvo ${n}?`,
     subjectDigest: (d: string) => `Mañana en COhere: ${d}`,
-    shareHarvest: "Comparte una cosecha", newHarvests: "Cosechas nuevas de hoy",
     harvestsToday: (n: number) => (n === 1 ? "1 persona compartió una cosecha hoy" : `${n} personas compartieron cosechas hoy`),
     testTitle: "El push funciona", testBody: "Prueba de COhere.",
     verifySubject: "Confirma tu correo", verifyHeading: "¿Es este tu correo?", verifyBody: "Confirma esta dirección.",
@@ -134,16 +157,16 @@ const A = 'style="color:#36558F"';
 const H = 'style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5f6368;margin:18px 0 6px"';
 const eventUrl = (base: string, e: EventLine) => `${base}/events/${encodeURIComponent(e.did)}/${encodeURIComponent(e.rkey)}`;
 
-function frame(type: NotifyType, ctx: MailContext, heading: string, bodyHtml: string, bodyText: string, subject: string): MailMessage {
+function frame(type: NotifyType, ctx: MailContext, heading: string, bodyHtml: string, bodyText: string, subject: string, because?: string): MailMessage {
   const c = T[ctx.lang];
-  const name = c.names[type];
+  const label = because ?? c.because(c.names[type], ctx.to);
   const top = ctx.fellBack ? `<p ${P}><i>${esc(c.fellBack)}</i> <a href="${esc(ctx.pushSettingsUrl)}" ${A}>${esc(c.fellBackLink)}</a></p>` : "";
   const topText = ctx.fellBack ? `${c.fellBack} ${c.fellBackLink}: ${ctx.pushSettingsUrl}\n\n` : "";
-  const footer = `${esc(c.because(name, ctx.to))}<br><a href="${esc(ctx.settingsUrl)}" ${A}>${esc(c.change)}</a> · <a href="${esc(ctx.unsubUrl)}" ${A}>${esc(c.unsub())}</a>`;
+  const footer = `${esc(label)}<br><a href="${esc(ctx.settingsUrl)}" ${A}>${esc(c.change)}</a> · <a href="${esc(ctx.unsubUrl)}" ${A}>${esc(c.unsub())}</a>`;
   return {
     subject,
     html: mailShell(esc(heading), top + bodyHtml, footer),
-    text: `${topText}${bodyText}\n\n${c.because(name, ctx.to)}\n${c.change}: ${ctx.settingsUrl}\n${c.unsub()}: ${ctx.unsubUrl}`,
+    text: `${topText}${bodyText}\n\n${label}\n${c.change}: ${ctx.settingsUrl}\n${c.unsub()}: ${ctx.unsubUrl}`,
     headers: { "List-Unsubscribe": `<${ctx.unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   };
 }
@@ -254,31 +277,52 @@ export function eveningPush(input: EveningInput, deviceId?: string): PushPayload
 
 export function eveningEmail(input: EveningInput, ctx: MailContext, rsvpLink: (e: EventLine) => string): MailMessage {
   const c = T[ctx.lang];
-  const events = ordered(input.events);
-  const mine = events.filter((e) => e.going), rest = events.filter((e) => !e.going);
+  const events = [...input.events].sort((a, b) => (Date.parse(a.startsAt ?? "") || 0) - (Date.parse(b.startsAt ?? "") || 0));
   const share = input.toShare ?? [];
   const count = input.harvestsToday ?? 0;
   const practice = input.daily?.title ? practiceLines({ date: input.date, daily: input.daily, events: [], lang: ctx.lang }) : null;
-  const ul = 'style="margin:0 0 12px;padding:0;list-style:none"';
   const todayUrl = `${ctx.base}/today`;
+  const sub = 'style="color:#5f6368;font-size:14px"';
+  const btn = 'style="display:inline-block;background:#36558F;color:#ffffff;text-decoration:none;padding:6px 12px;border-radius:6px;font-size:14px"';
+  const meta = (e: EventLine) => `<b>${esc(timeOf(e.startsAt, ctx.lang))}</b> ${esc(e.name)}${e.where ? `<br><span ${sub}>${esc(e.where)}</span>` : ""}`;
+  const eventHtml = (e: EventLine) => {
+    const blurb = preview(e.description);
+    return `<li style="padding:10px 0;border-top:1px solid #eee">${meta(e)}` +
+      (blurb ? `<br><span ${sub}>${esc(blurb)}</span>` : "") +
+      `<br><span style="font-size:14px"><a href="${esc(eventUrl(ctx.base, e))}" ${A}>${esc(c.details)}</a> &nbsp; ` +
+      (e.going ? `<b style="color:#2e7d32">${esc(c.rsvpd)}</b>` : `<a href="${esc(rsvpLink(e))}" ${btn}>${esc(c.rsvp)}</a>`) +
+      `</span></li>`;
+  };
+  const shareHtml = (e: EventLine) =>
+    `<li style="padding:10px 0;border-top:1px solid #eee">${meta(e)}<br><span style="font-size:14px"><a href="${esc(eventUrl(ctx.base, e))}" ${A}>${esc(c.share)}</a></span></li>`;
+  const ul = 'style="margin:0 0 12px;padding:0;list-style:none"';
   const html =
     `<p ${P}>${esc(c.readyMail(dateLabel(input.date, ctx.lang, true)))}</p>` +
     (practice ? `<h4 ${H}>${esc(c.tomorrowPractice)}</h4><p ${P}><b>${esc(practice.title)}</b><br>${esc(practice.body)}</p>` : "") +
-    (mine.length ? `<h4 ${H}>${esc(c.youreGoing)}</h4><ul ${ul}>${mine.map((e) => eventLi(e, ctx, { href: eventUrl(ctx.base, e), label: c.details })).join("")}</ul>` : "") +
-    (rest.length ? `<h4 ${H}>${esc(c.alsoTomorrow)}</h4><ul ${ul}>${rest.map((e) => eventLi(e, ctx, { href: rsvpLink(e), label: c.rsvp })).join("")}</ul>` : "") +
-    (share.length ? `<h4 ${H}>${esc(c.shareHarvest)}</h4><ul ${ul}>${share.map((e) => eventLi({ ...e, going: false }, ctx, { href: eventUrl(ctx.base, e), label: c.share })).join("")}</ul>` : "") +
-    (count > 0 ? `<h4 ${H}>${esc(c.newHarvests)}</h4><p ${P}><a href="${esc(todayUrl)}" ${A}>${esc(c.harvestsToday(count))}</a></p>` : "") +
-    (events.length ? `<p ${P}><a href="${esc(`${ctx.base}/tomorrow`)}" ${A}>${esc(c.openTomorrow)}</a></p>` : "");
+    (events.length ? `<h4 ${H}>${esc(c.tomorrowEvents)}</h4><ul ${ul}>${events.map(eventHtml).join("")}</ul>` : "") +
+    (share.length || count > 0
+      ? `<h4 ${H}>${esc(c.todaysHarvests)}</h4>` +
+        (share.length ? `<ul ${ul}>${share.map(shareHtml).join("")}</ul>` : "") +
+        (count > 0 ? `<p ${P}><a href="${esc(todayUrl)}" ${A}>${esc(c.harvestsToday(count))}</a></p>` : "")
+      : "");
+  const head = (e: EventLine) => `${timeOf(e.startsAt, ctx.lang)} ${e.name}${e.where ? ` · ${e.where}` : ""}`;
   const text = [
     c.readyMail(dateLabel(input.date, ctx.lang, true)), "",
     ...(practice ? [c.tomorrowPractice, practice.title, practice.body, ""] : []),
-    ...(mine.length ? [c.youreGoing, ...mine.map((e) => eventText(e, ctx.lang, eventUrl(ctx.base, e))), ""] : []),
-    ...(rest.length ? [c.alsoTomorrow, ...rest.map((e) => `${eventText(e, ctx.lang, rsvpLink(e)).replace(/\n/, `\n${c.rsvp}: `)}`), ""] : []),
-    ...(share.length ? [c.shareHarvest, ...share.map((e) => eventText({ ...e, going: false }, ctx.lang, eventUrl(ctx.base, e)).replace(/\n/, `\n${c.share}: `)), ""] : []),
-    ...(count > 0 ? [c.newHarvests, `${c.harvestsToday(count)}: ${todayUrl}`, ""] : []),
-    ...(events.length ? [`${c.openTomorrow}: ${ctx.base}/tomorrow`] : []),
+    ...(events.length
+      ? [c.tomorrowEvents, "", ...events.flatMap((e) => [
+          head(e),
+          ...(preview(e.description) ? [preview(e.description)] : []),
+          `${c.details}: ${eventUrl(ctx.base, e)}`,
+          e.going ? c.rsvpd : `${c.rsvp}: ${rsvpLink(e)}`,
+          "",
+        ])]
+      : []),
+    ...(share.length || count > 0
+      ? [c.todaysHarvests, "", ...share.flatMap((e) => [head(e), `${c.share}: ${eventUrl(ctx.base, e)}`, ""]), ...(count > 0 ? [`${c.harvestsToday(count)}: ${todayUrl}`, ""] : [])]
+      : []),
   ].join("\n").trimEnd();
-  return frame("evening", ctx, c.readyTitle, html, text, c.subjectDigest(dateLabel(input.date, ctx.lang, true)));
+  return frame("evening", ctx, c.readyTitle, html, text, c.subjectDigest(dateLabel(input.date, ctx.lang, true)), c.sentTo(ctx.to));
 }
 
 // ----------------------------------------------------------------- harvest

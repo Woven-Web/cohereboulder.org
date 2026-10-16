@@ -63,7 +63,7 @@ interface SavedRow {
   data: string | null;
 }
 
-export async function handleMyRegistration(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+export async function handleMyRegistration(request: Request, env: Env, _ctx?: ExecutionContext): Promise<Response> {
   const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   if (request.method !== "GET") return json({ error: "MethodNotAllowed" }, 405);
   const url = new URL("/xrpc/social.scenius.getSession", request.url);
@@ -86,9 +86,10 @@ export async function handleMyRegistration(request: Request, env: Env, ctx?: Exe
     .first<SavedRow>();
   const registered = typeof row?.data === "string";
   if (registered && autoMemberEnabled(env)) {
-    const work = autoMember(env, session.did, typeof session.handle === "string" ? session.handle : null);
-    if (ctx) ctx.waitUntil(work);
-    else await work;
+    // Awaited, not waitUntil: the page re-reads the roster right after this
+    // answer, and a grant still in flight would send them back to the gate.
+    // autoMember never throws and its calls are time-boxed.
+    await autoMember(env, session.did, typeof session.handle === "string" ? session.handle : null);
   }
   if (!detail) return json({ registered });
   let answers: Record<string, unknown> = {};

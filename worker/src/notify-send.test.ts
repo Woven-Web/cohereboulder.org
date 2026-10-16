@@ -459,8 +459,8 @@ describe("the 8 PM note", () => {
     expect(mails).toHaveLength(1);
     const { message } = mails[0];
     expect(message.subject).toBe("Tomorrow at COhere: Saturday, October 17");
-    const going = /You’re going\n([^\n]+)\n(https:\/\/\S+)/.exec(message.text!);
-    expect(going![1]).toMatch(/Soup Night.*· going/);
+    const soup = message.text!.slice(message.text!.indexOf("Soup Night"));
+    expect(soup.split("\n")[2]).toBe("✓ RSVP’d");
     const rsvpLinks = [...message.text!.matchAll(/RSVP: I’m going: (https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+))/g)];
     expect(rsvpLinks).toHaveLength(3);
     const payload = await verifyLink(SECRET, rsvpLinks[0][2], new Date());
@@ -708,7 +708,7 @@ describe("the 8 PM note as the one daily email", () => {
     await rsvp("sam@example.org", "late");
   });
 
-  it("carries every section in order: practice, going, also, share a harvest, new harvests, footer", async () => {
+  it("carries every section in order: practice, one list of tomorrow's events, today's harvests, footer", async () => {
     await rsvp("sam@example.org", "a");
     await harvest("h1", "did:plc:x", "tea");
     await harvest("h2", "did:plc:y", "tea");
@@ -717,27 +717,48 @@ describe("the 8 PM note as the one daily email", () => {
     const { message } = mails[0];
     expect(message.subject).toBe("Tomorrow at COhere: Saturday, October 17");
     const t = message.text!;
-    const order = ["Tomorrow’s practice", "You’re going", "Also tomorrow", "Share a harvest", "New harvests today", "Change your settings"].map((h) => t.indexOf(h));
+    const order = ["Tomorrow’s practice", "Tomorrow’s events", "Today’s harvests", "Change your settings"].map((h) => t.indexOf(h));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
     expect(t).toContain("Learn the names of three neighbours. Say them out loud twice.");
-    expect(t).toMatch(/Honoring Water.*· going/);
+    // one list, time order, with the going one marked and the others offering the one-tap RSVP
+    const events = t.slice(t.indexOf("Tomorrow’s events"), t.indexOf("Today’s harvests"));
+    expect(events.indexOf("Honoring Water")).toBeLessThan(events.indexOf("Soup Night"));
+    expect(events.indexOf("Soup Night")).toBeLessThan(events.indexOf("Song Circle"));
+    expect(events.match(/✓ RSVP’d/g)).toHaveLength(1);
+    expect(events.match(/RSVP: I’m going: https:/g)).toHaveLength(2);
+    expect(events.match(/Details: https:/g)).toHaveLength(3);
+    expect(t).not.toMatch(/You’re going|Also tomorrow|Open tomorrow in COhere|Ready for tomorrow/);
+    expect(t).toContain("Sent to sam@example.org");
     // water (ended 10 AM, went) is to share; late (ends 9 PM) and tea (did not go) are not
-    const share = t.slice(t.indexOf("Share a harvest"), t.indexOf("New harvests today"));
+    const share = t.slice(t.indexOf("Today’s harvests"), t.indexOf("Sent to"));
     expect(share).toContain("Honoring Water | with Angelique");
     expect(share).toContain("Share harvest: https://cohereboulder.org/events/did%3Aplc%3Amockscene/water");
     expect(share).not.toContain("Night Walk");
     expect(share).not.toContain("Tea Circle");
     expect(t).toContain("2 people shared harvests today: https://cohereboulder.org/today");
     expect(message.html).toContain("Share harvest");
+    expect(message.html).toContain("color:#2e7d32");
+  });
+  it("previews an event's own description, cleaned and cut on a word, never reworded", async () => {
+    const long = "**Join us** for a [water ceremony](https://x.test/a) at the creek. <p>Bring a cup &amp; a friend.</p> " + "We will walk slowly and listen to the water together. ".repeat(6);
+    events = [{ ...water }, { ...tomorrow[0], description: long }, tomorrow[1]];
+    await runNotifyCron(env, EVENING, deps);
+    const t = mails[0].message.text!;
+    const line = t.split("\n").find((l) => l.startsWith("Join us for a water ceremony at the creek. Bring a cup & a friend."))!;
+    expect(line).toBeTruthy();
+    expect(line.length).toBeLessThanOrEqual(162);
+    expect(line.endsWith("…")).toBe(true);
+    expect(line).not.toMatch(/[*<>[\]]|https/);
+    expect(mails[0].message.html).toContain("Join us for a water ceremony");
   });
   it("leaves out a section that is empty", async () => {
     events = tomorrow;
     await runNotifyCron(env, EVENING, deps);
     const t = mails[0].message.text!;
     expect(t).toContain("Tomorrow’s practice");
-    expect(t).toContain("Also tomorrow");
-    for (const gone of ["You’re going", "Share a harvest", "New harvests today"]) expect(t).not.toContain(gone);
+    expect(t).toContain("Tomorrow’s events");
+    expect(t).not.toContain("Today’s harvests");
     mails.length = 0;
     await db().prepare("DELETE FROM companion_daily").run();
     await db().prepare("DELETE FROM notify_ledger").run();
@@ -754,7 +775,7 @@ describe("the 8 PM note as the one daily email", () => {
     await harvest("h2", ME, "water");
     await runNotifyCron(env, EVENING, deps);
     const mine = mails.find((m) => m.to === "me@example.org")!.message.text!;
-    expect(mine).not.toContain("Share a harvest");
+    expect(mine).not.toContain("Share harvest");
     expect(mine).toContain("2 people shared harvests today");
   });
   it("never puts a harvest's words, or its author, in the email", async () => {
@@ -770,7 +791,7 @@ describe("the 8 PM note as the one daily email", () => {
     await harvest("h1", "did:plc:x", "tea");
     await db().prepare("INSERT INTO board_moderation(uri,state,created_at,updated_at) VALUES ('cohere:harvest/h1','hidden','2026-10-16T23:00:00Z','2026-10-16T23:00:00Z')").run();
     await runNotifyCron(env, EVENING, deps);
-    expect(mails[0].message.text).not.toContain("New harvests today");
+    expect(mails[0].message.text).not.toMatch(/shared a? ?harvest/);
   });
   it("sends on a day with a practice tomorrow and no events", async () => {
     events = [];
@@ -778,15 +799,14 @@ describe("the 8 PM note as the one daily email", () => {
     expect(mails).toHaveLength(1);
     const t = mails[0].message.text!;
     expect(t).toContain("Tomorrow’s practice");
-    expect(t).not.toContain("Open tomorrow in COhere");
-    expect(t).not.toContain("Also tomorrow");
+    expect(t).not.toContain("Tomorrow’s events");
   });
   it("sends on a day with only a harvest to share, and nothing when there is truly nothing", async () => {
     events = [water];
     await db().prepare("DELETE FROM companion_daily").run();
     await runNotifyCron(env, EVENING, deps);
     expect(mails).toHaveLength(1);
-    expect(mails[0].message.text).toContain("Share a harvest");
+    expect(mails[0].message.text).toContain("Today’s harvests");
     mails.length = 0;
     await db().prepare("DELETE FROM notify_ledger").run();
     await db().prepare("DELETE FROM notify_runs").run();
@@ -809,7 +829,7 @@ describe("the 8 PM note as the one daily email", () => {
     // ... and the digest has it, once
     await runNotifyCron(env, EVENING, deps);
     await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
-    expect(mails.filter((m) => m.message.text!.includes("Share a harvest"))).toHaveLength(1);
+    expect(mails.filter((m) => m.message.text!.includes("Today’s harvests"))).toHaveLength(1);
     // ended 9 PM → the digest cannot carry it → the separate invitation goes
     await runNotifyCron(env, new Date("2026-10-17T04:05:00Z"), deps);
     const harvestMails = mails.filter((m) => m.message.subject.startsWith("How was"));
