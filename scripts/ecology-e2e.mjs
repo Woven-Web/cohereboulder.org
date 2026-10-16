@@ -370,7 +370,7 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
 // Calendar by width: the week is the default from 1024px (a choice sticks), tablets get a two-column day list, phones the day.
 {
   const { context, page } = await session({ width: 1280, height: 800, member: "mock-peer" });
-  await go(page, "/calendar?day=2026-10-17");
+  await go(page, "/calendar");
   await page.getByRole("listbox").waitFor();
   await page.getByRole("button", { name: /^My events|^All events/ }).first().waitFor({ timeout: 3000 }).catch(() => {});
   if (await page.getByRole("button", { name: /^All events/ }).count()) await page.getByRole("button", { name: /^All events/ }).click();
@@ -381,6 +381,12 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   check(cols === 7, "calendar: the week has seven day columns");
   const chip = await page.getByTestId("calendar-week").getByRole("link", { name: /Ecology Free Market/ }).first().boundingBox();
   check(Boolean(chip) && chip.width < 220 && chip.height < 140, "calendar: week events are compact chips");
+  // A link to a day (Today's trail, a shared URL) shows that day, not the week.
+  await go(page, "/calendar?day=2026-10-17");
+  await page.getByRole("heading", { name: /Saturday, October 17/ }).waitFor({ timeout: 5000 }).catch(() => {});
+  check(await page.getByTestId("calendar-week").count() === 0 && await page.getByRole("heading", { name: /Saturday, October 17/ }).count() === 1, "calendar: a link with ?day= opens that day in Day view at 1280");
+  await go(page, "/calendar");
+  await page.getByTestId("calendar-week").waitFor({ timeout: 5000 }).catch(() => {});
   await page.getByRole("button", { name: "Day", exact: true }).click();
   check(await page.getByTestId("calendar-week").count() === 0, "calendar: Day swaps the week out at 1280");
   await page.reload();

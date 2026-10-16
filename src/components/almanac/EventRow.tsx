@@ -83,7 +83,7 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
       <div className="ev__time">{t1}<small>{t2}</small></div>
       <div>
         <h3 className={`ev__title${cancelled ? " line-through opacity-70" : ""}`}>
-          {(status === "now" || soon) && <span className="ev__soon">{status === "now" ? tr("almanac.underway") : soon}</span>}
+          {(status === "now" || status === "past" || soon) && <span className="ev__soon" data-testid={status === "past" ? "ev-ended" : undefined}>{status === "now" ? tr("almanac.underway") : status === "past" ? tr("almanac.ended") : soon}</span>}
           <Link to={eventPath(event)}>{event.name}</Link>
         </h3>
         {(meta || badgeShown) && (
@@ -113,7 +113,10 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
                 {rsvpLabel}
               </button>
             )}
-            <AddToCalendar event={event} quiet />
+            {status !== "past" && <AddToCalendar event={event} quiet />}
+            {status === "past" && (
+              <Link className="btn btn--line btn--sm" to={`${eventPath(event)}#harvest`} data-testid="card-harvests">{tr("almanac.seeHarvests")}</Link>
+            )}
             {status !== "past" && (
               <button type="button" className="link" aria-pressed={subscribed} onClick={remind}>
                 {subscribed ? tr("almanac.remindersOn") : tr("almanac.remindMe")}

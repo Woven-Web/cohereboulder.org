@@ -56,18 +56,19 @@ export interface CommunityCalendar {
 const LUMA_FALLBACK: CommunityCalendar = { source: "luma", events: [], icsUrl: null };
 
 /**
- * The upcoming community calendar, soonest first. Resolves to the Luma
+ * The upcoming community calendar, soonest first (`past`: with the last two
+ * weeks' ended events too, for the Calendar page). Resolves to the Luma
  * fallback only on the definite answers — unconfigured (no scene yet) or a
  * healthy-but-empty calendar. Throws on anything transient (degraded upstream,
  * bad status, network failure) so react-query retries and keeps prior data.
  */
-export async function fetchCommunityCalendar(): Promise<CommunityCalendar> {
+export async function fetchCommunityCalendar(opts: { past?: boolean } = {}): Promise<CommunityCalendar> {
   // `no-cache` = revalidate with the Worker instead of trusting the browser's
   // copy (the response carries max-age=300). Shared caching still happens at
   // the edge — but the edge copy is PURGED when an event write lands through
   // the /xrpc proxy (worker/src/regenos-auth.ts), and a browser-cached copy
   // would quietly resurrect the pre-write listing for up to five minutes.
-  const res = await fetch(`${API_BASE}/api/events`, { cache: "no-cache" });
+  const res = await fetch(`${API_BASE}/api/events${opts.past ? "?past=1" : ""}`, { cache: "no-cache" });
   if (!res.ok) throw new Error(`/api/events answered ${res.status}`);
   const data = (await res.json()) as {
     events?: CommunityEvent[];

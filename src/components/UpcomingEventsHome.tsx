@@ -27,7 +27,7 @@ export function UpcomingEventsHome() {
 
   const { data } = useQuery({
     queryKey: ["community-calendar"],
-    queryFn: fetchCommunityCalendar,
+    queryFn: () => fetchCommunityCalendar(),
   });
 
   if (!data || data.source !== "regenos" || data.events.length === 0) return null;

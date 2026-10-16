@@ -94,7 +94,7 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
     if (loaded && hasMine && window.location.hash === "#edit") setEditing(true);
   }, [loaded, hasMine]);
   useEffect(() => {
-    if (!loaded || !["#composer", "#mine"].includes(window.location.hash)) return;
+    if (!loaded || !["#composer", "#mine", "#harvest"].includes(window.location.hash)) return;
     const timer = window.setTimeout(() => (document.getElementById(window.location.hash.slice(1)) ?? document.getElementById("mine") ?? document.getElementById("composer"))?.scrollIntoView({ block: "center" }), 80);
     return () => window.clearTimeout(timer);
   }, [loaded]);
@@ -109,7 +109,7 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
   };
 
   return (
-    <section className="hv" data-testid="harvest-section" data-state="open">
+    <section className="hv" id="harvest" data-testid="harvest-section" data-state="open">
       {head}
       <div className="hv__head">
         <span />

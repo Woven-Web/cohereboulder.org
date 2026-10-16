@@ -343,7 +343,7 @@
 @media (min-width:768px){
   .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
 }
-@media (min-width:1024px){
+@media (min-width:1600px){
   .alm .flow2--side:not(.flow2--solo) .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
 }
 .alm .week__bar{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3);margin-bottom:var(--sp-2);font-size:.8rem}
@@ -402,3 +402,8 @@
 /* Poppins runs wider than Figtree: shadcn's nowrap buttons may wrap on a phone rather than push the page sideways. */
 @media (max-width:767px){.alm.eco .skin :is(a,button)[class*="whitespace-nowrap"]{white-space:normal;text-align:center;height:auto;min-height:44px}}
 .alm.eco .depths.ways li .h3::before{height:1.2rem;line-height:1.2rem;margin-bottom:0}
+
+/* An event that has ended: a quieter chip in the week, and room under the harvest heading. */
+.alm .week__ev[data-past]{border-left-color:var(--ink-2);background:transparent}
+.alm .week__ev[data-past] b{font-weight:500}
+.alm .hv__head{margin-top:var(--sp-1)}
