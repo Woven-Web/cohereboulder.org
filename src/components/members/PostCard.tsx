@@ -41,7 +41,7 @@ export function PostCard({ post, name, mine, clip, root, reply, replyCount = 0, 
     <article className={classes} id={rkeyOf(post.uri)} data-testid={reply ? "board-reply" : "board-post"} data-moderation={mark}>
       <div className="post__by">
         <Avatar did={post.author} name={name} size="sm" />
-        <b>{name}</b>
+        <b data-you={tr("members.board.you")}>{name}</b>
         <time dateTime={record.createdAt}>{timeOf(record.createdAt, language)}</time>
       </div>
       {mark && (

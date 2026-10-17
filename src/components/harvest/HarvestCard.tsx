@@ -87,7 +87,8 @@ export function HarvestCard() {
     <section className="hvcard" aria-label={tr("notify.harvest.eyebrow")} data-testid="harvest-card" data-state="invite">
       <div className="eyebrow">{tr("notify.harvest.eyebrow")}</div>
       <h2>{fill(heading, { name })}</h2>
-      <p>{fill(tr("notify.harvest.promptEvent"), { name })}</p>
+      {/* The ecology copy cuts the prompt down to the bare name, which the heading already says. */}
+      {fill(tr("notify.harvest.promptEvent"), { name }) !== name && <p>{fill(tr("notify.harvest.promptEvent"), { name })}</p>}
       <div className="hvcard__acts">
         <Link className="btn btn--primary" to={`${base}#composer`} data-testid="harvest-card-share">{tr("notify.harvest.cardShare")}</Link>
         <button type="button" className="link" data-testid="harvest-card-dismiss" onClick={() => setDismissed(dismissHarvestCard(eventKey(target)))}>{tr("notify.harvest.cardNotNow")}</button>

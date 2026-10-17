@@ -389,7 +389,7 @@ function MoreView() {
             <h2 className="eyebrow">{tr('companion.install')}</h2>
             {installed ? <p style={{ marginTop: '.6rem' }}>{tr('companion.installed')}</p> : ios ? <>
                 <p style={{ marginTop: '.6rem' }}>{tr('companion.iosIntro')}</p>
-                <ol className="companion-ios"><li><Share aria-hidden="true" />{tr('companion.iosShare')}</li><li><SquarePlus aria-hidden="true" />{tr('companion.iosAdd')}</li><li><Smartphone aria-hidden="true" />{tr('companion.iosOpen')}</li></ol>
+                <ol className="companion-ios"><li><Share aria-hidden="true" />{tr('companion.iosShare')}</li><li><SquarePlus aria-hidden="true" />{tr('companion.iosAdd')}</li>{tr('companion.iosOpen') && <li><Smartphone aria-hidden="true" />{tr('companion.iosOpen')}</li>}</ol>
             </> : <>
                 {!prompt && <p style={{ marginTop: '.6rem' }}>{tr('companion.manual')}</p>}
                 <button type="button" className="link" style={{ marginTop: '.4rem' }} onClick={() => offer('manual')}>{tr('almanac.installRow')}</button>

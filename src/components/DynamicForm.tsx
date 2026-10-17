@@ -230,8 +230,12 @@ export const DynamicForm = ({
       setSubmittedEmail(email.trim());
       setOutcome(result);
       if (!result.alreadyRegistered) await queryClient.invalidateQueries({ queryKey: ["my-registration"] });
+      // The thank-you takes the form's place; on a phone the top of the page would leave it, and its
+      // "Create your account" button, below the fold. Show it from its own top instead.
+      const box = formRef.current?.closest(".df-card") ?? formRef.current;
+      const top = box ? Math.max(0, box.getBoundingClientRect().top + window.scrollY - 88) : 0;
       setStatus("success");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top, behavior: "smooth" });
     } catch (error) {
       setStatus("error");
       setSubmitError(

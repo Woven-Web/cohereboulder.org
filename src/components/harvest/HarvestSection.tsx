@@ -259,7 +259,7 @@ function MineCard({ harvest, name, onEdit, onDeleted }: { harvest: Harvest; name
     <article className="post post--own" data-testid="harvest-mine" id={`harvest-${harvest.id}`}>
       <div className="post__by">
         <Avatar did={harvest.authorDid} name={name} size="sm" />
-        <b>{name}</b>
+        <b data-you={tr("notify.harvest.you")}>{name}</b>
         <time dateTime={harvest.createdAt}>{stamp(harvest.createdAt, language)}</time>
       </div>
       {harvest.moderation && <p className="vis-note" data-testid="mod-mark"><span><b>{tr(harvest.moderation === "hidden" ? "notify.harvest.markHidden" : "notify.harvest.markRemoved")}</b></span></p>}

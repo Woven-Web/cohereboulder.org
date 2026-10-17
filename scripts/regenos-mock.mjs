@@ -56,6 +56,7 @@
 // Fixed tokens: /login?token=tok-good (new user), verifyEmail?token=tok-return,
 // and `mock-token` as the site's service credential.
 
+import { readFileSync } from "node:fs";
 import http from "node:http";
 
 const PORT = Number(process.env.PORT ?? 9944);
@@ -389,6 +390,50 @@ if (process.env.MOCK_NOTIFY === "1") {
   CONTACT_EMAILS.set(PEER_DID, "pia@example.test");
   // A builder who registered for 2026 (the e2e inserts the registration): the email-by-default screens.
   CONTACT_EMAILS.set("did:plc:mockbuilder", "bea@example.test");
+}
+
+// MOCK_GUIDE=1 — the screenshots for the "how to use the app" guide (scripts/guide-capture.sh; never
+// set by a test lane). Neutral names instead of "Mock", and, from MOCK_GUIDE_EVENTS (a JSON file of
+// /api/events rows), the public calendar in place of the made-up events. Pia, the member the guide
+// signs in as, holds seats on GUIDE_SEATS; the other members get sessions `guide-<first name>`.
+if (process.env.MOCK_GUIDE === "1") {
+  const RENAME = { "Pia Mock": "Pia Hansen", "Rosa Mock": "Rosa Delgado", "Sam Mock": "Sam Whitaker", "Mel Mock": "Mel Ortiz" };
+  const handle = (h) => (h && h.endsWith(".mock.test") ? h.replace(/\.mock\.test$/, ".example.org") : h);
+  members.get(STEWARD_DID).name = "Jo Bennett";
+  members.get(STEWARD_DID).handle = "jo.example.org";
+  for (const m of members.values()) { m.handle = handle(m.handle); if (RENAME[m.name]) m.name = RENAME[m.name]; }
+  for (const p of [...Object.values(PERSONAS), ...Object.values(SESSION_PEOPLE)]) p.handle = handle(p.handle);
+  SESSION_PEOPLE["mock-steward"].handle = "jo.example.org";
+  for (const p of [...circleProfiles.values()].map((r) => r.record).concat([...publicProfiles.values()])) {
+    if (RENAME[p.displayName]) p.displayName = RENAME[p.displayName];
+  }
+  for (const m of members.values()) {
+    const first = m.name?.split(" ")[0]?.toLowerCase();
+    if (first) SESSION_PEOPLE[`guide-${first}`] = { did: m.did, handle: m.handle };
+  }
+  CONTACT_EMAILS.set(PEER_DID, "pia@example.org");
+  CONTACT_EMAILS.set("did:plc:mockbuilder", "rosa@example.org");
+  for (const [rkey, seats] of attendance) seats.guests = (seats.guests ?? []).map((g) => ({ ...g, handle: handle(g.handle) }));
+  if (process.env.MOCK_GUIDE_EVENTS) {
+    const rows = JSON.parse(readFileSync(process.env.MOCK_GUIDE_EVENTS, "utf8"));
+    events.clear();
+    for (const key of [...mySeats.keys()]) mySeats.delete(key);
+    const crowd = ["did:plc:mockmara", "did:plc:mockteo", "did:plc:mocklin", "did:plc:mockdev", "did:plc:mockwren", "did:plc:mockbuilder"];
+    rows.forEach((e, i) => {
+      const l = e.location ?? {};
+      events.set(e.rkey, {
+        uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${e.rkey}`,
+        value: { name: e.name, description: e.description ?? undefined, createdAt: "2026-10-01T00:00:00.000Z", startsAt: e.startsAt, endsAt: e.endsAt ?? undefined,
+          mode: "community.lexicon.calendar.event#inperson",
+          locations: l.name || l.street ? [{ $type: "community.lexicon.location.address", name: l.name, street: l.street, locality: l.locality, region: l.region, postalCode: l.postalCode, country: "US" }] : [] },
+      });
+      attendance.set(e.rkey, { confirmed: 0, waitlisted: 0, requested: 0, maxAttendees: null, attendance: "open", guests: [] });
+      // A few people going to everything, so the cards and rosters look lived in.
+      for (const did of crowd.slice(0, 1 + (i % crowd.length))) mySeats.set(`${did}|${e.rkey}`, "confirmed");
+    });
+    for (const rkey of (process.env.GUIDE_SEATS ?? "").split(",").filter(Boolean)) mySeats.set(`${PEER_DID}|${rkey}`, "confirmed");
+    for (const [key] of mySeats) attendance.get(key.split("|")[1]).confirmed += 1;
+  }
 }
 
 function circleSubject(req, res, url) {
