@@ -136,12 +136,21 @@ export async function reachOf(db: D1Database, prefs: PrefsRow, now: number, regi
 /**
  * Fold an address-keyed person into the account that has now verified the same
  * address: the account keeps anything it already set, and picks up the rest.
+ * The sends move too, even for a registrant who never saved a setting, so a note
+ * already emailed tonight is not pushed again once the phone is linked.
  */
 export async function mergeEmailPerson(db: D1Database, did: string, email: string, now: string): Promise<void> {
   const from = personKey({ email });
   if (!from || from === did) return;
+  const moveSends = LEDGERS.flatMap((ledger) => [
+    db.prepare(`UPDATE OR IGNORE ${ledger} SET person_key = ?1 WHERE person_key = ?2`).bind(did, from),
+    db.prepare(`DELETE FROM ${ledger} WHERE person_key = ?1`).bind(from),
+  ]);
   const old = await getPrefs(db, from);
-  if (!old) return;
+  if (!old) {
+    await db.batch(moveSends);
+    return;
+  }
   const into = await prefsOrBlank(db, did);
   const merged: PrefsRow = { ...into, did };
   for (const type of NOTIFY_TYPES) {
@@ -152,13 +161,7 @@ export async function mergeEmailPerson(db: D1Database, did: string, email: strin
   merged.email_optin_at = into.email_optin_at ?? old.email_optin_at;
   merged.email = into.email ?? email;
   merged.email_verified_at = into.email_verified_at ?? old.email_verified_at ?? now;
-  await db.batch([
-    ...LEDGERS.flatMap((ledger) => [
-      db.prepare(`UPDATE OR IGNORE ${ledger} SET person_key = ?1 WHERE person_key = ?2`).bind(did, from),
-      db.prepare(`DELETE FROM ${ledger} WHERE person_key = ?1`).bind(from),
-    ]),
-    db.prepare("DELETE FROM notify_prefs WHERE person_key = ?1").bind(from),
-  ]);
+  await db.batch([...moveSends, db.prepare("DELETE FROM notify_prefs WHERE person_key = ?1").bind(from)]);
   await savePrefs(db, merged, now);
 }
 

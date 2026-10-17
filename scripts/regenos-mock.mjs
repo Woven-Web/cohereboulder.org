@@ -486,6 +486,21 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.cookie) sawCookies.push(req.headers.cookie);
   console.log(`${req.method} ${url.pathname}${url.search} signedIn=${signedIn} pending=${pending}`);
 
+  // The scene's public feed, as the web app serves it (raw colons in the DID, CRLF lines),
+  // with a "TEST" event the Worker's /calendar.ics must drop.
+  if (url.pathname === `/scenes/${SCENE_DID}/calendar.ics`) {
+    const stamp = (iso) => iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const vevent = (uid, name, start) => [
+      "BEGIN:VEVENT", `UID:${SCENE_DID}/${uid}@mock`, `DTSTAMP:${stamp(new Date().toISOString())}`,
+      `DTSTART:${stamp(start)}`, `SUMMARY:${name}`, "LOCATION:Boulder\\, CO", "END:VEVENT",
+    ];
+    const rows = [...events.entries()].flatMap(([rkey, e]) => vevent(rkey, e.value?.name ?? "Event", e.value?.startsAt ?? new Date().toISOString()));
+    const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//mock//calendar//EN", "X-WR-CALNAME:COhere Boulder",
+      ...vevent("test-1", "TEST", new Date().toISOString()), ...rows, "END:VCALENDAR", ""].join("\r\n");
+    res.writeHead(200, { "content-type": "text/calendar; charset=utf-8" });
+    return res.end(body);
+  }
+
   switch (nsid) {
     case "social.scenius.getEvents": {
       const rows = [...events.values()].map((e) => ({ ...e, hostName: "COhere Boulder" }));

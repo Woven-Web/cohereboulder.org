@@ -80,6 +80,11 @@ export const notifyTranslations = {
       when: { en: "8 PM Boulder time", es: "8 PM, hora de Boulder" },
     },
   },
+  emailToo: {
+    line: { en: "Now on your phone. Want email too?", es: "Ahora en tu teléfono. ¿También por correo?" },
+    add: { en: "Add email", es: "Añadir correo" },
+    added: { en: "Email added. These come by phone and email now.", es: "Correo añadido. Ahora llegan por teléfono y por correo." },
+  },
   sendBy: { en: "Send it by", es: "Enviar por" },
   push: { en: "Push", es: "Push" },
   phone: { en: "Phone", es: "Teléfono" },

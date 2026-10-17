@@ -52,8 +52,8 @@ function collectiveDid(env: EventsEnv): string | null {
   return raw;
 }
 
-/** The collective's subscribable feed on the regenOS web app, or null when unconfigured. */
-function calendarIcsUrl(env: EventsEnv): string | null {
+/** The collective's feed on the regenOS web app, or null when unconfigured. /calendar.ics proxies it. */
+export function calendarIcsUrl(env: EventsEnv): string | null {
   const webBase = env.REGENOS_WEB_URL?.trim().replace(/\/+$/, "");
   const scene = collectiveDid(env);
   if (!webBase || !scene) return null;
@@ -61,6 +61,9 @@ function calendarIcsUrl(env: EventsEnv): string | null {
   // not percent-encoded — verified against the live app.
   return `${webBase}/scenes/${scene}/calendar.ics`;
 }
+
+/** The subscribable feed the site hands out: ours, on the caller's origin (see calendar-feed.ts). */
+const feedUrl = (env: EventsEnv, origin: string | undefined): string | null => (origin && calendarIcsUrl(env) ? `${origin}/calendar.ics` : null);
 
 // ---------------------------------------------------------------- wire shapes
 // Hand-written and tolerant: prod is ahead of any local checkout, so extra
@@ -312,7 +315,7 @@ export async function handleEventsList(
     dated.sort((a, b) => a.startMs - b.startMs);
 
     const response = json(
-      { events: [...dated.map((d) => d.event), ...undated], icsUrl: calendarIcsUrl(env) },
+      { events: [...dated.map((d) => d.event), ...undated], icsUrl: feedUrl(env, new URL(request.url).origin) },
       200,
       { "Cache-Control": `public, max-age=${CACHE_SECONDS}` },
     );
@@ -340,6 +343,8 @@ export async function handleEventDetail(
   did: string,
   rkey: string,
   cors: Record<string, string>,
+  /** The site's origin, for the feed link. Internal callers that only want the event leave it out. */
+  origin?: string,
 ): Promise<Response> {
   const base = baseUrl(env);
   if (!base || !did.startsWith("did:") || !rkey) {
@@ -393,7 +398,7 @@ export async function handleEventDetail(
     return json(
       {
         event: { ...core, uris, hostName: typeof data.hostName === "string" ? data.hostName : null },
-        icsUrl: calendarIcsUrl(env),
+        icsUrl: feedUrl(env, origin),
       },
       200,
       { ...cors, "Cache-Control": "public, max-age=0, must-revalidate" },

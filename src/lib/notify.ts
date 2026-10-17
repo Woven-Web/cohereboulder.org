@@ -44,6 +44,21 @@ export type SettingsPatch = Partial<Record<NotifyType, { on?: boolean; channel?:
 export const receivesNothing = (view: SettingsView): boolean =>
   view.nothingReaches || NOTIFY_TYPES.every((type) => !view.notes[type]?.on);
 
+/** Notes that went to the phone by default (no choice made) and not by email too. */
+const phoneOnly = (view: SettingsView): NotifyType[] =>
+  NOTIFY_TYPES.filter((type) => { const n = view.notes[type]; return n?.on && n.phone && !n.email && n.chosen === null; });
+
+/**
+ * "Now on your phone. Want email too?": shown once the phone is live and has taken over
+ * notes by default, while there is an address we may write to. Gone after any choice.
+ */
+export const offerEmailToo = (view: SettingsView): boolean =>
+  view.push.status === "live" && Boolean(view.email.address) && view.email.verified && phoneOnly(view).length > 0;
+
+/** The one tap: each of those notes keeps the phone and adds email. */
+export const addEmailPatch = (view: SettingsView): SettingsPatch =>
+  Object.fromEntries(phoneOnly(view).map((type) => [type, { channels: { phone: true, email: true } }]));
+
 export class NotifyError extends Error {
   status: number;
   constructor(status: number, message: string) {

@@ -945,12 +945,10 @@ export const translations = {
         en: "Apple / other calendars (.ics)",
         es: "Apple / otros calendarios (.ics)",
       },
-      appleCalendar: { en: "Apple Calendar", es: "Apple Calendar" },
-      feedUrlLabel: { en: "Calendar feed URL", es: "URL del calendario" },
-      googleSubscribeHint: {
-        en: "For Google Calendar, copy the URL below, then choose Other calendars → From URL in Google Calendar.",
-        es: "Para Google Calendar, copia la URL de abajo y elige Otros calendarios → Desde URL en Google Calendar.",
-      },
+      appleCalendar: { en: "Apple Calendar (iPhone, Mac)", es: "Calendario de Apple (iPhone, Mac)" },
+      feedUrlLabel: { en: "Another calendar app? Copy this link into it.", es: "¿Otra app de calendario? Copia este enlace en ella." },
+      feedCopy: { en: "Copy", es: "Copiar" },
+      feedCopied: { en: "Copied", es: "Copiado" },
       myEventsFilter: { en: "My events", es: "Mis eventos" },
       allEventsFilter: { en: "All", es: "Todos" },
       myEventsSource: {

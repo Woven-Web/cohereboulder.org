@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { googleCalendarEventUrl } from "./calendarLinks";
+import { calendarSubscribeLinks, googleCalendarEventUrl } from "./calendarLinks";
 import type { CommunityEvent } from "./events";
 
 const event = {
@@ -23,5 +23,21 @@ describe("Google Calendar event link", () => {
   it("does not offer Google Calendar for undated or invalid events", () => {
     expect(googleCalendarEventUrl({ ...event, startsAt: null })).toBeNull();
     expect(googleCalendarEventUrl({ ...event, startsAt: "oops" })).toBeNull();
+  });
+});
+
+describe("calendar subscribe links", () => {
+  it("Apple gets webcal://, Google gets the webcal URL encoded in cid", () => {
+    expect(calendarSubscribeLinks("https://cohereboulder.org/calendar.ics")).toEqual({
+      webcal: "webcal://cohereboulder.org/calendar.ics",
+      google: "https://calendar.google.com/calendar/render?cid=webcal%3A%2F%2Fcohereboulder.org%2Fcalendar.ics",
+    });
+  });
+  it("the Google link carries the whole feed URL back out, with no raw colon or slash in the query", () => {
+    const { google } = calendarSubscribeLinks("https://cohere-signup-staging.unforced.workers.dev/calendar.ics");
+    const url = new URL(google);
+    expect(url.origin + url.pathname).toBe("https://calendar.google.com/calendar/render");
+    expect(url.search.slice(1)).not.toMatch(/[:/]/);
+    expect(url.searchParams.get("cid")).toBe("webcal://cohere-signup-staging.unforced.workers.dev/calendar.ics");
   });
 });
