@@ -111,7 +111,12 @@ try {
   await page.getByTestId("nl-image-upload").click();
   await page.getByTestId("nl-image-msg").getByText("Use a JPEG, PNG or WebP image.").waitFor({ timeout: 5_000 });
   ok("a text file → clear type error, nothing uploaded");
+  await page.getByTestId("nl-image-file").setInputFiles({ name: "IMG_0412.HEIC", mimeType: "image/heic", buffer: Buffer.from("not really heic") });
+  await page.getByTestId("nl-image-upload").click();
+  await page.getByTestId("nl-image-msg").getByText("iPhone photo in HEIC format").waitFor({ timeout: 5_000 });
+  ok("an iPhone HEIC file → says so, and how to save it as JPEG");
   await page.getByTestId("nl-image-file").setInputFiles(PHOTO);
+  expect((await msg.textContent()) === "", "choosing another file clears the old error");
   await page.getByTestId("nl-image-alt").fill("");
   await page.getByTestId("nl-image-upload").click();
   expect(/Describe the image first/.test(await msg.textContent()), "no alt text → clear error");
@@ -128,6 +133,37 @@ try {
   await panel.waitFor({ state: "hidden" });
   const body = await page.locator("#nlbody").inputValue();
   expect(body === `${before}\n\n![${ALT}](${upBody.url})\n\n${after}`, "the image line went in where the cursor was, as its own block");
+  await page.getByTestId("nl-image-hint").waitFor({ state: "visible", timeout: 5_000 });
+  ok("a help line says how to move or remove a photo once the text has one");
+  expect(/Photo added\. .*move that line to move the photo, delete it to remove it/.test(await page.locator("#nlmsg").textContent()), "the added message says how to move or remove it");
+
+  // Dragging a photo onto the text opens the same panel with that file chosen.
+  step = "drag and drop";
+  const dropped = await page.locator("#nlbody").evaluate((ta, b64) => {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bin], "dropped.png", { type: "image/png" }));
+    const over = new DragEvent("dragover", { dataTransfer: dt, bubbles: true, cancelable: true });
+    ta.dispatchEvent(over);
+    const drop = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true });
+    ta.dispatchEvent(drop);
+    return { over: over.defaultPrevented, drop: drop.defaultPrevented };
+  }, png(800, 600).toString("base64"));
+  expect(dropped.over && dropped.drop, "the text box takes the drop (the browser doesn't open the file)");
+  await panel.waitFor({ state: "visible", timeout: 5_000 });
+  expect(await page.getByTestId("nl-image-file").evaluate((i) => i.files.length === 1 && i.files[0].name === "dropped.png"), "the dropped file is the chosen photo");
+  expect(await page.getByTestId("nl-image-alt").evaluate((i) => document.activeElement === i), "the description box has the focus");
+  await page.locator("#nlimgclose").click();
+  await panel.waitFor({ state: "hidden" });
+  const elsewhere = await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(["x"], "stray.png", { type: "image/png" }));
+    const drop = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true });
+    document.querySelector("h1, h2, body").dispatchEvent(drop);
+    return drop.defaultPrevented;
+  });
+  expect(elsewhere, "a file dropped elsewhere on the page doesn't replace it");
+  expect((await page.locator("#nlbody").inputValue()) === body, "a drop changes nothing in the text until Upload");
 
   // ── 3. the preview ─────────────────────────────────────────────────────
   step = "preview";
