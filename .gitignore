@@ -49,3 +49,5 @@ worker/seed.sql
 
 # The guide kit's raw captures and recordings (scripts/guide-capture.sh); the framed steps are committed.
 guide/raw/
+video-tour/*.mp4
+video-tour/raw/
