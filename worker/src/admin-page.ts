@@ -2031,7 +2031,7 @@ export const ADMIN_PAGE = `<!doctype html>
   var nlPreviewTimer = null, nlPreviewSeq = 0;
   function refreshPreview() {
     var seq = ++nlPreviewSeq;
-    show("nlimghint", /^!\\[/m.test(el("nlbody").value));
+    show("nlimghint", !el("nlbody").disabled && /^!\\[/m.test(el("nlbody").value));
     api("/api/admin/newsletters/preview", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value })
@@ -2110,7 +2110,7 @@ export const ADMIN_PAGE = `<!doctype html>
   async function nlPrepareImage(file) {
     if (!file) throw new Error("Choose a photo first.");
     if (/^image\\/hei[cf]$/.test(file.type) || /\\.hei[cf]$/i.test(file.name || "")) {
-      throw new Error("This is an iPhone photo in HEIC format, which email can't show. Save it as a JPEG first (on a Mac: open it in Preview, then File → Export → JPEG) and choose that.");
+      throw new Error("This is a HEIC photo (the iPhone format), which email can't show. Save it as a JPEG first and choose that (on a Mac: open it in Preview, then File → Export → JPEG).");
     }
     if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("That file isn't a photo email can show. Use a JPEG, PNG or WebP image.");
     if (file.size > NL_IMG_MAX_INPUT) throw new Error("That file is " + (file.size / 1048576).toFixed(1) + " MB; choose one under 25 MB.");
@@ -2137,7 +2137,7 @@ export const ADMIN_PAGE = `<!doctype html>
         blob = await canvasBlob(canvas, "image/jpeg", 0.85);
       }
       if (!blob || (blob.type !== "image/jpeg" && blob.type !== "image/png")) throw new Error("Couldn't prepare this image. Try another file.");
-      if (blob.size > NL_IMG_MAX_BYTES) throw new Error("Even shrunk to 1200 pixels wide this image is over 3 MB. Choose a simpler one.");
+      if (blob.size > NL_IMG_MAX_BYTES) throw new Error("This photo is still too big for email after making it smaller. Choose a smaller or simpler one.");
       return blob;
     } finally { bitmap.close(); }
   }
@@ -2146,7 +2146,7 @@ export const ADMIN_PAGE = `<!doctype html>
     var alt = el("nlimgalt").value.trim();
     msg.textContent = "";
     if (!el("nlimgfile").files[0]) { msg.textContent = "Choose a photo first: click Choose File, or drag a photo onto the text."; return; }
-    if (!alt) { msg.textContent = "Describe the image first: people with images off, and screen readers, get this text."; el("nlimgalt").focus(); return; }
+    if (!alt) { msg.textContent = "Describe the photo first: people whose email hides images, and screen readers, get this text."; el("nlimgalt").focus(); return; }
     button.disabled = true;
     try {
       msg.textContent = "Preparing image…";
@@ -2176,6 +2176,8 @@ export const ADMIN_PAGE = `<!doctype html>
   });
   el("nlimgclose").addEventListener("click", function () { nlImagePanel(false); el("nlbody").focus(); });
   el("nlimgfile").addEventListener("change", function () { el("nlimgmsg").textContent = ""; });
+  // Before a drop replaces a chosen photo: the old description was for the old photo.
+  function nlImgReplaced() { if (el("nlimgfile").files.length) el("nlimgalt").value = ""; }
   // A photo dragged onto the text opens the same panel with that file chosen. The cursor
   // position is kept, so the photo goes where the cursor was, as with the button.
   function hasFiles(e) { return !!e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
@@ -2187,13 +2189,16 @@ export const ADMIN_PAGE = `<!doctype html>
     el(id).addEventListener("drop", function (e) {
       if (!hasFiles(e) || el("nlbody").disabled) return;
       e.preventDefault();
+      if (el("nlimgupload").disabled) return; // an upload is running; don't swap its photo
       var files = e.dataTransfer.files;
-      if (!files || !files.length) return;
+      if (!files || !files.length) { el("nlmsg").textContent = "That had no photo file in it. Drag a photo file from your computer, or use Add image."; return; }
       if (el("nlimgpanel").classList.contains("hidden")) nlImagePanel(true);
+      nlImgReplaced();
       var dt = new DataTransfer();
       dt.items.add(files[0]);
       el("nlimgfile").files = dt.files;
-      el("nlimgmsg").textContent = "";
+      el("nlimgfile").dispatchEvent(new Event("change"));
+      if (files.length > 1) el("nlimgmsg").textContent = "Only the first photo was taken. Add the others one at a time.";
       el("nlimgalt").focus();
     });
   });

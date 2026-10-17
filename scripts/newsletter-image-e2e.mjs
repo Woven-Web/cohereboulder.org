@@ -113,13 +113,13 @@ try {
   ok("a text file → clear type error, nothing uploaded");
   await page.getByTestId("nl-image-file").setInputFiles({ name: "IMG_0412.HEIC", mimeType: "image/heic", buffer: Buffer.from("not really heic") });
   await page.getByTestId("nl-image-upload").click();
-  await page.getByTestId("nl-image-msg").getByText("iPhone photo in HEIC format").waitFor({ timeout: 5_000 });
+  await page.getByTestId("nl-image-msg").getByText("HEIC photo (the iPhone format)").waitFor({ timeout: 5_000 });
   ok("an iPhone HEIC file → says so, and how to save it as JPEG");
   await page.getByTestId("nl-image-file").setInputFiles(PHOTO);
   expect((await msg.textContent()) === "", "choosing another file clears the old error");
   await page.getByTestId("nl-image-alt").fill("");
   await page.getByTestId("nl-image-upload").click();
-  expect(/Describe the image first/.test(await msg.textContent()), "no alt text → clear error");
+  expect(/Describe the photo first/.test(await msg.textContent()), "no alt text → clear error");
   await page.getByTestId("nl-image-alt").fill(ALT);
   await page.screenshot({ path: join(shots, "newsletter-image-panel-1280.png"), fullPage: false });
   const uploaded = page.waitForResponse((r) => r.url().includes("/api/admin/newsletters/images") && r.request().method() === "POST");
@@ -153,6 +153,18 @@ try {
   await panel.waitFor({ state: "visible", timeout: 5_000 });
   expect(await page.getByTestId("nl-image-file").evaluate((i) => i.files.length === 1 && i.files[0].name === "dropped.png"), "the dropped file is the chosen photo");
   expect(await page.getByTestId("nl-image-alt").evaluate((i) => document.activeElement === i), "the description box has the focus");
+  // A second drop replaces the photo: the old description goes, and extra files are named.
+  await page.getByTestId("nl-image-alt").fill("words for the first photo");
+  await page.locator("#nlbody").evaluate((ta, b64) => {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bin], "second.png", { type: "image/png" }));
+    dt.items.add(new File([bin], "third.png", { type: "image/png" }));
+    ta.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, png(800, 600).toString("base64"));
+  expect(await page.getByTestId("nl-image-file").evaluate((i) => i.files[0].name === "second.png"), "a second drop replaces the chosen photo");
+  expect((await page.getByTestId("nl-image-alt").inputValue()) === "", "…and clears the description written for the first one");
+  expect(/Only the first photo was taken/.test(await msg.textContent()), "dropping several photos says only the first was taken");
   await page.locator("#nlimgclose").click();
   await panel.waitFor({ state: "hidden" });
   const elsewhere = await page.evaluate(() => {
