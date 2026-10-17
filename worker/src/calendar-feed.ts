@@ -33,15 +33,39 @@ function propertyValue(lines: string[], name: string): string | null {
   return null;
 }
 
+/** RFC 5545 folding: lines over 75 octets continue on the next line after a space, never mid-character. */
+function fold(line: string): string {
+  const bytes = new TextEncoder();
+  if (bytes.encode(line).length <= 75) return line;
+  const parts: string[] = [];
+  let part = "";
+  let size = 0;
+  for (const char of line) {
+    const n = bytes.encode(char).length;
+    if (size + n > (parts.length ? 74 : 75)) {
+      parts.push(part);
+      part = "";
+      size = 0;
+    }
+    part += char;
+    size += n;
+  }
+  parts.push(part);
+  return parts.join("\r\n ");
+}
+
+const REFRESH_HINTS = ["X-PUBLISHED-TTL:PT1H", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"];
+
 /**
  * The feed minus events titled exactly "TEST", plus a refresh hint for the apps
  * that honour one. Anything that is not a calendar comes back as null.
  */
 export function cleanFeed(ics: string): string | null {
   // Unfold first (a CRLF or LF followed by a space or tab continues the line), so a long
-  // SUMMARY split across lines is still read whole. Output is re-joined with CRLF.
-  const lines = ics.replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
+  // SUMMARY split across lines is still read whole. Output is re-folded and CRLF-joined.
+  const lines = ics.replace(/^\uFEFF/, "").replace(/\r?\n[ \t]/g, "").split(/\r?\n/).map((line) => line.trimEnd());
   if (lines[0]?.trim() !== "BEGIN:VCALENDAR") return null;
+  const hinted = lines.some((l) => l.startsWith("X-PUBLISHED-TTL"));
   const out: string[] = [];
   let event: string[] | null = null;
   for (const line of lines) {
@@ -59,12 +83,10 @@ export function cleanFeed(ics: string): string | null {
     }
     if (line === "") continue;
     out.push(line);
-    if (line.startsWith("X-WR-CALNAME") && !lines.some((l) => l.startsWith("X-PUBLISHED-TTL"))) {
-      out.push("X-PUBLISHED-TTL:PT1H", "REFRESH-INTERVAL;VALUE=DURATION:PT1H");
-    }
+    if (out.length === 1 && !hinted) out.push(...REFRESH_HINTS);
   }
   if (out.at(-1) !== "END:VCALENDAR") return null;
-  return `${out.join("\r\n")}\r\n`;
+  return `${out.map(fold).join("\r\n")}\r\n`;
 }
 
 export async function handleCalendarFeed(request: Request, env: EventsEnv): Promise<Response> {

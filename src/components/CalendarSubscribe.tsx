@@ -26,7 +26,7 @@ export function CalendarSubscribe({ feedUrl, compact = false }: { feedUrl: strin
   }
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={() => setCopied(false)}>
       <DialogTrigger asChild>
         <Button variant="outline" size={compact ? "sm" : "default"} className={compact ? "h-11 w-full gap-2" : "h-11 gap-2"}>
           <CalendarSync className="h-4 w-4" aria-hidden="true" />

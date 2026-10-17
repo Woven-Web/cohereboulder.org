@@ -94,16 +94,17 @@ try {
     await phone.close();
   }
   // One tap each: Google's subscribe link carries our own feed as webcal, Apple opens webcal directly.
-  const origin = new URL(target).origin;
-  const webcal = `webcal://${new URL(target).host}/calendar.ics`;
+  // The shown address is built from the request's host, which wrangler dev rewrites to the
+  // production route, so it is checked for shape only and never fetched: the feed is read locally.
+  const feedUrl = await page.getByRole("textbox", { name: "Another calendar app? Copy this link into it." }).inputValue();
+  if (!/^https?:\/\/[^/]+\/calendar\.ics$/.test(feedUrl)) fail(`subscription feed is not ours: ${feedUrl}`);
+  const webcal = feedUrl.replace(/^https?:\/\//, "webcal://");
   const googleSub = await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).getAttribute("href");
   if (googleSub !== `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}`) fail(`Google subscribe link wrong: ${googleSub}`);
   const appleSub = await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar (iPhone, Mac)" }).getAttribute("href");
   if (appleSub !== webcal) fail(`Apple subscribe link wrong: ${appleSub}`);
-  const feedUrl = await page.getByRole("textbox", { name: "Another calendar app? Copy this link into it." }).inputValue();
-  if (feedUrl !== `${origin}/calendar.ics`) fail(`subscription feed is not ours: ${feedUrl}`);
-  // The feed itself: proxied from the scene's feed, a real calendar, the TEST event dropped.
-  const feed = await fetch(feedUrl);
+  // The feed itself, from this Worker: proxied from the mock scene's feed, a real calendar, the TEST event dropped.
+  const feed = await fetch(`${target}/calendar.ics`);
   const ics = await feed.text();
   if (feed.status !== 200 || !feed.headers.get("content-type")?.startsWith("text/calendar")) fail(`feed answered ${feed.status} ${feed.headers.get("content-type")}`);
   if (!ics.startsWith("BEGIN:VCALENDAR\r\n") || !ics.includes("SUMMARY:Seed Gathering")) fail("feed is missing the scene's events");

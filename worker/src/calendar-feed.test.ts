@@ -45,13 +45,30 @@ describe("cleanFeed", () => {
     expect(out.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(out.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(out.split("\r\n").every((line) => !line.includes("\n"))).toBe(true);
-    expect(out).toContain("X-WR-CALNAME:COhere Boulder\r\nX-PUBLISHED-TTL:PT1H\r\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\r\n");
+    expect(out.startsWith("BEGIN:VCALENDAR\r\nX-PUBLISHED-TTL:PT1H\r\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\r\nVERSION:2.0\r\n")).toBe(true);
   });
   it("reads a folded SUMMARY whole, and a SUMMARY with parameters", () => {
     const folded = feed(["BEGIN:VEVENT", "UID:a", "SUMMARY:TE", " ST", "END:VEVENT"], ["BEGIN:VEVENT", "UID:b", "SUMMARY;LANGUAGE=en:TEST", "END:VEVENT"], vevent("c", "Soup Night"));
     const out = cleanFeed(folded)!;
     expect(out.match(/BEGIN:VEVENT/g)).toHaveLength(1);
     expect(out).toContain("SUMMARY:Soup Night");
+  });
+  it("folds long lines at 75 octets without splitting a character, and unfolds back to the same text", () => {
+    const long = `DESCRIPTION:${"Bring a cup & a friend. Té y café. ".repeat(8)}`.trimEnd();
+    const out = cleanFeed(feed([...vevent("d", "Soup Night").slice(0, -1), long, "END:VEVENT"]))!;
+    for (const line of out.split("\r\n")) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+    expect(out.replace(/\r\n /g, "")).toContain(long);
+  });
+  it("tolerates a byte-order mark and trailing spaces on the markers", () => {
+    const sloppy = `\uFEFF${feed(vevent("a", "TEST"), vevent("b", "Soup Night")).replace("END:VEVENT", "END:VEVENT  ").replace("END:VCALENDAR", "END:VCALENDAR ")}`;
+    const out = cleanFeed(sloppy)!;
+    expect(out.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    expect(out).toContain("SUMMARY:Soup Night");
+  });
+  it("adds the refresh hints even without a calendar name, and not twice", () => {
+    const bare = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n";
+    expect(cleanFeed(bare)).toBe("BEGIN:VCALENDAR\r\nX-PUBLISHED-TTL:PT1H\r\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n");
+    expect(cleanFeed(cleanFeed(bare)!)).toBe(cleanFeed(bare));
   });
   it("refuses anything that is not a whole calendar", () => {
     expect(cleanFeed("<!doctype html><title>Error</title>")).toBeNull();

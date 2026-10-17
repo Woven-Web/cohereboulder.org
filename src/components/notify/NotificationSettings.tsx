@@ -76,7 +76,7 @@ export function NotificationSettings({ token }: { token?: string }) {
         </div>
       )}
       <Reach view={view} guest={guest} />
-      {!guest && offerEmailToo(view) && <EmailToo view={view} busy={save.isPending} onAdd={(patch) => save.mutate(patch)} />}
+      {!guest && offerEmailToo(view) && <EmailToo view={view} busy={save.isPending} onAdd={(patch, done) => save.mutate(patch, { onSuccess: done })} />}
       <div style={{ marginTop: "var(--sp-5)" }}>
         {NOTIFY_TYPES.filter((type) => view.notes[type]).map((type) => (
           <NoteRow key={type} type={type} view={view} guest={guest} busy={save.isPending} onChange={(patch) => save.mutate(patch)} />
@@ -92,13 +92,13 @@ export function NotificationSettings({ token }: { token?: string }) {
 }
 
 /** The phone took over the notes by default. One quiet line, one tap to keep email as well. */
-function EmailToo({ view, busy, onAdd }: { view: SettingsView; busy: boolean; onAdd: (patch: SettingsPatch) => void }) {
+function EmailToo({ view, busy, onAdd }: { view: SettingsView; busy: boolean; onAdd: (patch: SettingsPatch, done: () => void) => void }) {
   const { tr } = useLanguage();
   const { toast } = useShell();
   return (
     <p className="small" style={{ marginTop: "var(--sp-3)" }} data-testid="notify-email-too">
       {tr("notify.emailToo.line")}{" "}
-      <button type="button" className="link" style={{ minHeight: 0 }} disabled={busy} onClick={() => { onAdd(addEmailPatch(view)); toast(tr("notify.emailToo.added")); }}>
+      <button type="button" className="link" style={{ minHeight: 0 }} disabled={busy} onClick={() => onAdd(addEmailPatch(view), () => toast(tr("notify.emailToo.added")))}>
         {tr("notify.emailToo.add")}
       </button>
     </p>

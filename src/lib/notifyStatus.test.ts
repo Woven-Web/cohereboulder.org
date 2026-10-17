@@ -52,6 +52,7 @@ describe("'Now on your phone. Want email too?'", () => {
     expect(offerEmailToo(view())).toBe(false);
     expect(offerEmailToo(phoneView({ push: { ...live, status: "suspect" } }))).toBe(false);
     expect(offerEmailToo(phoneView({ email: { address: null, verified: false, registered: false } }))).toBe(false);
+    expect(offerEmailToo(phoneView({ email: { address: "typed@b.org", verified: false, registered: false } }))).toBe(false);
     const chosen = { ...onPhone, chosen: "push" as const };
     expect(offerEmailToo(phoneView({ notes: { morning: chosen, reminder: chosen, harvest: chosen, evening: chosen } }))).toBe(false);
   });

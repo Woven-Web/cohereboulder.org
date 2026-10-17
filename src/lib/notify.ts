@@ -50,10 +50,10 @@ const phoneOnly = (view: SettingsView): NotifyType[] =>
 
 /**
  * "Now on your phone. Want email too?": shown once the phone is live and has taken over
- * notes by default, while there is an address to add. Gone after any choice.
+ * notes by default, while there is an address we may write to. Gone after any choice.
  */
 export const offerEmailToo = (view: SettingsView): boolean =>
-  view.push.status === "live" && Boolean(view.email.address) && phoneOnly(view).length > 0;
+  view.push.status === "live" && Boolean(view.email.address) && view.email.verified && phoneOnly(view).length > 0;
 
 /** The one tap: each of those notes keeps the phone and adds email. */
 export const addEmailPatch = (view: SettingsView): SettingsPatch =>
