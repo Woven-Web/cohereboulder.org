@@ -30,6 +30,8 @@ cohereboulder.org ─→ Worker "cohere-signup"
         ├── /                    static assets (dist/, SPA fallback)
         ├── /api/form/:slug      a form's questions            (public)
         ├── /api/events[/…]      community calendar, proxied from regenOS (public)
+        ├── /calendar.ics        the calendar as a subscribable feed (scenius feed, TEST
+        │                        events dropped, 15-min edge cache; calendar-feed.ts)
         ├── /api/config          what the SPA needs to know (regenOS flag + DID)
         ├── /xrpc/:nsid          regenOS sign-in/event-write proxy — 404s unless
         │                        REGENOS_LOGIN_ENABLED="true" (on in wrangler.jsonc;

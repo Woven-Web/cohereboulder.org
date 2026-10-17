@@ -83,6 +83,7 @@ try {
   await google.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
   if (process.env.SIMPLE_SHOTS_DIR) {
+    await page.waitForTimeout(500); // let the dialog finish fading in
     await page.screenshot({ path: `${process.env.SIMPLE_SHOTS_DIR}/subscribe-1280.png` });
     const phone = await browser.newContext({ baseURL: target, serviceWorkers: "block", viewport: { width: 390, height: 844 } });
     await phone.clock.setFixedTime(new Date("2026-10-01T18:00:00Z"));
@@ -90,6 +91,7 @@ try {
     await small.goto(new URL(page.url()).pathname, { waitUntil: "networkidle" });
     await small.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
     await small.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
+    await small.waitForTimeout(500);
     await small.screenshot({ path: `${process.env.SIMPLE_SHOTS_DIR}/subscribe-390.png` });
     await phone.close();
   }
