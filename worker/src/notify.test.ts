@@ -111,6 +111,24 @@ describe("GET/PUT /api/notify/settings", () => {
     for (const type of ["morning", "harvest", "evening"]) expect(view.notes[type]).toMatchObject({ on: true, channel: "push", pushAvailable: true });
     expect(view.pushBroke).toBe(false);
   });
+  it("event reminders: on by push for the app, off for email-only, and the Email toggle stores an explicit choice", async () => {
+    let view = await (await call("GET", "/api/notify/settings")).json();
+    expect(view.notes.reminder).toMatchObject({ on: false, phone: false, email: false });
+    view = await (await call("PUT", "/api/notify/settings", { reminder: { channels: { phone: false, email: true } } })).json();
+    expect(view.notes.reminder).toMatchObject({ on: true, phone: false, email: true });
+    expect(rows("SELECT reminder_on, reminder_channel FROM notify_prefs")).toEqual([{ reminder_on: 1, reminder_channel: "email" }]);
+    await addDevice(ME);
+    view = await (await call("PUT", "/api/notify/settings", { reminder: { channels: { phone: true, email: false } } })).json();
+    expect(view.notes.reminder).toMatchObject({ on: true, phone: true, email: false, channel: "push" });
+    view = await (await call("PUT", "/api/notify/settings", { reminder: { on: false } })).json();
+    expect(view.notes.reminder).toMatchObject({ on: false });
+    expect(rows("SELECT reminder_on FROM notify_prefs")).toEqual([{ reminder_on: 0 }]);
+  });
+  it("event reminders default on by push once the app is installed and live", async () => {
+    await addDevice(ME);
+    const view = await (await call("GET", "/api/notify/settings")).json();
+    expect(view.notes.reminder).toMatchObject({ on: true, channel: "push", phone: true, email: false, chosen: null });
+  });
   it("when push broke: reports it, switches the effective channel to email, keeps the stored choice", async () => {
     await addDevice(ME, { state: "suspect", fail_count: 3 });
     await call("PUT", "/api/notify/settings", { evening: { channel: "push" } });

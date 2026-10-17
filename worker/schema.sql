@@ -324,6 +324,8 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
   morning_channel   TEXT CHECK (morning_channel IN ('push', 'email')),
   harvest_channel   TEXT CHECK (harvest_channel IN ('push', 'email')),
   evening_channel   TEXT CHECK (evening_channel IN ('push', 'email')),
+  reminder_on       INTEGER CHECK (reminder_on IN (0, 1)),             -- (0015)
+  reminder_channel  TEXT CHECK (reminder_channel IN ('push', 'email')), -- (0015)
   also_email        TEXT,               -- note types that also go by email on top of push (0014)
   email             TEXT,
   email_verified_at TEXT,
@@ -362,6 +364,19 @@ CREATE TABLE IF NOT EXISTS notify_ledger (
   ref        TEXT NOT NULL,             -- the Boulder date, or '<event did>/<rkey>' for harvest
   person_key TEXT NOT NULL,
   channel    TEXT,                      -- push | email, once decided
+  fell_back  INTEGER NOT NULL DEFAULT 0,
+  status     TEXT NOT NULL DEFAULT 'claimed' CHECK (status IN ('claimed', 'sent', 'skipped', 'failed')),
+  reason     TEXT,
+  claimed_at TEXT NOT NULL,
+  PRIMARY KEY (type, ref, person_key)
+);
+
+-- The event reminders' ledger (0015): notify_ledger's type CHECK cannot be widened add-only.
+CREATE TABLE IF NOT EXISTS notify_reminder_ledger (
+  type       TEXT NOT NULL CHECK (type = 'reminder'),
+  ref        TEXT NOT NULL,             -- '<event did>/<rkey>'
+  person_key TEXT NOT NULL,
+  channel    TEXT,
   fell_back  INTEGER NOT NULL DEFAULT 0,
   status     TEXT NOT NULL DEFAULT 'claimed' CHECK (status IN ('claimed', 'sent', 'skipped', 'failed')),
   reason     TEXT,

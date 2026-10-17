@@ -849,3 +849,125 @@ describe("the 8 PM note as the one daily email", () => {
     expect(pushed[0].payload.title).toBe("How was Honoring Water?");
   });
 });
+
+describe("event reminders", () => {
+  // 3:00 PM in Boulder on Oct 17; the five-minute scan at 1:55 PM is the first that may send.
+  const tea = event("tea", "2026-10-17T21:00:00Z", "2026-10-17T22:00:00Z", "Tea Ceremony | with Mei");
+  const SCAN = new Date("2026-10-17T19:55:00Z");
+  const reminderLedger = () => all("SELECT type, ref, person_key, channel, fell_back, status, reason FROM notify_reminder_ledger ORDER BY person_key");
+  const setReminder = (key: string, on: number | null, channel: string | null, also: string | null = null) =>
+    db().prepare("UPDATE notify_prefs SET reminder_on = ?2, reminder_channel = ?3, also_email = ?4 WHERE person_key = ?1").bind(key, on, channel, also).run();
+  const emailRsvp = (email: string, createdAt: string) =>
+    db().prepare("INSERT INTO event_rsvps(id,event_did,event_rkey,event_name,event_starts_at,email,cancel_token,created_at) VALUES (?1,'did:plc:mockscene','tea','Tea Ceremony',?2,?3,?1,?4)")
+      .bind(`id-${email}`, tea.startsAt, email, createdAt).run();
+
+  beforeEach(async () => {
+    events = [tea];
+    guests["did:plc:mockscene/tea"] = [ME];
+    await addDevice(ME);
+    await addPrefs(ME);
+    await addDevice(PEER, D2ID);
+    await addPrefs(PEER, { email: "peer@example.org" }); // has the app, did not RSVP
+  });
+
+  it("pushes the event's title, start time and place, linking to the event, about an hour before", async () => {
+    await runNotifyCron(env, new Date("2026-10-17T19:50:00Z"), deps); // 70 minutes before: not yet
+    expect(pushed).toHaveLength(0);
+    const result = await runNotifyCron(env, SCAN, deps);
+    expect(result.runs).toContain("reminder:did:plc:mockscene/tea");
+    expect(pushed).toHaveLength(1);
+    expect(pushed[0].device).toBe(D1ID);
+    expect(pushed[0].payload).toMatchObject({
+      title: "Tea Ceremony | with Mei",
+      body: "Starts at 3:00 PM · Mock Hall",
+      url: `/events/${encodeURIComponent("did:plc:mockscene")}/tea`,
+      tag: "reminder-tea",
+    });
+    expect(mails).toHaveLength(0);
+    expect(reminderLedger()).toEqual([{ type: "reminder", ref: "did:plc:mockscene/tea", person_key: ME, channel: "push", fell_back: 0, status: "sent", reason: null }]);
+    expect(ledger()).toHaveLength(0); // the other notes' ledger is untouched
+  });
+  it("in Spanish for a Spanish phone", async () => {
+    await db().prepare("UPDATE companion_subscriptions SET language = 'es' WHERE device_id = ?1").bind(D1ID).run();
+    await runNotifyCron(env, SCAN, deps);
+    expect(bodyOf(pushed[0])).toMatch(/^Empieza a las 3:00\s?p\.\s?m\. · Mock Hall$/);
+  });
+  it("is sent once per person per event, whatever the later ticks do", async () => {
+    for (const t of ["19:55", "20:00", "20:05", "20:10"]) await runNotifyCron(env, new Date(`2026-10-17T${t}:00Z`), deps);
+    expect(pushed).toHaveLength(1);
+    expect(reminderLedger()).toHaveLength(1);
+  });
+  it("a missed scan still catches up before the start; nothing once it has started", async () => {
+    await runNotifyCron(env, new Date("2026-10-17T20:10:00Z"), deps);
+    expect(pushed).toHaveLength(1);
+    pushed.length = 0;
+    events = [event("late", "2026-10-17T21:00:00Z", null)];
+    guests["did:plc:mockscene/late"] = [ME];
+    await runNotifyCron(env, new Date("2026-10-17T21:05:00Z"), deps);
+    expect(pushed).toHaveLength(0);
+  });
+  it("skips events starting before 7 AM, and cancelled ones", async () => {
+    events = [event("dawn", "2026-10-17T12:30:00Z", null), { ...tea, status: "cancelled" }];
+    guests["did:plc:mockscene/dawn"] = [ME];
+    await runNotifyCron(env, new Date("2026-10-17T11:25:00Z"), deps);
+    await runNotifyCron(env, SCAN, deps);
+    // (the dawn event's harvest invitation is due at SCAN; that is not a reminder)
+    expect(pushed.filter((p) => String(p.payload.tag).startsWith("reminder-"))).toHaveLength(0);
+    expect(reminderLedger()).toHaveLength(0);
+  });
+  it("switched off: nothing", async () => {
+    await setReminder(ME, 0, null);
+    await runNotifyCron(env, SCAN, deps);
+    expect(pushed).toHaveLength(0);
+    expect(reminderLedger()).toMatchObject([{ status: "skipped", reason: "off" }]);
+  });
+  it("no live phone: no push and no email in its place", async () => {
+    await db().prepare("UPDATE notify_devices SET state = 'expired' WHERE device_id = ?1").bind(D1ID).run();
+    await runNotifyCron(env, SCAN, deps);
+    expect(pushed).toHaveLength(0);
+    expect(mails).toHaveLength(0);
+    expect(reminderLedger()).toMatchObject([{ person_key: ME, status: "skipped", reason: "no-live-push" }]);
+  });
+  it("a push the phone refuses is not retried by email", async () => {
+    pushStatus = () => 500;
+    await runNotifyCron(env, SCAN, deps);
+    expect(mails).toHaveLength(0);
+    expect(reminderLedger()).toMatchObject([{ status: "failed", channel: "push", reason: "push-failed" }]);
+  });
+  it("phone and email both, when the person chose both", async () => {
+    await setReminder(ME, 1, "push", "reminder");
+    await runNotifyCron(env, SCAN, deps);
+    expect(pushed).toHaveLength(1);
+    expect(mails.map((m) => m.to)).toEqual([EMAIL]);
+    expect(mails[0].message.subject).toBe("At 3:00 PM: Tea Ceremony");
+    expect(mails[0].message.text).toContain("Starts at 3:00 PM · Mock Hall");
+    expect(mails[0].message.text).toContain("https://cohereboulder.org/events/did%3Aplc%3Amockscene/tea");
+    expect(mails[0].message.headers?.["List-Unsubscribe"]).toMatch(/^<https:\/\/cohereboulder\.org\/n\//);
+    expect(reminderLedger()).toMatchObject([{ status: "sent", channel: "push+email" }]);
+  });
+  it("email RSVPs: only people who turned reminders on by email, and only for RSVPs made an hour or more before", async () => {
+    // Registered or said yes to the evening and harvest emails: still no reminder email by default.
+    await addPrefs("mailto:sam@example.org", { email: "sam@example.org", email_optin_at: "2026-10-12T00:00:00Z" });
+    await addPrefs("mailto:opt@example.org", { email: "opt@example.org" });
+    await setReminder("mailto:opt@example.org", 1, "email");
+    await addPrefs("mailto:late@example.org", { email: "late@example.org" });
+    await setReminder("mailto:late@example.org", 1, "email");
+    await emailRsvp("sam@example.org", "2026-10-12T00:00:00Z");
+    await emailRsvp("opt@example.org", "2026-10-17T19:00:00.000Z");
+    await emailRsvp("late@example.org", "2026-10-17T20:30:00.000Z"); // 30 minutes before the start
+    guests["did:plc:mockscene/tea"] = [];
+    await runNotifyCron(env, new Date("2026-10-17T20:10:00Z"), deps);
+    expect(mails.map((m) => m.to)).toEqual(["opt@example.org"]);
+    expect(pushed).toHaveLength(0);
+    expect(reminderLedger().map((r) => [r.person_key, r.status, r.reason])).toEqual([
+      ["mailto:opt@example.org", "sent", null],
+      ["mailto:sam@example.org", "skipped", "off"],
+    ]);
+  });
+  it("NOTIFY_PAUSED stops reminders too", async () => {
+    env.NOTIFY_PAUSED = "true";
+    await runNotifyCron(env, SCAN, deps);
+    expect(pushed).toHaveLength(0);
+    expect(reminderLedger()).toHaveLength(0);
+  });
+});

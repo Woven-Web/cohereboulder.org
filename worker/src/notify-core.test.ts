@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   STALE_DAYS, afterHeartbeat, alsoEmail, effectiveChannels, withAlsoEmail, afterSend, boulderTime, decide, effectiveChannel, emptyPrefs, eveningRef, eventEndMs, harvestDue, isLive, isOn,
-  logTag, morningRef, personKey, pushStatus, reviveDevice, signLink, softFailure, verifyLink, type DeviceRow, type Prefs, type Reach,
+  logTag, morningRef, personKey, pushStatus, reminderDue, reviveDevice, rsvpInTime, signLink, softFailure, verifyLink, type DeviceRow, type Prefs, type Reach,
 } from "./notify-core";
 
 const NOW = Date.parse("2026-10-17T14:00:00Z");
@@ -312,5 +312,90 @@ describe("phone and email both", () => {
   it("the toggles read: off is neither, email only is email", () => {
     expect(effectiveChannels("evening", prefs({ evening_on: 0 }), reach())).toEqual({ phone: false, email: false });
     expect(effectiveChannels("evening", prefs({ evening_channel: "email" }), reach())).toEqual({ phone: false, email: true });
+  });
+});
+
+describe("event reminders", () => {
+  const FEST = { start: "2026-10-15", end: "2026-10-25" };
+  // 3:00 PM in Boulder (MDT, UTC-6) on Oct 17.
+  const ev = { startsAt: "2026-10-17T21:00:00Z" };
+  const at = (t: string) => new Date(`2026-10-17T${t}Z`);
+
+  describe("timing", () => {
+    it("is due from 65 minutes before the start (the five-minute scan) to 45 minutes before, never after it starts", () => {
+      expect(reminderDue(ev, at("19:54:59"), FEST)).toBe(false);
+      expect(reminderDue(ev, at("19:55:00"), FEST)).toBe(true);
+      expect(reminderDue(ev, at("20:00:00"), FEST)).toBe(true);
+      expect(reminderDue(ev, at("20:14:59"), FEST)).toBe(true); // a missed tick may still catch up
+      expect(reminderDue(ev, at("20:15:00"), FEST)).toBe(false);
+      expect(reminderDue(ev, at("21:00:00"), FEST)).toBe(false);
+      expect(reminderDue(ev, at("22:00:00"), FEST)).toBe(false);
+    });
+    it("a five-minute scan always lands inside the window, at most five minutes early", () => {
+      for (const minute of [0, 1, 2, 3, 4, 7, 13, 59]) {
+        const start = Date.parse("2026-10-17T21:00:00Z") + minute * 60_000;
+        const scans = Array.from({ length: 48 }, (_, i) => Date.parse("2026-10-17T18:00:00Z") + i * 5 * 60_000);
+        const first = scans.find((t) => reminderDue({ startsAt: new Date(start).toISOString() }, new Date(t), FEST));
+        expect(first).toBeDefined();
+        expect(start - first!).toBeGreaterThanOrEqual(60 * 60_000);
+        expect(start - first!).toBeLessThanOrEqual(65 * 60_000);
+      }
+    });
+    it("skips events that start before 7 AM in Boulder", () => {
+      const early = { startsAt: "2026-10-17T12:30:00Z" }; // 6:30 AM
+      expect(reminderDue(early, new Date("2026-10-17T11:30:00Z"), FEST)).toBe(false);
+      const seven = { startsAt: "2026-10-17T13:00:00Z" }; // 7:00 AM
+      expect(reminderDue(seven, new Date("2026-10-17T12:00:00Z"), FEST)).toBe(true);
+    });
+    it("skips a cancelled event, one with no time, and one outside the gathering's dates", () => {
+      expect(reminderDue({ ...ev, status: "cancelled" }, at("20:00:00"), FEST)).toBe(false);
+      expect(reminderDue({ startsAt: null }, at("20:00:00"), FEST)).toBe(false);
+      expect(reminderDue({ startsAt: "2026-10-27T21:00:00Z" }, new Date("2026-10-27T20:00:00Z"), FEST)).toBe(false);
+    });
+    it("an RSVP made less than an hour before the start is not reminded", () => {
+      expect(rsvpInTime("2026-10-17T19:00:00Z", ev.startsAt)).toBe(true);
+      expect(rsvpInTime("2026-10-17T20:00:00.000Z", ev.startsAt)).toBe(true); // exactly an hour before
+      expect(rsvpInTime("2026-10-17T20:00:01Z", ev.startsAt)).toBe(false);
+      expect(rsvpInTime(null, ev.startsAt)).toBe(false);
+    });
+  });
+
+  describe("defaults and channels", () => {
+    it("on by push for people with the app; a live phone gets it", () => {
+      expect(isOn("reminder", prefs(), reach())).toBe(true);
+      expect(decide("reminder", prefs(), reach())).toEqual({ action: "push", fellBack: false });
+      expect(effectiveChannels("reminder", prefs(), reach())).toEqual({ phone: true, email: false });
+    });
+    it("off for email-only and registered people, even ones who said yes to the evening and harvest emails", () => {
+      const only = reach({ hasApp: false, livePush: false, registered: true });
+      expect(isOn("reminder", prefs(), only)).toBe(false);
+      expect(isOn("reminder", prefs({ email_optin_at: "2026-10-12T00:00:00Z" }), only)).toBe(false);
+      expect(decide("reminder", prefs({ email_optin_at: "2026-10-12T00:00:00Z" }), only)).toEqual({ action: "skip", reason: "off" });
+      expect(effectiveChannels("reminder", prefs(), only)).toEqual({ phone: false, email: false });
+    });
+    it("never falls back to email on its own when the phone is not live", () => {
+      const broke = reach({ livePush: false });
+      expect(decide("reminder", prefs(), broke)).toEqual({ action: "skip", reason: "no-live-push" });
+      expect(decide("reminder", prefs({ reminder_on: 1, reminder_channel: "push" }), broke)).toEqual({ action: "skip", reason: "no-live-push" });
+      expect(effectiveChannels("reminder", prefs(), broke)).toEqual({ phone: false, email: false });
+    });
+    it("goes by email when the person asked for email: chose it, chose both, or switched it on with no app", () => {
+      expect(decide("reminder", prefs({ reminder_on: 1, reminder_channel: "email" }), reach())).toEqual({ action: "email", fellBack: false });
+      const both = prefs({ reminder_on: 1, reminder_channel: "push", also_email: "reminder" });
+      expect(decide("reminder", both, reach())).toEqual({ action: "both" });
+      expect(decide("reminder", both, reach({ livePush: false }))).toEqual({ action: "email", fellBack: true });
+      const only = reach({ hasApp: false, livePush: false });
+      expect(decide("reminder", prefs({ reminder_on: 1 }), only)).toEqual({ action: "email", fellBack: false });
+      expect(effectiveChannels("reminder", prefs({ reminder_on: 1 }), only)).toEqual({ phone: false, email: true });
+      expect(decide("reminder", prefs({ reminder_on: 1, reminder_channel: "email" }), reach({ email: null }))).toEqual({ action: "skip", reason: "unreachable" });
+    });
+    it("switched off stays off", () => {
+      expect(decide("reminder", prefs({ reminder_on: 0 }), reach())).toEqual({ action: "skip", reason: "off" });
+    });
+    it("does not change the other notes' defaults", () => {
+      const only = reach({ hasApp: false, livePush: false });
+      expect(isOn("harvest", prefs({ email_optin_at: "2026-10-12T00:00:00Z" }), only)).toBe(true);
+      expect(decide("harvest", prefs(), reach({ livePush: false }))).toEqual({ action: "email", fellBack: true });
+    });
   });
 });

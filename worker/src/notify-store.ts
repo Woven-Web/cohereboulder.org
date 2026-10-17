@@ -42,15 +42,15 @@ export async function savePrefs(db: D1Database, p: PrefsRow, now: string): Promi
   await db
     .prepare(
       `INSERT INTO notify_prefs (person_key, did, morning_on, harvest_on, evening_on, morning_channel, harvest_channel, evening_channel,
-         email, email_verified_at, email_optin_at, locale, fallback_noted_at, also_email, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15, ?14, ?14)
+         email, email_verified_at, email_optin_at, locale, fallback_noted_at, also_email, reminder_on, reminder_channel, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15, ?16, ?17, ?14, ?14)
        ON CONFLICT(person_key) DO UPDATE SET did = ?2, morning_on = ?3, harvest_on = ?4, evening_on = ?5,
          morning_channel = ?6, harvest_channel = ?7, evening_channel = ?8, email = ?9, email_verified_at = ?10,
-         email_optin_at = ?11, locale = ?12, fallback_noted_at = ?13, also_email = ?15, updated_at = ?14`,
+         email_optin_at = ?11, locale = ?12, fallback_noted_at = ?13, also_email = ?15, reminder_on = ?16, reminder_channel = ?17, updated_at = ?14`,
     )
     .bind(
       p.person_key, p.did, p.morning_on, p.harvest_on, p.evening_on, p.morning_channel, p.harvest_channel, p.evening_channel,
-      p.email, p.email_verified_at, p.email_optin_at, p.locale, p.fallback_noted_at, now, p.also_email,
+      p.email, p.email_verified_at, p.email_optin_at, p.locale, p.fallback_noted_at, now, p.also_email, p.reminder_on, p.reminder_channel,
     )
     .run();
 }
@@ -91,6 +91,10 @@ export async function saveDevice(db: D1Database, d: DeviceRow, now: string): Pro
 export async function getDevice(db: D1Database, deviceId: string): Promise<DeviceRow | null> {
   return db.prepare("SELECT * FROM notify_devices WHERE device_id = ?1").bind(deviceId).first<DeviceRow>();
 }
+
+/** Event reminders keep their own ledger (migration 0015): notify_ledger's type CHECK predates them. */
+export const ledgerOf = (type: NotifyType): string => (type === "reminder" ? "notify_reminder_ledger" : "notify_ledger");
+const LEDGERS = ["notify_ledger", "notify_reminder_ledger"] as const;
 
 /** The form whose registrants are notification people by default. */
 export const REGISTRATION_FORM = "register-2026";
@@ -149,8 +153,10 @@ export async function mergeEmailPerson(db: D1Database, did: string, email: strin
   merged.email = into.email ?? email;
   merged.email_verified_at = into.email_verified_at ?? old.email_verified_at ?? now;
   await db.batch([
-    db.prepare("UPDATE OR IGNORE notify_ledger SET person_key = ?1 WHERE person_key = ?2").bind(did, from),
-    db.prepare("DELETE FROM notify_ledger WHERE person_key = ?1").bind(from),
+    ...LEDGERS.flatMap((ledger) => [
+      db.prepare(`UPDATE OR IGNORE ${ledger} SET person_key = ?1 WHERE person_key = ?2`).bind(did, from),
+      db.prepare(`DELETE FROM ${ledger} WHERE person_key = ?1`).bind(from),
+    ]),
     db.prepare("DELETE FROM notify_prefs WHERE person_key = ?1").bind(from),
   ]);
   await savePrefs(db, merged, now);

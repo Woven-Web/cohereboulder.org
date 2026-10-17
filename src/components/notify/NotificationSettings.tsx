@@ -27,8 +27,8 @@ function when(iso: string, language: "en" | "es"): string {
 }
 
 /**
- * The settings screen: how we reach you, then three notes, each a switch and a
- * Push | Email choice. Signed in (the account's own settings) or from an
+ * The settings screen: how we reach you, then four notes, each a switch and a
+ * Phone | Email choice. Signed in (the account's own settings) or from an
  * emailed link (`token`: that address's settings, no sign-in, no push).
  */
 export function NotificationSettings({ token }: { token?: string }) {
@@ -77,7 +77,7 @@ export function NotificationSettings({ token }: { token?: string }) {
       )}
       <Reach view={view} guest={guest} />
       <div style={{ marginTop: "var(--sp-5)" }}>
-        {NOTIFY_TYPES.map((type) => (
+        {NOTIFY_TYPES.filter((type) => view.notes[type]).map((type) => (
           <NoteRow key={type} type={type} view={view} guest={guest} busy={save.isPending} onChange={(patch) => save.mutate(patch)} />
         ))}
         <div style={{ borderTop: "var(--rule-w) solid var(--rule)" }} />
@@ -277,7 +277,10 @@ function NoteRow({ type, view, guest, busy, onChange }: { type: NotifyType; view
   const selected: Channel = note.channel;
   const toggle = (which: "phone" | "email") => onChange({ [type]: { channels: { phone: note.phone, email: note.email, [which]: !note[which] } } });
 
-  const why = note.on && selected === "email" && !hasEmail ? { text: tr("notify.why.noEmail"), warn: true }
+  // Event reminders never fall back to email on their own: say so instead of "using email".
+  const reminderNoPush = type === "reminder" && !pushOK && !note.email;
+  const why = reminderNoPush ? { text: tr(guest ? "notify.why.reminderGuest" : "notify.why.reminderNeedsApp"), warn: false }
+    : note.on && selected === "email" && !hasEmail ? { text: tr("notify.why.noEmail"), warn: true }
     : note.on && view.email.registered && !note.chosen && !pushOK && note.email ? { text: tr("notify.why.registered"), warn: false }
     : !pushOK ? { text: view.pushBroke ? tr("notify.why.pushBroke") : guest ? tr("notify.why.guestNeedsApp") : tr("notify.why.needsApp"), warn: false }
     : { text: note.chosen ? tr("notify.why.chose") : tr("notify.why.byDefault"), warn: false };

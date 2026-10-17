@@ -1,8 +1,9 @@
-// The three senders, run from the Worker's every-minute cron.
+// The four senders, run from the Worker's every-minute cron.
 //
-//   morning  6:00 AM Boulder   (the hour the practice push has always gone out)
-//   evening  8:00 PM Boulder
-//   harvest  an hour after an event you RSVP'd to ends
+//   morning   6:00 AM Boulder   (the hour the practice push has always gone out)
+//   evening   8:00 PM Boulder
+//   harvest   an hour after an event you RSVP'd to ends
+//   reminder  an hour before an event you RSVP'd to starts (push; email only if asked for)
 //
 // Safety, in order of importance:
 //  * NOTIFY_PAUSED must be exactly "false" for anything to go out. Unset, "true",
@@ -19,14 +20,14 @@ import { sendMail, type AuthEnv, type MailMessage } from "./auth";
 import { companionWindow, denverDate, localMock, pushConfigured, type CompanionEnv } from "./companion";
 import { toCommunityEvent, type CommunityEvent, type EventsEnv, type GetEventsRow } from "./events";
 import {
-  EVENING_AT, MORNING_AT, addDays, boulderTime, decide, emailOfKey, eventEndMs, eveningRef, harvestDue, isLive, logTag, morningRef, signLink,
-  softFailure, STALE_DAYS, type DeviceRow, type LinkPayload, type NotifyType, type Reach,
+  EVENING_AT, MORNING_AT, REMINDER_LEAD_MS, addDays, boulderTime, decide, emailOfKey, eventEndMs, eveningRef, harvestDue, isLive, logTag, morningRef,
+  reminderDue, signLink, softFailure, STALE_DAYS, type DeviceRow, type LinkPayload, type NotifyType, type Reach,
 } from "./notify-core";
 import {
-  eveningEmail, eveningPush, harvestEmail, harvestPush, morningEmail, morningPush, type Daily, type EventLine, type Lang, type MailContext,
+  eveningEmail, eveningPush, harvestEmail, harvestPush, morningEmail, morningPush, reminderEmail, reminderPush, type Daily, type EventLine, type Lang, type MailContext,
 } from "./notify-messages";
 import {
-  devicesOf, mailAddress, prefsOrBlank, reachOf, recordSend, registeredEmails, saveDevice, savePrefs, type DeviceWithKeys, type PrefsRow,
+  devicesOf, ledgerOf, mailAddress, prefsOrBlank, reachOf, recordSend, registeredEmails, saveDevice, savePrefs, type DeviceWithKeys, type PrefsRow,
 } from "./notify-store";
 import { encryptPush, serializePush, validEndpoint, vapid, type PushPayload } from "./push";
 import { confirmedGuests } from "./rsvp-visibility";
@@ -68,7 +69,7 @@ export const MAX_EMAILS_PER_TICK = 40;
 /** Resend allows 2 requests a second; with that provider, wait this long between emails. */
 const RESEND_GAP_MS = 550;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const TTL: Record<NotifyType | "test", number> = { morning: 3 * 3600, harvest: 6 * 3600, evening: 2 * 3600, test: 60 };
+const TTL: Record<NotifyType | "test", number> = { morning: 3 * 3600, harvest: 6 * 3600, evening: 2 * 3600, reminder: 3600, test: 60 };
 
 // ------------------------------------------------------------------- push
 
@@ -249,8 +250,8 @@ export async function runNotifyCron(env: NotifyEnv, now: Date, deps: Deps = {}):
   const evening = eveningRef(now, fest);
   if (evening) due.push({ type: "evening", ref: evening });
 
-  // Harvest invites depend on when events end, so look every five minutes
-  // (and always while a run is unfinished) rather than every tick.
+  // Harvest invites and event reminders depend on when events end and start, so look
+  // every five minutes (and always while a run is unfinished) rather than every tick.
   const open = (await db.prepare("SELECT type, ref FROM notify_runs WHERE completed_at IS NULL AND started_at > ?1").bind(new Date(now.getTime() - 12 * 3600_000).toISOString()).all<{ type: NotifyType; ref: string }>()).results;
   for (const run of open) if (!due.some((d) => d.type === run.type && d.ref === run.ref)) due.push(run);
   const lookForHarvest = now.getUTCMinutes() % 5 === 0 && denverDate(now) >= fest.start && denverDate(now) <= addDays(fest.end, 1);
@@ -261,6 +262,7 @@ export async function runNotifyCron(env: NotifyEnv, now: Date, deps: Deps = {}):
   if (lookForHarvest) {
     for (const event of (await loadEvents()) ?? []) {
       if (harvestDue(event, now) && !due.some((d) => d.type === "harvest" && d.ref === keyOf(event))) due.push({ type: "harvest", ref: keyOf(event) });
+      if (reminderDue(event, now, fest) && !due.some((d) => d.type === "reminder" && d.ref === keyOf(event))) due.push({ type: "reminder", ref: keyOf(event) });
     }
   }
 
@@ -292,7 +294,7 @@ async function processRun(ctx: Ctx, type: NotifyType, ref: string, loadEvents: (
 
   ctx.registered = await registeredEmails(db);
   const claimed = new Set(
-    (await db.prepare("SELECT person_key FROM notify_ledger WHERE type = ?1 AND ref = ?2").bind(type, ref).all<{ person_key: string }>()).results.map((r) => r.person_key),
+    (await db.prepare(`SELECT person_key FROM ${ledgerOf(type)} WHERE type = ?1 AND ref = ?2`).bind(type, ref).all<{ person_key: string }>()).results.map((r) => r.person_key),
   );
   const recipients = await content.recipients();
   let budget = MAX_PER_TICK - ctx.sent - ctx.skipped;
@@ -307,7 +309,7 @@ async function processRun(ctx: Ctx, type: NotifyType, ref: string, loadEvents: (
     await handleRecipient(ctx, type, ref, r, content);
   }
   await db.prepare("UPDATE notify_runs SET completed_at = ?3 WHERE type = ?1 AND ref = ?2").bind(type, ref, now.toISOString()).run();
-  const totals = (await db.prepare("SELECT COALESCE(channel, '-') AS channel, status, COUNT(*) AS n FROM notify_ledger WHERE type = ?1 AND ref = ?2 GROUP BY 1, 2").bind(type, ref).all<{ channel: string; status: string; n: number }>()).results;
+  const totals = (await db.prepare(`SELECT COALESCE(channel, '-') AS channel, status, COUNT(*) AS n FROM ${ledgerOf(type)} WHERE type = ?1 AND ref = ?2 GROUP BY 1, 2`).bind(type, ref).all<{ channel: string; status: string; n: number }>()).results;
   console.info(`notify ${type} ${ref} done: ${totals.map((t) => `${t.n} ${t.status}/${t.channel}`).join(", ") || "nobody"}`);
   return true;
 }
@@ -420,10 +422,37 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
     };
   }
 
-  // harvest: ref is "<did>/<rkey>"; only people who RSVP'd to that event.
+  // harvest and reminder: ref is "<did>/<rkey>"; only people who RSVP'd to that event.
   const event = ((await loadEvents()) ?? []).find((e) => keyOf(e) === ref);
   if (!event) return null;
   const info = { did: event.did, rkey: event.rkey, name: event.name, where: whereOf(event) };
+
+  if (type === "reminder") {
+    const start = Date.parse(event.startsAt ?? "");
+    // Once the event has started (or if it lost its time) the run closes with nobody left to remind.
+    const live = !Number.isNaN(start) && ctx.now.getTime() < start;
+    const cutoff = new Date(start - REMINDER_LEAD_MS).toISOString();
+    const reminder = { ...info, startsAt: event.startsAt };
+    return {
+      events: [event], rsvpLinks: false,
+      stillWanted: async () => true,
+      async recipients() {
+        if (!live) return [];
+        // An email RSVP made less than an hour before the start is not reminded. regenOS gives no RSVP time for
+        // account RSVPs, so for those the guest list read at the hour mark (the run starts 60–65 min out) is the cut.
+        const [accounts, early] = await Promise.all([
+          guests(event),
+          db.prepare("SELECT email FROM event_rsvps WHERE event_did = ?1 AND event_rkey = ?2 AND created_at <= ?3").bind(event.did, event.rkey, cutoff)
+            .all<{ email: string }>().then((r) => new Set(r.results.map((x) => `mailto:${x.email}`))),
+        ]);
+        return (await people()).filter((r) => accounts.has(r.key) || early.has(r.key));
+      },
+      goingOf: async () => new Set([ref]),
+      push: (lang, deviceId) => reminderPush({ event: reminder, lang }, deviceId),
+      email: (mc) => reminderEmail({ event: reminder, lang: mc.lang }, mc),
+    };
+  }
+
   return {
     events: [event], rsvpLinks: false, inDigest: digestCarries(event, env),
     stillWanted: async () => true,
@@ -444,10 +473,10 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
   const db = env.cohere;
   const nowIso = now.toISOString();
   // Claim before any I/O. Whoever inserts the row owns this send; nobody retries it.
-  const claim = await db.prepare("INSERT OR IGNORE INTO notify_ledger (type, ref, person_key, claimed_at) VALUES (?1, ?2, ?3, ?4)").bind(type, ref, r.key, nowIso).run();
+  const claim = await db.prepare(`INSERT OR IGNORE INTO ${ledgerOf(type)} (type, ref, person_key, claimed_at) VALUES (?1, ?2, ?3, ?4)`).bind(type, ref, r.key, nowIso).run();
   if (!claim.meta.changes) return;
   const settle: Settle = async (status, channel, fellBack, reason) => {
-    await db.prepare("UPDATE notify_ledger SET status = ?4, channel = ?5, fell_back = ?6, reason = ?7 WHERE type = ?1 AND ref = ?2 AND person_key = ?3").bind(type, ref, r.key, status, channel, fellBack ? 1 : 0, reason).run();
+    await db.prepare(`UPDATE ${ledgerOf(type)} SET status = ?4, channel = ?5, fell_back = ?6, reason = ?7 WHERE type = ?1 AND ref = ?2 AND person_key = ?3`).bind(type, ref, r.key, status, channel, fellBack ? 1 : 0, reason).run();
     if (status === "sent") ctx.sent++;
     else ctx.skipped++;
   };
@@ -502,6 +531,8 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
       return settle("sent", "push", false, null);
     }
     // Every live phone refused. If there is an address, the note goes there instead: once, never both.
+    // Not a reminder, though: those go by email only to people who asked for email.
+    if (type === "reminder") return settle("failed", "push", false, "push-failed");
     if (reach.email && digestEmail) return settle("skipped", null, false, "in-digest");
     if (reach.email) return emailTo(ctx, type, prefs, reach.email, lang, going, content, true, settle, share);
     return settle("failed", "push", false, "push-failed-no-email");

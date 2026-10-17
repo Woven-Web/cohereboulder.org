@@ -269,6 +269,8 @@ const COPY = {
     confirmHeading: (first: string) => (first ? `Thanks, ${first} — see you there.` : "See you there."),
     confirmLead: "You RSVP'd for",
     remindNote: "We'll email you a reminder the morning before (around 9am Boulder time).",
+    // The reminder email above is paused (RSVP_REMINDERS_PAUSED): say only what is true.
+    calNote: "Add it to your calendar and your calendar will remind you.",
     addCal: "Add to Google Calendar",
     icsNote: "An .ics file for any calendar app is attached.",
     viewEvent: "View the event",
@@ -288,6 +290,7 @@ const COPY = {
     confirmHeading: (first: string) => (first ? `Gracias, ${first} — nos vemos allí.` : "Nos vemos allí."),
     confirmLead: "Confirmaste tu asistencia a",
     remindNote: "Te enviaremos un recordatorio la mañana anterior (alrededor de las 9am, hora de Boulder).",
+    calNote: "Añádelo a tu calendario y tu calendario te lo recordará.",
     addCal: "Añadir a Google Calendar",
     icsNote: "Se adjunta un archivo .ics para cualquier app de calendario.",
     viewEvent: "Ver el evento",
@@ -326,8 +329,11 @@ export function confirmationEmail(
   base: string,
   /** The one-tap ask for the 8 PM and harvest notes; omitted for someone who already said yes. */
   optin?: { html: string; text: string },
+  /** The morning-before reminder email will go (RSVP_REMINDERS_PAUSED is not "true"). */
+  remindsByEmail = false,
 ): MailMessage {
   const c = COPY[language];
+  const remindNote = remindsByEmail ? c.remindNote : c.calNote;
   const link = `${base}/events/${event.did}/${event.rkey}`;
   const cancel = cancelUrl(base, [row.cancel_token]);
   const when = event.startsAt ? formatWhen(event.startsAt, language) : "";
@@ -337,7 +343,7 @@ export function confirmationEmail(
     escapeHtml(c.confirmHeading(firstName(row.name))),
     `<p ${P}>${c.confirmLead} <b>${escapeHtml(event.name)}</b>.</p>` +
       `<p ${P}>${escapeHtml(when)}${event.where ? `<br>${escapeHtml(event.where)}` : ""}</p>` +
-      `<p ${P}>${escapeHtml(c.remindNote)}</p>` +
+      `<p ${P}>${escapeHtml(remindNote)}</p>` +
       `<p ${P}><a href="${escapeHtml(link)}" ${A}>${escapeHtml(c.viewEvent)}</a>` +
       (gcal ? ` · <a href="${escapeHtml(gcal)}" ${A}>${escapeHtml(c.addCal)}</a>` : "") +
       `</p>` +
@@ -351,7 +357,7 @@ export function confirmationEmail(
     when,
     event.where ?? "",
     "",
-    c.remindNote,
+    remindNote,
     "",
     `${c.viewEvent}: ${link}`,
     ...(gcal ? [`${c.addCal}: ${gcal}`] : []),
@@ -529,7 +535,7 @@ export async function handleCreateRsvp(
     if (existing) {
       try {
         const base = env.PUBLIC_BASE_URL || url.origin, existingLang = existing.language === "es" ? "es" : "en";
-        await send(env, email, confirmationEmail(event, existing, existingLang, base, await optinFor(env, email, existingLang, base)));
+        await send(env, email, confirmationEmail(event, existing, existingLang, base, await optinFor(env, email, existingLang, base), env.RSVP_REMINDERS_PAUSED !== "true"));
       } catch (error) {
         console.error("rsvp confirmation resend failed:", error instanceof Error ? error.message : error);
       }
@@ -539,7 +545,7 @@ export async function handleCreateRsvp(
 
   try {
     const base = env.PUBLIC_BASE_URL || url.origin;
-    await send(env, email, confirmationEmail(event, row, language, base, await optinFor(env, email, language, base)));
+    await send(env, email, confirmationEmail(event, row, language, base, await optinFor(env, email, language, base), env.RSVP_REMINDERS_PAUSED !== "true"));
   } catch (error) {
     // The RSVP stands either way; the reminder carries the cancel link too.
     console.error("rsvp confirmation email failed:", error instanceof Error ? error.message : error);
