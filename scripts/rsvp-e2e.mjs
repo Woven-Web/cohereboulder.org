@@ -112,7 +112,7 @@ try {
   if (!ics.startsWith("BEGIN:VCALENDAR\r\n") || !ics.includes("SUMMARY:Seed Gathering")) fail("feed is missing the scene's events");
   if (/^SUMMARY:TEST\r?$/m.test(ics)) fail("feed still carries the TEST event");
   // Finish dismissing the modal before interacting with the RSVP form.
-  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Close dialog", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "detached" });
   ok("calendar subscription: one-tap Google and Apple links to our own feed, which drops TEST events");
   // This lane explicitly switches sign-in off; the anonymous email form

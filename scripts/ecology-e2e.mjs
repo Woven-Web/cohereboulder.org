@@ -16,6 +16,7 @@
 // and every control (≥44px). Register keeps its funnel beacons, blocks an empty
 // submit, announces a server error, submits, and works in Spanish; Register is on
 // the first phone screen. Classic and Almanac are unchanged, and the look sticks.
+// The Subscribe-to-calendar dialog wears the look in English and Spanish at 390 and 1280.
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
@@ -432,6 +433,36 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   await phone.page.getByRole("listbox").waitFor();
   check(await phone.page.getByRole("button", { name: "Week", exact: true }).count() === 0 && await phone.page.getByTestId("calendar-week").count() === 0, "calendar: phone keeps the day list, no week toggle");
   await phone.context.close();
+}
+// The Subscribe dialog wears the look: portalled into the shell, Lora title, forest pill, and it passes the audit.
+for (const [w, h] of [[390, 844], [1280, 800]]) {
+  for (const lang of ["en", "es"]) {
+    const { context, page, errors } = await session({ width: w, height: h });
+    await go(page, `/events/did:plc:mockscene/${EV}`);
+    await page.getByRole("heading", { level: 1, name: /Ecology Free Market/ }).waitFor();
+    if (lang === "es") await page.locator(".mast .lang").getByRole("button", { name: "Es", exact: true }).click();
+    await page.getByRole("button", { name: lang === "es" ? "Suscribirse al calendario" : "Subscribe to calendar", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByTestId("subscribe-google").waitFor();
+    await page.waitForTimeout(400); // the dialog fades and zooms in
+    const tag = `${lang} at ${w}`;
+    const look = await dialog.evaluate((d) => {
+      const css = (el) => getComputedStyle(el);
+      const deep = (() => { const x = document.createElement("i"); x.style.color = "var(--deep)"; d.append(x); const c = css(x).color; x.remove(); return c; })();
+      const google = d.querySelector("[data-testid=subscribe-google]"), apple = d.querySelector("[data-testid=subscribe-apple]");
+      return { inShell: Boolean(d.closest(".alm.eco")), title: css(d.querySelector("h2")).fontFamily, body: css(google).fontFamily, deep, google: css(google).backgroundColor, appleBorder: css(apple).borderTopColor, round: parseFloat(css(google).borderTopLeftRadius) >= 20 && parseFloat(css(apple).borderTopLeftRadius) >= 20 };
+    });
+    check(look.inShell, `subscribe: the dialog mounts inside the ecology shell ${tag}`);
+    check(/^Lora/.test(look.title) && /^Poppins/.test(look.body), `subscribe: Lora title, Poppins buttons ${tag} (${look.title.split(",")[0]} / ${look.body.split(",")[0]})`);
+    check(look.google === look.deep && look.appleBorder === look.deep && look.round, `subscribe: Google is a forest pill, Apple an outlined forest pill ${tag} (${look.google}, ${look.appleBorder})`);
+    await audit(page, `subscribe dialog (${lang})`, w);
+    check((await overflow(page)) <= 0, `subscribe: no horizontal overflow ${tag}`);
+    await shot(page, `subscribe-${lang}-${w}`);
+    await dialog.getByRole("button", { name: lang === "es" ? "Cerrar diálogo" : "Close dialog", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    check(errors.length === 0, `subscribe: no page errors ${tag}${errors.length ? ` — ${errors[0]}` : ""}`);
+    await context.close();
+  }
 }
 
 await browser.close();
