@@ -341,6 +341,23 @@ describe("emailed links", () => {
     expect((await call("PUT", `/api/notify/link/${unsub}/settings`, { morning: { on: true } }, null)).status).toBe(403);
     expect((await call("POST", `/api/notify/link/${t}/unsubscribe`, {}, null)).status).toBe(400);
   });
+  it("the emailed settings page: a registrant with no settings row turns the 8 PM email off and the morning email on, by POST", async () => {
+    await env.cohere.prepare("INSERT INTO people(id,email,subscribed,unsubscribe_token,created_at,updated_at) VALUES ('p1','rae@example.org',1,'tok1','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z')").run();
+    await env.cohere.prepare("INSERT INTO submissions(id,person_id,form_slug,data,created_at,updated_at) VALUES ('s1','p1','register-2026','{}','2026-10-01T00:00:00Z','2026-10-01T00:00:00Z')").run();
+    const t = await token({ p: "mailto:rae@example.org", k: "settings" });
+    const info = await (await call("GET", `/api/notify/link/${t}`, undefined, null)).json();
+    expect(info.view.notes.evening).toMatchObject({ on: true, email: true, phone: false });
+    expect(info.view.notes.morning).toMatchObject({ on: false, email: false });
+    const rows = () => env.cohere.prepare("SELECT morning_on, morning_channel, evening_on, evening_channel FROM notify_prefs WHERE person_key = 'mailto:rae@example.org'").all();
+    expect((await rows()).results).toEqual([]); // opening the page changed nothing
+    let view = await (await call("POST", `/api/notify/link/${t}/settings`, { evening: { channels: { phone: false, email: false } } }, null)).json();
+    expect(view.notes.evening).toMatchObject({ on: false, email: false });
+    view = await (await call("POST", `/api/notify/link/${t}/settings`, { morning: { channels: { phone: false, email: true } } }, null)).json();
+    expect(view.notes.morning).toMatchObject({ on: true, email: true });
+    expect((await rows()).results).toEqual([{ morning_on: 1, morning_channel: "email", evening_on: 0, evening_channel: null }]);
+    view = await (await call("POST", `/api/notify/link/${t}/settings`, { evening: { channels: { phone: false, email: true } } }, null)).json();
+    expect(view.notes.evening).toMatchObject({ on: true, email: true });
+  });
   it("the one-tap ask in the RSVP confirmation turns on the harvest and 8 PM notes for that address", async () => {
     const t = await token({ p: "mailto:sam@example.org", k: "optin" });
     expect(await (await call("GET", `/api/notify/link/${t}`, undefined, null)).json()).toMatchObject({ kind: "optin" });

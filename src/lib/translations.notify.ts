@@ -54,6 +54,12 @@ export const notifyTranslations = {
     tooMany: { en: "Too many tries. Please try again later.", es: "Demasiados intentos. Inténtalo más tarde." },
     sendFailed: { en: "We couldn’t send that just now. Try again in a moment.", es: "No pudimos enviarlo ahora. Inténtalo de nuevo en un momento." },
   },
+  emailLink: {
+    turnOn: { en: "Turn it on", es: "Activarlo" },
+    phoneOnly: { en: "On your phone, not by email.", es: "En tu teléfono, no por correo." },
+    moreTitle: { en: "Sign in for more", es: "Inicia sesión para más" },
+    moreBody: { en: "Phone notifications, event reminders and harvest invitations are in your settings once you sign in.", es: "Los avisos en el teléfono, los recordatorios de eventos y las invitaciones a la cosecha están en tus ajustes cuando inicias sesión." },
+  },
   guest: {
     title: { en: "Settings for {email}", es: "Ajustes para {email}" },
     body: { en: "You opened this from an email link, so there’s no sign-in. These settings belong to this email address.", es: "Abriste esto desde un enlace de correo, así que no hay inicio de sesión. Estos ajustes pertenecen a esta dirección de correo." },
