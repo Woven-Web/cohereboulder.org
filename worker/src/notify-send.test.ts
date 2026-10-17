@@ -964,6 +964,30 @@ describe("event reminders", () => {
       ["mailto:sam@example.org", "skipped", "off"],
     ]);
   });
+  it("a failed guest-list read is not 'nobody': the run stays open and the next tick sends", async () => {
+    let down = true;
+    deps.guests = async (_env, e) => (down ? null : new Set(guests[`${e.did}/${e.rkey}`] ?? []));
+    await runNotifyCron(env, SCAN, deps);
+    expect(pushed).toHaveLength(0);
+    expect(all("SELECT completed_at FROM notify_runs WHERE type = 'reminder'")).toEqual([{ completed_at: null }]);
+    down = false;
+    await runNotifyCron(env, new Date("2026-10-17T19:56:00Z"), deps); // an open run is picked up on any tick
+    expect(pushed).toHaveLength(1);
+    expect(all("SELECT completed_at FROM notify_runs WHERE type = 'reminder'")[0].completed_at).not.toBeNull();
+  });
+  it("still unreachable at the start: the run closes, nothing late", async () => {
+    deps.guests = async () => null;
+    await runNotifyCron(env, SCAN, deps);
+    await runNotifyCron(env, new Date("2026-10-17T21:00:00Z"), deps);
+    expect(pushed).toHaveLength(0);
+    expect(all("SELECT completed_at FROM notify_runs WHERE type = 'reminder'")[0].completed_at).not.toBeNull();
+  });
+  it("the push may not wait at the push service past the start", async () => {
+    const ttls: number[] = [];
+    deps.deliver = async (_env, _sub, _payload, ttl) => { ttls.push(ttl); return { status: 201 }; };
+    await runNotifyCron(env, new Date("2026-10-17T20:10:00Z"), deps); // 50 minutes before
+    expect(ttls).toEqual([50 * 60]);
+  });
   it("NOTIFY_PAUSED stops reminders too", async () => {
     env.NOTIFY_PAUSED = "true";
     await runNotifyCron(env, SCAN, deps);

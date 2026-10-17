@@ -195,10 +195,11 @@ lanes 10–12 of `scripts/ci-e2e.sh` are `board-e2e`, `people-e2e`,
 
 ## Notifications and Harvest
 
-Three notes, built in `worker/src/notify-*.ts` and driven by the every-minute cron:
+Four notes, built in `worker/src/notify-*.ts` and driven by the every-minute cron:
 the **morning note** (6 AM Boulder: the day's practice with its question inside it, then
-today's events, your RSVPs first), the **harvest invitation** (about an hour after an
-event you RSVP'd to ends) and the **8 PM "ready for tomorrow"**. They replace the old
+today's events, your RSVPs first), the **event reminder** (about an hour before an event
+you RSVP'd to starts), the **harvest invitation** (about an hour after an event you RSVP'd
+to ends) and the **8 PM "ready for tomorrow"**. They replace the old
 anonymous 6/9/3 companion pushes; `runCompanionCron` is now housekeeping only.
 
 - **Master switch:** `NOTIFY_PAUSED` runs the senders only when it is exactly `"false"`
@@ -214,6 +215,12 @@ anonymous 6/9/3 companion pushes; `runCompanionCron` is now housekeeping only.
   Email-only people: morning is opt-in; harvest and 8 PM only after the one-tap ask in the RSVP
   confirmation. Push chosen but not live falls back to email at send time (never both); the
   first fallback says so in settings and on top of that email. Dedupe: `notify_ledger`.
+- **Event reminders** (migration 0015) differ: on by push for app people, and by email ONLY
+  when the person chose Email for them (never a fallback, never from the RSVP opt-in). No
+  reminder for events before 7 AM, already started, or an email RSVP made under an hour
+  before. regenOS gives no RSVP time, so for account RSVPs the cut is the guest list read at
+  the 60–65 min scan. Their dedupe is `notify_reminder_ledger`: `notify_ledger.type`'s CHECK
+  could not be widened add-only. A failed guest-list read leaves the run open to retry.
 - **Links:** every email carries signed `/n/<token>` links (settings 30 days, unsubscribe never
   expires) and `List-Unsubscribe` one-click headers. Pages never change anything on load; a
   button POSTs. The secret is `NOTIFY_LINK_SECRET` (falls back to a key derived from the VAPID

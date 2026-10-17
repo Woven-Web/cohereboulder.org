@@ -20,8 +20,8 @@ import { sendMail, type AuthEnv, type MailMessage } from "./auth";
 import { companionWindow, denverDate, localMock, pushConfigured, type CompanionEnv } from "./companion";
 import { toCommunityEvent, type CommunityEvent, type EventsEnv, type GetEventsRow } from "./events";
 import {
-  EVENING_AT, MORNING_AT, REMINDER_LEAD_MS, addDays, boulderTime, decide, emailOfKey, eventEndMs, eveningRef, harvestDue, isLive, logTag, morningRef,
-  reminderDue, signLink, softFailure, STALE_DAYS, type DeviceRow, type LinkPayload, type NotifyType, type Reach,
+  EVENING_AT, MORNING_AT, addDays, boulderTime, decide, emailOfKey, eventEndMs, eveningRef, harvestDue, isLive, logTag, morningRef,
+  reminderDue, rsvpInTime, signLink, softFailure, STALE_DAYS, type DeviceRow, type LinkPayload, type NotifyType, type Reach,
 } from "./notify-core";
 import {
   eveningEmail, eveningPush, harvestEmail, harvestPush, morningEmail, morningPush, reminderEmail, reminderPush, type Daily, type EventLine, type Lang, type MailContext,
@@ -30,7 +30,7 @@ import {
   devicesOf, ledgerOf, mailAddress, prefsOrBlank, reachOf, recordSend, registeredEmails, saveDevice, savePrefs, type DeviceWithKeys, type PrefsRow,
 } from "./notify-store";
 import { encryptPush, serializePush, validEndpoint, vapid, type PushPayload } from "./push";
-import { confirmedGuests } from "./rsvp-visibility";
+import { confirmedGuestsOrNull } from "./rsvp-visibility";
 import type { RosterEnv } from "./roster";
 
 export interface NotifyEnv extends CompanionEnv, AuthEnv, EventsEnv, RosterEnv {
@@ -57,7 +57,8 @@ export interface Deps {
   send?: (env: NotifyEnv, to: string, message: MailMessage) => Promise<void>;
   deliver?: typeof deliverPush;
   events?: (env: NotifyEnv) => Promise<CommunityEvent[] | null>;
-  guests?: (env: NotifyEnv, event: CommunityEvent) => Promise<Set<string>>;
+  /** An event's confirmed account guests; null when regenOS could not be read. */
+  guests?: (env: NotifyEnv, event: CommunityEvent) => Promise<Set<string> | null>;
 }
 
 const MAX_PER_TICK = 60;
@@ -338,6 +339,8 @@ interface Content {
   emptyFor?(share: EventLine[]): boolean;
   /** Harvest invitations only: the 8 PM digest already carries this event, for people who get it by email. */
   inDigest?: boolean;
+  /** How long a push may wait at the push service, if not the type's usual TTL (a reminder must not land after the start). */
+  pushTtl?: number;
   email(mc: MailContext, going: Set<string>, rsvpLink: (e: EventLine) => string, share: EventLine[]): MailMessage;
 }
 
@@ -345,11 +348,12 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
   const { env, deps } = ctx;
   const db = env.cohere;
   // Per-run memory: each event's confirmed guests, and each event's email RSVPs, are read once.
-  const guestCache = new Map<string, Promise<Set<string>>>();
-  const guests = (e: CommunityEvent) => {
-    if (!guestCache.has(keyOf(e))) guestCache.set(keyOf(e), (deps.guests ?? confirmedGuests)(env, e));
+  const guestCache = new Map<string, Promise<Set<string> | null>>();
+  const guestsOrNull = (e: CommunityEvent) => {
+    if (!guestCache.has(keyOf(e))) guestCache.set(keyOf(e), (deps.guests ?? confirmedGuestsOrNull)(env, e));
     return guestCache.get(keyOf(e))!;
   };
+  const guests = async (e: CommunityEvent) => (await guestsOrNull(e)) ?? new Set<string>();
   const rsvpCache = new Map<string, Promise<Set<string>>>();
   const emailGuests = (e: CommunityEvent) => {
     if (!rsvpCache.has(keyOf(e))) {
@@ -431,20 +435,22 @@ async function buildContent(ctx: Ctx, type: NotifyType, ref: string, loadEvents:
     const start = Date.parse(event.startsAt ?? "");
     // Once the event has started (or if it lost its time) the run closes with nobody left to remind.
     const live = !Number.isNaN(start) && ctx.now.getTime() < start;
-    const cutoff = new Date(start - REMINDER_LEAD_MS).toISOString();
     const reminder = { ...info, startsAt: event.startsAt };
     return {
       events: [event], rsvpLinks: false,
+      pushTtl: live ? Math.max(60, Math.floor((start - ctx.now.getTime()) / 1000)) : 60,
       stillWanted: async () => true,
       async recipients() {
         if (!live) return [];
         // An email RSVP made less than an hour before the start is not reminded. regenOS gives no RSVP time for
         // account RSVPs, so for those the guest list read at the hour mark (the run starts 60–65 min out) is the cut.
-        const [accounts, early] = await Promise.all([
-          guests(event),
-          db.prepare("SELECT email FROM event_rsvps WHERE event_did = ?1 AND event_rkey = ?2 AND created_at <= ?3").bind(event.did, event.rkey, cutoff)
-            .all<{ email: string }>().then((r) => new Set(r.results.map((x) => `mailto:${x.email}`))),
+        const [accounts, rows] = await Promise.all([
+          guestsOrNull(event),
+          db.prepare("SELECT email, created_at FROM event_rsvps WHERE event_did = ?1 AND event_rkey = ?2").bind(event.did, event.rkey).all<{ email: string; created_at: string }>(),
         ]);
+        // A failed read is not "nobody RSVP'd": throw, so the run stays open and the next tick tries again (until the start).
+        if (!accounts) throw new Error("regenOS guest list unreachable");
+        const early = new Set(rows.results.filter((r) => rsvpInTime(r.created_at, event.startsAt!)).map((r) => `mailto:${r.email}`));
         return (await people()).filter((r) => accounts.has(r.key) || early.has(r.key));
       },
       goingOf: async () => new Set([ref]),
@@ -512,7 +518,7 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
     let pushed = false;
     if (!pushPaused(env) && canPush) {
       for (const d of (await devicesOf(db, prefs.person_key)).filter((x) => isLive(x, now.getTime()))) {
-        pushed = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going))) || pushed;
+        pushed = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going), content.pushTtl)) || pushed;
       }
     }
     if (digestEmail) return settle(pushed ? "sent" : "skipped", pushed ? "push" : null, false, pushed ? null : "in-digest");
@@ -524,7 +530,7 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
     if (!canPush) return settle("skipped", null, false, "nothing-to-say");
     const devices = (await devicesOf(db, prefs.person_key)).filter((d) => isLive(d, now.getTime()));
     let delivered = false;
-    for (const d of devices) delivered = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going))) || delivered;
+    for (const d of devices) delivered = (await sendPushTo(ctx, d, type, content.push(d.language === "es" ? "es" : lang, d.device_id, going), content.pushTtl)) || delivered;
     if (delivered) {
       // Push is working again: forget that we ever said it stopped.
       if (prefs.fallback_noted_at) await savePrefs(db, { ...prefs, fallback_noted_at: null }, nowIso);
@@ -543,8 +549,8 @@ async function handleRecipient(ctx: Ctx, type: NotifyType, ref: string, r: Recip
 
 type Settle = (status: "sent" | "skipped" | "failed", channel: "push" | "email" | "push+email" | null, fellBack: boolean, reason: string | null) => Promise<void>;
 
-async function sendPushTo(ctx: Ctx, device: DeviceWithKeys, type: NotifyType, payload: PushPayload): Promise<boolean> {
-  const { status } = await (ctx.deps.deliver ?? deliverPush)(ctx.env, device, payload, TTL[type]);
+async function sendPushTo(ctx: Ctx, device: DeviceWithKeys, type: NotifyType, payload: PushPayload, ttl = TTL[type]): Promise<boolean> {
+  const { status } = await (ctx.deps.deliver ?? deliverPush)(ctx.env, device, payload, ttl);
   if (status >= 200 && status < 300) ctx.pushes++;
   await recordSend(ctx.env.cohere, device, status, ctx.now.toISOString());
   return status >= 200 && status < 300;
