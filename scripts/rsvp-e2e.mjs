@@ -82,6 +82,17 @@ try {
   await google.press("Escape");
   await google.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
+  if (process.env.SIMPLE_SHOTS_DIR) {
+    await page.screenshot({ path: `${process.env.SIMPLE_SHOTS_DIR}/subscribe-1280.png` });
+    const phone = await browser.newContext({ baseURL: target, serviceWorkers: "block", viewport: { width: 390, height: 844 } });
+    await phone.clock.setFixedTime(new Date("2026-10-01T18:00:00Z"));
+    const small = await phone.newPage();
+    await small.goto(new URL(page.url()).pathname, { waitUntil: "networkidle" });
+    await small.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
+    await small.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
+    await small.screenshot({ path: `${process.env.SIMPLE_SHOTS_DIR}/subscribe-390.png` });
+    await phone.close();
+  }
   // One tap each: Google's subscribe link carries our own feed as webcal, Apple opens webcal directly.
   const origin = new URL(target).origin;
   const webcal = `webcal://${new URL(target).host}/calendar.ics`;

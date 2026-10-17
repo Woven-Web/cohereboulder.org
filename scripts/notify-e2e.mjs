@@ -34,6 +34,8 @@ import { chromium } from "playwright";
 const [target, adminToken, pushOrigin, keysFile, shotsDir] = process.argv.slice(2);
 /** Event-reminder screenshots (390 and 1280), when set. */
 const reminderShots = process.env.REMINDER_SHOTS_DIR;
+/** "Now on your phone. Want email too?" screenshots (390 and 1280), when set. */
+const simpleShots = process.env.SIMPLE_SHOTS_DIR;
 const persist = process.env.E2E_PERSIST_DIR;
 const linkSecret = process.env.NOTIFY_LINK_SECRET;
 if (!target || !adminToken || !pushOrigin || !keysFile || !persist || !linkSecret) {
@@ -223,6 +225,30 @@ try {
   expect(row?.person_key === PEER && row.installed === 1 && row.state === "live", "the phone is linked to the account, installed and live");
   await shot(installed.page, "notify-settings-390x844");
   await noSideways(installed.page, "settings, installed");
+
+  // The phone took every note by default: one quiet line offers email too, one tap adds it.
+  const emailToo = installed.page.getByTestId("notify-email-too");
+  expect((await emailToo.innerText()).includes("Now on your phone. Want email too?"), "live phone, no choices made: 'Now on your phone. Want email too?'");
+  if (simpleShots) {
+    await installed.page.screenshot({ path: `${simpleShots}/email-too-390.png`, fullPage: true });
+    const wideNow = await persona("mock-peer", { app: true, device: installed.device, viewport: { width: 1280, height: 900 } });
+    await wideNow.page.goto("/more/notifications", { waitUntil: "networkidle" });
+    await wideNow.page.getByTestId("notify-email-too").waitFor({ timeout: 15_000 });
+    await wideNow.page.screenshot({ path: `${simpleShots}/email-too-1280.png`, fullPage: true });
+    await wideNow.context.close();
+  }
+  await emailToo.getByRole("button", { name: "Add email", exact: true }).click();
+  await installed.page.waitForFunction(() => document.querySelector('[data-testid="evening-email"]')?.getAttribute("aria-pressed") === "true");
+  for (const type of ["morning", "reminder", "harvest", "evening"]) {
+    const both = (await note(installed.page, type).getByRole("button", { name: "Phone", exact: true }).getAttribute("aria-pressed")) === "true"
+      && (await note(installed.page, type).getByRole("button", { name: "Email", exact: true }).getAttribute("aria-pressed")) === "true";
+    expect(both, `'Add email': ${type} now goes by phone and email`);
+  }
+  expect(!(await emailToo.count()), "the line goes once the choice is made");
+  if (simpleShots) await installed.page.screenshot({ path: `${simpleShots}/email-too-added-390.png`, fullPage: true });
+  sqlRun(`DELETE FROM notify_prefs WHERE person_key = '${PEER}'`); // back to the defaults for what follows
+  await installed.page.reload({ waitUntil: "networkidle" });
+  await installed.page.getByTestId("notify-email-too").waitFor({ timeout: 15_000 });
 
   // Phone and Email are two toggles: Email on top of Phone is "both", then switching Phone off leaves email only.
   const pressed = (type, which) => note(installed.page, type).getByRole("button", { name: which, exact: true }).getAttribute("aria-pressed");
