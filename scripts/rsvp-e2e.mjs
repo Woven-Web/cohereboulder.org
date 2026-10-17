@@ -82,14 +82,25 @@ try {
   await google.press("Escape");
   await google.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Subscribe to calendar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar" }).waitFor();
-  await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).waitFor();
-  const feedUrl = await page.getByRole("textbox", { name: "Calendar feed URL" }).inputValue();
-  if (!feedUrl.endsWith("/calendar.ics")) fail(`subscription feed missing: ${feedUrl}`);
+  // One tap each: Google's subscribe link carries our own feed as webcal, Apple opens webcal directly.
+  const origin = new URL(target).origin;
+  const webcal = `webcal://${new URL(target).host}/calendar.ics`;
+  const googleSub = await page.getByRole("dialog").getByRole("link", { name: "Google Calendar" }).getAttribute("href");
+  if (googleSub !== `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}`) fail(`Google subscribe link wrong: ${googleSub}`);
+  const appleSub = await page.getByRole("dialog").getByRole("link", { name: "Apple Calendar (iPhone, Mac)" }).getAttribute("href");
+  if (appleSub !== webcal) fail(`Apple subscribe link wrong: ${appleSub}`);
+  const feedUrl = await page.getByRole("textbox", { name: "Another calendar app? Copy this link into it." }).inputValue();
+  if (feedUrl !== `${origin}/calendar.ics`) fail(`subscription feed is not ours: ${feedUrl}`);
+  // The feed itself: proxied from the scene's feed, a real calendar, the TEST event dropped.
+  const feed = await fetch(feedUrl);
+  const ics = await feed.text();
+  if (feed.status !== 200 || !feed.headers.get("content-type")?.startsWith("text/calendar")) fail(`feed answered ${feed.status} ${feed.headers.get("content-type")}`);
+  if (!ics.startsWith("BEGIN:VCALENDAR\r\n") || !ics.includes("SUMMARY:Seed Gathering")) fail("feed is missing the scene's events");
+  if (/^SUMMARY:TEST\r?$/m.test(ics)) fail("feed still carries the TEST event");
   // Finish dismissing the modal before interacting with the RSVP form.
   await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "detached" });
-  ok("calendar subscription explains Apple and Google feed setup");
+  ok("calendar subscription: one-tap Google and Apple links to our own feed, which drops TEST events");
   // This lane explicitly switches sign-in off; the anonymous email form
   // remains available and offers no dead sign-in control.
   if (await page.getByText("or sign in to RSVP with your COhere account").count()) {

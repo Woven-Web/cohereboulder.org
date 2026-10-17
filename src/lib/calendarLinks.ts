@@ -21,3 +21,13 @@ export function googleCalendarEventUrl(event: CommunityEvent, pageUrl?: string):
   if (where) url.searchParams.set("location", where);
   return url.toString();
 }
+
+/**
+ * One-tap subscribe links for the calendar feed (an https URL on our own domain).
+ * Apple opens `webcal://` itself; Google takes the same webcal URL in `cid` and
+ * shows its own "Add calendar?" confirmation.
+ */
+export function calendarSubscribeLinks(feedUrl: string): { webcal: string; google: string } {
+  const webcal = feedUrl.replace(/^https?:\/\//, "webcal://");
+  return { webcal, google: `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}` };
+}

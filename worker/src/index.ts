@@ -34,6 +34,7 @@ import {
   type AdminAccess,
   type AdminGateEnv,
 } from "./admin-gate";
+import { CALENDAR_FEED_PATH, handleCalendarFeed } from "./calendar-feed";
 import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
 import { handleXrpcProxy, isRegenosLoginEnabled, relayableCookies, type RegenosAuthEnv } from "./regenos-auth";
@@ -1009,6 +1010,10 @@ export default {
     if (request.method === "GET" && path === "/api/events") {
       return handleEventsList(request, env, cors);
     }
+    // The calendar as a feed on our own domain, so Google can subscribe in one tap (calendar-feed.ts).
+    if ((request.method === "GET" || request.method === "HEAD") && path === CALENDAR_FEED_PATH) {
+      return handleCalendarFeed(request, env);
+    }
     if (request.method === "GET" && path.startsWith("/api/events/")) {
       const parts = path.slice("/api/events/".length).split("/");
       if (parts.length === 2 && parts[0] && parts[1]) {
@@ -1018,6 +1023,7 @@ export default {
             decodeURIComponent(parts[0]),
             decodeURIComponent(parts[1]),
             cors,
+            url.origin,
           );
         } catch {
           // Malformed percent-encoding (e.g. /api/events/%ff/x) is just a bad path.

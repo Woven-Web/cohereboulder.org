@@ -224,6 +224,7 @@ start_worker ${P28870} ${P28235} "$PWA_SCRATCH/pwa-merge-worker-4.log" --test-sc
   --var REGENOS_LOGIN_ENABLED:false \
   --var REGENOS_SERVICE_TOKEN:mock-token \
   --var REGENOS_BASE_URL:http://127.0.0.1:${P28948} \
+  --var REGENOS_WEB_URL:http://127.0.0.1:${P28948} \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
 if ! E2E_PERSIST_DIR="$PERSIST_DIR" node scripts/rsvp-e2e.mjs http://127.0.0.1:${P28870} "$SESSION_TOKEN" http://127.0.0.1:${P28948}; then
   fail=1
