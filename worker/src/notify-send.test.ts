@@ -8,7 +8,7 @@ vi.hoisted(() => {
 import type { MailMessage } from "./auth";
 import type { CommunityEvent } from "./events";
 import { verifyLink } from "./notify-core";
-import { MAX_EMAILS_PER_TICK, fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
+import { MAX_EMAILS_PER_TICK, eveningEmailTonight, fetchSceneEvents, notifyPaused, runNotifyCron, sweepDevices, type Deps, type NotifyEnv } from "./notify-send";
 import { testD1 } from "./test-d1";
 
 const MOCK = "http://127.0.0.1:10049";
@@ -1054,7 +1054,7 @@ describe("once a day: a 2026 registrant who changed nothing", () => {
       expect(rows.filter((r) => r.status === "sent")).toEqual([{ type: "evening", status: "sent", reason: null }]);
       expect(rows.filter((r) => r.status !== "sent").every((r) => r.status === "skipped" && r.reason === "off")).toBe(true);
       expect(all("SELECT type, ref FROM notify_runs ORDER BY type, ref").map((r) => r.type)).toEqual(expect.arrayContaining(["morning", "harvest", "reminder", "evening"]));
-      expect(all("SELECT reminder_sent_at FROM event_rsvps WHERE event_rkey = 'so'")).toEqual([{ reminder_sent_at: null }]);
+      expect(all("SELECT reminder_sent_at FROM event_rsvps WHERE event_rkey = 'so'")).toEqual([{ reminder_sent_at: "2026-10-18T15:00:00.000Z" }]);
     });
   }
 
@@ -1076,6 +1076,22 @@ describe("once a day: a 2026 registrant who changed nothing", () => {
     const url = /Change your settings: (\S+)/.exec(mails[0].message.text)![1];
     expect(url).toMatch(/^https:\/\/cohereboulder\.org\/n\//);
     expect(await verifyLink(SECRET, url.split("/n/")[1], new Date("2026-10-19T03:00:00Z"))).toMatchObject({ p: "mailto:rae@example.org", k: "settings" });
+  });
+});
+
+describe("eveningEmailTonight: who the RSVP reminder leaves to the 8 PM note", () => {
+  const MORNING_RUN = new Date("2026-10-18T15:00:00Z"); // 9 AM Boulder, the RSVP cron
+  it("registrants who get it by email, but not accounts (their digest marks only regenOS RSVPs), not off, not when paused", async () => {
+    await addRegistered("rae@example.org");
+    await addRegistered("acc@example.org");
+    await addPrefs(ME, { email: "acc@example.org" });
+    await addRegistered("off@example.org");
+    await addPrefs("mailto:off@example.org", { email: "off@example.org", evening_on: 0 });
+    const ask = ["rae@example.org", "acc@example.org", "off@example.org", "stranger@example.org"];
+    expect([...await eveningEmailTonight(env, MORNING_RUN, ask)]).toEqual(["rae@example.org"]);
+    expect([...await eveningEmailTonight(env, new Date("2026-10-25T15:00:00Z"), ask)]).toEqual([]); // no 8 PM note on the last night
+    env.NOTIFY_PAUSED = "true";
+    expect([...await eveningEmailTonight(env, MORNING_RUN, ask)]).toEqual([]);
   });
 });
 

@@ -301,7 +301,7 @@ async function processRun(ctx: Ctx, type: NotifyType, ref: string, loadEvents: (
   // verified it after an earlier tick wrote to it as mailto:) is not written to again.
   const claimedAddresses = new Set<string>();
   for (const key of claimed) {
-    const address = emailOfKey(key) ?? mailAddress(await prefsOrBlank(db, key), ctx.registered);
+    const address = key.startsWith("did:") ? mailAddress(await prefsOrBlank(db, key), ctx.registered) : emailOfKey(key);
     if (address) claimedAddresses.add(address);
   }
   const recipients = await content.recipients();
@@ -618,6 +618,8 @@ export async function eveningEmailTonight(env: NotifyEnv, now: Date, addresses: 
   const registered = await registeredEmails(env.cohere);
   const wanted = new Set(addresses.map((a) => a.trim().toLowerCase()));
   for (const p of await peopleFor(env, registered, tonight >= (env.EMAIL_DEFAULT_FROM ?? ""))) {
+    // Only address-keyed people: the 8 PM note marks an email RSVP for them, not for an account (it reads regenOS's guest list).
+    if (!p.key.startsWith("mailto:")) continue;
     const address = addressOf(p, registered) ?? emailOfKey(p.key);
     if (!address || !wanted.has(address)) continue;
     const decision = decide("evening", p.prefs, await reachOf(env.cohere, p.prefs, now.getTime(), registered));

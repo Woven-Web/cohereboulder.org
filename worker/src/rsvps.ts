@@ -723,11 +723,12 @@ function chunks<T>(items: T[], size: number): T[][] {
  *  2. Re-read every upcoming event that has un-reminded RSVPs from regenOS,
  *     refreshing the row's snapshot — so a moved event is judged by its NEW
  *     start and a deleted/cancelled one is never reminded.
- *  3. Pick rows whose event starts TOMORROW in America/Denver, except for
- *     addresses that get tonight's 8 PM note by email (it lists those events).
- *  4. Claim them (`reminder_sent_at` set only where still NULL, RETURNING the
+ *  3. Pick rows whose event starts TOMORROW in America/Denver.
+ *  4. Skip (and mark done) addresses that get tonight's 8 PM note by email,
+ *     which lists those events with the RSVP marked.
+ *  5. Claim them (`reminder_sent_at` set only where still NULL, RETURNING the
  *     ids actually won) — two overlapping runs can never both send a row.
- *  5. One email per address listing all their events; a failed send releases
+ *  6. One email per address listing all their events; a failed send releases
  *     its claim so a re-run the same day retries it.
  */
 export async function runRsvpCron(
@@ -764,7 +765,9 @@ export async function runRsvpCron(
     if (!live.has(key)) live.set(key, await lookup(env, row.event_did, row.event_rkey));
   }
 
-  const due: (RsvpRow & { live: LiveEvent })[] = [];
+  let due: (RsvpRow & { live: LiveEvent })[] = [];
+  /** Rows judged from their snapshot because regenOS was down: tonight's 8 PM note may not list them either. */
+  const fromSnapshot = new Set<string>();
   for (const [key, found] of live) {
     const [did, rkey] = key.split("|");
     const rows = pending.filter((r) => r.event_did === did && r.event_rkey === rkey);
@@ -805,7 +808,10 @@ export async function runRsvpCron(
       continue;
     }
     if (!event.startsAt || event.startsAt < window.start || event.startsAt >= window.end) continue;
-    for (const row of rows) due.push({ ...row, live: event });
+    for (const row of rows) {
+      due.push({ ...row, live: event });
+      if (found.kind === "unavailable") fromSnapshot.add(row.id);
+    }
   }
   // Retain a moved RSVP until the live date has been refreshed. Purge only
   // after inspecting pending rows, not against the stale snapshot at entry.
@@ -816,8 +822,10 @@ export async function runRsvpCron(
     console.info("rsvp reminders paused");
     return result;
   }
-  // One email a day: an address that gets tonight's 8 PM note by email is not also reminded here.
-  // Its rows stay unclaimed, so if the event moves to a day without a digest the reminder still goes.
+  // 4. One email a day: an address that gets tonight's 8 PM note by email is not also reminded here;
+  // that note lists tomorrow's events with their RSVP marked. Not when regenOS was down this morning:
+  // the 8 PM note reads the same regenOS. The skipped rows are marked done, so later runs don't look
+  // up events that are over (a moved event is still in that person's 8 PM note for its new day).
   let digest = new Set<string>();
   try {
     digest = await (deps.eveningEmail ?? ((addresses: string[]) => eveningEmailTonight(env, now, addresses)))([...new Set(due.map((r) => r.email))]);
@@ -825,13 +833,19 @@ export async function runRsvpCron(
     // Better a reminder too many than a missing one.
     console.error("rsvp reminders: could not read who gets tonight's 8 PM note:", error instanceof Error ? error.message : error);
   }
-  const remind = due.filter((r) => !digest.has(r.email.trim().toLowerCase()));
-  result.skippedDigest = due.length - remind.length;
-  due.splice(0, due.length, ...remind);
+  const skipped = due.filter((r) => !fromSnapshot.has(r.id) && digest.has(r.email.trim().toLowerCase()));
+  for (const ids of chunks(skipped.map((r) => r.id), ID_CHUNK)) {
+    await env.cohere
+      .prepare(`UPDATE event_rsvps SET reminder_sent_at = ?1 WHERE reminder_sent_at IS NULL AND id IN (${placeholders(ids.length, 1)})`)
+      .bind(now.toISOString(), ...ids)
+      .run();
+  }
+  result.skippedDigest = skipped.length;
+  due = due.filter((r) => !skipped.includes(r));
   result.candidates = due.length;
   if (!due.length) return result;
 
-  // 4. claim
+  // 5. claim
   const claimedAt = now.toISOString();
   const won = new Set<string>();
   for (const ids of chunks(
@@ -850,7 +864,7 @@ export async function runRsvpCron(
   }
   result.claimed = won.size;
 
-  // 5. send, one message per address
+  // 6. send, one message per address
   const groups = groupReminders(
     due.filter((r) => won.has(r.id)),
     base,
