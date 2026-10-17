@@ -5,6 +5,7 @@ import { getTranslation } from "@/lib/translations";
 import { calendarSubscribeLinks } from "@/lib/calendarLinks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useShell } from "@/components/almanac/shell-context";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ import {
 export function CalendarSubscribe({ feedUrl, compact = false }: { feedUrl: string; compact?: boolean }) {
   const { language } = useLanguage();
   const tr = (key: string) => getTranslation(key, language);
+  const { container } = useShell();
   const { webcal, google } = calendarSubscribeLinks(feedUrl);
   const [copied, setCopied] = useState(false);
 
@@ -33,9 +35,10 @@ export function CalendarSubscribe({ feedUrl, compact = false }: { feedUrl: strin
           {tr("calendar.events.subscribe")}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      {/* Portalled into the shell, like the sign-in dialog, so it wears the page's type and colours. */}
+      <DialogContent container={container} closeLabel={tr("nav.closeDialog")} className="signin-dlg subscribe-dlg max-w-md w-[calc(100%-2rem)] rounded-lg [&>button]:min-h-12 [&>button]:min-w-12 [&>button]:right-0 [&>button]:top-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
         <DialogHeader>
-          <DialogTitle>{tr("calendar.events.subscribe")}</DialogTitle>
+          <DialogTitle className="px-5 sm:pl-0">{tr("calendar.events.subscribe")}</DialogTitle>
           <DialogDescription>{tr("calendar.events.subscribeCaption")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

@@ -16,6 +16,7 @@
 // and every control (≥44px). Register keeps its funnel beacons, blocks an empty
 // submit, announces a server error, submits, and works in Spanish; Register is on
 // the first phone screen. Classic and Almanac are unchanged, and the look sticks.
+// The Subscribe-to-calendar dialog wears the look (event page EN/ES, Calendar EN) at 390 and 1280.
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
@@ -351,15 +352,40 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
 }
 // Before the gathering, signed out: the hero and Register, plus the trail preview.
 {
-  const { context, page } = await session({ width: 1280, height: 800, when: "2026-10-10T16:00:00Z" });
+  const BEFORE = "2026-10-10";
+  const { context, page } = await session({ width: 1280, height: 800, when: `${BEFORE}T16:00:00Z` });
+  // The browser's clock is frozen, the Worker's is not: it answers /api/companion/today for the
+  // real date, which the fixture gives a practice, and published content flips Today to "during".
+  // Today only showed "Remind me" until that answer landed, so this passed only when it looked
+  // first. Answer as the Worker would on the frozen date: its real reply, with no practice (the
+  // fixture seeds none for Oct 10) and only the quests open that day.
+  await context.route("**/api/companion/today", async (route) => {
+    const response = await route.fetch();
+    if (!response.ok) return route.fulfill({ response }); // let the page show the real failure
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, date: BEFORE, daily: null, quests: body.quests.filter((q) => q.start_date <= BEFORE && q.end_date >= BEFORE) } });
+  });
+  // "Settled" means today's answer has reached the screen: its JSON is read, then React Query hands
+  // it to React on a setTimeout(0) and React renders. Two timeouts after the read come after that.
+  await context.addInitScript(() => {
+    const json = Response.prototype.json;
+    Response.prototype.json = function () {
+      const read = json.call(this);
+      if (this.url && new URL(this.url).pathname === "/api/companion/today") read.then(() => setTimeout(() => setTimeout(() => { window.__todaySettled = true; }, 0), 0), () => {});
+      return read;
+    };
+  });
   await go(page, "/");
   await page.getByTestId("home-preview").waitFor();
   check(await page.getByTestId("home-live").count() === 0 && await page.getByRole("heading", { level: 1 }).first().textContent().then((t) => /here/.test(t)), "home: before the gathering, signed out, the hero shows with the trail preview");
   check(await page.getByText("We Are Our Ecology").count() > 0 && await page.getByText("Weaving Our Resilience").count() > 0, 'home carries "We Are Our Ecology" and "Weaving Our Resilience"');
   check(/Oct 15–25/.test(await page.getByTestId("home-preview").innerText()), "home: the preview gives the dates");
   check(await page.getByText(/Connecting local community/).count() >= 1, "home: the description is there, lower down");
+  // Assert the settled page, not the first paint before today's content arrives.
   await go(page, "/today");
-  await page.getByRole("button", { name: "Remind me" }).waitFor();
+  await page.waitForFunction(() => window.__todaySettled === true);
+  await page.getByRole("button", { name: "Remind me" }).waitFor({ timeout: 5000 });
+  check(/^5 days\b/.test(await page.locator("main h1").first().innerText()), "today: before the gathering, the heading counts down (5 days on Oct 10)");
   check(await page.getByTestId("sample-day").count() === 0 && !/sample/i.test(await page.locator("main").innerText()), "today: before the gathering there is no sample practice, only the reminder");
   check(await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
   await go(page, "/board");
@@ -409,6 +435,42 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   await phone.page.getByRole("listbox").waitFor();
   check(await phone.page.getByRole("button", { name: "Week", exact: true }).count() === 0 && await phone.page.getByTestId("calendar-week").count() === 0, "calendar: phone keeps the day list, no week toggle");
   await phone.context.close();
+}
+// The Subscribe dialog wears the look: portalled into the shell, Lora title, forest pill, and it passes the audit.
+// From the event page in both languages, and from the Calendar page's own button.
+for (const [w, h] of [[390, 844], [1280, 800]]) {
+  for (const [where, lang] of [["event", "en"], ["event", "es"], ["calendar", "en"]]) {
+    const { context, page, errors } = await session({ width: w, height: h });
+    if (where === "event") {
+      await go(page, `/events/did:plc:mockscene/${EV}`);
+      await page.getByRole("heading", { level: 1, name: /Ecology Free Market/ }).waitFor();
+    } else {
+      await go(page, "/calendar?day=2026-10-17");
+      await page.getByRole("listbox").waitFor();
+    }
+    if (lang === "es") await page.locator(".mast .lang").getByRole("button", { name: "Es", exact: true }).click();
+    await page.getByRole("button", { name: lang === "es" ? "Suscribirse al calendario" : "Subscribe to calendar", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByTestId("subscribe-google").waitFor();
+    await page.waitForTimeout(400); // the dialog fades and zooms in
+    const tag = `${lang} on the ${where} page at ${w}`;
+    const look = await dialog.evaluate((d) => {
+      const css = (el) => getComputedStyle(el);
+      const deep = (() => { const x = document.createElement("i"); x.style.color = "var(--deep)"; d.append(x); const c = css(x).color; x.remove(); return c; })();
+      const google = d.querySelector("[data-testid=subscribe-google]"), apple = d.querySelector("[data-testid=subscribe-apple]");
+      return { inShell: Boolean(d.closest(".alm.eco")), title: css(d.querySelector("h2")).fontFamily, body: css(google).fontFamily, deep, google: css(google).backgroundColor, appleBorder: css(apple).borderTopColor, round: parseFloat(css(google).borderTopLeftRadius) >= 20 && parseFloat(css(apple).borderTopLeftRadius) >= 20 };
+    });
+    check(look.inShell, `subscribe: the dialog mounts inside the ecology shell ${tag}`);
+    check(/^Lora/.test(look.title) && /^Poppins/.test(look.body), `subscribe: Lora title, Poppins buttons ${tag} (${look.title.split(",")[0]} / ${look.body.split(",")[0]})`);
+    check(look.google === look.deep && look.appleBorder === look.deep && look.round, `subscribe: Google is a forest pill, Apple an outlined forest pill ${tag} (${look.google}, ${look.appleBorder})`);
+    await audit(page, `subscribe dialog (${where}, ${lang})`, w);
+    check((await overflow(page)) <= 0, `subscribe: no horizontal overflow ${tag}`);
+    await shot(page, `subscribe-${where}-${lang}-${w}`);
+    await dialog.getByRole("button", { name: lang === "es" ? "Cerrar diálogo" : "Close dialog", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    check(errors.length === 0, `subscribe: no page errors ${tag}${errors.length ? ` — ${errors[0]}` : ""}`);
+    await context.close();
+  }
 }
 
 await browser.close();

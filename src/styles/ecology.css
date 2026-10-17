@@ -434,6 +434,16 @@
 .alm .signin-dlg button[type=submit]{background:var(--deep);background-image:none;color:#fff;border:0;border-radius:var(--pill,999px);box-shadow:none;font-family:var(--head,var(--serif));font-weight:600}
 .alm .signin-dlg button[type=submit]:hover{transform:none;box-shadow:none;filter:brightness(1.15)}
 .alm .signin-dlg [class*="text-destructive"]{color:var(--berry)}
+/* The subscribe dialog wears the same card. Google is the forest pill; Apple and Copy are outlined pills. */
+.alm .subscribe-dlg :is(a,button)[class*="inline-flex"]{border-radius:var(--pill,999px);font-family:var(--head,var(--serif));font-weight:600;min-height:48px;text-decoration:none;box-shadow:none}
+.alm .subscribe-dlg a[class*="bg-primary"]{background:var(--deep);background-image:none;color:#fff;border:0}
+.alm .subscribe-dlg :is(a,button)[class*="border-input"]{background:var(--cardc,var(--paper));color:var(--night,var(--ink));border:2px solid var(--deep)}
+.alm .subscribe-dlg :is(a,button)[class*="inline-flex"]:hover{transform:none;filter:brightness(1.15)}
+.alm .subscribe-dlg :is(a,button)[class*="border-input"]:hover{background:var(--leaf);filter:none}
+.alm .subscribe-dlg :is(a,button)[class*="inline-flex"]:focus-visible{outline:3px solid var(--deep);outline-offset:2px;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000}
+.alm .subscribe-dlg label{display:block;font-weight:400;color:var(--ink-2)}
+/* The address keeps the body size (≥16px), so iOS does not zoom into the dialog when it is tapped. */
+.alm .subscribe-dlg input{min-height:48px}
 
 /* Any shadcn "community" button (the classic orange gradient) is a forest pill in this look, skin or not. */
 .alm.eco :is(a,button)[class*="bg-gradient-community"]{background:var(--deep);background-image:none;color:#fff;box-shadow:none;border:0;border-radius:var(--pill);font-family:var(--head)}
