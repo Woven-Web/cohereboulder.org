@@ -427,3 +427,22 @@ CREATE TABLE IF NOT EXISTS profile_extras (
   curious     TEXT,
   updated_at  TEXT NOT NULL
 );
+
+-- ---- 0016_newsletter_images.sql (keep in step with the migration) ----
+-- Images in the admin newsletter, base64 in chunks (a D1 row is capped at 2 MB).
+CREATE TABLE IF NOT EXISTS newsletter_images (
+  id          TEXT PRIMARY KEY,
+  mime        TEXT NOT NULL CHECK (mime IN ('image/jpeg', 'image/png', 'image/webp')),
+  width       INTEGER NOT NULL,
+  height      INTEGER NOT NULL,
+  bytes       INTEGER NOT NULL,
+  alt         TEXT,
+  created_by  TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS newsletter_image_chunks (
+  image_id  TEXT NOT NULL,
+  seq       INTEGER NOT NULL,
+  data      TEXT NOT NULL,
+  PRIMARY KEY (image_id, seq)
+);

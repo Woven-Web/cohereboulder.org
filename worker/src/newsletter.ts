@@ -38,6 +38,7 @@
 //   PUT    /api/admin/newsletters/:id             edit a draft
 //   DELETE /api/admin/newsletters/:id             delete a draft nobody received
 //   GET    /api/admin/newsletters/:id/preview     rendered HTML (as JSON)
+//   POST   /api/admin/newsletters/images          upload an image for the body (newsletter-images.ts)
 //   POST   /api/admin/newsletters/:id/test        send a test to yourself
 //   POST   /api/admin/newsletters/:id/send        confirm {confirm_count}
 //   POST   /api/admin/newsletters/:id/cancel      cancel a scheduled/sending one
@@ -48,6 +49,7 @@
 import type { AuthEnv, Session } from "./auth";
 import { mailShell, rateLimited } from "./auth";
 import { isOwnTest, sessionMailbox, testSentLabel } from "./admin-identity";
+import { handleNewsletterImageUpload, ownImage } from "./newsletter-images";
 
 export interface NewsletterEnv extends AuthEnv {
   cohere: D1Database;
@@ -347,7 +349,11 @@ export async function countAudience(env: NewsletterEnv, a: Audience): Promise<nu
 // ------------------------------------------------------------- rendering
 
 const SAFE_HREF = /^(https?:\/\/|mailto:)[^\s<>"']+$/i;
-const SAFE_IMG = /^https:\/\/[^\s<>"']+$/i;
+/** Where the renderer points our own images when no base is passed. */
+const DEFAULT_BASE = "https://cohereboulder.org";
+/** The mail shell's content column (520px less 2 × 24px padding): the most an <img> needs. */
+const MAIL_CONTENT_WIDTH = 472;
+const IMAGE_BLOCK = /^!\[([^\]\n]{0,300})\]\(([^)\s]+)\)$/;
 
 /** Inline markdown on raw text: [text](url), **bold**, *italic*. Output is escaped. */
 function renderInline(raw: string): string {
@@ -378,11 +384,13 @@ const BUTTON = /^\[\[([^\]\n]{1,100})\]\]\(([^)\s]{1,2000})\)$/;
 
 /**
  * The organizer's body → email HTML. Deliberately tiny: paragraphs (blank
- * line), `## heading`, `---` rule, `[[Button]](url)`, `- list`, `![alt](https://image)`, links, bold,
- * italic. Everything is escaped first; only https images and http(s)/mailto
- * links are emitted. No raw HTML passes through.
+ * line), `## heading`, `---` rule, `[[Button]](url)`, `- list`, `![alt](image)`, links, bold,
+ * italic. Everything is escaped first; only http(s)/mailto links are emitted,
+ * and an <img> only for an image uploaded here (newsletter-images.ts), as an
+ * absolute URL on `base` — never another host, so no tracking pixels. No raw
+ * HTML passes through.
  */
-export function renderNewsletterBody(text: string): string {
+export function renderNewsletterBody(text: string, base: string = DEFAULT_BASE): string {
   const blocks = text
     .replace(/\r\n?/g, "\n")
     .split(/\n{2,}/)
@@ -404,10 +412,11 @@ export function renderNewsletterBody(text: string): string {
       if (heading && lines.length === 1) {
         return `<h2 style="font-size:18px;line-height:1.3;margin:22px 0 10px">${renderInline(heading[1])}</h2>`;
       }
-      const image = block.match(/^!\[([^\]\n]{0,300})\]\(([^)\s]+)\)$/);
+      const image = block.match(IMAGE_BLOCK);
       if (image) {
-        return SAFE_IMG.test(image[2])
-          ? `<p ${P}><img src="${escapeHtml(image[2])}" alt="${escapeHtml(image[1])}" style="max-width:100%;height:auto;border-radius:4px"></p>`
+        const own = ownImage(image[2], base);
+        return own
+          ? `<p ${P}><img src="${escapeHtml(own.url)}" width="${Math.min(own.width, MAIL_CONTENT_WIDTH)}" alt="${escapeHtml(image[1])}" style="display:block;width:100%;max-width:${Math.min(own.width, MAIL_CONTENT_WIDTH)}px;height:auto;border:0;border-radius:4px"></p>`
           : `<p ${P}>${escapeHtml(block)}</p>`;
       }
       if (lines.every((l) => /^[-*]\s+/.test(l))) {
@@ -433,19 +442,34 @@ export interface OutgoingMessage {
   headers: Record<string, string>;
 }
 
+/**
+ * The plain-text part: the organizer's text as written, except that each image
+ * line of ours becomes "[Image: alt] <absolute url>".
+ */
+export function newsletterPlainText(text: string, base: string = DEFAULT_BASE): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const image = line.trim().match(IMAGE_BLOCK);
+      const own = image ? ownImage(image[2], base) : null;
+      return image && own ? `[Image${image[1].trim() ? `: ${image[1].trim()}` : ""}] ${own.url}` : line;
+    })
+    .join("\n");
+}
+
 export function unsubscribeUrl(base: string, token: string): string {
   return `${base}/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
 /** One recipient's message: the body in the site's mail shell, their own unsubscribe link. */
-export function newsletterMessage(nl: NewsletterContent, unsubscribe: string, test = false): OutgoingMessage {
+export function newsletterMessage(nl: NewsletterContent, unsubscribe: string, test = false, base: string = DEFAULT_BASE): OutgoingMessage {
   const footer =
     `You're receiving this because you're on the COhere Boulder email list. ` +
     `<a href="${escapeHtml(unsubscribe)}" style="color:#36558F">Unsubscribe</a>.`;
   return {
     subject: test ? `[TEST] ${nl.subject}` : nl.subject,
     html: mailShell(escapeHtml(nl.subject), nl.html, footer),
-    text: `${nl.text}\n\n--\nYou're receiving this because you're on the COhere Boulder email list.\nUnsubscribe: ${unsubscribe}\n`,
+    text: `${newsletterPlainText(nl.text, base)}\n\n--\nYou're receiving this because you're on the COhere Boulder email list.\nUnsubscribe: ${unsubscribe}\n`,
     headers: {
       "List-Unsubscribe": `<${unsubscribe}>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -670,7 +694,7 @@ export async function handleNewsletterAdmin(
         `INSERT INTO newsletters (id, subject, html, text, audience, status, created_by, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, 'draft', ?6, ?7, ?7)`,
       )
-      .bind(id, fields.subject, renderNewsletterBody(fields.text), fields.text, JSON.stringify(audience), session.email, at)
+      .bind(id, fields.subject, renderNewsletterBody(fields.text, baseUrl(env, url)), fields.text, JSON.stringify(audience), session.email, at)
       .run();
     const row = await getNewsletter(env, id);
     return json({ newsletter: await publicView(env, row!, session) }, 200);
@@ -699,13 +723,21 @@ export async function handleNewsletterAdmin(
     );
   }
 
+  // An image for the body (newsletter-images.ts): raw bytes, ?alt=…, returns the markdown to insert.
+  if (parts.length === 1 && parts[0] === "images") {
+    if (method !== "POST") return json({ error: "method not allowed" }, 405);
+    return handleNewsletterImageUpload(request, env, url, session.email, now());
+  }
+
   if (parts.length === 1 && parts[0] === "preview" && method === "POST") {
     const body = await readJson(request);
     const subject = typeof body?.subject === "string" ? body.subject.slice(0, MAX_SUBJECT) : "";
     const text = typeof body?.text === "string" ? body.text.slice(0, MAX_TEXT) : "";
     const message = newsletterMessage(
-      { subject, html: renderNewsletterBody(text), text },
+      { subject, html: renderNewsletterBody(text, baseUrl(env, url)), text },
       unsubscribeUrl(baseUrl(env, url), "preview"),
+      false,
+      baseUrl(env, url),
     );
     return json({ subject: message.subject, html: message.html, text: message.text }, 200);
   }
@@ -768,7 +800,7 @@ export async function handleNewsletterAdmin(
         `UPDATE newsletters SET subject = ?2, html = ?3, text = ?4, audience = ?5, updated_at = ?6
          WHERE id = ?1 AND status = 'draft'`,
       )
-      .bind(row.id, fields.subject, renderNewsletterBody(fields.text), fields.text, JSON.stringify(audience), now().toISOString())
+      .bind(row.id, fields.subject, renderNewsletterBody(fields.text, baseUrl(env, url)), fields.text, JSON.stringify(audience), now().toISOString())
       .run();
     if (!result.meta?.changes) return json({ error: "this newsletter is no longer a draft" }, 409);
     return json({ newsletter: await publicView(env, (await getNewsletter(env, row.id))!, session) }, 200);
@@ -786,7 +818,7 @@ export async function handleNewsletterAdmin(
   }
 
   if (action === "preview" && method === "GET") {
-    const message = newsletterMessage(row, unsubscribeUrl(baseUrl(env, url), "preview"));
+    const message = newsletterMessage(row, unsubscribeUrl(baseUrl(env, url), "preview"), false, baseUrl(env, url));
     return json({ subject: message.subject, html: message.html, text: message.text }, 200);
   }
 
@@ -813,7 +845,7 @@ export async function handleNewsletterAdmin(
       .prepare(`SELECT unsubscribe_token FROM people WHERE email = ?1`)
       .bind(to)
       .first<{ unsubscribe_token: string }>();
-    const message = newsletterMessage(row, unsubscribeUrl(baseUrl(env, url), person?.unsubscribe_token ?? "test"), true);
+    const message = newsletterMessage(row, unsubscribeUrl(baseUrl(env, url), person?.unsubscribe_token ?? "test"), true, baseUrl(env, url));
     try {
       await send(env, { to, message });
     } catch (error) {
@@ -1148,7 +1180,7 @@ export async function runNewsletterCron(
       try {
         const { id } = await send(env, {
           to: row.email,
-          message: newsletterMessage(nl, unsubscribeUrl(base, person.unsubscribe_token)),
+          message: newsletterMessage(nl, unsubscribeUrl(base, person.unsubscribe_token), false, base),
           idempotencyKey: `newsletter:${nl.id}:${row.person_id}`,
           tags: { newsletter_id: nl.id, person_id: row.person_id },
         });

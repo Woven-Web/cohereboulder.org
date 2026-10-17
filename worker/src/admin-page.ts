@@ -490,9 +490,23 @@ export const ADMIN_PAGE = `<!doctype html>
                 <button class="btn" type="button" data-md="link" title="Link">Link</button>
                 <button class="btn" type="button" data-md="heading" title="Heading">H</button>
                 <button class="btn" type="button" data-md="list" title="List">&bull; List</button>
-                <button class="btn" type="button" data-md="image" title="Image">Image</button>
+                <button class="btn" type="button" id="nlimgbtn" title="Upload an image and put it in where the cursor is" aria-controls="nlimgpanel" aria-expanded="false" data-testid="nl-image-button">Add image</button>
                 <button class="btn" type="button" data-md="button" title="Button link">Button</button>
                 <button class="btn" type="button" data-md="rule" title="Horizontal rule">&mdash;</button>
+              </div>
+              <div class="sub hidden" id="nlimgpanel" data-testid="nl-image-panel">
+                <span class="label">Add image</span>
+                <div class="field"><label for="nlimgfile">Photo (JPEG, PNG or WebP)</label>
+                  <input id="nlimgfile" type="file" accept="image/jpeg,image/png,image/webp" data-testid="nl-image-file"></div>
+                <div class="field"><label for="nlimgalt">Describe it (alt text, required)</label>
+                  <input id="nlimgalt" type="text" maxlength="300" placeholder="e.g. Neighbours planting willows along Boulder Creek" data-testid="nl-image-alt"></div>
+                <div class="row">
+                  <button class="btn primary" id="nlimgupload" type="button" data-testid="nl-image-upload">Upload and insert</button>
+                  <button class="btn" id="nlimgclose" type="button">Close</button>
+                </div>
+                <p class="note" style="margin:0">It is shrunk to 1200 pixels wide at most (3 MB after shrinking), location data is removed,
+                  and it goes in where your cursor was. People with images turned off see the description.</p>
+                <p class="err" id="nlimgmsg" role="status" data-testid="nl-image-msg"></p>
               </div>
               <textarea id="nlbody" spellcheck="true"></textarea>
             </div>
@@ -508,7 +522,7 @@ export const ADMIN_PAGE = `<!doctype html>
               <li><code>**bold**</code> &middot; <code>*italic*</code></li>
               <li><code>[link text](https://…)</code> &mdash; http, https or mailto only</li>
               <li><code>- list item</code> (one per line, no blank lines between)</li>
-              <li><code>![description](https://…/photo.jpg)</code> alone on its line (https images only)</li>
+              <li><code>![description](…/media/newsletter/…)</code> alone on its line &mdash; <b>Add image</b> uploads a photo and writes this line for you. Only images uploaded here appear in the email.</li>
               <li><code>[[Register now]](https://…)</code> alone on its line &rarr; a button</li>
               <li><code>---</code> alone on its line &rarr; a horizontal rule</li>
             </ul>
@@ -1951,7 +1965,7 @@ export const ADMIN_PAGE = `<!doctype html>
 
   function showNewsletter(n) {
     nlCurrent = n; nlDirty = false;
-    show("nleditor", true); show("nlconfirm", false);
+    show("nleditor", true); show("nlconfirm", false); nlImagePanel(false);
     el("nlmsg").textContent = "";
     el("nltitle").textContent = n ? "Newsletter" : "New newsletter";
     el("nlsubject").value = n ? n.subject : "";
@@ -2039,7 +2053,6 @@ export const ADMIN_PAGE = `<!doctype html>
     else if (kind === "italic") { before = "*"; after = "*"; fill = sel || "italic text"; }
     else if (kind === "link") { before = "["; after = "](https://)"; fill = sel || "link text"; }
     else if (kind === "button") { before = "[["; after = "]](https://)"; fill = sel || "Register now"; block = true; }
-    else if (kind === "image") { before = "![" ; after = "](https://)"; fill = sel || "description"; block = true; }
     else if (kind === "heading") { before = "## "; fill = sel || "Heading"; block = true; }
     else if (kind === "list") {
       fill = (sel || "item").split("\\n").map(function (l) { return "- " + l.replace(/^[-*]\\s+/, ""); }).join("\\n");
@@ -2054,9 +2067,8 @@ export const ADMIN_PAGE = `<!doctype html>
     // Block elements need a blank line either side to be recognized.
     var lead = "", trail = "";
     if (block) {
-      var pre = value.slice(0, start), post = value.slice(end);
-      lead = !pre ? "" : /\\n\\n$/.test(pre) ? "" : /\\n$/.test(pre) ? "\\n" : "\\n\\n";
-      trail = !post ? "\\n\\n" : /^\\n\\n/.test(post) ? "" : /^\\n/.test(post) ? "\\n" : "\\n\\n";
+      var gaps = blockGaps(value, start, end);
+      lead = gaps.lead; trail = gaps.trail;
     }
     var inserted = lead + before + fill + after + trail;
     ta.focus();
@@ -2065,6 +2077,99 @@ export const ADMIN_PAGE = `<!doctype html>
     ta.setSelectionRange(from, from + fill.length);
     nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview();
   }
+  function blockGaps(value, start, end) {
+    var pre = value.slice(0, start), post = value.slice(end);
+    return {
+      lead: !pre ? "" : /\\n\\n$/.test(pre) ? "" : /\\n$/.test(pre) ? "\\n" : "\\n\\n",
+      trail: !post ? "\\n\\n" : /^\\n\\n/.test(post) ? "" : /^\\n/.test(post) ? "\\n" : "\\n\\n"
+    };
+  }
+
+  // Add image: shrink in the browser (≤ 1200 px wide, re-encoded, which also
+  // drops EXIF/GPS), upload, then put the server's markdown line in where the
+  // cursor was. The server re-checks type, size and width (newsletter-images.ts).
+  var NL_IMG_MAX_W = 1200, NL_IMG_MAX_BYTES = 3 * 1024 * 1024, NL_IMG_MAX_INPUT = 25 * 1024 * 1024;
+  var nlImgAt = null;
+  function nlImagePanel(open) {
+    show("nlimgpanel", open);
+    el("nlimgbtn").setAttribute("aria-expanded", String(open));
+    if (open) {
+      var ta = el("nlbody");
+      nlImgAt = { start: ta.selectionStart, end: ta.selectionEnd };
+      el("nlimgmsg").textContent = "";
+      el("nlimgfile").focus();
+    }
+  }
+  function canvasBlob(canvas, type, quality) {
+    return new Promise(function (resolve) { canvas.toBlob(resolve, type, quality); });
+  }
+  async function nlPrepareImage(file) {
+    if (!file) throw new Error("Choose a photo first.");
+    if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("Use a JPEG, PNG or WebP image.");
+    if (file.size > NL_IMG_MAX_INPUT) throw new Error("That file is " + (file.size / 1048576).toFixed(1) + " MB; choose one under 25 MB.");
+    var bitmap;
+    try { bitmap = await createImageBitmap(file); } catch (e) { throw new Error("That image couldn't be read. Try another file."); }
+    try {
+      var scale = Math.min(1, NL_IMG_MAX_W / bitmap.width);
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      var ctx = canvas.getContext("2d");
+      var blob = null;
+      // A PNG stays a PNG (graphics, transparency) if it fits; photos go out as JPEG,
+      // which every mail client shows (WebP isn't safe in Outlook).
+      if (file.type === "image/png") {
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        blob = await canvasBlob(canvas, "image/png");
+        if (blob && blob.size > NL_IMG_MAX_BYTES) blob = null;
+      }
+      if (!blob) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        blob = await canvasBlob(canvas, "image/jpeg", 0.85);
+      }
+      if (!blob || (blob.type !== "image/jpeg" && blob.type !== "image/png")) throw new Error("Couldn't prepare this image. Try another file.");
+      if (blob.size > NL_IMG_MAX_BYTES) throw new Error("Even shrunk to 1200 pixels wide this image is over 3 MB. Choose a simpler one.");
+      return blob;
+    } finally { bitmap.close(); }
+  }
+  async function nlUploadImage() {
+    var msg = el("nlimgmsg"), button = el("nlimgupload");
+    var alt = el("nlimgalt").value.trim();
+    msg.textContent = "";
+    if (!el("nlimgfile").files[0]) { msg.textContent = "Choose a photo first."; return; }
+    if (!alt) { msg.textContent = "Describe the image first: people with images off, and screen readers, get this text."; el("nlimgalt").focus(); return; }
+    button.disabled = true;
+    try {
+      msg.textContent = "Preparing image…";
+      var blob = await nlPrepareImage(el("nlimgfile").files[0]);
+      msg.textContent = "Uploading…";
+      var d = await api("/api/admin/newsletters/images?alt=" + encodeURIComponent(alt), {
+        method: "POST", headers: { "Content-Type": blob.type }, body: blob
+      }).then(function (r) { return r.json(); });
+      var ta = el("nlbody"), value = ta.value;
+      var at = nlImgAt || { start: value.length, end: value.length };
+      var start = Math.min(at.start, value.length), end = Math.min(at.end, value.length);
+      var gaps = blockGaps(value, start, end);
+      ta.focus();
+      ta.setRangeText(gaps.lead + d.markdown + gaps.trail, start, end, "end");
+      nlImgAt = null;
+      el("nlimgfile").value = ""; el("nlimgalt").value = "";
+      nlImagePanel(false);
+      el("nlmsg").textContent = "Image added (" + d.width + " × " + d.height + ").";
+      nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview();
+    } catch (e) {
+      msg.textContent = e.message || "Couldn't upload the image.";
+    } finally { button.disabled = false; }
+  }
+  el("nlimgbtn").addEventListener("click", function () {
+    if (el("nlbody").disabled) return;
+    nlImagePanel(el("nlimgpanel").classList.contains("hidden"));
+  });
+  el("nlimgclose").addEventListener("click", function () { nlImagePanel(false); el("nlbody").focus(); });
+  el("nlimgupload").addEventListener("click", nlUploadImage);
+
   Array.prototype.forEach.call(document.querySelectorAll("#nltools [data-md]"), function (b) {
     b.addEventListener("click", function () { mdEdit(b.getAttribute("data-md")); });
   });
