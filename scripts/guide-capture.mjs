@@ -12,7 +12,7 @@ import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const [base, live, out, dir] = process.argv.slice(2);
-if (!base || !live || !out || !dir) { console.error("usage: node scripts/guide-capture.mjs <local-url> <live-url> <out-dir> <live-dir>"); process.exit(2); }
+if (!base || !/^http:\/\/127\.0\.0\.1:/.test(base) || !live || !out || !dir) { console.error("usage: node scripts/guide-capture.mjs <local-url> <live-url> <out-dir> <live-dir>"); process.exit(2); }
 const picks = JSON.parse(await readFile(`${dir}/picks.json`, "utf8"));
 const keys = JSON.parse(await readFile(`${dir}/push-keys.json`, "utf8"));
 const ONLY = process.env.GUIDE_ONLY ? new Set(process.env.GUIDE_ONLY.split(",")) : null;

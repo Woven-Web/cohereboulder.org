@@ -347,6 +347,9 @@
 @media (min-width:768px) and (max-width:1023px){
   .alm :is(.flow2--side:not(.flow2--solo),.flow2--today){grid-template-columns:minmax(0,1fr)}
   .alm :is(.flow2--side:not(.flow2--solo),.flow2--today) :is(.flow2__a,.flow2__b){display:contents}
+  /* ...and the day's cards sit two across, as they do for someone with no RSVPs. */
+  .alm .flow2--side:not(.flow2--solo) .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:stretch}
+  .alm .flow2--side:not(.flow2--solo) .cal-list > :last-child:nth-child(odd){grid-column:1 / -1}
 }
 .alm .cal-view{margin-bottom:var(--sp-3)}
 @media (min-width:768px){
