@@ -132,7 +132,7 @@ export default function EventDetail() {
               </header>
               <div className="o3">
                 {paragraphs.length > 0 && <div className="eyebrow" style={{ marginTop: "1.6rem" }}>{tr("almanac.about")}</div>}
-                {paragraphs.map((p, i) => <p key={i} className="lede whitespace-pre-line" style={{ marginTop: ".8rem", maxWidth: "65ch" }}>{p}</p>)}
+                {paragraphs.map((p, i) => <p key={i} className="lede whitespace-pre-line" style={{ marginTop: ".8rem", maxWidth: "65ch", overflowWrap: "anywhere" }}>{p}</p>)}
                 {event.uris.length > 0 && (
                   <div style={{ marginTop: "1.4rem" }}>
                     <h2 className="eyebrow">{tr("calendar.events.links")}</h2>

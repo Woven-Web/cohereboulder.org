@@ -60,7 +60,7 @@ export function YourNextStrip({ items, total, today }: Props) {
           const date = denverDateKey(event.startsAt);
           const start = event.startsAt ? new Date(event.startsAt) : null;
           const minutesUntil = start ? Math.round((start.getTime() - now) / 60000) : 0;
-          const when = minutesUntil > 0 && minutesUntil < 180 ? fill(tr("almanac.inMinutes"), { n: minutesUntil }) : date === today ? tr("almanac.todayLower") : date ? formatDay(date, language) : "";
+          const when = minutesUntil > 0 && minutesUntil <= 60 ? fill(tr("almanac.inMinutes"), { n: minutesUntil }) : date === today ? tr("almanac.todayLower") : date ? formatDay(date, language) : "";
           return (
             <li key={`${event.did}/${event.rkey}`} className="next__cell">
               <Link className="next__item" to={eventPath(event)}>

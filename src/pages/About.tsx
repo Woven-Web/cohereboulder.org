@@ -221,7 +221,7 @@ const About = () => {
               {tr("about.livingValues.title")}
             </h2>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3 mb-4">

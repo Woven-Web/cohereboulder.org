@@ -64,7 +64,7 @@ const Registration = () => {
     }
     return (
       <div className="pt-2">
-        <Button size="lg" variant="community" data-testid="register-create-account" onClick={() => openSignInWith({ email, returnTo: "/events" })}>
+        <Button size="lg" variant="community" className="h-auto min-h-11 max-w-full whitespace-normal py-2" data-testid="register-create-account" onClick={() => openSignInWith({ email, returnTo: "/events" })}>
           {tr("app.createAccountToRsvp")}
         </Button>
       </div>

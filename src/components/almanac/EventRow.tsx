@@ -53,7 +53,7 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
   const cancelled = event.status === "cancelled";
   const status: "past" | "now" | "later" | "undated" = !valid ? "undated" : (end && !Number.isNaN(end.getTime()) ? end.getTime() : start.getTime() + 3_600_000) <= now ? "past" : start.getTime() <= now ? "now" : "later";
   const minutesUntil = valid ? Math.round((start.getTime() - now) / 60000) : 0;
-  const soon = status === "later" && minutesUntil > 0 && minutesUntil < 180 ? fill(tr("almanac.inMinutes"), { n: minutesUntil }) : "";
+  const soon = status === "later" && minutesUntil > 0 && minutesUntil <= 60 ? fill(tr("almanac.inMinutes"), { n: minutesUntil }) : "";
 
   const time = valid ? formatMinutes(denverMinutes(start), language) : "";
   const [t1, t2] = time ? [time.slice(0, time.indexOf(" ")), time.slice(time.indexOf(" ") + 1)] : ["", ""];

@@ -25,7 +25,8 @@ export function SignedInInstallInvite() {
       if (document.visibilityState !== "visible" || editing ||
           document.activeElement?.matches("input, textarea, select, [contenteditable=true]") ||
           document.querySelector('[role="dialog"], [role="alertdialog"]') ||
-          ((pathname !== "/" && pathname !== "/home") && document.querySelector("form"))) return;
+          // Only a form in the page itself: the footer's email signup is on every page.
+          ((pathname !== "/" && pathname !== "/home") && document.querySelector("main form"))) return;
       if (offerInstall("signedin", { installed, hasSomethingToOffer: ios || !!prompt })) {
         window.clearInterval(timer);
       }

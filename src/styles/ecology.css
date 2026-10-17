@@ -342,6 +342,12 @@
 
 /* ---- Calendar: no empty rail, a two-column day list from 768px, and the week at 1024px+ ---- */
 @media (min-width:768px){.alm .flow2--side.flow2--solo{grid-template-columns:minmax(0,1fr)}}
+/* A tablet (768–1023) has no room for two columns on Calendar or Today: the event list gets 190–290px
+   and clips its heading, links and cards. They read in one column, in the phone's order, until 1024. */
+@media (min-width:768px) and (max-width:1023px){
+  .alm :is(.flow2--side:not(.flow2--solo),.flow2--today){grid-template-columns:minmax(0,1fr)}
+  .alm :is(.flow2--side:not(.flow2--solo),.flow2--today) :is(.flow2__a,.flow2__b){display:contents}
+}
 .alm .cal-view{margin-bottom:var(--sp-3)}
 @media (min-width:768px){
   .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:stretch}
