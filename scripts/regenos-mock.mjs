@@ -412,6 +412,7 @@ if (process.env.MOCK_GUIDE === "1") {
     if (first) SESSION_PEOPLE[`guide-${first}`] = { did: m.did, handle: m.handle };
   }
   CONTACT_EMAILS.set(PEER_DID, "pia@example.org");
+  CONTACT_EMAILS.set("did:plc:mockbuilder", "rosa@example.org");
   for (const [rkey, seats] of attendance) seats.guests = (seats.guests ?? []).map((g) => ({ ...g, handle: handle(g.handle) }));
   if (process.env.MOCK_GUIDE_EVENTS) {
     const rows = JSON.parse(readFileSync(process.env.MOCK_GUIDE_EVENTS, "utf8"));

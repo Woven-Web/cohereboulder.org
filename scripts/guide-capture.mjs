@@ -43,9 +43,14 @@ const browser = await chromium.launch();
  * `androidPrompt` fires a stand-in for Chrome's install prompt. The install invite is marked as already
  * offered unless `invite` is set, so it doesn't cover other steps.
  */
+let contexts = 0;
 async function phone(device, { site = base, session = null, app = false, androidPrompt = false, invite = false, video = null } = {}) {
+  // Locally, each phone gets its own (documentation-range) address, so the Worker's per-address rate
+  // limits on push subscriptions don't add up across the whole capture. Never sent to the live site.
+  const ip = `192.0.2.${++contexts}`;
   const context = await browser.newContext({
     ...DEVICES[device], baseURL: site, serviceWorkers: "block", locale: "en-US", timezoneId: "America/Denver",
+    ...(site === base ? { extraHTTPHeaders: { "CF-Connecting-IP": ip } } : {}),
     ...(video ? { recordVideo: { dir: video, size: DEVICES[device].viewport } } : {}),
   });
   await context.route("**/*", (route) => {
@@ -74,7 +79,7 @@ async function phone(device, { site = base, session = null, app = false, android
     localStorage.setItem("cohere-push-off", "false");
     const original = window.matchMedia.bind(window);
     window.matchMedia = (query) => (query === "(display-mode: standalone)" ? { matches: true, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false } : original(query));
-    const sub = { toJSON: () => ({ endpoint: keys.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }), unsubscribe: async () => true };
+    const sub = { toJSON: () => ({ endpoint: `${keys.endpoint}?device=${app}`, keys: { p256dh: keys.p256dh, auth: keys.auth } }), unsubscribe: async () => true };
     Object.defineProperty(window, "PushManager", { value: class {} });
     Object.defineProperty(Notification, "permission", { get: () => "granted" });
     Notification.requestPermission = async () => "granted";
@@ -86,8 +91,8 @@ async function phone(device, { site = base, session = null, app = false, android
   if (app && session && !registered.has(device)) {
     registered.add(device);
     const res = await fetch(`${base}/api/companion/subscriptions`, {
-      method: "POST", headers: { "content-type": "application/json", origin: base, cookie: `__Host-rs_session=${session}` },
-      body: JSON.stringify({ device_id: DEVICE_IDS[device], endpoint: keys.endpoint, p256dh: keys.p256dh, auth: keys.auth, language: "en" }),
+      method: "POST", headers: { "content-type": "application/json", origin: base, cookie: `__Host-rs_session=${session}`, "CF-Connecting-IP": ip },
+      body: JSON.stringify({ device_id: DEVICE_IDS[device], endpoint: `${keys.endpoint}?device=${DEVICE_IDS[device]}`, p256dh: keys.p256dh, auth: keys.auth, language: "en" }),
     });
     if (!res.ok) problems.push(`subscriptions answered ${res.status}`);
   }
@@ -105,6 +110,8 @@ async function open(context, path, lang) {
 }
 async function setSpanish(page) {
   await page.getByRole("button", { name: "Español", exact: true }).locator("visible=true").first().click({ timeout: 4000 }).catch(() => problems.push(`${page.url()}: no Spanish toggle`));
+  // The visible toggle can be the footer's, which scrolls the page down to it.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
 }
 
 /** Viewport shot (what a phone shows), optionally scrolled so `focus` sits near the top. */
@@ -211,7 +218,8 @@ for (const [device, langs] of [["iphone", ["en", "es"]], ["android", ["en"]]]) f
     await shot(page, set, "07b-notifications-more", { focus: "main h1", offset: -420 });
     await page.close();
     await ctx.close();
-    const ctx2 = await phone(device, { session: "mock-peer" });
+    // Rosa, registered, without the app: email.
+    const ctx2 = await phone(device, { session: "guide-rosa" });
     const page2 = await open(ctx2, "/more/notifications", lang);
     await page2.waitForTimeout(800);
     await shot(page2, set, "07c-notifications-email");

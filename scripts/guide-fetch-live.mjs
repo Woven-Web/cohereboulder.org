@@ -57,6 +57,9 @@ const lines = [
   // Pia is registered (her answers are sample text, not anyone's).
   "INSERT INTO people (id, email, name, subscribed, unsubscribe_token, created_at, updated_at) VALUES ('p-guide-pia', 'pia@example.org', 'Pia Hansen', 1, 'tok-guide-pia', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');",
   "INSERT INTO submissions (id, person_id, form_slug, data, created_at, updated_at) VALUES ('s-guide-pia', 'p-guide-pia', 'register-2026', '{\"full_name\":\"Pia Hansen\",\"email\":\"pia@example.org\"}', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');",
+  // Rosa is registered too, and never installs the app: the email-only notification screens.
+  "INSERT INTO people (id, email, name, subscribed, unsubscribe_token, created_at, updated_at) VALUES ('p-guide-rosa', 'rosa@example.org', 'Rosa Delgado', 1, 'tok-guide-rosa', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');",
+  "INSERT INTO submissions (id, person_id, form_slug, data, created_at, updated_at) VALUES ('s-guide-rosa', 'p-guide-rosa', 'register-2026', '{\"full_name\":\"Rosa Delgado\",\"email\":\"rosa@example.org\"}', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');",
 ];
 await writeFile(`${out}/seed.sql`, lines.filter(Boolean).join("\n") + "\n");
 console.log(`guide-fetch-live: ${events.length} events (${images} photos), form ${form.slug} (${form.fields.length} questions), practice ${d?.date ?? "none"}; Pia's seats ${seats.length}`);
