@@ -351,15 +351,38 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
 }
 // Before the gathering, signed out: the hero and Register, plus the trail preview.
 {
-  const { context, page } = await session({ width: 1280, height: 800, when: "2026-10-10T16:00:00Z" });
+  const BEFORE = "2026-10-10";
+  const { context, page } = await session({ width: 1280, height: 800, when: `${BEFORE}T16:00:00Z` });
+  // The browser's clock is frozen, the Worker's is not: it answers /api/companion/today for the
+  // real date, which the fixture gives a practice, and published content flips Today to "during".
+  // Today only showed "Remind me" until that answer landed, so this passed only when it looked
+  // first. Answer as the Worker would on the frozen date: its real reply, with that date's content.
+  await context.route("**/api/companion/today", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, date: BEFORE, daily: null, quests: body.quests.filter((q) => q.start_date <= BEFORE && q.end_date >= BEFORE) } });
+  });
+  // "Settled" means today's answer has reached the screen: its JSON is read, then React Query hands
+  // it to React on a setTimeout(0) and React renders. Two timeouts after the read come after that.
+  await context.addInitScript(() => {
+    const json = Response.prototype.json;
+    Response.prototype.json = function () {
+      const read = json.call(this);
+      if (new URL(this.url).pathname === "/api/companion/today") read.then(() => setTimeout(() => setTimeout(() => { window.__todaySettled = true; }, 0), 0), () => {});
+      return read;
+    };
+  });
   await go(page, "/");
   await page.getByTestId("home-preview").waitFor();
   check(await page.getByTestId("home-live").count() === 0 && await page.getByRole("heading", { level: 1 }).first().textContent().then((t) => /here/.test(t)), "home: before the gathering, signed out, the hero shows with the trail preview");
   check(await page.getByText("We Are Our Ecology").count() > 0 && await page.getByText("Weaving Our Resilience").count() > 0, 'home carries "We Are Our Ecology" and "Weaving Our Resilience"');
   check(/Oct 15–25/.test(await page.getByTestId("home-preview").innerText()), "home: the preview gives the dates");
   check(await page.getByText(/Connecting local community/).count() >= 1, "home: the description is there, lower down");
+  // Assert the settled page, not the first paint before today's content arrives.
   await go(page, "/today");
-  await page.getByRole("button", { name: "Remind me" }).waitFor();
+  await page.waitForFunction(() => window.__todaySettled === true);
+  await page.getByRole("button", { name: "Remind me" }).waitFor({ timeout: 5000 });
+  check(/^5 days\b/.test(await page.locator("main h1").first().innerText()), "today: before the gathering, the heading counts down (5 days on Oct 10)");
   check(await page.getByTestId("sample-day").count() === 0 && !/sample/i.test(await page.locator("main").innerText()), "today: before the gathering there is no sample practice, only the reminder");
   check(await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
   await go(page, "/board");
