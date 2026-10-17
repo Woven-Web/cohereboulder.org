@@ -490,24 +490,27 @@ export const ADMIN_PAGE = `<!doctype html>
                 <button class="btn" type="button" data-md="link" title="Link">Link</button>
                 <button class="btn" type="button" data-md="heading" title="Heading">H</button>
                 <button class="btn" type="button" data-md="list" title="List">&bull; List</button>
-                <button class="btn" type="button" id="nlimgbtn" title="Upload an image and put it in where the cursor is" aria-controls="nlimgpanel" aria-expanded="false" data-testid="nl-image-button">Add image</button>
+                <button class="btn" type="button" id="nlimgbtn" title="Add a photo from your computer where the cursor is" aria-controls="nlimgpanel" aria-expanded="false" data-testid="nl-image-button">Add image</button>
                 <button class="btn" type="button" data-md="button" title="Button link">Button</button>
                 <button class="btn" type="button" data-md="rule" title="Horizontal rule">&mdash;</button>
               </div>
               <div class="sub hidden" id="nlimgpanel" data-testid="nl-image-panel">
                 <span class="label">Add image</span>
-                <div class="field"><label for="nlimgfile">Photo (JPEG, PNG or WebP)</label>
+                <div class="field"><label for="nlimgfile">Photo from your computer (JPEG, PNG or WebP)</label>
                   <input id="nlimgfile" type="file" accept="image/jpeg,image/png,image/webp" data-testid="nl-image-file"></div>
-                <div class="field"><label for="nlimgalt">Describe it (alt text, required)</label>
+                <div class="field"><label for="nlimgalt">Describe the photo in a few words (required)</label>
                   <input id="nlimgalt" type="text" maxlength="300" placeholder="e.g. Neighbours planting willows along Boulder Creek" data-testid="nl-image-alt"></div>
                 <div class="row">
                   <button class="btn primary" id="nlimgupload" type="button" data-testid="nl-image-upload">Upload and insert</button>
                   <button class="btn" id="nlimgclose" type="button">Close</button>
                 </div>
-                <p class="note" style="margin:0">It is shrunk to 1200 pixels wide at most (3 MB after shrinking), location data is removed,
-                  and it goes in where your cursor was. People with images turned off see the description.</p>
+                <p class="note" style="margin:0">The photo goes in where your cursor was. You can also drag a photo onto the text.
+                  The description is shown to people whose email hides images, and read aloud to people who can't see it.
+                  Big photos are made smaller for email, and the location data in them is removed.</p>
                 <p class="err" id="nlimgmsg" role="status" data-testid="nl-image-msg"></p>
               </div>
+              <p class="note hidden" id="nlimghint" data-testid="nl-image-hint">Each photo is one line in the text, starting with <code>![</code>.
+                To move a photo, cut that whole line and paste it where you want it. To remove it, delete the line.</p>
               <textarea id="nlbody" spellcheck="true"></textarea>
             </div>
             <div class="nl-pane nl-previewpane">
@@ -2028,6 +2031,7 @@ export const ADMIN_PAGE = `<!doctype html>
   var nlPreviewTimer = null, nlPreviewSeq = 0;
   function refreshPreview() {
     var seq = ++nlPreviewSeq;
+    show("nlimghint", !el("nlbody").disabled && /^!\\[/m.test(el("nlbody").value));
     api("/api/admin/newsletters/preview", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subject: el("nlsubject").value, text: el("nlbody").value })
@@ -2105,7 +2109,10 @@ export const ADMIN_PAGE = `<!doctype html>
   }
   async function nlPrepareImage(file) {
     if (!file) throw new Error("Choose a photo first.");
-    if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("Use a JPEG, PNG or WebP image.");
+    if (/^image\\/hei[cf]$/.test(file.type) || /\\.hei[cf]$/i.test(file.name || "")) {
+      throw new Error("This is a HEIC photo (the iPhone format), which email can't show. Save it as a JPEG first and choose that (on a Mac: open it in Preview, then File → Export → JPEG).");
+    }
+    if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) < 0) throw new Error("That file isn't a photo email can show. Use a JPEG, PNG or WebP image.");
     if (file.size > NL_IMG_MAX_INPUT) throw new Error("That file is " + (file.size / 1048576).toFixed(1) + " MB; choose one under 25 MB.");
     var bitmap;
     try { bitmap = await createImageBitmap(file); } catch (e) { throw new Error("That image couldn't be read. Try another file."); }
@@ -2130,7 +2137,7 @@ export const ADMIN_PAGE = `<!doctype html>
         blob = await canvasBlob(canvas, "image/jpeg", 0.85);
       }
       if (!blob || (blob.type !== "image/jpeg" && blob.type !== "image/png")) throw new Error("Couldn't prepare this image. Try another file.");
-      if (blob.size > NL_IMG_MAX_BYTES) throw new Error("Even shrunk to 1200 pixels wide this image is over 3 MB. Choose a simpler one.");
+      if (blob.size > NL_IMG_MAX_BYTES) throw new Error("This photo is still too big for email after making it smaller. Choose a smaller or simpler one.");
       return blob;
     } finally { bitmap.close(); }
   }
@@ -2138,8 +2145,8 @@ export const ADMIN_PAGE = `<!doctype html>
     var msg = el("nlimgmsg"), button = el("nlimgupload");
     var alt = el("nlimgalt").value.trim();
     msg.textContent = "";
-    if (!el("nlimgfile").files[0]) { msg.textContent = "Choose a photo first."; return; }
-    if (!alt) { msg.textContent = "Describe the image first: people with images off, and screen readers, get this text."; el("nlimgalt").focus(); return; }
+    if (!el("nlimgfile").files[0]) { msg.textContent = "Choose a photo first: click Choose File, or drag a photo onto the text."; return; }
+    if (!alt) { msg.textContent = "Describe the photo first: people whose email hides images, and screen readers, get this text."; el("nlimgalt").focus(); return; }
     button.disabled = true;
     try {
       msg.textContent = "Preparing image…";
@@ -2157,7 +2164,7 @@ export const ADMIN_PAGE = `<!doctype html>
       nlImgAt = null;
       el("nlimgfile").value = ""; el("nlimgalt").value = "";
       nlImagePanel(false);
-      el("nlmsg").textContent = "Image added (" + d.width + " × " + d.height + ").";
+      el("nlmsg").textContent = "Photo added. It's the line starting with ![ in the text: move that line to move the photo, delete it to remove it.";
       nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview();
     } catch (e) {
       msg.textContent = e.message || "Couldn't upload the image.";
@@ -2168,6 +2175,37 @@ export const ADMIN_PAGE = `<!doctype html>
     nlImagePanel(el("nlimgpanel").classList.contains("hidden"));
   });
   el("nlimgclose").addEventListener("click", function () { nlImagePanel(false); el("nlbody").focus(); });
+  el("nlimgfile").addEventListener("change", function () { el("nlimgmsg").textContent = ""; });
+  // Before a drop replaces a chosen photo: the old description was for the old photo.
+  function nlImgReplaced() { if (el("nlimgfile").files.length) el("nlimgalt").value = ""; }
+  // A photo dragged onto the text opens the same panel with that file chosen. The cursor
+  // position is kept, so the photo goes where the cursor was, as with the button.
+  function hasFiles(e) { return !!e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
+  ["nlbody", "nlimgpanel"].forEach(function (id) {
+    el(id).addEventListener("dragover", function (e) {
+      if (!hasFiles(e) || el("nlbody").disabled) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = "copy";
+    });
+    el(id).addEventListener("drop", function (e) {
+      if (!hasFiles(e) || el("nlbody").disabled) return;
+      e.preventDefault();
+      if (el("nlimgupload").disabled) return; // an upload is running; don't swap its photo
+      var files = e.dataTransfer.files;
+      if (!files || !files.length) { el("nlmsg").textContent = "That had no photo file in it. Drag a photo file from your computer, or use Add image."; return; }
+      if (el("nlimgpanel").classList.contains("hidden")) nlImagePanel(true);
+      nlImgReplaced();
+      var dt = new DataTransfer();
+      dt.items.add(files[0]);
+      el("nlimgfile").files = dt.files;
+      el("nlimgfile").dispatchEvent(new Event("change"));
+      if (files.length > 1) el("nlimgmsg").textContent = "Only the first photo was taken. Add the others one at a time.";
+      el("nlimgalt").focus();
+    });
+  });
+  // A file dropped anywhere else on this page must not replace it (the browser would open
+  // the file and an unsaved draft would be lost). File inputs keep their own drop.
+  window.addEventListener("dragover", function (e) { if (hasFiles(e) && !(e.target instanceof HTMLInputElement && e.target.type === "file")) e.preventDefault(); });
+  window.addEventListener("drop", function (e) { if (hasFiles(e) && !(e.target instanceof HTMLInputElement && e.target.type === "file")) e.preventDefault(); });
   el("nlimgupload").addEventListener("click", nlUploadImage);
 
   Array.prototype.forEach.call(document.querySelectorAll("#nltools [data-md]"), function (b) {
