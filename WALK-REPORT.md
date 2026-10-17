@@ -86,3 +86,27 @@ Files are in `walk/pairs/`.
 
 New strings: **none**. Every label reused an existing EN/ES pair.
 
+## Checks (run on this branch, last commit's tree)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | `tsc --noEmit -p tsconfig.app.json`, no output, exit 0 |
+| `npm test` | Test Files 66 passed, 1 skipped (67); Tests 910 passed, 1 skipped (911). Includes the new `eventText.test.ts` |
+| `npm run lint` | 0 errors, 8 warnings (`react-refresh/only-export-components` in `ui/*` and `LanguageContext`; none in files I changed) |
+| `npm run build` | `✓ built`, no errors |
+| `E2E_PORT_OFFSET=2000 bash scripts/ci-e2e.sh` | `All hermetic e2e scripts passed.` (19 lane groups, including calendar-desktop-e2e, ecology-e2e, notify-e2e, board-e2e, people-e2e) |
+| `scripts/walk-mock.mjs`, final run | 26 findings, all the non-faults listed above (Register checkbox hit area; 20 px bleed at 390). No page errors, no failed steps, no sideways scroll |
+| `scripts/walk-live.mjs` on prod | 0 page errors, 0 loads over 4 s, 0 sideways scroll |
+
+One e2e failure turned up and was fixed: `scripts/share-e2e.mjs` used an event dated 2026-10-15 as its "scheduled"
+fixture. That date is now past, so the new rule (an ended event offers no Share or Add to calendar) made it time out.
+It now uses an event a week ahead of the run and also asserts an ended event shows neither button (`PASS ended event`).
+
+## Open
+
+- Owner: an organizer. Delete the two **TEST** events on the public calendar (finding 16). I did not touch prod.
+- Owner: Eileen / Aaron. Findings 17–20, 22, 23 are design or copy calls; I did not invent words.
+- Unverified: finding 24 (films and map boxes look blank in headless screenshots). Worth one look in a real browser.
+- Not covered: the real regenOS sign-in (the walker uses the mock's session cookie, and the mock sends no mail), push
+  delivery, and the organizer `/admin` portal (needs a real organizer session; not walked).
+- Screenshots in `walk/` are quantised to 192 colours to keep the repo small; they are for looking, not pixel diffs.
