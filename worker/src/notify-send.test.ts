@@ -267,10 +267,11 @@ describe("the morning note", () => {
     const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
     expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:sam@example.org", k: "unsub", t: "morning" });
-    // "Change your settings" opens Me → notifications (which asks them to sign in); it is not a signed link.
-    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
-    expect(message.html).toContain("Change your settings");
-    expect(message.html).toContain('href="https://cohereboulder.org/more/notifications"');
+    // "Change your settings" is a link signed for this address: it opens their settings with no sign-in.
+    const settings = /Change your settings: https:\/\/cohereboulder\.org\/n\/(\S+)/.exec(message.text)![1];
+    expect(await verifyLink(SECRET, settings, new Date())).toMatchObject({ p: "mailto:sam@example.org", k: "settings" });
+    expect(message.html).toContain(`href="https://cohereboulder.org/n/${settings}"`);
+    expect(message.html).not.toContain("/more/notifications");
   });
 });
 
@@ -508,11 +509,12 @@ describe("email by default for people registered for 2026", () => {
     expect(message.text).toContain("Learn three neighbours’ names");
     expect(message.text).toContain("Learn the names of three neighbours. Say them out loud twice.");
     expect(message.html).toContain("Learn the names of three neighbours. Say them out loud twice.");
-    // a one-click unsubscribe, and a settings link that asks them to sign in
+    // a one-click unsubscribe
     const unsub = /<(https:\/\/cohereboulder\.org\/n\/[^>]+)>/.exec(message.headers!["List-Unsubscribe"])![1];
     expect(message.headers!["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(await verifyLink(SECRET, unsub.split("/n/")[1], new Date())).toEqual({ p: "mailto:rae@example.org", k: "unsub", t: "evening" });
-    expect(message.text).toContain("Change your settings: https://cohereboulder.org/more/notifications");
+    const settings = /Change your settings: https:\/\/cohereboulder\.org\/n\/(\S+)/.exec(message.text)![1];
+    expect(await verifyLink(SECRET, settings, new Date())).toMatchObject({ p: "mailto:rae@example.org", k: "settings" });
     expect(ledger()).toMatchObject([{ person_key: "mailto:rae@example.org", type: "evening", channel: "email", status: "sent" }]);
   });
   it("the same person gets no morning note and no harvest invitation unless they turn them on", async () => {
@@ -993,5 +995,106 @@ describe("event reminders", () => {
     await runNotifyCron(env, SCAN, deps);
     expect(pushed).toHaveLength(0);
     expect(reminderLedger()).toHaveLength(0);
+  });
+});
+
+describe("once a day: a 2026 registrant who changed nothing", () => {
+  // Boulder, Sun Oct 18. A morning workshop and an early-evening circle (both RSVP'd by email, well ahead),
+  // then Monday's soup night (RSVP'd too). Practices written for both days.
+  const workshop = event("ws", "2026-10-18T16:00:00Z", "2026-10-18T17:30:00Z", "Seed Workshop"); // 10 AM–11:30 AM
+  const circle = event("ci", "2026-10-19T00:00:00Z", "2026-10-19T01:00:00Z", "Story Circle"); // 6–7 PM
+  const soup = event("so", "2026-10-19T23:00:00Z", "2026-10-20T01:00:00Z", "Soup Night"); // Mon 5–7 PM
+  const RAE = "rae@example.org";
+  const rsvp = (e: CommunityEvent) =>
+    db().prepare("INSERT INTO event_rsvps(id,event_did,event_rkey,event_name,event_starts_at,email,cancel_token,created_at) VALUES (?1,?2,?3,?4,?5,?6,?1,?7)")
+      .bind(`id-${e.rkey}`, e.did, e.rkey, e.name, e.startsAt, RAE, "2026-10-12T00:00:00Z").run();
+  const lookup = async (_env: unknown, _did: string, rkey: string) => {
+    const e = events.find((x) => x.rkey === rkey);
+    return e ? { kind: "ok" as const, event: { did: e.did, rkey: e.rkey, name: e.name, startsAt: e.startsAt, endsAt: e.endsAt, status: null, where: "Mock Hall" } } : { kind: "gone" as const };
+  };
+
+  /** Every minute of Sunday in Boulder through the notify cron, and the 15:00 UTC RSVP cron with its reminders on. */
+  async function wholeDay() {
+    const start = Date.parse("2026-10-18T06:00:00Z"); // midnight in Boulder
+    for (let t = start; t < start + 86_400_000; t += 60_000) {
+      const now = new Date(t);
+      await runNotifyCron(env, now, deps);
+      if (now.toISOString() === "2026-10-18T15:00:00.000Z") {
+        const { runRsvpCron } = await import("./rsvps");
+        await runRsvpCron({ ...env, RSVP_REMINDERS_PAUSED: "false" } as never, now, { lookup, send: deps.send as never });
+      }
+    }
+  }
+
+  beforeEach(async () => {
+    events = [workshop, circle, soup];
+    await addDaily("2026-10-18");
+    await addDaily("2026-10-19");
+    await addRegistered(RAE);
+    for (const e of events) await rsvp(e);
+    env.EMAIL_DEFAULT_FROM = "2026-10-17";
+  });
+
+  for (const [label, setup] of [
+    ["no settings row", async () => {}],
+    ["a settings row with every choice blank", async () => {
+      await db().prepare("INSERT INTO notify_prefs(person_key,email,locale,created_at,updated_at) VALUES ('mailto:rae@example.org','rae@example.org','en',?1,?1)").bind("2026-10-10T00:00:00Z").run();
+    }],
+  ] as const) {
+    it(`gets exactly one email all day, the 8 PM note, with ${label}`, async () => {
+      await setup();
+      await wholeDay();
+      expect(pushed).toHaveLength(0);
+      expect(mails.map((m) => [m.to, m.message.subject])).toEqual([[RAE, "Tomorrow at COhere: Monday, October 19"]]);
+      // The digest already marks Monday's RSVP, so the day-before reminder was not sent as well.
+      expect(mails[0].message.text).toContain("Soup Night");
+      expect(mails[0].message.text).toContain("✓ RSVP’d");
+      // Morning, harvest and reminder runs all happened. Rae was sent only the evening note; any other row is a skip as "off".
+      const rows = [...all("SELECT type, status, reason FROM notify_ledger"), ...all("SELECT type, status, reason FROM notify_reminder_ledger")];
+      expect(rows.filter((r) => r.status === "sent")).toEqual([{ type: "evening", status: "sent", reason: null }]);
+      expect(rows.filter((r) => r.status !== "sent").every((r) => r.status === "skipped" && r.reason === "off")).toBe(true);
+      expect(all("SELECT type, ref FROM notify_runs ORDER BY type, ref").map((r) => r.type)).toEqual(expect.arrayContaining(["morning", "harvest", "reminder", "evening"]));
+      expect(all("SELECT reminder_sent_at FROM event_rsvps WHERE event_rkey = 'so'")).toEqual([{ reminder_sent_at: null }]);
+    });
+  }
+
+  it("someone not getting the 8 PM note by email still gets the day-before RSVP reminder", async () => {
+    await addPrefs("mailto:rae@example.org", { email: RAE, evening_on: 0 });
+    await wholeDay();
+    expect(mails.map((m) => m.message.subject)).toEqual(["Tomorrow: Soup Night"]);
+  });
+
+  it("a person who turned the morning note on gets it too: two emails, both chosen", async () => {
+    await addPrefs("mailto:rae@example.org", { email: RAE, morning_on: 1 });
+    await wholeDay();
+    expect(mails.map((m) => m.message.subject)).toHaveLength(2);
+    expect(all("SELECT type FROM notify_ledger WHERE status = 'sent' ORDER BY type").map((r) => r.type)).toEqual(["evening", "morning"]);
+  });
+
+  it("the footer's settings link is signed and opens this address's settings, no sign-in", async () => {
+    await wholeDay();
+    const url = /Change your settings: (\S+)/.exec(mails[0].message.text)![1];
+    expect(url).toMatch(/^https:\/\/cohereboulder\.org\/n\//);
+    expect(await verifyLink(SECRET, url.split("/n/")[1], new Date("2026-10-19T03:00:00Z"))).toMatchObject({ p: "mailto:rae@example.org", k: "settings" });
+  });
+});
+
+describe("one address, one 8 PM note", () => {
+  beforeEach(async () => {
+    events = [event("a", "2026-10-17T15:00:00Z", "2026-10-17T16:00:00Z", "Honoring Water")];
+    await addDaily("2026-10-17");
+  });
+
+  it("an account that verifies the address after an earlier tick wrote to it is not written to again", async () => {
+    for (let i = 0; i < 45; i++) await addRegistered(`a${String(i).padStart(3, "0")}@example.org`);
+    await runNotifyCron(env, EVENING, deps); // the first 40, by address; five are left for the next tick
+    expect(mails).toHaveLength(MAX_EMAILS_PER_TICK);
+    expect(mails.filter((m) => m.to === "a000@example.org")).toHaveLength(1);
+    // a000 signs in before the next tick: their account holds the verified address, and nothing moved the ledger.
+    await addPrefs(ME, { email: "a000@example.org" });
+    await runNotifyCron(env, new Date(EVENING.getTime() + 60_000), deps);
+    expect(mails).toHaveLength(45);
+    expect(mails.filter((m) => m.to === "a000@example.org")).toHaveLength(1);
+    expect(all("SELECT * FROM notify_runs WHERE completed_at IS NOT NULL")).toHaveLength(1);
   });
 });

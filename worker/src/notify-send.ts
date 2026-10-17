@@ -297,10 +297,20 @@ async function processRun(ctx: Ctx, type: NotifyType, ref: string, loadEvents: (
   const claimed = new Set(
     (await db.prepare(`SELECT person_key FROM ${ledgerOf(type)} WHERE type = ?1 AND ref = ?2`).bind(type, ref).all<{ person_key: string }>()).results.map((r) => r.person_key),
   );
+  // One address, one note per run: an address already claimed under another key (an account that
+  // verified it after an earlier tick wrote to it as mailto:) is not written to again.
+  const claimedAddresses = new Set<string>();
+  for (const key of claimed) {
+    const address = emailOfKey(key) ?? mailAddress(await prefsOrBlank(db, key), ctx.registered);
+    if (address) claimedAddresses.add(address);
+  }
   const recipients = await content.recipients();
   let budget = MAX_PER_TICK - ctx.sent - ctx.skipped;
   for (const r of recipients) {
     if (claimed.has(r.key)) continue;
+    const address = r.person ? addressOf(r.person, ctx.registered) ?? emailOfKey(r.key) : null;
+    if (address && claimedAddresses.has(address)) continue;
+    if (address) claimedAddresses.add(address);
     if (budget-- <= 0 || stale(ctx)) return true;
     if (ctx.emails >= MAX_EMAILS_PER_TICK) {
       console.info(`notify ${type} ${ref}: email cap for this tick (${MAX_EMAILS_PER_TICK}) reached, the rest go next minute`);
@@ -564,9 +574,10 @@ async function emailTo(ctx: Ctx, type: NotifyType, prefs: PrefsRow, to: string, 
   const link = async (payload: Omit<LinkPayload, "x">) => `${base}/n/${await signLink(ctx.secret!, payload, now)}`;
   // The first fallback after being live says so, once; settings shows it until push is live again.
   const first = fellBack && !prefs.fallback_noted_at;
-  // "Change your settings" opens Me → notifications, which asks them to sign in. The unsubscribe link stays one tap.
-  const settingsUrl = `${base}/more/notifications`;
-  const mc: MailContext = { lang, to, base, settingsUrl, pushSettingsUrl: settingsUrl, unsubUrl: await link({ p: prefs.person_key, k: "unsub", t: type }), fellBack: first };
+  // "Change your settings" is a signed link: most registrants have no account, so it opens their email settings with no sign-in.
+  // "Turn push back on" needs the phone, so that one still goes to Me → notifications. The unsubscribe link stays one tap.
+  const settingsUrl = await link({ p: prefs.person_key, k: "settings" });
+  const mc: MailContext = { lang, to, base, settingsUrl, pushSettingsUrl: `${base}/more/notifications`, unsubUrl: await link({ p: prefs.person_key, k: "unsub", t: type }), fellBack: first };
   // 8 PM: an address-keyed person has no session, so each event's RSVP link is pre-signed for them.
   const rsvp = new Map<string, string>();
   if (content.rsvpLinks && prefs.person_key.startsWith("mailto:")) {
@@ -589,6 +600,30 @@ async function emailTo(ctx: Ctx, type: NotifyType, prefs: PrefsRow, to: string, 
   }
   if (first) await savePrefs(env.cohere, { ...prefs, fallback_noted_at: now.toISOString() }, now.toISOString());
   return settle("sent", channel, fellBack, null);
+}
+
+// ------------------------------------------------------- the RSVP reminder
+
+/**
+ * Of these addresses, the ones tonight's 8 PM note will reach by email. The RSVP cron's
+ * day-before reminder skips them: tonight's note lists tomorrow's events with their RSVP marked.
+ * Mirrors the evening run's own checks (switch, dates, link secret, who, decide), not its content.
+ */
+export async function eveningEmailTonight(env: NotifyEnv, now: Date, addresses: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (addresses.length === 0 || notifyPaused(env) || !linkSecret(env)) return out;
+  const tonight = boulderTime(now).date;
+  const fest = companionWindow(env);
+  if (tonight < addDays(fest.start, -1) || tonight >= fest.end) return out;
+  const registered = await registeredEmails(env.cohere);
+  const wanted = new Set(addresses.map((a) => a.trim().toLowerCase()));
+  for (const p of await peopleFor(env, registered, tonight >= (env.EMAIL_DEFAULT_FROM ?? ""))) {
+    const address = addressOf(p, registered) ?? emailOfKey(p.key);
+    if (!address || !wanted.has(address)) continue;
+    const decision = decide("evening", p.prefs, await reachOf(env.cohere, p.prefs, now.getTime(), registered));
+    if (decision.action === "email" || decision.action === "both") out.add(address);
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ sweeps
