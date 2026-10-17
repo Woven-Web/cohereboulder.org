@@ -24,6 +24,8 @@ import {
 } from "@/lib/events";
 import { AddToCalendar } from "@/components/AddToCalendar";
 import { HarvestSection } from "@/components/harvest/HarvestSection";
+import { eventEndedAt } from "@/lib/harvest";
+import { rejoinWrappedLines } from "@/lib/eventText";
 // The event API doesn't carry a per-event image today, so a detail page
 // gets a tasteful COhere still as a banner instead of a blank header — real
 // footage, never AI/stock, per Eileen's rule. Picked deterministically per
@@ -82,8 +84,10 @@ export default function EventDetail() {
   const myItem = event ? mine.items.find((i) => i.event.did === event.did && i.event.rkey === event.rkey) : undefined;
   const badged = event?.status && BADGED_STATUSES.has(event.status);
   const cancelled = event?.status === "cancelled";
+  const endedAt = event ? eventEndedAt(event) : null;
+  const over = endedAt !== null && endedAt <= Date.now();
 
-  const paragraphs = event?.description ? event.description.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean) : [];
+  const paragraphs = event?.description ? rejoinWrappedLines(event.description).split(/\n{2,}/).map((p) => p.trim()).filter(Boolean) : [];
 
   return (
     <AlmanacShell>
@@ -151,8 +155,8 @@ export default function EventDetail() {
               <div className="o2" style={{ marginTop: "1rem" }}>
                 <EventRsvp key={`rsvp-${event.did}/${event.rkey}`} event={event} />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-1">
-                  <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />
-                  <AddToCalendar event={event} className="h-11 w-full" />
+                  {!over && <ShareEvent key={`${event.did}/${event.rkey}`} event={event} />}
+                  {!over && <AddToCalendar event={event} className="h-11 w-full" />}
                   {data?.icsUrl && <div className="min-w-0"><CalendarSubscribe feedUrl={data.icsUrl} compact /></div>}
                 </div>
               </div>

@@ -325,7 +325,7 @@ export default function CalendarPage() {
             {signedIn ? (
               <>
                 <div className="flex flex-wrap items-center gap-3">
-                  {!registration?.registered && <RegistrationAction />}
+                  {!registration?.registered && <RegistrationAction className="btn btn--primary" />}
                   {/* No collective DID means nothing to create an event
                       under, so don't offer a button that does nothing. */}
                   {panel !== "create" && !editing && canCreate && (
