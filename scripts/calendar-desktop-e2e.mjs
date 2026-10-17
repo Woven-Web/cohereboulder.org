@@ -142,8 +142,12 @@ for (const [w, h] of [[1280, 800]]) {
   check((await page.getByTestId("event-card").count()) >= 3, "All events lists every event of the day");
   check(/All events/.test(await page.getByTestId("agenda-count").innerText()), "the heading says All events is showing");
   await mine.click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid=event-card]').length === 1);
-  check(await page.getByTestId("event-card").count() === 1 && await page.getByText("Desktop Free Market").count() > 0, "My events narrows the same day to the events you RSVP'd to");
+  // The mock (MOCK_NOTIFY=1) also seeds events relative to the REAL clock, which on some real day land on
+  // Oct 17 and carry mock-peer's seat. So judge the seeded "Desktop" events only; the page's frozen clock
+  // cannot move those.
+  const seeded = page.getByTestId("event-card").filter({ hasText: "Desktop" });
+  await page.getByTestId("event-card").filter({ hasText: "Desktop Skill Share" }).waitFor({ state: "detached", timeout: 8000 });
+  check(await seeded.count() === 1 && await seeded.filter({ hasText: "Desktop Free Market" }).count() === 1, "My events narrows the same day to the events you RSVP'd to");
   check(/My events/.test(await page.getByTestId("agenda-count").innerText()), "the heading says My events is showing");
   check(new URL(page.url()).searchParams.get("day") === "2026-10-17", "My events keeps the same day");
   await shot(page, "mine-1280", true);
