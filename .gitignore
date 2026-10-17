@@ -46,3 +46,6 @@ worker/seed.sql
 
 # Playwright MCP scratch output (page snapshots can contain member data)
 .playwright-mcp/
+
+# The guide kit's raw captures and recordings (scripts/guide-capture.sh); the framed steps are committed.
+guide/raw/

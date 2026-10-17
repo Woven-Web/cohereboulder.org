@@ -18,7 +18,8 @@ const NOON = "2026-10-16T18:00:00Z";
 const problems = [];
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC", "base64");
 const DID = "did:plc:mockscene";
-const SIZES = [[1280, 800], [1440, 900], [1024, 768], [390, 844]];
+// WALK_SIZES="390x844,412x915,768x1024" picks others.
+const SIZES = process.env.WALK_SIZES ? process.env.WALK_SIZES.split(",").map((s) => s.split("x").map(Number)) : [[1280, 800], [1440, 900], [1024, 768], [390, 844]];
 
 const findings = (page) => page.evaluate(() => {
   const out = [];

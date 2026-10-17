@@ -18,6 +18,11 @@ export async function checkInstallInvite(browser, target) {
     await page.waitForTimeout(4000);
     assert.equal(await page.getByRole('dialog', { name: title, exact: true }).count(), 0);
     assert.equal(await page.evaluate(() => localStorage.getItem('cohere-install-dismissed')), 'true');
+    // A reading screen other than Home gets it too (the footer's signup form is not an editor).
+    await page.evaluate(() => { localStorage.removeItem('cohere-install-dismissed'); localStorage.removeItem('cohere-install-offered'); });
+    await page.goto(target + '/today?look=ecology');
+    await page.getByRole('dialog', { name: title, exact: true }).waitFor({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Not now', exact: true }).click();
     // A fresh eligibility state still must not interrupt registration.
     await page.evaluate(() => { localStorage.removeItem('cohere-install-dismissed'); localStorage.removeItem('cohere-install-offered'); });
     await page.goto(target + '/register?look=ecology');

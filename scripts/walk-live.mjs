@@ -11,7 +11,8 @@ const [base, shots, pastKey = "ev-mtka98hjazago4", futureKey = "ev-muo83dv9iwdjy
 if (!base || !shots) { console.error("usage: node scripts/walk-live.mjs <url> <shots-dir> [past-rkey] [future-rkey]"); process.exit(2); }
 await mkdir(shots, { recursive: true });
 const DID = "did:plc:w54s52ycbw5lreyhlzexredb";
-const SIZES = [[1280, 800], [1440, 900], [1024, 768], [390, 844]];
+// WALK_SIZES="390x844,412x915,768x1024" picks others.
+const SIZES = process.env.WALK_SIZES ? process.env.WALK_SIZES.split(",").map((s) => s.split("x").map(Number)) : [[1280, 800], [1440, 900], [1024, 768], [390, 844]];
 const SCREENS = [
   ["home", "/"],
   ["today", "/today"],

@@ -442,7 +442,8 @@
 .alm .post__foot{display:flex;align-items:center;flex-wrap:wrap;gap:0 var(--sp-4);margin-top:var(--sp-1)}
 .alm .post__foot .link{font-size:var(--fs-small)}
 .alm .post__foot .hash{margin-right:auto;padding-right:var(--sp-2)}
-.alm .post--own .post__by b::after{content:"You";margin-left:calc(.5 * var(--u));font:500 calc(.62 * var(--u))/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--ink);padding:calc(.15 * var(--u)) calc(.3 * var(--u));vertical-align:.12em}
+/* The tag's word comes from the page (data-you), so it follows the language. */
+.alm .post--own .post__by b::after{content:attr(data-you);margin-left:calc(.5 * var(--u));font:500 calc(.62 * var(--u))/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--ink);padding:calc(.15 * var(--u)) calc(.3 * var(--u));vertical-align:.12em}
 .alm .post--root .post__title{font-size:var(--fs-h2);margin-top:var(--sp-4)}
 .alm .post--root .post__text{font-size:var(--fs-lede);line-height:1.55}
 .alm .thread-reply{padding:var(--sp-3) 0 var(--sp-3) var(--sp-4);margin-left:var(--sp-2);border-left:2px solid var(--hair)}
