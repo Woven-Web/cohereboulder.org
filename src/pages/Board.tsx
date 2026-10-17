@@ -103,7 +103,7 @@ function BoardView() {
   }
 
   return (
-    <main className="page">
+    <main className={member ? "page page--board" : "page"}>
       <div className="folio" style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
         <span>{tr("members.folio")}</span>
       </div>

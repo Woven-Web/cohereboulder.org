@@ -30,9 +30,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { signOut } from "@/lib/regenos";
 import { OPEN_SIGNIN_EVENT, openSignInDialog, type SignInPrefill } from "@/lib/signin";
+import { useShell } from "@/components/almanac/shell-context";
 
 export function AccountControl({ variant = "desktop", onNavigate }: { variant?: "desktop" | "mobile"; onNavigate?: () => void }) {
   const { tr } = useLanguage();
+  const { container } = useShell();
   const { data: config } = useSiteConfig();
   const enabled = config?.regenosLoginEnabled === true;
   const { data: session } = useRegenosSession(enabled);
@@ -130,7 +132,7 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     <>
       {trigger}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent closeLabel={tr("nav.closeDialog")} className="max-w-md w-[calc(100%-2rem)] rounded-lg [&>button]:min-h-12 [&>button]:min-w-12 [&>button]:right-0 [&>button]:top-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
+        <DialogContent container={container} closeLabel={tr("nav.closeDialog")} className="signin-dlg max-w-md w-[calc(100%-2rem)] rounded-lg [&>button]:min-h-12 [&>button]:min-w-12 [&>button]:right-0 [&>button]:top-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
           <DialogHeader>
             <DialogTitle className="px-5 sm:pl-0">{tr("nav.signInDialogTitle")}</DialogTitle>
             <DialogDescription>{tr("nav.signInDialogBody")}</DialogDescription>

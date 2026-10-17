@@ -45,6 +45,8 @@
   --r-1:8px; --r-2:16px; --r-3:24px;
   --ridge-h:96px; --pill:28px;
   --gutter:calc(1.1 * var(--u));
+  /* shadcn's own tokens follow the palette, so a stray link, icon or focus ring is forest, not the classic blue */
+  --primary:163 40% 20%; --ring:163 40% 20%; --border:41 29% 77%; --muted-foreground:80 5% 29%;
   font-family:var(--body); line-height:1.6;
 }
 .alm.eco{background:var(--cream-deep)}
@@ -314,7 +316,8 @@
 .alm .tabs--six{--tab-n:6}
 @media (max-width:767px){.alm .tabs--six a{font-size:.7rem;letter-spacing:0;min-width:0}}
 .alm.eco .mast__about{display:none;align-items:center;min-height:44px;padding:0 .6rem;font:600 .9rem/1 var(--head);text-decoration:none;color:var(--ink-2)}
-@media (min-width:1024px){.alm.eco .mast__about{display:inline-flex}}
+/* Beside six tabs, Register, Sign in and the language switch, "About" only fits from 1280px (Spanish labels are longer); the foot carries it below that. */
+@media (min-width:1280px){.alm.eco .mast__about{display:inline-flex}}
 
 /* ---- Home, live: the app's front door ---- */
 .alm.eco .homelive{padding-top:var(--sp-3)}
@@ -341,10 +344,13 @@
 @media (min-width:768px){.alm .flow2--side.flow2--solo{grid-template-columns:minmax(0,1fr)}}
 .alm .cal-view{margin-bottom:var(--sp-3)}
 @media (min-width:768px){
-  .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
+  .alm .flow2--solo .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:stretch}
+  /* A lone last card takes the row, so no half of the page sits empty beside it. */
+  .alm .flow2--solo .cal-list > :last-child:nth-child(odd){grid-column:1 / -1}
 }
 @media (min-width:1600px){
-  .alm .flow2--side:not(.flow2--solo) .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:start}
+  .alm .flow2--side:not(.flow2--solo) .cal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-5);align-items:stretch}
+  .alm .flow2--side:not(.flow2--solo) .cal-list > :last-child:nth-child(odd){grid-column:1 / -1}
 }
 .alm .week__bar{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3);margin-bottom:var(--sp-2);font-size:.8rem}
 .alm .week__cols{display:grid;gap:4px;align-items:start}
@@ -372,7 +378,7 @@
 @media (min-width:1024px){
   .alm.eco .mast{gap:var(--sp-3)}
   .alm.eco .mast .tabs{gap:var(--sp-1);min-width:0}
-  .alm.eco .mast .tabs a{padding:0 .5rem;white-space:nowrap}
+  .alm.eco .mast .tabs a{padding:0 .4rem;white-space:nowrap}
   .alm.eco .mast .mast__end{gap:var(--sp-1)}
 }
 .alm.eco .page--read{max-width:46rem}
@@ -407,3 +413,44 @@
 .alm .week__ev[data-past]{border-left-color:var(--ink-2);background:transparent}
 .alm .week__ev[data-past] b{font-weight:500}
 .alm .hv__head{margin-top:var(--sp-1)}
+
+/* ---- The sign-in dialog: portalled into the shell so it wears the same type and colours ---- */
+.alm .signin-dlg{background:var(--cardc,var(--paper));color:var(--ink);border:0;border-radius:24px;box-shadow:0 24px 60px -20px hsl(var(--ink-hsl) / .55);font-family:var(--serif);padding:var(--sp-5)}
+.alm .signin-dlg :is(h2,p){text-align:left}
+.alm .signin-dlg h2{padding:0 2.5rem 0 0;font-family:var(--title,var(--serif));font-weight:700;font-size:calc(1.5 * var(--u));line-height:1.15;letter-spacing:-.01em;color:var(--night,var(--ink))}
+.alm .signin-dlg p{font-family:var(--head,var(--serif));font-weight:400;color:var(--ink-2);font-size:var(--fs-small);line-height:1.5}
+.alm .signin-dlg label{font-family:var(--head,var(--serif));font-weight:600;font-size:var(--fs-small);color:var(--ink)}
+.alm .signin-dlg input{border:1.5px solid var(--ink-2);border-radius:14px;background:var(--cardc,var(--paper));font-size:var(--fs-body);font-family:var(--head,var(--serif))}
+.alm .signin-dlg input:focus-visible{outline:3px solid var(--deep);outline-offset:2px;box-shadow:none;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000;border-color:var(--deep)}
+.alm .signin-dlg button[type=submit]{background:var(--deep);background-image:none;color:#fff;border:0;border-radius:var(--pill,999px);box-shadow:none;font-family:var(--head,var(--serif));font-weight:600}
+.alm .signin-dlg button[type=submit]:hover{transform:none;box-shadow:none;filter:brightness(1.15)}
+.alm .signin-dlg [class*="text-destructive"]{color:var(--berry)}
+
+/* Any shadcn "community" button (the classic orange gradient) is a forest pill in this look, skin or not. */
+.alm.eco :is(a,button)[class*="bg-gradient-community"]{background:var(--deep);background-image:none;color:#fff;box-shadow:none;border:0;border-radius:var(--pill);font-family:var(--head)}
+.alm.eco :is(a,button)[class*="bg-gradient-community"]:hover{transform:none;box-shadow:none;filter:brightness(1.15)}
+
+/* Spanish labels are longer: tighter tabs on a laptop mast and on a phone's bottom bar. */
+@media (max-width:420px){.alm.eco .tabs.tabs--six a{font-size:.64rem}}
+/* On a laptop the hero's Join button sits at the left, so the "Already registered?" line under it does too. */
+@media (min-width:768px){.alm.eco .homelive [data-testid=signin-prompt]{text-align:left}}
+
+/* Today on a laptop: the practice stands on the left; what is next, later, the quest and the day's
+   question share the right, so neither side is left empty beside the other. */
+@media (min-width:1024px){
+  .alm .flow2--today{grid-template-rows:auto auto 1fr}
+  .alm .flow2--today :is(.flow2__a,.flow2__b){display:contents}
+  .alm .flow2--today .o1{grid-column:1;grid-row:1 / span 3}
+  .alm .flow2--today .o2{grid-column:2;grid-row:1}
+  .alm .flow2--today .o4{grid-column:2;grid-row:2}
+  .alm .flow2--today .o3{grid-column:2;grid-row:3}
+}
+
+/* Board on a laptop: the feed starts at the top beside the title, filters and Write a post, not below an empty band. */
+@media (min-width:768px){
+  .alm main.page--board{display:grid;grid-template-columns:minmax(0,calc(19.5 * var(--u))) minmax(0,1fr);grid-template-rows:repeat(4,auto) 1fr;column-gap:var(--sp-7);align-content:start}
+  .alm main.page--board > *{grid-column:1}
+  .alm main.page--board > .board{display:contents}
+  .alm main.page--board .board__side{grid-column:1;position:static}
+  .alm main.page--board .board__feed{grid-column:2;grid-row:1 / 6}
+}

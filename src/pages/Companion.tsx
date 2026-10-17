@@ -267,7 +267,7 @@ function TodayView() {
         </p>
         {status}
         <HarvestCard />
-        <div className="flow2">
+        <div className="flow2 flow2--today">
             <div className="flow2__a">
                 <div className="o1">
                     {eco && <figure className="photo photo--arch"><img src={gatheringPhoto} alt="" width="900" height="600" /></figure>}
@@ -401,7 +401,7 @@ function MoreView() {
             <p style={{ marginTop: '.4rem' }}>{status}</p>
             <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', marginTop: '.6rem' }}>
                 {supported && data?.pushKey && reminders.permission !== 'denied' && !ios && !reminders.subscribed && <button type="button" className="btn btn--primary" onClick={() => void enable()} disabled={reminders.busy}>{tr('companion.enable')}</button>}
-                {(reminders.subscribed || localGet('cohere-push-off') !== 'true') && <button type="button" className="btn btn--line" onClick={() => void disableReminders()} disabled={reminders.busy}>{tr('companion.disable')}</button>}
+                {(reminders.subscribed || localGet('cohere-push-off') === 'false') && <button type="button" className="btn btn--line" onClick={() => void disableReminders()} disabled={reminders.busy}>{tr('companion.disable')}</button>}
             </div>
             <Link className="list-link" to="/more/notifications" data-testid="notify-settings-link" style={{ marginTop: '.8rem' }}>
                 <span>{tr('notify.settingsLink')}</span><span aria-hidden="true">→</span>

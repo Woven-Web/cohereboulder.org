@@ -44,6 +44,9 @@ status=0
 if [ -n "$SHOTS_DIR" ] && [ "${WALK:-1}" = "1" ]; then
   node scripts/desktop-walk.mjs "$BASE" "$MOCK" "$SHOTS_DIR" || status=1
 fi
+if [ -n "$SHOTS_DIR" ] && [ "${WALKMOCK:-0}" = "1" ]; then
+  node scripts/walk-mock.mjs "$BASE" "$MOCK" "$SHOTS_DIR" || status=1
+fi
 [ "${E2E:-1}" = "0" ] || node scripts/calendar-desktop-e2e.mjs "$BASE" "$MOCK" ${SHOTS_DIR:+"$SHOTS_DIR/e2e"} || status=1
 [ "$status" -eq 0 ] || { echo "--- worker log (tail) ---"; tail -60 "$SCRATCH/worker.log"; }
 exit "$status"

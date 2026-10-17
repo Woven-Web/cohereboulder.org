@@ -3,6 +3,8 @@ import { chromium } from 'playwright';
 
 const browser = await chromium.launch();
 const origin = process.argv[2] || 'http://localhost:4187';
+// A week from now, so the event is still ahead whenever this runs (an ended event offers neither Share nor Add to calendar).
+const soon = new Date(Date.now() + 7 * 86_400_000).toISOString();
 try {
   for (const scheduled of [false, true]) {
     for (const mode of ['native', 'abort', 'copy', 'denied', 'native-failure']) {
@@ -24,7 +26,7 @@ try {
         } });
       }, mode);
       await page.route('**/api/**', route => route.fulfill({ json: route.request().url().includes('/api/events/') ? {
-        event: { did: 'did:plc:test', rkey: 'example', name: 'Community gathering', startsAt: scheduled ? '2026-10-15T18:00:00Z' : null,
+        event: { did: 'did:plc:test', rkey: 'example', name: 'Community gathering', startsAt: scheduled ? soon : null,
           endsAt: null, description: null, location: null, status: scheduled ? 'scheduled' : 'cancelled', mode: null,
           uris: [], hostName: null }, icsUrl: scheduled ? `${origin}/calendar.ics` : null
       } : { regenosLoginEnabled: false } }));
@@ -65,4 +67,18 @@ try {
       await page.close();
     }
   }
+  // An ended event offers neither Share nor Add to calendar.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.route('**/api/**', route => route.fulfill({ json: route.request().url().includes('/api/events/') ? {
+    event: { did: 'did:plc:test', rkey: 'example', name: 'Community gathering', startsAt: '2026-01-01T18:00:00Z',
+      endsAt: '2026-01-01T19:00:00Z', description: null, location: null, status: 'scheduled', mode: null,
+      uris: [], hostName: null }, icsUrl: `${origin}/calendar.ics`
+  } : { regenosLoginEnabled: false } }));
+  await page.goto(`${origin}/events/did%3Aplc%3Atest/example`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Community gathering' }).waitFor();
+  await page.getByRole('button', { name: 'Subscribe to calendar', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Share event', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Add to calendar', exact: true }).count(), 0);
+  console.log('PASS ended event: no Share, no Add to calendar');
+  await page.close();
 } finally { await browser.close(); }
