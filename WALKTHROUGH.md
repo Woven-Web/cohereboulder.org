@@ -1,33 +1,32 @@
-# Walkthrough: the Subscribe to calendar dialog in the ecology look
+# Walkthrough: changing your email settings from the email
 
 ## How to run it
 
-Local, against the regenOS mock (nothing leaves the machine):
+Local only, against the regenOS mock and a fresh local database (nothing is sent):
 
 ```bash
 npm run build
-PORT=9945 node scripts/regenos-mock.mjs &
-npx wrangler dev --port 8795 --var REGENOS_LOGIN_ENABLED:true \
-  --var REGENOS_BASE_URL:http://127.0.0.1:9945 --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+ONCE_SHOTS_DIR=$PWD/shots-once bash scripts/notify-e2e.sh
 ```
 
-Open http://127.0.0.1:8795/calendar?look=ecology. (Local servers default to the classic look, so add
-`?look=ecology`. After deploy it is the default.) The screenshots come from
-`node scripts/ecology-e2e.mjs <worker> <mock> <dir>` on the real build.
+The lane signs a settings link for a test address and opens it in a browser. It clicks the buttons and
+checks the database after each one. The screenshots below come from that run, in `shots-once/`.
 
 ## Steps
 
-1. **Before.** Screen: `shots-subscribe/before-subscribe-event-en-390.png`.
-   Narration: "This is how Subscribe to calendar looked: a plain white box, blue buttons and system font, unlike the rest of the app."
+1. **The 8 PM email's footer.** Show the bottom of a "Tomorrow at COhere" email: "Change your settings · Unsubscribe".
+   *Narration:* "Every evening email ends with two links. 'Change your settings' now opens your settings straight away, with no sign-in."
 
-2. **Calendar page, phone.** Tap *Subscribe to calendar* under the day list. Screen: `shots-subscribe/subscribe-calendar-en-390.png`.
-   Narration: "Now it matches the sign-in dialog: a cream card, the Lora heading and Poppins text."
+2. **The settings page** (`shots-once/settings-from-email-390.png`). Show "Settings for <address>": Morning note (off) and Ready for tomorrow (on).
+   *Narration:* "This is what a registrant sees. The 8 PM email is on, the morning email is off. Opening the page changes nothing."
 
-3. **The buttons.** Same screen, point at Google, then Apple, then Copy.
-   Narration: "Google is the forest-green pill. Apple and Copy are outlined pills. Each one is big enough to tap."
+3. **Turn one on or off** (`shots-once/settings-from-email-evening-off-390.png`). Press "Turn it off" on Ready for tomorrow; the line changes to "Off. You won’t get this one."
+   *Narration:* "One button per email. It saves when you press it, and only then."
 
-4. **Spanish.** Switch to ES on an event page and open it again. Screen: `shots-subscribe/subscribe-event-es-390.png`.
-   Narration: "In Spanish the longer labels still fit, and the close button is labelled in Spanish too."
+4. **Sign in for more.** Point at the "Sign in for more" card.
+   *Narration:* "Phone notifications, event reminders and harvest invitations need an account. This takes you to sign in, then to the full settings."
 
-5. **Laptop.** Screen: `shots-subscribe/subscribe-calendar-en-1280.png`.
-   Narration: "On a laptop it's the same card, centred over the calendar."
+5. **On a laptop** (`shots-once/settings-from-email-1280.png`).
+   *Narration:* "The same page on a wide screen."
+
+What you can't see: a registrant who changed nothing now gets one email a day from the notify system, the 8 PM note. Tests prove it across a full day. If the RSVP day-before reminder is ever switched back on, it skips anyone already getting that note by email.
