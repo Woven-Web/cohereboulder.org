@@ -141,9 +141,12 @@ for (const [w, h] of [[1280, 800]]) {
   check(await all.getAttribute("aria-pressed") === "true" && await mine.getAttribute("aria-pressed") === "false", "All events is the default, not My events");
   check((await page.getByTestId("event-card").count()) >= 3, "All events lists every event of the day");
   check(/All events/.test(await page.getByTestId("agenda-count").innerText()), "the heading says All events is showing");
+  const allCount = await page.getByTestId("event-card").count();
   await mine.click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid=event-card]').length === 1);
-  check(await page.getByTestId("event-card").count() === 1 && await page.getByText("Desktop Free Market").count() > 0, "My events narrows the same day to the events you RSVP'd to");
+  // Not "exactly one": MOCK_NOTIFY's just-ended events (Pia is seated on them) sit on whatever day the
+  // lane runs, so on Oct 17 one of them is on this day too. What matters: hers stay, the others go.
+  await page.waitForFunction((n) => document.querySelectorAll('[data-testid=event-card]').length < n, allCount);
+  check(await page.getByText("Desktop Free Market").count() > 0 && await page.getByText("Desktop Skill Share").count() === 0, "My events narrows the same day to the events you RSVP'd to");
   check(/My events/.test(await page.getByTestId("agenda-count").innerText()), "the heading says My events is showing");
   check(new URL(page.url()).searchParams.get("day") === "2026-10-17", "My events keeps the same day");
   await shot(page, "mine-1280", true);
