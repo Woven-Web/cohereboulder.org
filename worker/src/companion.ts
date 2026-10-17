@@ -227,7 +227,7 @@ export async function runCompanionCron(env: CompanionEnv, now: Date): Promise<vo
     const cutoff = new Date(end(env) + 'T12:00:00Z');
     cutoff.setUTCDate(cutoff.getUTCDate() + 30);
     if (date > cutoff.toISOString().slice(0, 10)) {
-        for (const table of ['companion_replies', 'companion_completions', 'companion_subscriptions', 'companion_ledger', 'notify_devices', 'notify_ledger', 'notify_runs']) {
+        for (const table of ['companion_replies', 'companion_completions', 'companion_subscriptions', 'companion_ledger', 'notify_devices', 'notify_ledger', 'notify_reminder_ledger', 'notify_runs']) {
             try {
                 await db.prepare(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} LIMIT 500)`).run();
             }

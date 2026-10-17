@@ -224,7 +224,7 @@ export const translations = {
     withHost: { en: "with {name}", es: "con {name}" },
     remindMe: { en: "Remind me", es: "Recuérdame" },
     remindersOn: { en: "Reminders on", es: "Recordatorios activos" },
-    remindersOnToast: { en: "Notifications are on: a morning note at 6 AM, a harvest invitation after events you RSVP to, and an 8 PM note about tomorrow.", es: "Los avisos están activos: una nota a las 6 de la mañana, una invitación a la cosecha después de los eventos que confirmes, y un aviso a las 8 PM sobre mañana." },
+    remindersOnToast: { en: "Notifications are on: a morning note at 6 AM, a reminder an hour before events you RSVP to while signed in, a harvest invitation after them, and an 8 PM note about tomorrow.", es: "Los avisos están activos: una nota a las 6 de la mañana, un recordatorio una hora antes de los eventos que confirmes con tu sesión iniciada, una invitación a la cosecha después, y un aviso a las 8 PM sobre mañana." },
     // Calendar
     calTitle: { en: "Calendar", es: "Agenda" },
     boulderTime: { en: "Boulder time", es: "Hora de Boulder" },
@@ -255,8 +255,10 @@ export const translations = {
     installTitleDidit: { en: "Keep today’s practice with you", es: "Lleva la práctica de hoy contigo" },
     installTitleReminders: { en: "Get the day’s reminders", es: "Recibe los recordatorios del día" },
     installBody: { en: "Add COhere to your home screen. One practice a day, right where you’ll see it.", es: "Agrega COhere a tu pantalla de inicio. Una práctica al día, justo donde la verás." },
-    remindersOnlyBody: { en: "COhere can nudge you three times a day at most, right on your phone.", es: "COhere puede avisarte hasta tres veces al día, directo en tu teléfono." },
+    remindersOnlyBody: { en: "COhere can nudge you right on your phone: each morning, an hour before events you RSVP to while signed in, and at 8 PM.", es: "COhere puede avisarte directo en tu teléfono: cada mañana, una hora antes de los eventos que confirmes con tu sesión iniciada y a las 8 PM." },
     at6: { en: "6 AM", es: "6 AM" },
+    atHour: { en: "1 hr before", es: "1 h antes" },
+    timeHour: { en: "Reminder of events you RSVP to (signed in)", es: "Recordatorio de los eventos que confirmes (con sesión iniciada)" },
     at9: { en: "After events", es: "Tras un evento" },
     at15: { en: "8 PM", es: "8 PM" },
     timesLabel: { en: "Reminder notifications:", es: "Notificaciones de recordatorio:" },
@@ -268,7 +270,7 @@ export const translations = {
     getReminders: { en: "Get reminders", es: "Recibir recordatorios" },
     notNow: { en: "Not now", es: "Ahora no" },
     setTitle: { en: "You’re set.", es: "Todo listo." },
-    setBody: { en: "COhere is on your home screen. Turn on notifications to hear from us each morning. You choose which of the three you get.", es: "COhere está en tu pantalla de inicio. Activa los avisos para saber de nosotros cada mañana. Tú eliges cuáles de los tres recibes." },
+    setBody: { en: "COhere is on your home screen. Turn on notifications to hear from us each morning. You choose which ones you get.", es: "COhere está en tu pantalla de inicio. Activa los avisos para saber de nosotros cada mañana. Tú eliges cuáles recibes." },
     setBodyOn: { en: "COhere is on your home screen and notifications are on. You can change which ones in More › Notifications.", es: "COhere está en tu pantalla de inicio y los avisos están activos. Puedes cambiar cuáles en Más › Avisos." },
     turnOn: { en: "Turn on reminders", es: "Activar recordatorios" },
     backToToday: { en: "Done", es: "Listo" },
@@ -279,7 +281,7 @@ export const translations = {
     iosStep2: { en: "Scroll down and choose Add to Home Screen.", es: "Desplázate y elige Agregar a pantalla de inicio." },
     iosStep2Cap: { en: "Add to Home Screen", es: "Agregar a pantalla de inicio" },
     iosStep3: { en: "Tap Add, then open COhere from your Home Screen and switch on reminders.", es: "Toca Agregar, abre COhere desde tu pantalla de inicio y activa los recordatorios." },
-    iosFine: { en: "Notes: 6 AM practice and events, a harvest invitation after events you RSVP to, 8 PM tomorrow’s events (Boulder time). Works offline. No account needed for the morning note.", es: "Avisos: 6 AM práctica y eventos, una invitación a la cosecha después de los eventos que confirmes, 8 PM los eventos de mañana (hora de Boulder). Funciona sin conexión. La nota de la mañana no necesita cuenta." },
+    iosFine: { en: "Notes: 6 AM practice and events, a reminder an hour before events you RSVP to (signed in) and a harvest invitation after them, 8 PM tomorrow’s events (Boulder time). Works offline. No account needed for the morning note.", es: "Avisos: 6 AM práctica y eventos, un recordatorio una hora antes de los eventos que confirmes (con sesión iniciada) y una invitación a la cosecha después, 8 PM los eventos de mañana (hora de Boulder). Funciona sin conexión. La nota de la mañana no necesita cuenta." },
     gotIt: { en: "Got it", es: "Entendido" },
     iosToast: { en: "Open COhere from your Home Screen to turn on reminders.", es: "Abre COhere desde tu pantalla de inicio para activar los recordatorios." },
     installRow: { en: "Add to home screen & get reminders", es: "Agregar a inicio y recibir recordatorios" },
@@ -1068,12 +1070,12 @@ export const translations = {
     },
     // "RSVP" on each event (src/components/EventRsvp.tsx).
     rsvp: {
-      emailHint: { en: "No account needed: we'll email you a confirmation and a reminder the day before.", es: "No necesitas cuenta: te enviaremos una confirmación y un recordatorio el día anterior." },
+      emailHint: { en: "No account needed: we'll email you a confirmation with a calendar file.", es: "No necesitas cuenta: te enviaremos una confirmación con un archivo de calendario." },
       button: { en: "RSVP", es: "Confirmar" },
       title: { en: "Coming?", es: "¿Vienes?" },
       emailIntro: {
-        en: "Leave your email and we'll send a reminder the morning before (around 9am Boulder time). It doesn't add you to our mailing list.",
-        es: "Déjanos tu correo y te enviaremos un recordatorio la mañana anterior (alrededor de las 9am, hora de Boulder). No te añade a nuestra lista de correo.",
+        en: "Leave your email and we'll send a confirmation with a calendar file. It doesn't add you to our mailing list.",
+        es: "Déjanos tu correo y te enviaremos una confirmación con un archivo de calendario. No te añade a nuestra lista de correo.",
       },
       nameLabel: { en: "Name (optional)", es: "Nombre (opcional)" },
       emailLabel: { en: "Email", es: "Correo electrónico" },
@@ -1086,12 +1088,12 @@ export const translations = {
       },
       doneTitle: { en: "You're on the list!", es: "¡Estás en la lista!" },
       doneBody: {
-        en: "Check your inbox for a confirmation with a calendar file. We'll remind you the morning before.",
-        es: "Revisa tu correo: te enviamos una confirmación con un archivo de calendario. Te recordaremos la mañana anterior.",
+        en: "Check your inbox for a confirmation with a calendar file.",
+        es: "Revisa tu correo: te enviamos una confirmación con un archivo de calendario.",
       },
       alreadyBody: {
-        en: "This address had already RSVP'd — you're all set. We'll remind you the morning before.",
-        es: "Esta dirección ya había confirmado — todo listo. Te recordaremos la mañana anterior.",
+        en: "This address had already RSVP'd — you're all set.",
+        es: "Esta dirección ya había confirmado — todo listo.",
       },
       signInToRsvp: { en: "Sign in to RSVP", es: "Inicia sesión para confirmar" },
       orSignIn: {
@@ -1102,8 +1104,8 @@ export const translations = {
       requested: { en: "Request sent — the host will confirm", es: "Solicitud enviada — el anfitrión confirmará" },
       waitlisted: { en: "You're on the waitlist", es: "Estás en la lista de espera" },
       reminderNote: {
-        en: "COhere will remind you the day before and an hour before, by the email or channel on your account.",
-        es: "COhere te recordará el día anterior y una hora antes, por el correo o canal de tu cuenta.",
+        en: "With the COhere app on your phone, we'll remind you an hour before. Choose how in Notifications.",
+        es: "Con la app de COhere en tu teléfono, te lo recordaremos una hora antes. Elige cómo en Avisos.",
       },
       cancelRsvp: { en: "Cancel my RSVP", es: "Cancelar mi confirmación" },
       error: {

@@ -32,6 +32,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { chromium } from "playwright";
 
 const [target, adminToken, pushOrigin, keysFile, shotsDir] = process.argv.slice(2);
+/** Event-reminder screenshots (390 and 1280), when set. */
+const reminderShots = process.env.REMINDER_SHOTS_DIR;
 const persist = process.env.E2E_PERSIST_DIR;
 const linkSecret = process.env.NOTIFY_LINK_SECRET;
 if (!target || !adminToken || !pushOrigin || !keysFile || !persist || !linkSecret) {
@@ -310,6 +312,71 @@ try {
   await scheduleAt(nowFive + 300_000);
   expect((await pushMessages()).messages.filter((m) => m.title === "How was Honoring Water?").length === 1, "…not repeated");
   expect((await pushMessages()).errors.length === 0, "no bad push anywhere");
+
+  // ── 4b. Event reminders ──────────────────────────────────────────────────────
+  step = "event reminders";
+  const reminderShot = async (page, name) => { if (reminderShots) await page.screenshot({ path: `${reminderShots}/${name}.png`, fullPage: true }); };
+  // The settings row: on by push for the live phone, in its own row between the morning note and the harvest invitation.
+  await installed.page.reload({ waitUntil: "networkidle" });
+  await installed.page.getByTestId("notify-reach").waitFor();
+  const reminderRow = note(installed.page, "reminder");
+  expect((await reminderRow.getAttribute("data-on")) === "true" && (await reminderRow.getAttribute("data-channel")) === "push", "the live phone: Event reminders on, by push, without touching anything");
+  const rowText = await reminderRow.innerText();
+  expect(rowText.includes("Event reminders") && rowText.includes("1 hour before an event starts"), "the row says what it is and when it comes");
+  const order = await installed.page.$$eval('[data-testid^="note-"]', (els) => els.map((el) => el.getAttribute("data-testid")));
+  expect(JSON.stringify(order) === JSON.stringify(["note-morning", "note-reminder", "note-harvest", "note-evening"]), `four rows, in the day's order — got ${order}`);
+  await reminderShot(installed.page, "reminders-settings-app-390");
+  await noSideways(installed.page, "settings with reminders");
+  const wide = await persona("mock-peer", { app: true, device: installed.device, viewport: { width: 1280, height: 900 } });
+  await wide.page.goto("/more/notifications", { waitUntil: "networkidle" });
+  await note(wide.page, "reminder").waitFor({ timeout: 15_000 });
+  await reminderShot(wide.page, "reminders-settings-app-1280");
+  await wide.context.close();
+  const ecoWide = await persona("mock-peer", { app: true, device: installed.device, viewport: { width: 1280, height: 900 }, look: "ecology" });
+  await ecoWide.page.goto("/more/notifications?look=ecology", { waitUntil: "networkidle" });
+  await note(ecoWide.page, "reminder").waitFor({ timeout: 15_000 });
+  expect((await note(ecoWide.page, "reminder").innerText()).includes("1 hour before"), "ecology look: the short label");
+  await reminderShot(ecoWide.page, "reminders-settings-ecology-1280");
+  await ecoWide.context.close();
+
+  // A phone that stopped working: reminders stay off email until the person asks for email.
+  await gone.page.reload({ waitUntil: "networkidle" });
+  await gone.page.getByTestId("notify-reach").waitFor();
+  const goneRow = note(gone.page, "reminder");
+  expect((await goneRow.getByRole("button", { name: "Email", exact: true }).getAttribute("aria-pressed")) === "false", "push gone: reminders do not quietly move to email");
+  expect((await goneRow.innerText()).includes("Reminders go to the app on your phone. Tap Email to get them by email instead."), "…and the row says how to get them by email");
+  await reminderShot(gone.page, "reminders-settings-nopush-390");
+  await goneRow.getByRole("button", { name: "Email", exact: true }).click();
+  await gone.page.waitForFunction(() => document.querySelector('[data-testid="reminder-email"]')?.getAttribute("aria-pressed") === "true");
+  const stored = sql(`SELECT reminder_on, reminder_channel FROM notify_prefs WHERE person_key = '${ME}'`)[0];
+  expect(stored?.reminder_on === 1 && stored.reminder_channel === "email", "tapping Email stores an explicit email choice");
+  await reminderShot(gone.page, "reminders-settings-email-390");
+
+  // The sender: an event tomorrow at 2:02 PM Boulder; the 1:00 PM scan is 62 minutes before it.
+  const scan = boulderInstant(tomorrow, "13:00");
+  const startsAt = new Date(scan + 62 * 60_000).toISOString();
+  const tea = await api("/api/admin/events", { method: "POST", cookie: adminCookie, body: { name: "Reminder Tea", startsAt, endsAt: new Date(scan + 122 * 60_000).toISOString(), placeName: "Mock Hall" } });
+  expect(tea.status === 200 && tea.json?.rkey, "an event to be reminded of exists");
+  for (const who of [installed, gone]) {
+    const state = await who.page.evaluate(async ({ did, rkey }) => {
+      const res = await fetch("/xrpc/social.scenius.rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventDid: did, eventRkey: rkey, intent: "going", attendance: "open", audience: "public" }) });
+      return (await res.json()).state;
+    }, { did: tea.json.did, rkey: tea.json.rkey });
+    expect(state === "confirmed", "RSVP'd through the proxy");
+  }
+  await scheduleAt(scan - 10 * 60_000); // 72 minutes before: too early
+  expect(!(await pushMessages()).messages.some((m) => m.title === "Reminder Tea"), "nothing 72 minutes before");
+  await Promise.all([scheduleAt(scan), scheduleAt(scan)]);
+  await scheduleAt(scan + 5 * 60_000);
+  ({ messages } = await pushMessages());
+  const reminders = messages.filter((m) => m.title === "Reminder Tea");
+  expect(reminders.length === 1 && reminders[0].device === installed.device, "one reminder push, to the live phone, however many ticks");
+  expect(reminders[0]?.body === "Starts at 2:02 PM · Mock Hall" && reminders[0]?.url === `/events/${encodeURIComponent(tea.json.did)}/${tea.json.rkey}`, `title, 'Starts at 2:02 PM · Mock Hall', and the event link — got ${JSON.stringify(reminders[0])}`);
+  const rl = sql(`SELECT person_key, channel, status FROM notify_reminder_ledger WHERE ref = '${tea.json.did}/${tea.json.rkey}' ORDER BY person_key`);
+  const peerRow = rl.find((r) => r.person_key === PEER), meRow = rl.find((r) => r.person_key === ME);
+  expect(peerRow?.channel === "push" && peerRow.status === "sent", "ledger: the live phone's person, sent by push");
+  expect(meRow?.channel === "email", `ledger: the person who chose email, by email — got ${JSON.stringify(meRow)}`);
+  expect(sql(`SELECT COUNT(*) AS n FROM notify_ledger WHERE ref = '${tea.json.did}/${tea.json.rkey}'`)[0].n === 0, "the other notes' ledger is untouched");
 
   // ── 5. Emailed links ─────────────────────────────────────────────────────────
   step = "emailed links";

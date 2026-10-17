@@ -6,7 +6,8 @@ import { API_BASE } from "@/lib/api";
 import { anonymousDevice, localGet, localSet } from "@/lib/companion";
 import { getInstallState } from "@/lib/install";
 
-export const NOTIFY_TYPES = ["morning", "harvest", "evening"] as const;
+/** In the order settings lists them: through the day. */
+export const NOTIFY_TYPES = ["morning", "reminder", "harvest", "evening"] as const;
 export type NotifyType = (typeof NOTIFY_TYPES)[number];
 export type Channel = "push" | "email";
 export type PushStatus = "live" | "suspect" | "expired" | "none" | "not-installed";
@@ -41,7 +42,7 @@ export type SettingsPatch = Partial<Record<NotifyType, { on?: boolean; channel?:
 
 /** Does anything reach this person? A note that is on, and a phone or an address for it to go to. */
 export const receivesNothing = (view: SettingsView): boolean =>
-  view.nothingReaches || NOTIFY_TYPES.every((type) => !view.notes[type].on);
+  view.nothingReaches || NOTIFY_TYPES.every((type) => !view.notes[type]?.on);
 
 export class NotifyError extends Error {
   status: number;

@@ -105,10 +105,15 @@ async function upcomingEvents(env: RosterEnv): Promise<CommunityEvent[] | null> 
   }
 }
 
-/** DIDs regenOS lists as confirmed for one event (anonymous read, cached a minute). */
+/** DIDs regenOS lists as confirmed for one event (anonymous read, cached a minute). Empty if the read fails. */
 export async function confirmedGuests(env: RosterEnv, event: CommunityEvent): Promise<Set<string>> {
+  return (await confirmedGuestsOrNull(env, event)) ?? new Set();
+}
+
+/** The same, but null when regenOS could not be read, for a caller that must not mistake a failure for "nobody". */
+export async function confirmedGuestsOrNull(env: RosterEnv, event: CommunityEvent): Promise<Set<string> | null> {
   const origin = base(env);
-  if (!origin) return new Set();
+  if (!origin) return null;
   const key = attendanceKey(event.did, event.rkey);
   let body = await attendanceCache.match(key).then((hit) => hit?.json() as Promise<{ guests?: { did?: string }[] }> | undefined, () => undefined);
   if (!body) {
@@ -117,13 +122,13 @@ export async function confirmedGuests(env: RosterEnv, event: CommunityEvent): Pr
         `${origin}/xrpc/social.scenius.getEventAttendance?${new URLSearchParams({ eventDid: event.did, eventRkey: event.rkey })}`,
         { headers: { accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) },
       );
-      if (!res.ok) return new Set();
+      if (!res.ok) return null;
       body = (await res.json()) as { guests?: { did?: string }[] };
       await attendanceCache
         .put(key, new Response(JSON.stringify(body), { headers: { "Cache-Control": `max-age=${ATTENDANCE_TTL_SECONDS}` } }))
         .catch(() => {});
     } catch {
-      return new Set();
+      return null;
     }
   }
   return new Set((body.guests ?? []).flatMap((g) => (typeof g?.did === "string" ? [g.did] : [])));

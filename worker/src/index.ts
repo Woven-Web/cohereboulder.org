@@ -6,6 +6,7 @@ import { handleHarvests, type HarvestEnv } from "./harvest";
 //
 // Public:  POST /                        legacy "stay in the loop" capture (email + honeypot)
 //          POST /api/submit/:formSlug    generic form submission, answers stored as JSON
+//          GET  /media/newsletter/:name   an image in a newsletter (newsletter-images.ts)
 // Admin:   GET  /admin                   portal UI (asks for the admin key, keeps it in sessionStorage)
 //          GET  /api/admin/*             JSON behind the admin session cookie
 //          /api/admin/events*            the community calendar, written as the site's regenOS identity
@@ -76,6 +77,7 @@ import {
   runNewsletterCron,
   type NewsletterEnv,
 } from "./newsletter";
+import { handleNewsletterImage, MEDIA_PREFIX as NEWSLETTER_MEDIA_PREFIX } from "./newsletter-images";
 import { handleResendWebhook, purgeWebhookEvents, type ResendWebhookEnv } from "./resend-webhook";
 import {
   clearedCookie,
@@ -985,6 +987,11 @@ export default {
         200,
         { ...cors, "Cache-Control": "no-store" },
       );
+    }
+
+    // Newsletter images (newsletter-images.ts): public, since email clients fetch them.
+    if ((request.method === "GET" || request.method === "HEAD") && path.startsWith(NEWSLETTER_MEDIA_PREFIX)) {
+      return handleNewsletterImage(request, env, path.slice(NEWSLETTER_MEDIA_PREFIX.length));
     }
 
     // ------------------------------------------------------ community calendar

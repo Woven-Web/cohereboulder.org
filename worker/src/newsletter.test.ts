@@ -309,7 +309,7 @@ async function bulkTags(env: Env, body: unknown) {
 // ------------------------------------------------------------- rendering
 
 describe("rendering", () => {
-  it("escapes organizer HTML and only emits safe links and https images", () => {
+  it("escapes organizer HTML and only emits safe links; images from other hosts stay text", () => {
     const html = renderNewsletterBody(
       [
         "Hello <script>alert(1)</script> **bold** and *it*",
@@ -328,7 +328,9 @@ describe("rendering", () => {
     expect(html).toContain('<li><a href="https://cohereboulder.org/a?b=1&amp;c=2"');
     expect(html).not.toContain('href="javascript:');
     expect(html).toContain('href="mailto:x@y.org"');
-    expect(html).toContain('<img src="https://example.org/p.jpg" alt="photo"');
+    // Only images uploaded here become <img> (newsletter-images.test.ts); another host is never fetched.
+    expect(html).not.toContain("<img");
+    expect(html).toContain("![photo](https://example.org/p.jpg)");
     expect(html).not.toContain("onerror=\"");
   });
 

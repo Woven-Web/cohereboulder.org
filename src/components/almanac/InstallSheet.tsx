@@ -132,6 +132,7 @@ function Times() {
       <p className="times__label" id="times-label">{tr("almanac.timesLabel")}</p>
       <ul className="times" aria-labelledby="times-label">
         <li><b>{tr("almanac.at6")}</b><span>{tr("almanac.time6")}</span></li>
+        <li><b>{tr("almanac.atHour")}</b><span>{tr("almanac.timeHour")}</span></li>
         <li><b>{tr("almanac.at9")}</b><span>{tr("almanac.time9")}</span></li>
         <li><b>{tr("almanac.at15")}</b><span>{tr("almanac.time15")}</span></li>
       </ul>

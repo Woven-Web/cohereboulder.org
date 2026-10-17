@@ -175,7 +175,7 @@ export async function proposeEvent(payload: ProposeEventPayload): Promise<void> 
 
 /**
  * "RSVP · remind me" without an account: stored by the Worker
- * (worker/src/rsvps.ts), confirmed by email, reminded the morning before.
+ * (worker/src/rsvps.ts), confirmed by email with a calendar file.
  * `already` is true when this address had already RSVP'd — nothing is re-sent.
  */
 export interface EmailRsvpPayload {

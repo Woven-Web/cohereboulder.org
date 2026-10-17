@@ -2,12 +2,12 @@
 //
 // Signed in on regenOS (the lane is on and getSession has a DID): RSVP on
 // regenOS itself through the /xrpc proxy — social.scenius.rsvp, read back
-// via getEventAttendance.mySeat. regenOS reminds those people itself (24h and
-// 1h before), so we say so and send nothing.
+// via getEventAttendance.mySeat. COhere's own event reminder (an hour before,
+// worker/src/notify-send.ts) goes to them by push, or by email if they chose it.
 //
 // Anonymous: an inline name + email form posting to /api/rsvp
-// (worker/src/rsvps.ts), which confirms by email and reminds the morning
-// before. With the lane on, "Sign in to RSVP" comes first and opens the nav's
+// (worker/src/rsvps.ts), which confirms by email with a calendar file. Its old
+// morning-before reminder email is paused (RSVP_REMINDERS_PAUSED). With the lane on, "Sign in to RSVP" comes first and opens the nav's
 // sign-in dialog; the email form is the second option.
 
 import { useEffect, useState } from "react";

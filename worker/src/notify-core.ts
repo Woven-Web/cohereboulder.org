@@ -2,12 +2,13 @@
 // note, by which channel, whether a phone still counts as reachable, when a
 // note is due, whether a link is genuine) is unit-tested without a database.
 //
-// The three notes:
-//   morning  today's practice with its question inside it, then today's events
-//   harvest  about an hour after an event you RSVP'd to ends
-//   evening  8 PM Boulder: tomorrow's events, with a prompt to RSVP
+// The four notes:
+//   morning   today's practice with its question inside it, then today's events
+//   harvest   about an hour after an event you RSVP'd to ends
+//   evening   8 PM Boulder: tomorrow's events, with a prompt to RSVP
+//   reminder  about an hour before an event you RSVP'd to starts
 
-export const NOTIFY_TYPES = ["morning", "harvest", "evening"] as const;
+export const NOTIFY_TYPES = ["morning", "harvest", "evening", "reminder"] as const;
 export type NotifyType = (typeof NOTIFY_TYPES)[number];
 export type Channel = "push" | "email";
 export type DeviceState = "live" | "suspect" | "expired";
@@ -150,9 +151,11 @@ export interface Prefs {
   morning_on: number | null;
   harvest_on: number | null;
   evening_on: number | null;
+  reminder_on: number | null;
   morning_channel: Channel | null;
   harvest_channel: Channel | null;
   evening_channel: Channel | null;
+  reminder_channel: Channel | null;
   /** Comma-separated note types that also go by email when the channel is push ("both"). */
   also_email: string | null;
   email: string | null;
@@ -161,8 +164,8 @@ export interface Prefs {
 }
 
 export const emptyPrefs = (): Prefs => ({
-  morning_on: null, harvest_on: null, evening_on: null,
-  morning_channel: null, harvest_channel: null, evening_channel: null, also_email: null,
+  morning_on: null, harvest_on: null, evening_on: null, reminder_on: null,
+  morning_channel: null, harvest_channel: null, evening_channel: null, reminder_channel: null, also_email: null,
   email: null, email_verified_at: null, email_optin_at: null,
 });
 
@@ -191,14 +194,16 @@ export type Decision =
   | { action: "push"; fellBack: false }
   | { action: "email"; fellBack: boolean }
   | { action: "both" }
-  | { action: "skip"; reason: "off" | "unreachable" | "no-app-no-optin" };
+  | { action: "skip"; reason: "off" | "unreachable" | "no-app-no-optin" | "no-live-push" };
 
 /** Is this note on? Explicit settings win; otherwise the defaults from the brief. */
 export function isOn(type: NotifyType, prefs: Prefs, reach: Reach): boolean {
   const explicit = prefs[`${type}_on`];
   if (explicit !== null && explicit !== undefined) return explicit === 1;
-  // People who installed the app did so for this: all three on.
+  // People who installed the app did so for this: all on.
   if (reach.hasApp) return true;
+  // Event reminders are an app thing: by email only when asked for (they already get the daily email).
+  if (type === "reminder") return false;
   // Registered for 2026: the 8 PM note (tomorrow's events and practice) by email, until they turn it off.
   if (reach.registered && type === "evening") return true;
   // Email-only: the morning note is opt-in; the other two need the one-tap ask.
@@ -216,6 +221,7 @@ export function isOn(type: NotifyType, prefs: Prefs, reach: Reach): boolean {
  */
 export function decide(type: NotifyType, prefs: Prefs, reach: Reach): Decision {
   if (!isOn(type, prefs, reach)) return { action: "skip", reason: "off" };
+  if (type === "reminder") return decideReminder(prefs, reach);
   const stored = prefs[`${type}_channel`];
   // Someone with the app who never picked a channel is, by default, a push person.
   const wantsPush = stored === "push" || (stored === null && reach.hasApp);
@@ -226,15 +232,39 @@ export function decide(type: NotifyType, prefs: Prefs, reach: Reach): Decision {
   return { action: "skip", reason: "unreachable" };
 }
 
+/** Event reminders go to the phone. Email only if the person asked for it, never as a silent fallback. */
+function reminderWants(prefs: Prefs, reach: Reach): { phone: boolean; email: boolean } {
+  const stored = prefs.reminder_channel;
+  const phone = stored === "push" || (stored === null && reach.hasApp);
+  // Asking for email: choosing it, phone-and-email, or switching reminders on with no app to send them to.
+  const email = stored === "email" || (phone && alsoEmail(prefs, "reminder")) || (stored === null && !reach.hasApp && prefs.reminder_on === 1);
+  return { phone, email };
+}
+
+function decideReminder(prefs: Prefs, reach: Reach): Decision {
+  const want = reminderWants(prefs, reach);
+  const push = want.phone && reach.livePush;
+  const email = want.email && reach.email !== null;
+  if (push && email) return { action: "both" };
+  if (push) return { action: "push", fellBack: false };
+  if (email) return { action: "email", fellBack: want.phone && reach.hasApp };
+  return { action: "skip", reason: want.phone ? "no-live-push" : "unreachable" };
+}
+
 /** Which of the two toggles settings shows as pressed, mirroring `decide` without the on/off. */
 export function effectiveChannels(type: NotifyType, prefs: Prefs, reach: Reach): { phone: boolean; email: boolean } {
   const on = isOn(type, prefs, reach);
+  if (type === "reminder") {
+    const want = reminderWants(prefs, reach);
+    return { phone: on && want.phone && reach.livePush, email: on && want.email };
+  }
   const channel = effectiveChannel(type, prefs, reach);
   return { phone: on && channel === "push", email: on && (channel === "email" || alsoEmail(prefs, type)) };
 }
 
 /** The channel settings should show as selected, mirroring `decide` without the on/off. */
 export function effectiveChannel(type: NotifyType, prefs: Prefs, reach: Reach): Channel {
+  if (type === "reminder") return reminderWants(prefs, reach).phone && reach.livePush ? "push" : "email";
   const chosen: Channel = prefs[`${type}_channel`] ?? (reach.livePush ? "push" : "email");
   return chosen === "push" && !reach.livePush ? "email" : chosen;
 }
@@ -305,6 +335,32 @@ export function harvestDue(event: { startsAt: string | null; endsAt: string | nu
   if (Number.isNaN(end)) return false;
   const at = end + HARVEST_DELAY_MS;
   return now.getTime() >= at && now.getTime() < at + HARVEST_CATCH_UP_MS;
+}
+
+/** The event reminder goes this long before an event starts. */
+export const REMINDER_LEAD_MS = 60 * 60_000;
+/** The cron looks every five minutes, so a reminder may go up to this much early (still "about an hour")... */
+export const REMINDER_EARLY_MS = 5 * 60_000;
+/** ...or, after a missed tick, this much late. Never once the event has started. */
+export const REMINDER_CATCH_UP_MS = 15 * 60_000;
+/** No reminder for an event that starts before this Boulder clock time: nobody wants a push at 5 AM. */
+export const REMINDER_EARLIEST_START = 7 * 60;
+
+/** Is the reminder for this event due right now? Only for events inside the gathering. */
+export function reminderDue(event: { startsAt: string | null; status?: string | null }, now: Date, festival: Festival): boolean {
+  if (event.status === "cancelled") return false;
+  const start = event.startsAt ? Date.parse(event.startsAt) : NaN;
+  if (Number.isNaN(start)) return false;
+  const t = boulderTime(new Date(start));
+  if (t.minutes < REMINDER_EARLIEST_START || t.date < festival.start || t.date > festival.end) return false;
+  const at = start - REMINDER_LEAD_MS;
+  return now.getTime() >= at - REMINDER_EARLY_MS && now.getTime() < Math.min(at + REMINDER_CATCH_UP_MS, start);
+}
+
+/** An RSVP made less than an hour before the start gets no reminder: they have just decided, they know. */
+export function rsvpInTime(rsvpAt: string | null | undefined, startsAt: string): boolean {
+  const made = rsvpAt ? Date.parse(rsvpAt) : NaN;
+  return !Number.isNaN(made) && made <= Date.parse(startsAt) - REMINDER_LEAD_MS;
 }
 
 // -------------------------------------------------------------- signed links

@@ -256,6 +256,15 @@ cleanup
 PIDS=()
 echo "::endgroup::"
 
+# --- 5b. newsletter-image-e2e: an image in the newsletter, upload → preview → test email ---
+# Self-contained (its own scratch, servers and ports 7300-7302 + offset): see
+# scripts/newsletter-image-e2e.sh. Screenshots go to scratch, not the repo.
+echo "::group::newsletter-image-e2e (newsletter image lane)"
+if ! E2E_PORT_OFFSET="$E2E_PORT_OFFSET" bash scripts/newsletter-image-e2e.sh "$PWA_SCRATCH/nl-image-shots"; then
+  fail=1
+fi
+echo "::endgroup::"
+
 # --- 6. checkin-e2e.mjs: door check-in at a phone viewport ----------------
 # Reuses lane 2's admin + session seed (same --persist-to dir). Check-in sends
 # no mail at all; the one email RSVP it seeds goes to local .eml only.

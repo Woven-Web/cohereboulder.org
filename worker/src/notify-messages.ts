@@ -1,4 +1,4 @@
-// What the three notes say, as a push and as an email, in English and Spanish.
+// What the four notes say, as a push and as an email, in English and Spanish.
 // Pure: given the day's content and the person, return text. (Spanish has not
 // had a native-speaker pass, like the rest of the Spanish in the app.)
 
@@ -92,12 +92,14 @@ const T = {
     harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
     harvestAsk: "How was it?", harvestLink: "Share your harvest",
     harvestVis: "Harvests show your name.",
-    names: { morning: "Morning note", harvest: "Harvest invitation", evening: "Ready for tomorrow" } as Record<NotifyType, string>,
+    names: { morning: "Morning note", harvest: "Harvest invitation", evening: "Ready for tomorrow", reminder: "Event reminders" } as Record<NotifyType, string>,
     because: (name: string, to: string) => `${name} · ${to}`,
     change: "Change your settings", unsub: () => "Unsubscribe", tomorrowPractice: "Tomorrow’s practice",
     fellBack: "Push failed. Sent by email.", fellBackLink: "Turn push back on",
     subjectMorning: (n: number, t: string) => `Day ${n}: ${t}`,
     subjectHarvest: (n: string) => `How was ${n}?`,
+    startsAt: (t: string, w: string | null) => `Starts at ${t}${w ? ` · ${w}` : ""}`,
+    subjectReminder: (n: string, t: string) => `At ${t}: ${n}`, reminderLead: "In about an hour:",
     subjectDigest: (d: string) => `Tomorrow at COhere: ${d}`,
     harvestsToday: (n: number) => (n === 1 ? "1 person shared a harvest today" : `${n} people shared harvests today`),
     testTitle: "Push is working", testBody: "Test from COhere.",
@@ -118,12 +120,14 @@ const T = {
     harvestMail: (e: string, w: string | null) => `<b>${e}</b>${w ? ` · ${w}` : ""}`,
     harvestAsk: "¿Cómo estuvo?", harvestLink: "Comparte tu cosecha",
     harvestVis: "Las cosechas muestran tu nombre.",
-    names: { morning: "Nota de la mañana", harvest: "Invitación a la cosecha", evening: "Lista para mañana" } as Record<NotifyType, string>,
+    names: { morning: "Nota de la mañana", harvest: "Invitación a la cosecha", evening: "Lista para mañana", reminder: "Recordatorios de eventos" } as Record<NotifyType, string>,
     because: (name: string, to: string) => `${name} · ${to}`,
     change: "Cambiar tus ajustes", unsub: () => "Darte de baja", tomorrowPractice: "La práctica de mañana",
     fellBack: "Falló el push. Enviado por correo.", fellBackLink: "Reactivar los avisos push",
     subjectMorning: (n: number, t: string) => `Día ${n}: ${t}`,
     subjectHarvest: (n: string) => `¿Cómo estuvo ${n}?`,
+    startsAt: (t: string, w: string | null) => `Empieza a las ${t}${w ? ` · ${w}` : ""}`,
+    subjectReminder: (n: string, t: string) => `A las ${t}: ${n}`, reminderLead: "En una hora, más o menos:",
     subjectDigest: (d: string) => `Mañana en COhere: ${d}`,
     harvestsToday: (n: number) => (n === 1 ? "1 persona compartió una cosecha hoy" : `${n} personas compartieron cosechas hoy`),
     testTitle: "El push funciona", testBody: "Prueba de COhere.",
@@ -355,6 +359,39 @@ export function harvestEmail(input: HarvestInput, ctx: MailContext): MailMessage
     `<p ${P}>${esc(c.harvestAsk)}</p><p ${P}><a href="${esc(link)}" ${A}>${esc(c.harvestLink)}</a></p><p ${P}>${esc(c.harvestVis)}</p>`;
   const text = [`${c.harvestMail(input.event.name, input.event.where).replace(/<\/?b>/g, "")}`, "", c.harvestAsk, `${c.harvestLink}: ${link}`, "", c.harvestVis].join("\n");
   return frame("harvest", ctx, c.harvestTitle(name), html, text, c.subjectHarvest(name));
+}
+
+// ---------------------------------------------------------------- reminder
+
+export interface ReminderInput {
+  event: { did: string; rkey: string; name: string; where: string | null; startsAt: string | null };
+  lang: Lang;
+}
+
+/** The event's title, "Starts at 3:00 PM · <place>", and a tap that opens the event. */
+export function reminderPush(input: ReminderInput, deviceId?: string): PushPayload {
+  const c = T[input.lang];
+  const { event } = input;
+  return {
+    title: clip(event.name, 200),
+    body: clip(c.startsAt(timeOf(event.startsAt, input.lang), event.where), 300),
+    url: `/events/${encodeURIComponent(event.did)}/${encodeURIComponent(event.rkey)}`, tag: `reminder-${event.rkey}`,
+    ...(deviceId ? { device: deviceId } : {}),
+    actions: [{ action: "open", title: c.details }, { action: "settings", title: c.settings }],
+  };
+}
+
+/** Only for people who asked for reminders by email. */
+export function reminderEmail(input: ReminderInput, ctx: MailContext): MailMessage {
+  const c = T[ctx.lang];
+  const { event } = input;
+  const time = timeOf(event.startsAt, ctx.lang);
+  const link = harvestUrl(ctx.base, event);
+  const html =
+    `<p ${P}>${esc(c.reminderLead)}</p><p ${P}><b>${esc(event.name)}</b><br>${esc(c.startsAt(time, event.where))}</p>` +
+    `<p ${P}><a href="${esc(link)}" ${A}>${esc(c.details)}</a></p>`;
+  const text = [c.reminderLead, "", event.name, c.startsAt(time, event.where), "", `${c.details}: ${link}`].join("\n");
+  return frame("reminder", ctx, event.name, html, text, c.subjectReminder(shortName(event.name), time));
 }
 
 // ------------------------------------------------------------ account mail
