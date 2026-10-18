@@ -335,7 +335,7 @@ async function linkAction(request: Request, env: NotifyRouteEnv, url: URL, token
   const body = (await readJson(request)) ?? {};
   const prefs = await prefsOrBlank(db, link.p);
 
-  if (action === "settings" && request.method === "PUT") {
+  if (action === "settings") {
     if (link.k !== "settings") return json({ error: "This link can’t change settings." }, 403);
     const error = applyPatch(prefs, body);
     if (error) return json({ error }, 400);

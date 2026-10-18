@@ -26,9 +26,9 @@ import { isPlaceholder } from "./event-completeness";
 import { icsEscape, icsJoin, icsTime } from "../../src/lib/icsCore";
 import { signLink } from "./notify-core";
 import { optinBlock } from "./notify-messages";
-import { linkSecret } from "./notify-send";
+import { eveningEmailTonight, linkSecret, type NotifyEnv } from "./notify-send";
 
-export interface RsvpEnv extends AuthEnv, EventsEnv {
+export interface RsvpEnv extends AuthEnv, EventsEnv, NotifyEnv {
   cohere: D1Database;
   /** Signs the one-tap "send me the evening and harvest notes" link (worker/src/notify.ts). */
   NOTIFY_LINK_SECRET?: string;
@@ -676,6 +676,8 @@ export interface CronResult {
   emailsFailed: number;
   skippedGone: number;
   skippedCancelled: number;
+  /** Addresses that get tonight's 8 PM note by email, which already lists these events with their RSVP. */
+  skippedDigest: number;
   deferred: number;
 }
 
@@ -722,15 +724,17 @@ function chunks<T>(items: T[], size: number): T[][] {
  *     refreshing the row's snapshot — so a moved event is judged by its NEW
  *     start and a deleted/cancelled one is never reminded.
  *  3. Pick rows whose event starts TOMORROW in America/Denver.
- *  4. Claim them (`reminder_sent_at` set only where still NULL, RETURNING the
+ *  4. Skip (and mark done) addresses that get tonight's 8 PM note by email,
+ *     which lists those events with the RSVP marked.
+ *  5. Claim them (`reminder_sent_at` set only where still NULL, RETURNING the
  *     ids actually won) — two overlapping runs can never both send a row.
- *  5. One email per address listing all their events; a failed send releases
+ *  6. One email per address listing all their events; a failed send releases
  *     its claim so a re-run the same day retries it.
  */
 export async function runRsvpCron(
   env: RsvpEnv,
   now: Date,
-  deps: { lookup?: typeof lookupLiveEvent; send?: typeof sendMail } = {},
+  deps: { lookup?: typeof lookupLiveEvent; send?: typeof sendMail; eveningEmail?: (addresses: string[]) => Promise<Set<string>> } = {},
 ): Promise<CronResult> {
   const lookup = deps.lookup ?? lookupLiveEvent;
   const send = deps.send ?? sendMail;
@@ -743,6 +747,7 @@ export async function runRsvpCron(
     emailsFailed: 0,
     skippedGone: 0,
     skippedCancelled: 0,
+    skippedDigest: 0,
     deferred: 0,
   };
 
@@ -760,7 +765,9 @@ export async function runRsvpCron(
     if (!live.has(key)) live.set(key, await lookup(env, row.event_did, row.event_rkey));
   }
 
-  const due: (RsvpRow & { live: LiveEvent })[] = [];
+  let due: (RsvpRow & { live: LiveEvent })[] = [];
+  /** Rows judged from their snapshot because regenOS was down: tonight's 8 PM note may not list them either. */
+  const fromSnapshot = new Set<string>();
   for (const [key, found] of live) {
     const [did, rkey] = key.split("|");
     const rows = pending.filter((r) => r.event_did === did && r.event_rkey === rkey);
@@ -801,7 +808,10 @@ export async function runRsvpCron(
       continue;
     }
     if (!event.startsAt || event.startsAt < window.start || event.startsAt >= window.end) continue;
-    for (const row of rows) due.push({ ...row, live: event });
+    for (const row of rows) {
+      due.push({ ...row, live: event });
+      if (found.kind === "unavailable") fromSnapshot.add(row.id);
+    }
   }
   // Retain a moved RSVP until the live date has been refreshed. Purge only
   // after inspecting pending rows, not against the stale snapshot at entry.
@@ -812,10 +822,30 @@ export async function runRsvpCron(
     console.info("rsvp reminders paused");
     return result;
   }
+  // 4. One email a day: an address that gets tonight's 8 PM note by email is not also reminded here;
+  // that note lists tomorrow's events with their RSVP marked. Not when regenOS was down this morning:
+  // the 8 PM note reads the same regenOS. The skipped rows are marked done, so later runs don't look
+  // up events that are over (a moved event is still in that person's 8 PM note for its new day).
+  let digest = new Set<string>();
+  try {
+    digest = await (deps.eveningEmail ?? ((addresses: string[]) => eveningEmailTonight(env, now, addresses)))([...new Set(due.map((r) => r.email))]);
+  } catch (error) {
+    // Better a reminder too many than a missing one.
+    console.error("rsvp reminders: could not read who gets tonight's 8 PM note:", error instanceof Error ? error.message : error);
+  }
+  const skipped = due.filter((r) => !fromSnapshot.has(r.id) && digest.has(r.email.trim().toLowerCase()));
+  for (const ids of chunks(skipped.map((r) => r.id), ID_CHUNK)) {
+    await env.cohere
+      .prepare(`UPDATE event_rsvps SET reminder_sent_at = ?1 WHERE reminder_sent_at IS NULL AND id IN (${placeholders(ids.length, 1)})`)
+      .bind(now.toISOString(), ...ids)
+      .run();
+  }
+  result.skippedDigest = skipped.length;
+  due = due.filter((r) => !skipped.includes(r));
   result.candidates = due.length;
   if (!due.length) return result;
 
-  // 4. claim
+  // 5. claim
   const claimedAt = now.toISOString();
   const won = new Set<string>();
   for (const ids of chunks(
@@ -834,7 +864,7 @@ export async function runRsvpCron(
   }
   result.claimed = won.size;
 
-  // 5. send, one message per address
+  // 6. send, one message per address
   const groups = groupReminders(
     due.filter((r) => won.has(r.id)),
     base,

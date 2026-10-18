@@ -322,6 +322,36 @@ describe("runRsvpCron", () => {
     }
   });
 
+  it("skips, and marks done, addresses that get tonight's 8 PM note by email; the rest are reminded", async () => {
+    const { env, lookup, send } = setup();
+    const asked: string[][] = [];
+    const eveningEmail = async (addresses: string[]) => { asked.push(addresses); return new Set(["ana@x.org"]); };
+    const result = await runRsvpCron(env, NOW, { lookup, send, eveningEmail });
+    expect(asked).toEqual([["ana@x.org", "bo@x.org"]]);
+    expect(result).toMatchObject({ skippedDigest: 2, claimed: 1, emailsSent: 1 });
+    expect(send.mock.calls.map(([, to]) => to)).toEqual(["bo@x.org"]);
+    expect(env.cohere.raw.prepare("SELECT id FROM event_rsvps WHERE id IN ('a1','a2') AND reminder_sent_at IS NOT NULL ORDER BY id").all()).toEqual([{ id: "a1" }, { id: "a2" }]);
+    expect(await runRsvpCron(env, NOW, { lookup, send, eveningEmail })).toMatchObject({ skippedDigest: 0, claimed: 0, emailsSent: 0 });
+  });
+
+  it("still reminds a digest person when regenOS was down this morning (tonight's note may not list the event)", async () => {
+    const { env, send } = setup();
+    const down = lookupFrom({ early: { kind: "unavailable" }, late: { kind: "ok", event: liveEvent("late", TOMORROW_LATE) } });
+    const result = await runRsvpCron(env, NOW, { lookup: down, send, eveningEmail: async () => new Set(["ana@x.org", "bo@x.org"]) });
+    expect(result).toMatchObject({ skippedDigest: 2, emailsSent: 1 });
+    const [[, to, message]] = send.mock.calls as [unknown, string, MailMessage][];
+    expect(to).toBe("ana@x.org");
+    expect(message.subject).toBe("Tomorrow: Event early");
+  });
+
+  it("if who gets the 8 PM note can't be read, the reminders go as before", async () => {
+    const { env, lookup, send } = setup();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await runRsvpCron(env, NOW, { lookup, send, eveningEmail: async () => { throw new Error("D1 down"); } });
+    expect(result).toMatchObject({ skippedDigest: 0, claimed: 3, emailsSent: 2 });
+    error.mockRestore();
+  });
+
   it("sends one email per person for tomorrow's events (Denver day), skipping deleted/cancelled", async () => {
     const { env, lookup, send } = setup();
     const result = await runRsvpCron(env, NOW, { lookup, send });

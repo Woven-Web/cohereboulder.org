@@ -36,6 +36,8 @@ const [target, adminToken, pushOrigin, keysFile, shotsDir] = process.argv.slice(
 const reminderShots = process.env.REMINDER_SHOTS_DIR;
 /** "Now on your phone. Want email too?" screenshots (390 and 1280), when set. */
 const simpleShots = process.env.SIMPLE_SHOTS_DIR;
+/** The emailed settings page (390 and 1280), when set. */
+const onceShots = process.env.ONCE_SHOTS_DIR;
 const persist = process.env.E2E_PERSIST_DIR;
 const linkSecret = process.env.NOTIFY_LINK_SECRET;
 if (!target || !adminToken || !pushOrigin || !keysFile || !persist || !linkSecret) {
@@ -428,13 +430,45 @@ try {
   expect(plain.status === 200 && sql(`SELECT harvest_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].harvest_on === null, "a plain GET (a mail scanner) unsubscribes nothing");
 
   const guestSettings = await persona(null);
-  await guestSettings.page.goto(`/n/${link({ p: sam, k: "settings" }, 3600)}`, { waitUntil: "networkidle" });
-  await guestSettings.page.getByTestId("notify-guest").waitFor({ timeout: 15_000 });
-  expect((await guestSettings.page.getByTestId("notify-guest").innerText()).includes(`sam-${stamp}@example.org`), "guest settings are for that address");
-  await note(guestSettings.page, "evening").getByRole("switch").click();
-  await guestSettings.page.waitForFunction(() => document.querySelector('[data-testid="note-evening"]')?.getAttribute("data-on") === "true");
-  expect(await note(guestSettings.page, "evening").getByRole("button", { name: "Phone", exact: true }).isDisabled(), "guest settings: no push");
-  expect(sql(`SELECT evening_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].evening_on === 1, "guest settings save, no sign-in");
+  const settingsLink = link({ p: sam, k: "settings" }, 3600);
+  await guestSettings.page.goto(`/n/${settingsLink}`, { waitUntil: "networkidle" });
+  const emailPage = guestSettings.page.getByTestId("email-settings");
+  await emailPage.waitFor({ timeout: 15_000 });
+  expect((await emailPage.innerText()).includes(`sam-${stamp}@example.org`), "the emailed settings page is for that address");
+  expect(sql(`SELECT evening_on, morning_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].evening_on === null, "opening the settings link changed nothing");
+  expect(!(await guestSettings.page.getByRole("switch").count()) && !(await guestSettings.page.getByRole("button", { name: "Phone", exact: true }).count()), "no phone controls from an email link");
+  const emailRow = (type) => guestSettings.page.getByTestId(`email-${type}`);
+  const isOn = (type) => guestSettings.page.waitForFunction((t) => document.querySelector(`[data-testid="email-${t}"]`)?.getAttribute("data-on"), type).then((h) => h.jsonValue());
+  expect(await emailRow("evening").getAttribute("data-on") === "false" && await emailRow("morning").getAttribute("data-on") === "false", "both start off for an address that never opted in");
+  await guestSettings.page.getByTestId("email-evening-toggle").click();
+  await guestSettings.page.waitForFunction(() => document.querySelector('[data-testid="email-evening"]')?.getAttribute("data-on") === "true");
+  expect(sql(`SELECT evening_on, evening_channel FROM notify_prefs WHERE person_key = '${sam}'`)[0].evening_channel === "email", "Turn it on: the 8 PM note by email, no sign-in");
+  if (onceShots) {
+    // How a registrant who changed nothing sees it: the 8 PM email on, the morning one off. Tall enough that the tab bar covers nothing.
+    await guestSettings.page.setViewportSize({ width: 390, height: 1100 });
+    await guestSettings.page.screenshot({ path: `${onceShots}/settings-from-email-390.png`, fullPage: true });
+    await guestSettings.page.setViewportSize({ width: 390, height: 844 });
+    const wideSettings = await persona(null, { viewport: { width: 1280, height: 1000 } });
+    await wideSettings.page.goto(`/n/${settingsLink}`, { waitUntil: "networkidle" });
+    await wideSettings.page.getByTestId("email-settings").waitFor({ timeout: 15_000 });
+    await wideSettings.page.screenshot({ path: `${onceShots}/settings-from-email-1280.png`, fullPage: true });
+    await wideSettings.context.close();
+  }
+  await guestSettings.page.getByTestId("email-morning-toggle").click();
+  await guestSettings.page.waitForFunction(() => document.querySelector('[data-testid="email-morning"]')?.getAttribute("data-on") === "true");
+  expect(sql(`SELECT morning_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].morning_on === 1, "Turn it on: the morning note by email");
+  expect((await guestSettings.page.getByTestId("email-settings-more").getByRole("link").getAttribute("href")) === "/login?returnTo=/more/notifications", "'Sign in for more' goes to sign-in, then settings");
+  await guestSettings.page.reload({ waitUntil: "networkidle" });
+  await emailPage.waitFor();
+  expect(await isOn("evening") === "true" && await isOn("morning") === "true", "the choices are still there after a reload");
+  await noSideways(guestSettings.page, "emailed settings page");
+  await guestSettings.page.getByTestId("email-evening-toggle").click();
+  await guestSettings.page.waitForFunction(() => document.querySelector('[data-testid="email-evening"]')?.getAttribute("data-on") === "false");
+  expect(sql(`SELECT evening_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].evening_on === 0, "Turn it off: the 8 PM note stops");
+  if (onceShots) {
+    await guestSettings.page.setViewportSize({ width: 390, height: 1100 });
+    await guestSettings.page.screenshot({ path: `${onceShots}/settings-from-email-evening-off-390.png`, fullPage: true });
+  }
   await shot(guestSettings.page, "notify-settings-guest-390x844");
 
   const optin = await persona(null);

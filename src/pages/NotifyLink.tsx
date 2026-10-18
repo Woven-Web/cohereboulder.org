@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { fill } from "@/components/almanac/format";
-import { NotificationSettings } from "@/components/notify/NotificationSettings";
+import { EmailLinkSettings } from "@/components/notify/EmailLinkSettings";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchLink, linkAction, type LinkInfo, type NotifyType } from "@/lib/notify";
 import { formatEventDate } from "@/lib/events";
@@ -29,12 +29,11 @@ export default function NotifyLink() {
             <p className="lede">{tr("notify.link.invalidBody")}</p>
             <div className="gate__acts"><Link className="btn btn--line" to="/more/notifications">{tr("notify.title")}</Link></div>
           </div>
-        ) : info.data.kind === "settings" ? (
+        ) : info.data.kind === "settings" && info.data.view ? (
           <>
             <Link className="link" to="/" style={{ marginTop: ".4rem" }}>← {tr("notify.link.home")}</Link>
             <h1 className="h1" style={{ margin: ".5rem 0 .2rem" }}>{tr("notify.title")}</h1>
-            <p className="lede" style={{ color: "var(--ink-2)" }}>{tr("notify.lede")}</p>
-            <NotificationSettings token={token} />
+            <EmailLinkSettings token={token} initial={info.data.view} />
           </>
         ) : (
           <Action token={token} info={info.data} />
