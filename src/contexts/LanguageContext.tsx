@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { getTranslation } from "@/lib/translations";
 
 type Language = "en" | "es";
@@ -11,6 +11,11 @@ interface LanguageContextType {
   tr: (path: string) => string; // New method for centralized translations
 }
 
+const LANGUAGE_KEY = "cohere-language";
+function storedLanguage(): Language {
+  try { return localStorage.getItem(LANGUAGE_KEY) === "es" ? "es" : "en"; } catch { return "en"; }
+}
+
 const LanguageContext = createContext<LanguageContextType | undefined>(
   undefined,
 );
@@ -18,7 +23,12 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [language, setLanguage] = useState<Language>("en");
+  // The choice is kept on this device, so a reload, a new tab or a link from an email doesn't drop back to English.
+  const [language, setLanguage] = useState<Language>(storedLanguage);
+  useEffect(() => {
+    try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* storage blocked: the choice lasts this visit */ }
+    document.documentElement.lang = language;
+  }, [language]);
 
   const toggleLanguage = () => {
     setLanguage((prev) => (prev === "en" ? "es" : "en"));

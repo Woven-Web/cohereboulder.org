@@ -125,5 +125,14 @@ await step("admin-event-phone", async () => {
   await shot(p, "12-admin-event-dates-phone");
   await c.close();
 });
+// 8. Spanish chosen, then a reload (phone).
+await step("lang-reload", async () => {
+  const c = await ctx(); const p = await c.newPage();
+  await p.goto(`${BASE}/calendar?day=2026-10-20`); await p.locator("h1").first().waitFor();
+  await p.getByRole("button", { name: "Español", exact: true }).first().click(); await settle(p);
+  await p.reload(); await p.locator("h1").first().waitFor(); await settle(p, 1200);
+  await p.evaluate(() => window.scrollTo(0, 0)); await settle(p, 300);
+  await shot(p, "13-spanish-after-reload"); await c.close();
+});
 await browser.close();
 console.log(failures.length ? `pairs (${label}): ${failures.length} step(s) failed:\n${failures.map((f) => `  - ${f}`).join("\n")}` : `pairs (${label}): all steps ran`);
