@@ -1,5 +1,5 @@
 import { RegistrationAction } from "@/components/RegistrationAction";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { HexTrail } from "@/components/almanac/HexTrail";
 import { YourNextStrip } from "@/components/almanac/YourNextStrip";
@@ -60,7 +60,10 @@ export default function CalendarPage() {
   const [params, setParams] = useSearchParams();
   const dayParam = isFestivalDate(params.get("day") ?? "") ? params.get("day") : null;
   // Every date is listed by default; "My events" narrows the same day's list to what you RSVP'd to.
-  const [mode, setMode] = useState<"my" | "all">("all");
+  const [mode, setMode] = useState<"my" | "all">(params.get("mine") === "1" ? "my" : "all");
+  // "My events · n" under Your next links here with ?mine=1, also from this page.
+  const mineParam = params.get("mine") === "1";
+  useEffect(() => { if (mineParam) setMode("my"); }, [mineParam]);
   const [allDates, setAllDates] = useState(false);
   const [showMonth, setShowMonth] = useState(false);
   // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.

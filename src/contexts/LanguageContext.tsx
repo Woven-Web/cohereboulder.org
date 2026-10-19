@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { getTranslation } from "@/lib/translations";
 
 type Language = "en" | "es";
@@ -7,13 +7,18 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
+  /** For this view only, and only if the visitor never chose: e.g. the language an emailed link was written in. */
+  suggestLanguage: (lang: Language) => void;
   t: (en: string, es: string) => string;
   tr: (path: string) => string; // New method for centralized translations
 }
 
 const LANGUAGE_KEY = "cohere-language";
-function storedLanguage(): Language {
-  try { return localStorage.getItem(LANGUAGE_KEY) === "es" ? "es" : "en"; } catch { return "en"; }
+function storedChoice(): Language | null {
+  try { const v = localStorage.getItem(LANGUAGE_KEY); return v === "es" || v === "en" ? v : null; } catch { return null; }
+}
+function remember(lang: Language) {
+  try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { /* storage blocked: the choice lasts this visit */ }
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(
@@ -23,16 +28,13 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  // The choice is kept on this device, so a reload, a new tab or a link from an email doesn't drop back to English.
-  const [language, setLanguage] = useState<Language>(storedLanguage);
-  useEffect(() => {
-    try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* storage blocked: the choice lasts this visit */ }
-    document.documentElement.lang = language;
-  }, [language]);
+  // A choice the visitor makes is kept on this device, so a reload or a new tab doesn't drop back to English.
+  const [language, setCurrent] = useState<Language>(() => storedChoice() ?? "en");
+  useEffect(() => { document.documentElement.lang = language; }, [language]);
 
-  const toggleLanguage = () => {
-    setLanguage((prev) => (prev === "en" ? "es" : "en"));
-  };
+  const setLanguage = useCallback((lang: Language) => { remember(lang); setCurrent(lang); }, []);
+  const toggleLanguage = () => setLanguage(language === "en" ? "es" : "en");
+  const suggestLanguage = useCallback((lang: Language) => { if (!storedChoice()) setCurrent(lang); }, []);
 
   const t = (en: string, es: string) => {
     return language === "en" ? en : es;
@@ -45,7 +47,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <LanguageContext.Provider
-      value={{ language, setLanguage, toggleLanguage, t, tr }}
+      value={{ language, setLanguage, toggleLanguage, suggestLanguage, t, tr }}
     >
       {children}
     </LanguageContext.Provider>

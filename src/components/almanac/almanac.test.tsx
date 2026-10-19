@@ -57,6 +57,7 @@ describe("Your next", () => {
     expect(html).toContain("Song Circle");
     expect(html).toContain('href="/events/did%3Aplc%3Ax/a"');
     expect(html).toContain("All 3 of your events");
+    expect(html).toContain('href="/calendar?mine=1"');
   });
   it("is a quiet hint, not an empty box, with no events", () => {
     const client = new QueryClient();
@@ -75,6 +76,14 @@ describe("Your next", () => {
     expect(html).toContain('data-testid="next-signed-out"');
     expect(html).toContain('href="/register"');
     expect(html).not.toContain("Nothing yet");
+  });
+  it("if the site config can't be read, falls back to the signed-out card rather than waiting forever", async () => {
+    // After its retries the config query sits in error (retryOnMount off: an already-mounted view doesn't re-ask).
+    const client = new QueryClient({ defaultOptions: { queries: { retryOnMount: false } } });
+    await client.prefetchQuery({ queryKey: ["site-config"], queryFn: () => Promise.reject(new Error("down")), retry: false });
+    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />, client);
+    expect(html).toContain('data-testid="next-signed-out"');
+    expect(html).not.toContain('aria-busy="true"');
   });
   it("while it is still asking who you are, shows neither the signed-out card nor the empty hint", () => {
     const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />);

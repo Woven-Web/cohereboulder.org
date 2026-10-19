@@ -15,11 +15,11 @@ import { eventPath, formatEventDate, formatEventTimeRange } from "@/lib/events";
  */
 export default function NotifyLink() {
   const { token = "" } = useParams();
-  const { tr, setLanguage } = useLanguage();
+  const { tr, suggestLanguage } = useLanguage();
   const info = useQuery({ queryKey: ["notify-link", token, "info"], queryFn: () => fetchLink(token), retry: false, staleTime: Infinity });
-  // Open in the language the email was written in; the toggle still switches after that.
+  // Open in the language the email was written in, unless this device already chose one.
   const locale = info.data?.locale;
-  useEffect(() => { if (locale) setLanguage(locale); }, [locale, setLanguage]);
+  useEffect(() => { if (locale) suggestLanguage(locale); }, [locale, suggestLanguage]);
 
   return (
     <AlmanacShell>
@@ -88,13 +88,17 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
   } else {
     // rsvp
     const startsAt = info.event?.startsAt ?? null;
-    const when = startsAt ? [formatEventDate(startsAt, language), formatEventTimeRange(startsAt, null, language)].join(" · ") : null;
+    const when = [formatEventDate(startsAt, language), formatEventTimeRange(startsAt, null, language)].filter(Boolean).join(" · ") || null;
     title = info.event === null ? tr("notify.link.rsvpGone") : fill(tr("notify.link.rsvpTitle"), { name });
     body = info.event ? [when, info.event.where].filter(Boolean).join(" · ") + (when || info.event.where ? ". " : "") + fill(tr("notify.link.rsvpBody"), { email }) : "";
     button = tr("notify.link.rsvpButton"); action = "rsvp";
     // After the press, still say which event (four links in one email give four of these pages).
     if (done) { title = tr("notify.link.rsvpDone"); body = [name, when].filter(Boolean).join(" · "); }
   }
+
+  // After an RSVP, the event itself; after anything else, the app.
+  const event = info.kind === "rsvp" && info.event?.did && info.event.rkey ? { did: info.event.did, rkey: info.event.rkey } : null;
+  const next = event ? { to: eventPath(event), label: tr("almanac.details") } : { to: "/today", label: tr("notify.link.home") };
 
   return (
     <div className="gate" style={{ marginTop: "1.6rem" }} data-testid={`link-${info.kind}`} data-done={done && !undone}>
@@ -109,9 +113,7 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
         ) : info.kind === "unsub" && !undone ? (
           <button type="button" className="btn btn--line" disabled={busy} data-testid="link-undo" onClick={() => void run("resubscribe", { previous }).then((ok) => ok && setUndone(true))}>{tr("notify.link.undo")}</button>
         ) : null}
-        {done && info.kind === "rsvp" && info.event?.did && info.event.rkey ? (
-          <Link className="btn btn--line" to={eventPath({ did: info.event.did, rkey: info.event.rkey })}>{tr("almanac.details")}</Link>
-        ) : done && info.kind !== "unsub" && <Link className="btn btn--line" to="/today">{tr("notify.link.home")}</Link>}
+        {done && info.kind !== "unsub" && <Link className="btn btn--line" to={next.to}>{next.label}</Link>}
       </div>
     </div>
   );
