@@ -16,7 +16,7 @@ import { useDeviceSync } from "@/hooks/useDeviceSync";
  * every screen shares (install sheet, toast). Everything under .alm picks up the
  * Almanac tokens; the rest of the site is untouched.
  */
-export function AlmanacShell({ children, after, site = false, ridges = true }: { children: ReactNode; after?: ReactNode; site?: boolean; ridges?: boolean }) {
+export function AlmanacShell({ children, after, site = false, ridges = true, footer = true }: { children: ReactNode; after?: ReactNode; site?: boolean; ridges?: boolean; footer?: boolean }) {
   const { pathname } = useLocation();
   const installAllowed = !/^\/(register|login|admin)(?:\/|$)/.test(pathname);
   const { language } = useLanguage();
@@ -49,7 +49,8 @@ export function AlmanacShell({ children, after, site = false, ridges = true }: {
           {/* Ecology only: the landscape under the masthead. Screens that draw their own (Today, Calendar, Home) hide it with CSS or ridges={false}. */}
           {look === "ecology" && ridges && <EcoRidges />}
           {children}
-          {(site || look === "ecology") && <AlmanacFooter />}
+          {/* footer={false}: a page still loading leaves it out, so it can't sit in view and be pushed down when the page arrives. */}
+          {footer && (site || look === "ecology") && <AlmanacFooter />}
         </div>
         {after}
         {installAllowed && (!site || pathname === "/" || pathname === "/home") && <InstallSheet />}

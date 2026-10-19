@@ -11,6 +11,10 @@
 //    button, open to the event page, and a member can share a harvest there
 //  - All events / My events is one toggle over the same day's list, All by default, and says what is shown
 //  - the day list and the week never scroll sideways and no text overflows its block, at 1280, 1440, 1024 and 390
+//  - Day / Week is kept in the URL (?view=), so a reload shows the same view
+//  - week titles break between words only (a word too long for its chip ends in "…"), beside Your next at 1280
+//  - first paint: layout shift under 0.1 at 390 and 1280, and a returning member's masthead and host card
+//    never show the signed-out words ("Join COhere", "About", "Sign in") while the session is read
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import { LONG, seedEvents } from "./calendar-desktop-seed.mjs";
@@ -107,6 +111,110 @@ for (const [w, h] of [[1280, 800], [1440, 900]]) {
   await context.close();
 }
 
+// ───────────── Day / Week in the URL ─────────────
+{
+  const { context, page, errors } = await session({ width: 1280, height: 800 });
+  const viewNow = async () => ((await page.getByTestId("calendar-week").count()) ? "week" : "day");
+  const forgetStoredView = () => page.evaluate(() => localStorage.removeItem("cohere.calendar.view"));
+  await go(page, "/calendar?day=2026-10-17");
+  await dayHeading(page, "October 17").waitFor({ timeout: 8000 });
+  check(await viewNow() === "day", "a link with ?day= alone opens that day in Day view");
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await page.getByTestId("calendar-week").waitFor();
+  const picked = new URL(page.url()).searchParams;
+  check(picked.get("view") === "week" && picked.get("day") === "2026-10-17", `picking Week puts it in the URL, with the day (${page.url().replace(base, "")})`);
+  // Only the URL may carry it across the reload.
+  await forgetStoredView(); await page.reload({ waitUntil: "load" });
+  await page.locator(".cal-view").waitFor({ timeout: 8000 });
+  check(await viewNow() === "week", "a reload after picking Week shows the Week");
+  check(await page.getByRole("button", { name: "Week", exact: true }).getAttribute("aria-pressed") === "true", "Week is the pressed view after the reload");
+  // (Without the fix the reload showed the Day; switch to the Week so the rest still runs.)
+  if (await viewNow() !== "week") { await page.getByRole("button", { name: "Week", exact: true }).click(); await page.getByTestId("calendar-week").waitFor(); }
+  await page.getByTestId("week-step").click();
+  check(new URL(page.url()).searchParams.get("view") === "week" && await viewNow() === "week", "stepping to the other week keeps Week in the URL");
+  await page.getByRole("button", { name: "Day", exact: true }).click();
+  check(new URL(page.url()).searchParams.get("view") === "day", "picking Day puts it in the URL");
+  await forgetStoredView(); await page.reload({ waitUntil: "load" });
+  await page.locator(".cal-view").waitFor({ timeout: 8000 });
+  check(await viewNow() === "day", "a reload after picking Day shows the Day");
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await page.getByTestId("calendar-week").waitFor();
+  // (The second week is showing now: Oct 22–25.)
+  if (!(await page.locator(".week__head", { hasText: "22" }).count())) await page.getByTestId("week-step").click();
+  await page.locator(".week__head", { hasText: "22" }).click();
+  await dayHeading(page, "October 22").waitFor({ timeout: 5000 });
+  check(await viewNow() === "day" && new URL(page.url()).searchParams.get("view") === null, "a week header still opens that day in Day view, and the URL says so");
+  check(errors.length === 0, `view in the URL: no page errors${errors.length ? ` — ${errors[0]}` : ""}`);
+  await context.close();
+}
+
+// ───────────── First paint: no layout shift, and no signed-out words for a returning member ─────────────
+const watchFirstPaint = (context) => context.addInitScript(() => {
+  window.__cls = 0; window.__mast = []; window.__host = [];
+  try { new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: "layout-shift", buffered: true }); } catch { /* no API */ }
+  const seen = (el) => el && el.checkVisibility?.({ visibilityProperty: true }) !== false;
+  const note = (list, text) => { if (list.at(-1) !== text) list.push(text); };
+  new MutationObserver(() => {
+    const end = document.querySelector(".mast__end");
+    if (end) note(window.__mast, [...end.querySelectorAll("a,button,[role=status]")].filter((el) => !el.closest(".lang") && seen(el)).map((el) => el.textContent.trim()).filter(Boolean).join(" | "));
+    const host = document.querySelector("[data-testid=calendar-host]");
+    note(window.__host, host && seen(host) ? host.innerText.replace(/\s+/g, " ").trim() : "");
+  }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+});
+for (const [w, h] of [[390, 844], [1280, 800]]) {
+  for (const member of [null, "mock-peer"]) {
+    const who = member ? "a returning member" : "a visitor";
+    const { context, page } = await session({ width: w, height: h, member });
+    // A member has been here before on this device (that is how the session cookie got here).
+    if (member) {
+      await go(page, "/about");
+      // ...and the site remembered that this device was signed in.
+      check(await page.waitForFunction(() => localStorage.getItem("cohere.signedIn") === "1", null, { timeout: 8000 }).then(() => true, () => false), `at ${w}, a member's visit leaves the signed-in hint on the device`);
+    }
+    await watchFirstPaint(context);
+    // The session answer takes a real round trip.
+    await page.route("**/xrpc/social.scenius.getSession", async (r) => { await new Promise((ok) => setTimeout(ok, 600)); await r.continue(); });
+    await go(page, "/calendar");
+    await page.locator("[data-testid=calendar-host], main .bg-paper-3").first().waitFor({ timeout: 10000 });
+    await page.waitForTimeout(1500);
+    const { cls, mast, host } = await page.evaluate(() => ({ cls: window.__cls, mast: window.__mast, host: window.__host }));
+    check(cls < 0.1, `first paint at ${w}, ${who}: layout shift ${cls.toFixed(4)} is under 0.1`);
+    if (member) {
+      const said = mast.filter((t) => /Join COhere|Sign in|\bAbout\b/.test(t));
+      check(said.length === 0, `first paint at ${w}: the masthead never shows ${who} the signed-out words${said.length ? ` — ${said.join(" / ")}` : ""}`);
+      const hostSaid = host.filter((t) => /need an account|Have an account|Sign in/i.test(t));
+      check(hostSaid.length === 0, `first paint at ${w}: the host card never shows ${who} the signed-out wording${hostSaid.length ? ` — ${hostSaid[0].slice(0, 60)}` : ""}`);
+      // The RSVP lookups are one regenOS call per upcoming event. Slow them right down: the device's
+      // remembered answers lay the page out at once, and the list doesn't wait for the lookups.
+      check(await page.evaluate(() => Boolean(localStorage.getItem("cohere.mySeats.v1"))), `at ${w}, the member's RSVP answers are remembered on the device`);
+      await page.route("**/xrpc/social.scenius.getEventAttendance*", async (r) => { await new Promise((ok) => setTimeout(ok, 3000)); await r.continue().catch(() => {}); });
+      const t0 = Date.now();
+      await go(page, "/calendar");
+      await page.getByTestId("your-next").waitFor({ timeout: 10000 });
+      const seenAfter = Date.now() - t0;
+      await page.waitForTimeout(3500);
+      const slow = await page.evaluate(() => window.__cls);
+      check(seenAfter < 2500, `at ${w}, with slow lookups, a returning member sees Your next from the remembered answers (${seenAfter} ms)`);
+      check(slow < 0.1, `at ${w}, with slow lookups, layout shift ${slow.toFixed(4)} is under 0.1`);
+      // A device that remembers nothing waits about a second for the lookups, then shows the list without them.
+      // (Off the calendar first, so its last lookup can't write the answers back as we clear them.)
+      await go(page, "/about");
+      await page.evaluate(() => localStorage.removeItem("cohere.mySeats.v1"));
+      const t1 = Date.now();
+      await go(page, "/calendar");
+      await page.locator(".agenda-head, .daygroup, [data-testid=calendar-week]").first().waitFor({ timeout: 10000 });
+      const listAfter = Date.now() - t1;
+      const lookupsLeft = await page.getByTestId("your-next").count() === 0;
+      check(listAfter < 2800 && lookupsLeft, `at ${w}, with slow lookups and nothing remembered, the list still shows in ${listAfter} ms, before the lookups end`);
+      // Every lookup is 3 s and they go four at a time: wait for the last of them.
+      await page.getByTestId("your-next").waitFor({ timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(1000);
+      console.log(`  (at ${w}, nothing remembered and slow lookups: layout shift ${(await page.evaluate(() => window.__cls)).toFixed(4)} once they land)`);
+    }
+    await context.close();
+  }
+}
+
 // ───────────── The day list at 1024 and 390, and at 1280 in a wide fallback face ─────────────
 for (const [w, h, wide] of [[1024, 768, false], [390, 844, false], [1280, 800, true]]) {
   const { context, page } = await session({ width: w, height: h });
@@ -157,6 +265,29 @@ for (const [w, h] of [[1280, 800]]) {
   check(await page.getByTestId("event-card").count() === 0 && await page.getByText("None of yours.").count() === 1, "an empty My-events day says so and lists nothing");
   await all.click();
   check(await page.getByTestId("event-card").filter({ hasText: "Opening Invocation" }).count() === 1, "All events brings the day's full list back");
+
+  // The week beside Your next: the narrowest the week gets on a laptop.
+  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await page.getByTestId("calendar-week").waitFor({ timeout: 8000 });
+  await page.getByTestId("your-next").waitFor({ timeout: 8000 });
+  const titles = await page.$$eval(".week__ev b", (els) => els.map((b) => {
+    const node = b.firstChild; const broken = []; let i = 0;
+    for (const word of b.textContent.split(" ")) {
+      if (node && word) {
+        const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + word.length);
+        if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) broken.push(word);
+      }
+      i += word.length + 1;
+    }
+    return { text: b.textContent, broken, cut: b.scrollWidth > b.clientWidth + 1, ellipsis: getComputedStyle(b).textOverflow === "ellipsis" };
+  }));
+  const broken = titles.filter((t) => t.broken.length);
+  check(titles.length > 0 && broken.length === 0, `week beside Your next: no title breaks inside a word${broken.length ? ` — ${broken.map((t) => t.broken.join(",")).join("; ")}` : ""}`);
+  check(titles.filter((t) => t.cut).every((t) => t.ellipsis), "week beside Your next: a word too long for its chip ends in an ellipsis");
+  check(titles.some((t) => t.text === LONG && t.cut), "week beside Your next: the over-long word is cut, not split");
+  await shot(page, "week-beside-your-next-1280");
+  await go(page, "/calendar?day=2026-10-15");
+  await dayHeading(page, "October 15").waitFor({ timeout: 8000 });
 
   // Yesterday's event page: harvests open to a member, and a harvest can be added.
   await page.getByRole("link", { name: "Harvests" }).first().click();

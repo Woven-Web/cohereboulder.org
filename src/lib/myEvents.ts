@@ -144,6 +144,44 @@ function subscribe(listener: () => void) {
   };
 }
 
+/**
+ * The last seat answers for the signed-in account, kept on this device so a reload can lay out
+ * "Your next" at once while the lookups (one regenOS call per upcoming event) run again.
+ * Holds no more than the RSVP memo above: event keys and seats, for one DID.
+ */
+export const MY_SEATS_CACHE_KEY = "cohere.mySeats.v1";
+
+/** Defensive parse: another account's answers, or anything unexpected, yields nothing. */
+export function parseSeatCache(raw: string | null, did: string): Record<string, ActiveSeat | null> | undefined {
+  let data: unknown;
+  try {
+    data = JSON.parse(raw ?? "");
+  } catch {
+    return undefined;
+  }
+  const cached = data as { did?: unknown; seats?: unknown } | null;
+  if (!cached || cached.did !== did || !cached.seats || typeof cached.seats !== "object" || Array.isArray(cached.seats)) return undefined;
+  const out: Record<string, ActiveSeat | null> = {};
+  for (const [key, seat] of Object.entries(cached.seats as Record<string, unknown>)) out[key] = isActiveSeat(seat) ? seat : null;
+  return out;
+}
+
+function readSeatCache(did: string) {
+  try {
+    return parseSeatCache(storage()?.getItem(MY_SEATS_CACHE_KEY) ?? null, did);
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSeatCache(did: string, seats: Record<string, ActiveSeat | null>) {
+  try {
+    storage()?.setItem(MY_SEATS_CACHE_KEY, JSON.stringify({ did, seats }));
+  } catch {
+    // Full or blocked storage: the next load just waits for the lookups.
+  }
+}
+
 /** Remember an email RSVP on this device (call after createEmailRsvp succeeds). */
 export function recordEmailRsvp(event: { did: string; rkey: string }) {
   write(addStored(getSnapshot(), { did: event.did, rkey: event.rkey, source: "email", at: new Date().toISOString() }));
@@ -276,7 +314,13 @@ export function useMyEvents(events: CommunityEvent[] | undefined): UseMyEvents {
   const candidateIds = candidates.map(eventKey).join(",");
   const seatsQuery = useQuery({
     queryKey: [MY_SEATS_QUERY_KEY, did, candidateIds],
-    queryFn: () => lookupSeats(candidates),
+    queryFn: async () => {
+      const seats = await lookupSeats(candidates);
+      if (did) writeSeatCache(did, seats);
+      return seats;
+    },
+    // Last visit's answers while this visit's are read: the page lays out right the first time.
+    placeholderData: () => (did ? readSeatCache(did) : undefined),
     enabled: signedIn && candidates.length > 0,
     staleTime: 5 * 60 * 1000,
     retry: 1,

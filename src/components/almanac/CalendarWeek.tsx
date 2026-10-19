@@ -48,7 +48,7 @@ export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: P
               </button>
               {list.length === 0 && <p className="week__none" aria-label={tr("look.weekEmpty")}>·</p>}
               {list.map((e) => (
-                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined} data-past={Date.parse(e.endsAt ?? e.startsAt ?? "") < now ? "" : undefined}>
+                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} title={e.name} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined} data-past={Date.parse(e.endsAt ?? e.startsAt ?? "") < now ? "" : undefined}>
                   <span className="mono">{e.startsAt ? formatMinutes(denverMinutes(new Date(e.startsAt)), language) : ""}</span>
                   <b>{e.name}</b>
                 </Link>

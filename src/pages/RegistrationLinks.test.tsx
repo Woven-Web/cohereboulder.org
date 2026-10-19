@@ -6,6 +6,7 @@ vi.mock("@/hooks/useRegenos", () => ({
   useMyRegistration: () => ({ data: state }),
   useSiteConfig: () => ({ data: { regenosLoginEnabled: true } }),
   useRegenosSession: () => ({ data: { did: "did:plc:fixture" } }),
+  useAuthState: () => ({ session: { did: "did:plc:fixture" }, signedIn: true, hold: false, pending: false }),
 }));
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ language: "en", tr: (key: string) => key }) }));
 vi.mock("@/components/Navigation", () => ({ Navigation: () => null }));

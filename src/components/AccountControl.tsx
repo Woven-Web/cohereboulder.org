@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useInvalidateRegenosSession, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { useAuthState, useInvalidateRegenosSession } from "@/hooks/useRegenos";
 import { signOut } from "@/lib/regenos";
 import { OPEN_SIGNIN_EVENT, openSignInDialog, type SignInPrefill } from "@/lib/signin";
 import { useShell } from "@/components/almanac/shell-context";
@@ -35,13 +35,10 @@ import { useShell } from "@/components/almanac/shell-context";
 export function AccountControl({ variant = "desktop", onNavigate }: { variant?: "desktop" | "mobile"; onNavigate?: () => void }) {
   const { tr } = useLanguage();
   const { container } = useShell();
-  const { data: config } = useSiteConfig();
-  const enabled = config?.regenosLoginEnabled === true;
-  const { data: session } = useRegenosSession(enabled);
+  const { laneOn: enabled, configPending, session, signedIn, hold } = useAuthState();
   const invalidateSession = useInvalidateRegenosSession();
   const [open, setOpen] = useState(false);
   const [prefill, setPrefill] = useState<SignInPrefill>({});
-  const signedIn = Boolean(session?.did);
 
   // Only the desktop instance listens, so one request opens one dialog.
   useEffect(() => {
@@ -59,6 +56,15 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     if (signedIn) setOpen(false);
   }, [signedIn]);
 
+  // Not known yet whether sign-in is on, or (on a device signed in last time) who this is: keep the
+  // control's place, empty, so neither "Sign in" flashes at a member nor the masthead jumps when it lands.
+  if (configPending || hold) {
+    return (
+      <Button variant={variant === "mobile" ? "outline" : "ghost"} size={variant === "mobile" ? "default" : "sm"} className={variant === "mobile" ? "mx-3 mt-2" : undefined} aria-hidden="true" tabIndex={-1} style={{ visibility: "hidden" }} data-testid="account-pending">
+        {tr("nav.signIn")}
+      </Button>
+    );
+  }
   if (!enabled) return null;
 
   async function handleSignOut() {
