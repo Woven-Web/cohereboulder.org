@@ -1,20 +1,11 @@
-import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { SitePage } from "@/components/almanac/SitePage";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Compass } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const NotFound = () => {
-  const location = useLocation();
   const { tr } = useLanguage();
-
-  useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname,
-    );
-  }, [location.pathname]);
 
   return (
     <SitePage classic="min-h-screen bg-background flex flex-col">

@@ -115,7 +115,7 @@ export const ecoCopy: Record<string, Pair> = {
   "look.home.latestBoard": ["Latest on the Board", "Lo último en el Tablón"],
   "look.home.openBoard": ["Open the Board", "Abrir el Tablón"],
 
-  "almanac.allMine": ["All events · {n}", "Todos los eventos · {n}"],
+  "almanac.allMine": ["My events · {n}", "Mis eventos · {n}"],
   "almanac.installPair": ["Add to home screen", "Añadir a la pantalla de inicio"],
   "almanac.installRow": ["Add to home screen", "Añadir a la pantalla de inicio"],
   "almanac.questionCopied": ["Copied.", "Copiado."],
@@ -191,7 +191,7 @@ export const ecoCopy: Record<string, Pair> = {
   "notify.link.invalidBody": CUT,
   "notify.link.unsubBody": ["{email}", "{email}"],
   "notify.link.unsubBodyAll": ["{email}", "{email}"],
-  "notify.link.unsubDone": ["Turned off the {name}.", "Desactivado: {name}."],
+  "notify.link.unsubDone": ["Turned off {name}.", "Desactivado: {name}."],
   "notify.link.unsubDoneAll": ["Turned off all notes.", "Todos los avisos desactivados."],
   "notify.link.undo": ["Undo", "Deshacer"],
   "notify.link.undone": ["Back on.", "Activado de nuevo."],

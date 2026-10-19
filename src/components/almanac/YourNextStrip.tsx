@@ -25,9 +25,17 @@ interface Props {
 export function YourNextStrip({ items, total, today }: Props) {
   const { tr, language } = useLanguage();
   const now = Date.now();
-  const { data: config } = useSiteConfig();
+  const { data: config, isPending: configPending } = useSiteConfig();
   const loginOn = config?.regenosLoginEnabled === true;
-  const { data: session } = useRegenosSession(loginOn);
+  const { data: session, isLoading } = useRegenosSession(loginOn);
+  if (items.length === 0 && (configPending || (loginOn && isLoading))) {
+    // Still asking who this is: don't flash the signed-out card at a member.
+    return (
+      <section className="next" aria-label={tr("almanac.yourNextLabel")} aria-busy="true">
+        <div className="eyebrow">{tr("almanac.yourNext")}</div>
+      </section>
+    );
+  }
   if (items.length === 0 && !session?.did) {
     // Nobody to keep a list for yet: point at the two ways to become someone.
     return (
@@ -77,7 +85,7 @@ export function YourNextStrip({ items, total, today }: Props) {
         })}
       </ul>
       <p className="small" style={{ marginTop: ".2rem" }}>
-        <Link className="link" to="/calendar">{fill(tr("almanac.allMine"), { n: total })} →</Link>
+        <Link className="link" to="/calendar?mine=1">{fill(tr("almanac.allMine"), { n: total })} →</Link>
       </p>
     </section>
   );

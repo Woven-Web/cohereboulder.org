@@ -51,3 +51,6 @@ worker/seed.sql
 guide/raw/
 video-tour/*.mp4
 video-tour/raw/
+
+# The Oct 19 walk: raw shots, the before-build and video scratch (the tour, pairs and report are committed).
+walk-oct19/raw/

@@ -112,6 +112,7 @@ export const ADMIN_PAGE = `<!doctype html>
           background: var(--surface-2); color: var(--ink-2); }
   .pill.on { background: var(--teal-soft); color: var(--teal); }
   .pill.off { background: var(--clay-soft); color: var(--clay); }
+  .pill:empty { display: none; }
   .needs { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--clay); }
 
   /* detail drawer */
@@ -141,6 +142,7 @@ export const ADMIN_PAGE = `<!doctype html>
                         padding: 0.6rem; border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--ground); }
   .muted { color: var(--ink-3); font-size: 0.85rem; }
   .err { color: var(--clay); font-size: 0.85rem; }
+  .err.ok { color: var(--teal); }
   /* event + access forms */
   .field { display: flex; flex-direction: column; gap: 0.25rem; }
   .field > label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em;
@@ -149,6 +151,7 @@ export const ADMIN_PAGE = `<!doctype html>
             border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--ground); }
   .field input:disabled, .field select:disabled { opacity: 0.55; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
   .toolbar select, .toolbar input[type="email"] { padding: 0.45rem 0.7rem;
             border: 1px solid var(--hair-strong); border-radius: var(--r-md); background: var(--surface); }
   .note { font-size: 0.8rem; color: var(--ink-3); border-left: 2px solid var(--hair-strong);
@@ -1959,7 +1962,7 @@ export const ADMIN_PAGE = `<!doctype html>
       body: JSON.stringify({ audience: currentAudience() })
     }).then(function (r) { return r.json(); }).then(function (d) {
       if (seq !== nlCountSeq) return;
-      el("nlcount").textContent = d.count + " people would receive it right now.";
+      el("nlcount").textContent = d.count + (d.count === 1 ? " person" : " people") + " would receive it right now.";
       el("nlrecipslist").innerHTML = d.recipients.length ? d.recipients.map(function (r) {
         return "<li>" + esc(r.name || "(no name)") + " &middot; " + esc(r.email) + "</li>";
       }).join("") : "<li>Nobody.</li>";
@@ -1969,7 +1972,7 @@ export const ADMIN_PAGE = `<!doctype html>
   function showNewsletter(n) {
     nlCurrent = n; nlDirty = false;
     show("nleditor", true); show("nlconfirm", false); nlImagePanel(false);
-    el("nlmsg").textContent = "";
+    nlSay("");
     el("nltitle").textContent = n ? "Newsletter" : "New newsletter";
     el("nlsubject").value = n ? n.subject : "";
     el("nlbody").value = n ? n.text : "";
@@ -2019,10 +2022,17 @@ export const ADMIN_PAGE = `<!doctype html>
     });
   }
 
+  // The newsletter's one status line: a problem in the warning colour, a success (ok) in the calm one.
+  function nlSay(text, ok) {
+    var m = el("nlmsg");
+    m.textContent = text;
+    m.classList.toggle("ok", !!ok);
+  }
+
   function nlAction(button, work) {
-    el("nlmsg").textContent = "";
+    nlSay("");
     button.disabled = true;
-    return work().catch(function (e) { el("nlmsg").textContent = e.message; })
+    return work().catch(function (e) { nlSay(e.message); })
       .then(function () { button.disabled = false; updateLock(); });
   }
 
@@ -2039,7 +2049,7 @@ export const ADMIN_PAGE = `<!doctype html>
       // Sandboxed with no permissions: the server escapes the body, and even
       // so nothing in the preview can run script or reach this page.
       if (seq === nlPreviewSeq) el("nlframe").srcdoc = d.html;
-    }).catch(function (e) { if (seq === nlPreviewSeq) el("nlmsg").textContent = e.message; });
+    }).catch(function (e) { if (seq === nlPreviewSeq) nlSay(e.message); });
   }
   function schedulePreview() {
     clearTimeout(nlPreviewTimer);
@@ -2164,7 +2174,7 @@ export const ADMIN_PAGE = `<!doctype html>
       nlImgAt = null;
       el("nlimgfile").value = ""; el("nlimgalt").value = "";
       nlImagePanel(false);
-      el("nlmsg").textContent = "Photo added. It's the line starting with ![ in the text: move that line to move the photo, delete it to remove it.";
+      nlSay("Photo added. It's the line starting with ![ in the text: move that line to move the photo, delete it to remove it.", true);
       nlDirty = true; show("nlconfirm", false); updateLock(); schedulePreview();
     } catch (e) {
       msg.textContent = e.message || "Couldn't upload the image.";
@@ -2191,7 +2201,7 @@ export const ADMIN_PAGE = `<!doctype html>
       e.preventDefault();
       if (el("nlimgupload").disabled) return; // an upload is running; don't swap its photo
       var files = e.dataTransfer.files;
-      if (!files || !files.length) { el("nlmsg").textContent = "That had no photo file in it. Drag a photo file from your computer, or use Add image."; return; }
+      if (!files || !files.length) { nlSay("That had no photo file in it. Drag a photo file from your computer, or use Add image."); return; }
       if (el("nlimgpanel").classList.contains("hidden")) nlImagePanel(true);
       nlImgReplaced();
       var dt = new DataTransfer();
@@ -2243,7 +2253,7 @@ export const ADMIN_PAGE = `<!doctype html>
   el("nlaudience").addEventListener("change", audienceChanged);
 
   el("nlsave").addEventListener("click", function () {
-    nlAction(el("nlsave"), function () { return saveNewsletter().then(function () { el("nlmsg").textContent = "Saved."; }); });
+    nlAction(el("nlsave"), function () { return saveNewsletter().then(function () { nlSay("Saved.", true); }); });
   });
 
   el("nltest").addEventListener("click", function () {
@@ -2263,7 +2273,7 @@ export const ADMIN_PAGE = `<!doctype html>
         });
       }).then(function (r) { return r.json(); }).then(function (d) {
         showNewsletter(d.newsletter);
-        el("nlmsg").textContent = "Test sent to " + d.newsletter.test_sent_to + ". Check it, then send.";
+        nlSay("Test sent to " + d.newsletter.test_sent_to + ". Check it, then send.", true);
       });
     });
   });
@@ -2293,8 +2303,8 @@ export const ADMIN_PAGE = `<!doctype html>
       }).then(function (r) { return r.json(); }).then(function (d) {
         showNewsletter(d.newsletter);
         loadNewsletters();
-        el("nlmsg").textContent = "Scheduled for " + nlTime(d.newsletter.scheduled_for) + ". " + d.notified +
-          " organizer(s) were emailed a cancel link.";
+        nlSay("Scheduled for " + nlTime(d.newsletter.scheduled_for) + ". " + d.notified +
+          " organizer(s) were emailed a cancel link.", true);
       });
     });
   });
@@ -2304,7 +2314,7 @@ export const ADMIN_PAGE = `<!doctype html>
     nlAction(el("nlcancel"), function () {
       return api("/api/admin/newsletters/" + encodeURIComponent(nlCurrent.id) + "/cancel", { method: "POST" })
         .then(function (r) { return r.json(); })
-        .then(function (d) { showNewsletter(d.newsletter); loadNewsletters(); el("nlmsg").textContent = "Cancelled."; });
+        .then(function (d) { showNewsletter(d.newsletter); loadNewsletters(); nlSay("Cancelled.", true); });
     });
   });
 

@@ -84,6 +84,8 @@ try {
   const displayContext = await localContext();
   try {
     const displayPage = await displayContext.newPage();
+    // Each page is checked in English, then Spanish: start every load in English (the site now remembers a choice).
+    await displayPage.addInitScript(() => { try { localStorage.removeItem("cohere-language"); } catch { /* opaque frame */ } });
     await displayPage.route("**/xrpc/social.scenius.getSession", route => route.fulfill({
       json: { did: "did:plc:display", handle: "aaron.scenius.social", kind: "user" },
     }));
@@ -451,6 +453,8 @@ try {
   await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).first().click();
   await page.getByRole("button", { name: "Añadir un evento" }).waitFor();
   ok("ES toggle: hosting strings render in Spanish");
+  // The site remembers the choice; the steps below read English, so forget it for their page loads.
+  await page.evaluate(() => localStorage.removeItem("cohere-language"));
 
   // ── 8. Sign out ───────────────────────────────────────────────────────────
   step = "sign out";

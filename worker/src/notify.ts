@@ -317,7 +317,7 @@ async function linkInfo(env: NotifyRouteEnv, link: LinkPayload): Promise<Record<
   }
   if (link.k === "rsvp" && link.d && link.r) {
     const live = await lookupLiveEvent(env, link.d, link.r);
-    out.event = live.kind === "ok" ? { name: live.event.name, startsAt: live.event.startsAt, where: live.event.where } : null;
+    out.event = live.kind === "ok" ? { name: live.event.name, startsAt: live.event.startsAt, where: live.event.where, did: link.d, rkey: link.r } : null;
   }
   return out;
 }
