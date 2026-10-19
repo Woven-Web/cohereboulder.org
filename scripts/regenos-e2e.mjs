@@ -84,6 +84,8 @@ try {
   const displayContext = await localContext();
   try {
     const displayPage = await displayContext.newPage();
+    // Each page is checked in English, then Spanish: start every load in English (the site now remembers a choice).
+    await displayPage.addInitScript(() => { try { localStorage.removeItem("cohere-language"); } catch { /* opaque frame */ } });
     await displayPage.route("**/xrpc/social.scenius.getSession", route => route.fulfill({
       json: { did: "did:plc:display", handle: "aaron.scenius.social", kind: "user" },
     }));
