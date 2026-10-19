@@ -387,7 +387,9 @@ for (const [w, h] of [[390, 844], [768, 1024], [1280, 800], [1600, 1000]]) {
   await page.getByRole("button", { name: "Remind me" }).waitFor({ timeout: 5000 });
   check(/^5 days\b/.test(await page.locator("main h1").first().innerText()), "today: before the gathering, the heading counts down (5 days on Oct 10)");
   check(await page.getByTestId("sample-day").count() === 0 && !/sample/i.test(await page.locator("main").innerText()), "today: before the gathering there is no sample practice, only the reminder");
-  check(await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
+  // Your next holds its heading until the session read answers, so wait for the signed-out card rather than counting at once.
+  const signedOutNext = await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).first().waitFor({ timeout: 8000 }).then(() => true, () => false);
+  check(signedOutNext && await page.getByTestId("next-signed-out").getByRole("link", { name: /Register/ }).count() === 1, "today: signed out, Your next offers Register instead of 'Nothing yet'");
   await go(page, "/board");
   await page.getByTestId("members-gate").waitFor();
   check(/members-only space/.test(await page.getByTestId("members-gate").innerText()) || /sign in/i.test(await page.getByTestId("members-gate").innerText()), "board: signed out, the gate says what it is and how to get in");
