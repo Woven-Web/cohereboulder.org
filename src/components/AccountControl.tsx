@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RegenosSignInPanel } from "@/components/RegenosSignInPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuthState, useInvalidateRegenosSession } from "@/hooks/useRegenos";
+import { useAuthState, useInvalidateRegenosSession, writeSignedInHint } from "@/hooks/useRegenos";
+import { forgetSeatCache } from "@/lib/myEvents";
 import { signOut } from "@/lib/regenos";
 import { OPEN_SIGNIN_EVENT, openSignInDialog, type SignInPrefill } from "@/lib/signin";
 import { useShell } from "@/components/almanac/shell-context";
@@ -71,6 +72,9 @@ export function AccountControl({ variant = "desktop", onNavigate }: { variant?: 
     try {
       await signOut();
     } finally {
+      // Leave nothing of the account on this device: the "signed in last time" hint and its RSVP answers.
+      writeSignedInHint(false);
+      forgetSeatCache();
       await invalidateSession();
       onNavigate?.();
     }

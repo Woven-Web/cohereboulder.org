@@ -373,8 +373,10 @@
 .alm .week__ev[data-mine]{border-left-color:var(--deep);background:hsl(var(--eco-rule-hsl)/.12)}
 .alm .week__ev:hover,.alm .week__ev:focus-visible{border-color:var(--deep)}
 .alm .week__ev .mono{display:block;font-size:.66rem;line-height:1.25;color:var(--deep);white-space:nowrap}
-/* Titles break between words only; a word longer than the chip ends in "…" rather than splitting ("Watershe d"). */
-.alm .week__ev b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:600 .78rem/1.2 var(--head);overflow-wrap:normal;word-break:normal;hyphens:manual;text-overflow:ellipsis}
+/* Titles break between words only; a word longer than the chip ends in "…" rather than splitting ("Watershe d").
+   Each word is an inline-block (CalendarWeek) because Firefox draws no ellipsis for a word overflowing a clamped box. */
+.alm .week__ev b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:600 .78rem/1.2 var(--head);overflow-wrap:normal;word-break:normal;hyphens:manual}
+.alm .week__word{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top}
 .alm .week__none{font-size:.8rem;color:var(--ink-2);padding:0 6px}
 
 /* Masthead at tablet width: six destinations plus Register, account and language will not share one row, so the tabs take a row of their own. */

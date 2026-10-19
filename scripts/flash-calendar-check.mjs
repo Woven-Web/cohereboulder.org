@@ -108,25 +108,28 @@ for (const [who, cookie] of [["member", "mock-peer"], ["visitor", undefined]]) {
   await p.goto(`${BASE}/calendar`); await p.getByTestId("calendar-week").waitFor({ timeout: 10000 });
   await p.getByTestId("your-next").waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
   const titles = await p.$$eval(".week__ev b", (els) => els.map((b) => {
-    const text = b.textContent;
-    const node = b.firstChild;
+    // Every word of every text node: does it sit on more than one line?
     const broken = [];
-    let i = 0;
-    for (const word of text.split(" ")) {
-      if (node && word) {
-        const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + word.length);
-        const tops = new Set([...r.getClientRects()].map((x) => Math.round(x.top)));
-        if (tops.size > 1) broken.push(word);
+    const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      let i = 0;
+      for (const word of node.data.split(" ")) {
+        if (word) {
+          const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + word.length);
+          if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) broken.push(word);
+        }
+        i += word.length + 1;
       }
-      i += word.length + 1;
     }
-    const cs = getComputedStyle(b);
-    return { text, broken, clipped: b.scrollWidth > b.clientWidth + 1, ellipsis: cs.textOverflow };
+    // A word cut short must say so: the box that clips it draws the ellipsis.
+    const boxes = [...b.querySelectorAll(".week__word")];
+    const clipped = boxes.length ? boxes.filter((w) => w.scrollWidth > w.clientWidth + 1) : b.scrollWidth > b.clientWidth + 1 ? [b] : [];
+    return { text: b.textContent, broken, cut: clipped.length > 0, ellipsis: clipped.every((el) => getComputedStyle(el).textOverflow === "ellipsis") };
   }));
   report.weekTitles = titles;
   const broken = titles.filter((t) => t.broken.length);
   check(broken.length === 0, `week 1280: titles broken mid-word: ${broken.map((t) => `${t.text} (${t.broken.join(",")})`).join("; ")}`);
-  const cut = titles.filter((t) => t.clipped && t.ellipsis !== "ellipsis");
+  const cut = titles.filter((t) => t.cut && !t.ellipsis);
   check(cut.length === 0, `week 1280: titles clipped with no ellipsis: ${cut.map((t) => t.text).join("; ")}`);
   await p.getByTestId("calendar-week").scrollIntoViewIfNeeded();
   await shot(p, "week-1280-your-next");

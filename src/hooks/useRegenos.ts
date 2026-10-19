@@ -2,6 +2,7 @@ import { fetchMe, fetchMyRegistration } from "@/lib/api";
 // React-query hooks for the regenOS account lane. Both are read-only polls;
 // every mutation lives with the component that makes it.
 
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchRegenosSession, fetchSiteConfig } from "@/lib/regenos";
 
@@ -45,7 +46,7 @@ export function readSignedInHint(): boolean {
   try { return window.localStorage.getItem(SIGNED_IN_HINT_KEY) === "1"; } catch { return false; }
 }
 
-function writeSignedInHint(on: boolean) {
+export function writeSignedInHint(on: boolean) {
   try {
     if (on) window.localStorage.setItem(SIGNED_IN_HINT_KEY, "1");
     else window.localStorage.removeItem(SIGNED_IN_HINT_KEY);
@@ -64,12 +65,17 @@ export async function fetchSessionAndRemember() {
   }
 }
 
+/** The longest a placeholder waits for the answer before showing the signed-out state anyway. */
+export const AUTH_HOLD_MAX_MS = 3000;
+
 /**
  * Who this is, and whether we know yet. `pending` until /api/config and (lane on) the
  * session have answered; a failed read counts as answered, signed out. `hold` is true
  * while pending on a device that was signed in last time: show a neutral placeholder
  * rather than the signed-out state. A device with no such memory gets the signed-out
  * state at once, so a first-time visitor never waits for the Register button.
+ * Neither lasts past AUTH_HOLD_MAX_MS: a stalled regenOS must not hide the controls.
+ * `settled` is "answered, or waited long enough".
  */
 export function useAuthState() {
   const { data: config, isPending: configPending } = useSiteConfig();
@@ -77,7 +83,17 @@ export function useAuthState() {
   const { data: session, isLoading: sessionLoading } = useRegenosSession(laneOn);
   const pending = configPending || (laneOn && sessionLoading);
   const signedIn = Boolean(session?.did);
-  return { config, laneOn, configPending, session, signedIn, pending, hold: pending && readSignedInHint() };
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setTimeout(() => setWaited(true), AUTH_HOLD_MAX_MS);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
+  return {
+    config, laneOn, configPending: configPending && !waited, session, signedIn, pending,
+    hold: pending && !waited && readSignedInHint(),
+    settled: !pending || waited,
+  };
 }
 
 /** For after sign-in/sign-out/wizard completion: re-ask who we are. */

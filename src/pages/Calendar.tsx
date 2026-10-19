@@ -30,8 +30,8 @@ import { useMyEvents, removeMyEvent, eventKey } from "@/lib/myEvents";
 import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 const VIEW_KEY = "cohere.calendar.view";
-/** How long a first paint waits for a member's RSVP lookups before showing the list without them. */
-const SEAT_WAIT_MS = 1200;
+/** How long a first paint waits, once the events are in, for a member's RSVP lookups (and roster, registration) before showing what it has. */
+const WAIT_MS = 1200;
 function readView(): "day" | "week" | null {
   try {
     const v = window.localStorage.getItem(VIEW_KEY);
@@ -52,7 +52,7 @@ export default function CalendarPage() {
   // The regenOS hosting lane — entirely absent until the Worker's
   // REGENOS_LOGIN_ENABLED flag is on (useSiteConfig reads /api/config), so
   // this page renders its pre-phase-2 self by default.
-  const { config, laneOn: hostingOn, session, signedIn, pending: authPending } = useAuthState();
+  const { config, laneOn: hostingOn, session, signedIn, hold, settled } = useAuthState();
   const { data: registration, isLoading: registrationLoading } = useMyRegistration();
   const today = currentDenverDate();
   const mine = useMyEvents(data?.events);
@@ -63,14 +63,15 @@ export default function CalendarPage() {
   // "My events · n" under Your next links here with ?mine=1, also from this page.
   const mineParam = params.get("mine") === "1";
   useEffect(() => { if (mineParam) setMode("my"); }, [mineParam]);
-  const [allDates, setAllDates] = useState(false);
   const [showMonth, setShowMonth] = useState(false);
   // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.
   const [chosenView, setChosenView] = useState<"day" | "week" | null>(readView);
-  // The view lives in the URL (?view=day|week), so a reload or a shared link shows what was on screen.
-  // With no ?view, picking a day (picker, trail, the week's header, or a link with ?day=) shows that day, whichever view is the default.
+  // The view lives in the URL, so a reload or a shared link shows what was on screen: ?view=week (anchored
+  // on ?day=), ?view=day&day=… one day, ?view=day alone every date. With no ?view, picking a day (picker,
+  // trail, the week's header, or a link with ?day=) shows that day, whichever view is the default.
   const viewParam = params.get("view");
   const urlView = viewParam === "day" || viewParam === "week" ? viewParam : null;
+  const everyDate = urlView === "day" && !dayParam;
   const xl = useMedia("(min-width: 1024px)");
   // Only the ecology look defaults to the week; every other look keeps the day list unless the visitor picks the week.
   const eco = useLook() === "ecology";
@@ -78,12 +79,21 @@ export default function CalendarPage() {
   function setView(next: "day" | "week") {
     setChosenView(next);
     try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }
-    setParams(dayParam ? { day: dayParam, view: next } : { view: next }, { replace: true });
+    goTo({ view: next, day: selectedDay });
+  }
+  /** Rewrites ?day= and ?view=, keeping any other parameter (look, trail). ?mine=1 only opens the page on My events; the toggle isn't kept in the URL. */
+  function goTo(next: { day: string | null; view: "day" | "week" | null }) {
+    setParams((prev) => {
+      const out = new URLSearchParams(prev);
+      out.delete("mine");
+      for (const key of ["day", "view"] as const) { const value = next[key]; if (value) out.set(key, value); else out.delete(key); }
+      return out;
+    }, { replace: true });
   }
   const hasMine = mine.items.length > 0;
   const showingMine = hasMine && mode === "my";
   // Inside the festival the picker opens on today; outside it, every date.
-  const selectedDay = dayParam ?? (allDates ? null : isFestivalDate(today) ? today : null);
+  const selectedDay = dayParam ?? (everyDate ? null : isFestivalDate(today) ? today : null);
   const done = useMemo(() => practiceDoneDays(), []);
   const counts = useMemo(() => {
     const out: Record<string, number> = {};
@@ -95,13 +105,10 @@ export default function CalendarPage() {
     .map((i) => ({ event: i.event, seat: seatOf(i) })), [mine.items]);
 
   function pickDay(date: string) {
-    setAllDates(false);
-    setParams({ day: date }, { replace: true });
+    goTo({ day: date, view: null });
   }
   function showEveryDate() {
-    setAllDates(true);
-    // Every date is a Day-view list; on a laptop, where Week may be the default, say so in the URL.
-    setParams(xl ? { view: "day" } : {}, { replace: true });
+    goTo({ day: null, view: "day" });
   }
 
   const allEvents = data?.events ?? [];
@@ -128,19 +135,20 @@ export default function CalendarPage() {
   // all in, then the list arrives whole. The host card and the footer wait too: drawn early, they would sit
   // in view under "Loading events…" and be pushed down when the list lands.
   // Once in, they stay: a later refetch (after a delete, a sign-in, a new RSVP) must not blank the page again.
-  // A device with no remembered RSVPs (myEvents' seat cache) waits for the lookups, but not for long:
-  // they are one regenOS call per upcoming event, and the list matters more than a still layout.
+  // The list waits for who this is only on a device that was signed in last time (useAuthState's `hold`,
+  // at most 3 s). It waits for a member's RSVP lookups only when the device remembers none of their answers
+  // (myEvents' seat cache), and not for long: they are one regenOS call per upcoming event, and the list
+  // matters more than a still layout. The same short wait bounds the roster and registration reads.
   const [listSeen, setListSeen] = useState(false);
   const [allSeen, setAllSeen] = useState(false);
-  const [seatWaitOver, setSeatWaitOver] = useState(false);
-  const basicsIn = !isLoading && !authPending;
+  const [waitOver, setWaitOver] = useState(false);
   useEffect(() => {
-    if (!basicsIn || !mine.isLoading) return;
-    const timer = window.setTimeout(() => setSeatWaitOver(true), SEAT_WAIT_MS);
+    if (isLoading) return;
+    const timer = window.setTimeout(() => setWaitOver(true), WAIT_MS);
     return () => window.clearTimeout(timer);
-  }, [basicsIn, mine.isLoading]);
-  const listReady = listSeen || (basicsIn && (!mine.isLoading || seatWaitOver));
-  const ready = allSeen || (listReady && !authPending && (!signedIn || (!rosterLoading && !registrationLoading)));
+  }, [isLoading]);
+  const listReady = listSeen || (!isLoading && !hold && (!mine.isLoading || waitOver));
+  const ready = allSeen || (listReady && settled && (!signedIn || waitOver || (!rosterLoading && !registrationLoading)));
   if (listReady && !listSeen) setListSeen(true);
   if (ready && !allSeen) setAllSeen(true);
 
@@ -291,7 +299,7 @@ export default function CalendarPage() {
                       day={weekDay}
                       today={today}
                       onPick={pickDay}
-                      onWeek={(date) => { setAllDates(false); setParams({ day: date, view: "week" }, { replace: true }); }}
+                      onWeek={(date) => goTo({ day: date, view: "week" })}
                     />
                   ) : selectedDay ? (
                     <>

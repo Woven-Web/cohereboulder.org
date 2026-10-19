@@ -144,6 +144,15 @@ for (const [w, h] of [[1280, 800], [1440, 900]]) {
   await page.locator(".week__head", { hasText: "22" }).click();
   await dayHeading(page, "October 22").waitFor({ timeout: 5000 });
   check(await viewNow() === "day" && new URL(page.url()).searchParams.get("view") === null, "a week header still opens that day in Day view, and the URL says so");
+  // "Show every date" is a Day view with no day: ?view=day alone, and a reload keeps it.
+  await page.getByRole("button", { name: "Show every date" }).click();
+  await page.locator(".daygroup").first().waitFor({ timeout: 5000 });
+  const every = new URL(page.url()).searchParams;
+  check(every.get("view") === "day" && !every.has("day"), `Show every date is ?view=day with no day (${page.url().replace(base, "")})`);
+  await forgetStoredView(); await page.reload({ waitUntil: "load" });
+  await page.locator(".daygroup").first().waitFor({ timeout: 8000 }).catch(() => {});
+  check(await page.locator(".daygroup").count() > 1 && await page.locator(".agenda-head").count() === 0, "a reload after Show every date lists every date again");
+  check(new URL(page.url()).searchParams.get("look") === "ecology", "the URL keeps its other parameters (look) through these changes");
   check(errors.length === 0, `view in the URL: no page errors${errors.length ? ` — ${errors[0]}` : ""}`);
   await context.close();
 }
@@ -210,6 +219,18 @@ for (const [w, h] of [[390, 844], [1280, 800]]) {
       await page.getByTestId("your-next").waitFor({ timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(1000);
       console.log(`  (at ${w}, nothing remembered and slow lookups: layout shift ${(await page.evaluate(() => window.__cls)).toFixed(4)} once they land)`);
+      // A stalled regenOS: the placeholders give way after 3 s, so the masthead is never left empty.
+      await page.unroute("**/xrpc/social.scenius.getSession");
+      await page.route("**/xrpc/social.scenius.getSession", async (r) => { await new Promise((ok) => setTimeout(ok, 8000)); await r.continue().catch(() => {}); });
+      await go(page, "/calendar");
+      await page.waitForTimeout(1500);
+      // What a person can see in the masthead, the language buttons aside.
+      const shown = () => page.evaluate(() => [...document.querySelectorAll(".mast__end > :not(.lang)")].filter((el) => el.checkVisibility({ visibilityProperty: true })).map((el) => el.innerText.trim()).filter(Boolean).join(" | "));
+      const early = await shown();
+      await page.waitForTimeout(3000);
+      const late = await shown();
+      check(!/Join COhere|Sign in/.test(early) && /Join COhere/.test(late) && (w < 1024 || /Sign in/.test(late)) && await page.locator(".agenda-head, .daygroup, [data-testid=calendar-week]").count() > 0,
+        `at ${w}, with the session answer stalled, the masthead holds ("${early}"), then shows its controls after 3 s ("${late}") and the list is there`);
     }
     await context.close();
   }
@@ -271,15 +292,23 @@ for (const [w, h] of [[1280, 800]]) {
   await page.getByTestId("calendar-week").waitFor({ timeout: 8000 });
   await page.getByTestId("your-next").waitFor({ timeout: 8000 });
   const titles = await page.$$eval(".week__ev b", (els) => els.map((b) => {
-    const node = b.firstChild; const broken = []; let i = 0;
-    for (const word of b.textContent.split(" ")) {
-      if (node && word) {
-        const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + word.length);
-        if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) broken.push(word);
+    // Every word of every text node: does it sit on more than one line?
+    const broken = [];
+    const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      let i = 0;
+      for (const word of node.data.split(" ")) {
+        if (word) {
+          const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + word.length);
+          if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) broken.push(word);
+        }
+        i += word.length + 1;
       }
-      i += word.length + 1;
     }
-    return { text: b.textContent, broken, cut: b.scrollWidth > b.clientWidth + 1, ellipsis: getComputedStyle(b).textOverflow === "ellipsis" };
+    // A word cut short must say so: the box that clips it draws the ellipsis.
+    const boxes = [...b.querySelectorAll(".week__word")];
+    const clipped = boxes.length ? boxes.filter((w) => w.scrollWidth > w.clientWidth + 1) : b.scrollWidth > b.clientWidth + 1 ? [b] : [];
+    return { text: b.textContent, broken, cut: clipped.length > 0, ellipsis: clipped.every((el) => getComputedStyle(el).textOverflow === "ellipsis") };
   }));
   const broken = titles.filter((t) => t.broken.length);
   check(titles.length > 0 && broken.length === 0, `week beside Your next: no title breaks inside a word${broken.length ? ` — ${broken.map((t) => t.broken.join(",")).join("; ")}` : ""}`);

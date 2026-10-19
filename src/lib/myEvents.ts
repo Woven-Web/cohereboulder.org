@@ -174,6 +174,15 @@ function readSeatCache(did: string) {
   }
 }
 
+/** On sign-out: this device should not keep the account's RSVPs. */
+export function forgetSeatCache() {
+  try {
+    storage()?.removeItem(MY_SEATS_CACHE_KEY);
+  } catch {
+    // blocked storage holds nothing
+  }
+}
+
 function writeSeatCache(did: string, seats: Record<string, ActiveSeat | null>) {
   try {
     storage()?.setItem(MY_SEATS_CACHE_KEY, JSON.stringify({ did, seats }));
@@ -312,6 +321,9 @@ export function useMyEvents(events: CommunityEvent[] | undefined): UseMyEvents {
   const list = events;
   const candidates = useMemo(() => (list && signedIn ? seatLookupCandidates(list, Date.now()) : []), [list, signedIn]);
   const candidateIds = candidates.map(eventKey).join(",");
+  const lookup = signedIn && candidates.length > 0;
+  // Read once per account, and offered only while the lookups run: never in place of them.
+  const cachedSeats = useMemo(() => (did ? readSeatCache(did) : undefined), [did]);
   const seatsQuery = useQuery({
     queryKey: [MY_SEATS_QUERY_KEY, did, candidateIds],
     queryFn: async () => {
@@ -320,8 +332,8 @@ export function useMyEvents(events: CommunityEvent[] | undefined): UseMyEvents {
       return seats;
     },
     // Last visit's answers while this visit's are read: the page lays out right the first time.
-    placeholderData: () => (did ? readSeatCache(did) : undefined),
-    enabled: signedIn && candidates.length > 0,
+    placeholderData: lookup ? cachedSeats : undefined,
+    enabled: lookup,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
