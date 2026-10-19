@@ -12,9 +12,11 @@ export function SignInPrompt({ className }: { className?: string }) {
   const { data: config } = useSiteConfig();
   const laneOn = config?.regenosLoginEnabled === true;
   const { data: session, isLoading } = useRegenosSession(laneOn);
-  if (!laneOn || isLoading || session?.did) return null;
+  // Until we know, hold the line's place (most visitors are signed out), so it doesn't push the page down when it arrives.
+  const pending = config === undefined || (laneOn && isLoading);
+  if (!pending && (!laneOn || session?.did)) return null;
   return (
-    <p className={cn("text-center text-sm", className)} data-testid="signin-prompt">
+    <p className={cn("text-center text-sm", className)} data-testid={pending ? undefined : "signin-prompt"} aria-hidden={pending || undefined} style={pending ? { visibility: "hidden" } : undefined}>
       {tr("app.alreadyRegistered")}{" "}
       <button type="button" className="underline font-semibold min-h-12 px-2" onClick={openSignInDialog}>
         {tr("nav.signIn")}

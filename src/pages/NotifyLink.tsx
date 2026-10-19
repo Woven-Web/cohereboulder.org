@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
@@ -6,7 +6,7 @@ import { fill } from "@/components/almanac/format";
 import { EmailLinkSettings } from "@/components/notify/EmailLinkSettings";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchLink, linkAction, type LinkInfo, type NotifyType } from "@/lib/notify";
-import { formatEventDate } from "@/lib/events";
+import { eventPath, formatEventDate, formatEventTimeRange } from "@/lib/events";
 
 /**
  * Where a link in one of our emails lands, with no sign-in: the token says who
@@ -15,8 +15,11 @@ import { formatEventDate } from "@/lib/events";
  */
 export default function NotifyLink() {
   const { token = "" } = useParams();
-  const { tr } = useLanguage();
+  const { tr, setLanguage } = useLanguage();
   const info = useQuery({ queryKey: ["notify-link", token, "info"], queryFn: () => fetchLink(token), retry: false, staleTime: Infinity });
+  // Open in the language the email was written in; the toggle still switches after that.
+  const locale = info.data?.locale;
+  useEffect(() => { if (locale) setLanguage(locale); }, [locale, setLanguage]);
 
   return (
     <AlmanacShell>
@@ -52,7 +55,8 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
   const [previous, setPrevious] = useState<Record<string, number | null>>({});
   const email = info.email ?? "";
   const all = info.type === "all" || info.type === null;
-  const note = all ? tr("notify.link.unsubAll") : tr(`notify.notes.${info.type as NotifyType}.name`).toLowerCase();
+  // A note's name is a title ("Ready for tomorrow"), so it is quoted rather than run into the sentence.
+  const note = all ? tr("notify.link.unsubAll") : `“${tr(`notify.notes.${info.type as NotifyType}.name`)}”`;
 
   const name = info.event?.name ?? "";
 
@@ -83,11 +87,13 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
     if (done) title = fill(tr("notify.link.verifyDone"), { email });
   } else {
     // rsvp
-    const when = info.event?.startsAt ? formatEventDate(info.event.startsAt, language) : null;
+    const startsAt = info.event?.startsAt ?? null;
+    const when = startsAt ? [formatEventDate(startsAt, language), formatEventTimeRange(startsAt, null, language)].join(" · ") : null;
     title = info.event === null ? tr("notify.link.rsvpGone") : fill(tr("notify.link.rsvpTitle"), { name });
     body = info.event ? [when, info.event.where].filter(Boolean).join(" · ") + (when || info.event.where ? ". " : "") + fill(tr("notify.link.rsvpBody"), { email }) : "";
     button = tr("notify.link.rsvpButton"); action = "rsvp";
-    if (done) { title = tr("notify.link.rsvpDone"); body = ""; }
+    // After the press, still say which event (four links in one email give four of these pages).
+    if (done) { title = tr("notify.link.rsvpDone"); body = [name, when].filter(Boolean).join(" · "); }
   }
 
   return (
@@ -103,7 +109,9 @@ function Action({ token, info }: { token: string; info: LinkInfo }) {
         ) : info.kind === "unsub" && !undone ? (
           <button type="button" className="btn btn--line" disabled={busy} data-testid="link-undo" onClick={() => void run("resubscribe", { previous }).then((ok) => ok && setUndone(true))}>{tr("notify.link.undo")}</button>
         ) : null}
-        {done && info.kind !== "unsub" && <Link className="btn btn--line" to="/today">{tr("notify.link.home")}</Link>}
+        {done && info.kind === "rsvp" && info.event?.did && info.event.rkey ? (
+          <Link className="btn btn--line" to={eventPath({ did: info.event.did, rkey: info.event.rkey })}>{tr("almanac.details")}</Link>
+        ) : done && info.kind !== "unsub" && <Link className="btn btn--line" to="/today">{tr("notify.link.home")}</Link>}
       </div>
     </div>
   );

@@ -60,6 +60,7 @@ describe("Your next", () => {
   });
   it("is a quiet hint, not an empty box, with no events", () => {
     const client = new QueryClient();
+    client.setQueryData(["site-config"], { regenosLoginEnabled: true });
     client.setQueryData(["regenos-session"], { did: "did:plc:me" });
     const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />, client);
     expect(html).not.toContain('data-testid="your-next"');
@@ -67,9 +68,19 @@ describe("Your next", () => {
     expect(html).toContain('href="/calendar"');
   });
   it("signed out, points at Register instead of promising a list", () => {
-    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />);
+    const client = new QueryClient();
+    client.setQueryData(["site-config"], { regenosLoginEnabled: true });
+    client.setQueryData(["regenos-session"], null);
+    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />, client);
     expect(html).toContain('data-testid="next-signed-out"');
     expect(html).toContain('href="/register"');
+    expect(html).not.toContain("Nothing yet");
+  });
+  it("while it is still asking who you are, shows neither the signed-out card nor the empty hint", () => {
+    const html = wrap(<YourNextStrip items={[]} total={0} today="2026-10-17" />);
+    expect(html).toContain('aria-busy="true"');
+    expect(html).not.toContain('data-testid="next-signed-out"');
+    expect(html).not.toContain('href="/register"');
     expect(html).not.toContain("Nothing yet");
   });
 });

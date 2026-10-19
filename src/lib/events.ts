@@ -126,7 +126,7 @@ const EVENT_TIME_ZONE = "America/Denver";
 type Language = "en" | "es";
 
 function locale(language: Language): string {
-  return language === "es" ? "es" : "en-US";
+  return language === "es" ? "es-US" : "en-US";
 }
 
 function parseDate(iso: string | null): Date | null {

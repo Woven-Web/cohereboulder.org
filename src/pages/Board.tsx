@@ -62,7 +62,7 @@ function BoardView() {
 
   const chip = (value: string | null, label: string, n: number) => (
     <button type="button" key={value ?? "all"} className="chip" aria-pressed={tag === value} onClick={() => setTag(value)}>
-      {label}<span className="count">{n}</span>
+      {label}{!posts.isLoading && <span className="count">{n}</span>}
     </button>
   );
 

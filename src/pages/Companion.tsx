@@ -188,7 +188,7 @@ function TodayView() {
                     {tr('almanac.underwayNow')}{nowEvents.map(e => e.name).join(' · ')}
                 </p>
             )}
-            {laterEvents.length === 0 && nowEvents.length === 0 && !events.isError && phase !== 'before' && <p className="small" style={{ marginTop: '.6rem' }}>{tr('companion.noEvents')}</p>}
+            {laterEvents.length === 0 && nowEvents.length === 0 && events.isSuccess && phase !== 'before' && <p className="small" style={{ marginTop: '.6rem' }}>{tr('companion.noEvents')}</p>}
             <Link className="list-link" to={`/calendar?day=${phase === 'before' ? FESTIVAL_DATES[0] : date}`}>
                 <span>{tr(phase === 'before' ? 'almanac.allEventsThatDay' : 'almanac.allEventsToday')}{todaysEvents.length ? ` · ${todaysEvents.length}` : ''}</span><span aria-hidden="true">→</span>
             </Link>

@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   // supabase/ is an archive of the retired 2025 stack, not shipped code
-  { ignores: ["dist", "supabase"] },
+  { ignores: ["dist", "supabase", ".wrangler", "**/raw"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

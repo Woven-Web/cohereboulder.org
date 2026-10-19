@@ -98,7 +98,7 @@ export interface LinkInfo {
   email: string | null;
   locale: "en" | "es";
   view?: SettingsView;
-  event?: { name: string; startsAt: string | null; where: string | null } | null;
+  event?: { name: string; startsAt: string | null; where: string | null; did?: string; rkey?: string } | null;
 }
 
 export const fetchLink = (token: string) => call<LinkInfo>(`/api/notify/link/${encodeURIComponent(token)}`);

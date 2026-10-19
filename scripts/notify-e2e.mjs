@@ -414,7 +414,7 @@ try {
   const guest = await persona(null);
   await guest.page.goto(`/n/${unsub}`, { waitUntil: "networkidle" });
   await guest.page.getByTestId("link-unsub").waitFor({ timeout: 15_000 });
-  expect((await guest.page.getByTestId("link-title").innerText()).startsWith("Turn off the morning note?"), "the unsubscribe page asks first");
+  expect((await guest.page.getByTestId("link-title").innerText()).startsWith("Turn off “Morning note”?"), "the unsubscribe page asks first");
   expect(sql(`SELECT morning_on FROM notify_prefs WHERE person_key = '${sam}'`)[0].morning_on === 1, "opening the link changed nothing");
   await shot(guest.page, "notify-unsub-390x844");
   await guest.page.getByTestId("link-confirm").click();
@@ -479,6 +479,24 @@ try {
   await optin.page.getByTestId("link-confirm").click();
   await optin.page.getByTestId("link-optin").and(optin.page.locator('[data-done="true"]')).waitFor();
   expect(sql(`SELECT email_optin_at IS NOT NULL AS yes, morning_on FROM notify_prefs WHERE person_key = '${lonely}'`)[0]?.yes === 1, "one tap opts the address into the harvest and 8 PM notes");
+
+  // The 8 PM email's one-tap RSVP: the page gives the time, and after the press still names the event and links to it.
+  const rsvper = await persona(null);
+  await rsvper.page.goto(`/n/${link({ p: `mailto:rsvp-${stamp}@example.org`, k: "rsvp", d: "did:plc:mockscene", r: "ev-seed1" }, 3600)}`, { waitUntil: "networkidle" });
+  await rsvper.page.getByTestId("link-rsvp").waitFor({ timeout: 15_000 });
+  expect(/\d:\d\d [AP]M/.test(await rsvper.page.getByTestId("link-rsvp").innerText()), "the RSVP link page gives the start time, as the email does");
+  await rsvper.page.getByTestId("link-confirm").click();
+  await rsvper.page.getByTestId("link-rsvp").and(rsvper.page.locator('[data-done="true"]')).waitFor();
+  expect((await rsvper.page.getByTestId("link-rsvp").innerText()).includes("Seed Gathering"), "after the RSVP, the page still names the event");
+  expect((await rsvper.page.getByTestId("link-rsvp").getByRole("link").getAttribute("href")) === `/events/${encodeURIComponent("did:plc:mockscene")}/ev-seed1`, "after the RSVP, Details opens the event");
+
+  // Someone whose emails are in Spanish lands on a Spanish page.
+  const ana = `mailto:ana-${stamp}@example.org`;
+  sqlRun(`INSERT INTO notify_prefs (person_key, email, locale, created_at, updated_at) VALUES ('${ana}', 'ana-${stamp}@example.org', 'es', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')`);
+  const spanish = await persona(null);
+  await spanish.page.goto(`/n/${link({ p: ana, k: "settings" }, 3600)}`, { waitUntil: "networkidle" });
+  await spanish.page.getByTestId("email-settings").waitFor({ timeout: 15_000 });
+  expect((await spanish.page.locator("h1").first().innerText()) === "Avisos", "an emailed link opens in the language of the email");
 
   const forged = await persona(null);
   await forged.page.goto(`/n/${unsub.slice(0, -3)}abc`, { waitUntil: "networkidle" });

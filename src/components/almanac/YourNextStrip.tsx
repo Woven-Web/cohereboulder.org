@@ -27,7 +27,15 @@ export function YourNextStrip({ items, total, today }: Props) {
   const now = Date.now();
   const { data: config } = useSiteConfig();
   const loginOn = config?.regenosLoginEnabled === true;
-  const { data: session } = useRegenosSession(loginOn);
+  const { data: session, isLoading } = useRegenosSession(loginOn);
+  if (items.length === 0 && (config === undefined || (loginOn && isLoading))) {
+    // Still asking who this is: don't flash the signed-out card at a member.
+    return (
+      <section className="next" aria-label={tr("almanac.yourNextLabel")} aria-busy="true">
+        <div className="eyebrow">{tr("almanac.yourNext")}</div>
+      </section>
+    );
+  }
   if (items.length === 0 && !session?.did) {
     // Nobody to keep a list for yet: point at the two ways to become someone.
     return (
