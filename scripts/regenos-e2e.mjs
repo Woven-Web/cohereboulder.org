@@ -453,6 +453,8 @@ try {
   await page.getByRole("button", { name: /^(En\/Es|Es)$/ }).first().click();
   await page.getByRole("button", { name: "Añadir un evento" }).waitFor();
   ok("ES toggle: hosting strings render in Spanish");
+  // The site remembers the choice; the steps below read English, so forget it for their page loads.
+  await page.evaluate(() => localStorage.removeItem("cohere-language"));
 
   // ── 8. Sign out ───────────────────────────────────────────────────────────
   step = "sign out";
