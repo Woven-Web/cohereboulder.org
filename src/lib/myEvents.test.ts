@@ -9,6 +9,7 @@ import {
   mergeMyEvents,
   nextEvent,
   normalize,
+  parseSeatCache,
   parseStored,
   removeStored,
   seatLookupCandidates,
@@ -156,5 +157,19 @@ describe("seat lookups", () => {
     expect(seats["did:plc:scene/e1"]).toBe("confirmed");
     expect(seats["did:plc:scene/e2"]).toBeNull();
     expect("did:plc:scene/e3" in seats).toBe(false);
+  });
+});
+
+describe("parseSeatCache (last visit's seats, for a still first paint)", () => {
+  const raw = (v: unknown) => JSON.stringify(v);
+  it("gives back this account's seats, with anything but an active seat read as not going", () => {
+    expect(parseSeatCache(raw({ did: "did:plc:me", seats: { "a/1": "confirmed", "a/2": null, "a/3": "declined", "a/4": "waitlisted" } }), "did:plc:me"))
+      .toEqual({ "a/1": "confirmed", "a/2": null, "a/3": null, "a/4": "waitlisted" });
+  });
+  it("gives nothing for another account, or for anything malformed", () => {
+    expect(parseSeatCache(raw({ did: "did:plc:other", seats: { "a/1": "confirmed" } }), "did:plc:me")).toBeUndefined();
+    for (const bad of [null, "", "{", raw(null), raw([]), raw({ did: "did:plc:me" }), raw({ did: "did:plc:me", seats: ["a/1"] }), raw({ did: "did:plc:me", seats: "x" })]) {
+      expect(parseSeatCache(bad, "did:plc:me")).toBeUndefined();
+    }
   });
 });

@@ -116,7 +116,12 @@ function TodayView() {
     const mineKeys = new Set(mine.items.map(i => `${i.event.did}/${i.event.rkey}`));
     const todaysEvents = (events.data ?? []).filter(e => e.status !== 'cancelled' && denverDateKey(e.startsAt) === (phase === 'before' ? FESTIVAL_DATES[0] : date));
     const nowEvents = todaysEvents.filter(e => e.startsAt && Date.parse(e.startsAt) <= Date.now() && Date.parse(e.endsAt ?? e.startsAt) > Date.now());
-    const laterEvents = todaysEvents.filter(e => e.startsAt && Date.parse(e.startsAt) > Date.now() && !mineKeys.has(`${e.did}/${e.rkey}`)).slice(0, phase === 'before' ? 1 : 2);
+    // Later today: everything not yet over. Events already underway come first, then the next ones to start.
+    const notMine = (e: { did: string; rkey: string }) => !mineKeys.has(`${e.did}/${e.rkey}`);
+    const laterEvents = [
+        ...(phase === 'before' ? [] : nowEvents.filter(notMine)),
+        ...todaysEvents.filter(e => e.startsAt && Date.parse(e.startsAt) > Date.now() && notMine(e)).slice(0, phase === 'before' ? 1 : 2),
+    ];
     const quest = (data?.quests ?? []).find(q => !checks.includes(q.id));
 
     function didIt() {
@@ -183,11 +188,6 @@ function TodayView() {
             <div className="eyebrow" id="later-eyebrow">{tr(phase === 'before' ? 'almanac.thatDay' : 'almanac.laterToday')}</div>
             {events.isError && !isError && <p className="small" role="status">{tr('companion.offline')}</p>}
             {laterEvents.map(e => <EventRow key={`${e.did}/${e.rkey}`} event={e} descLimit={112} />)}
-            {phase !== 'before' && nowEvents.length > 0 && (
-                <p className="small" style={{ padding: '.6rem 0', borderTop: '1px solid var(--rule)' }}>
-                    {tr('almanac.underwayNow')}{nowEvents.map(e => e.name).join(' · ')}
-                </p>
-            )}
             {laterEvents.length === 0 && nowEvents.length === 0 && events.isSuccess && phase !== 'before' && <p className="small" style={{ marginTop: '.6rem' }}>{tr('companion.noEvents')}</p>}
             <Link className="list-link" to={`/calendar?day=${phase === 'before' ? FESTIVAL_DATES[0] : date}`}>
                 <span>{tr(phase === 'before' ? 'almanac.allEventsThatDay' : 'almanac.allEventsToday')}{todaysEvents.length ? ` · ${todaysEvents.length}` : ''}</span><span aria-hidden="true">→</span>

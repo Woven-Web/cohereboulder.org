@@ -1,6 +1,6 @@
-# Walkthrough: Oct 19 walk fixes
+# Walkthrough: calendar and masthead fixes (Oct 19)
 
-The narrated video is `walk-oct19/tour.mp4`. The stills are in `walk-oct19/pairs/` as `NN-name-before.png` and `NN-name-after.png`.
+The narrated video is `shots-flash/tour.mp4`. The stills are in `shots-flash/` as `NN-name-before.png` and `NN-name-after.png`.
 
 ## How to run it
 
@@ -8,31 +8,29 @@ Local only. The stack uses a fresh local database and the regenOS mock, and noth
 
 ```bash
 npm run build
-bash scripts/walk-oct19-stack.sh walk-oct19/raw/state &       # Worker + mock; prints the URLs
-node scripts/walk-oct19-seed.mjs walk-oct19/raw/state         # events Oct 19–22, a registrant, the 8 PM run
-node scripts/walk-oct19-pairs.mjs walk-oct19/raw/state after walk-oct19/raw/pairs
+E2E_PORT_OFFSET=3900 bash scripts/walk-oct19-stack.sh shots-flash/raw/state &   # Worker + mock; prints the URLs
+node scripts/walk-oct19-seed.mjs shots-flash/raw/state                          # events Oct 19–22
+node scripts/flash-calendar-check.mjs shots-flash/raw/state after shots-flash/raw/after
 ```
 
-- The 8 PM email the seed produces is written by the local `send_email` binding. Its path is in `walk-oct19/raw/state/worker.log` (`Email: …`).
-- Its links point at the local stack.
+- The check signs in as the mock member Pia (`mock-peer`), RSVPs her to two events, and slows her session answer by 0.6 s, as a real round trip to regenOS does.
+- It prints the layout shift, the masthead's words over time, the week titles and the URL after each step, and exits 1 if any check fails.
+- To see it by hand, open `http://127.0.0.1:23610/calendar?look=ecology` with the browser clock on Oct 20.
 
 ## Steps
 
-1. **The RSVP link in the 8 PM email** (pairs 01, 02).
-   - *Show:* the RSVP page, then the page after the tap.
-   - *Narration:* "Tap RSVP in the evening email. The page now gives the time, and after the tap it still names the event, with Details to open it."
-2. **Unsubscribe and Spanish** (pairs 03, 04, 13).
-   - *Show:* the unsubscribe title, the Spanish settings page, then the calendar after a reload in Spanish.
-   - *Narration:* "The unsubscribe page names the note properly. A Spanish email's link opens in Spanish, and Spanish stays chosen after a reload."
-3. **Times in Spanish** (pair 05).
-   - *Show:* the event header.
-   - *Narration:* "Six p m, M D T, the same as the calendar cards."
-4. **Loading without flashes** (pairs 06, 07, 09).
-   - *Show:* Home at 0.7 s and 2.5 s, Today at 0.7 s, and the Board while it loads.
-   - *Narration:* "Nothing jumps on Home, members don't see the signed-out card, and the Board doesn't show zeros while it loads."
-5. **Your next** (pair 08).
-   - *Show:* the link under Your next.
-   - *Narration:* "It says My events, and opens the calendar on your events."
-6. **Organizer portal** (pairs 10, 11, 12).
-   - *Show:* "Photo added" in blue, the tabs, and the phone event editor.
-   - *Narration:* "Successes no longer look like errors, the empty badges are gone, and the dates fit on a phone."
+1. **A member loads the calendar on a laptop** (`01-masthead-member-1280-700ms`).
+   - Show: before, the masthead at 0.7 s reads "About · Join COhere · Sign in". After, the same moment shows only the tabs and the language switch. Then "Register for the gathering · pia.mock.test".
+   - Say: "Before, a member saw the signed-out masthead for about half a second. Now those places stay empty until the site knows who you are."
+2. **A first-time visitor** (same page, signed out).
+   - Show: "Join COhere" appears at once.
+   - Say: "Someone who has never signed in on this device still gets the Register button straight away."
+3. **First paint on a phone** (`02-calendar-phone-*`).
+   - Show: before, at 0.3 s, "Loading events…", then the host card ("You don't need an account…") and the footer, all pushed down when the list lands. After, at 0.7 s, the day trail sits in place over "Loading events…", and the list then arrives whole.
+   - Say: "Layout shift went from about one to under a hundredth, on a phone and on a laptop."
+4. **The week beside Your next** (`04-week-grid-1280`).
+   - Show: before, "Watershe / d Walk" and "Communi / ty Potluck". After, "Watershed / Walk", and a too-long word ends in "…".
+   - Say: "Titles break between words now. Hovering a chip shows the full name."
+5. **Week, then reload** (`05-url-week-after-reload`).
+   - Show: pick Week. The address becomes `?day=2026-10-21&view=week`. Reload: the Week is still there. "Show every date" becomes `?view=day` and survives a reload too.
+   - Say: "The view is in the address, so a reload or a shared link shows the same thing."

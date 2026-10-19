@@ -22,7 +22,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CalendarPlus, Loader2, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
-import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { useAuthState, useMyRegistration } from "@/hooks/useRegenos";
 import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
@@ -30,6 +30,8 @@ import { useMyEvents, removeMyEvent, eventKey } from "@/lib/myEvents";
 import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 const VIEW_KEY = "cohere.calendar.view";
+/** How long a first paint waits, once the events are in, for a member's RSVP lookups (and roster, registration) before showing what it has. */
+const WAIT_MS = 1200;
 function readView(): "day" | "week" | null {
   try {
     const v = window.localStorage.getItem(VIEW_KEY);
@@ -50,11 +52,8 @@ export default function CalendarPage() {
   // The regenOS hosting lane — entirely absent until the Worker's
   // REGENOS_LOGIN_ENABLED flag is on (useSiteConfig reads /api/config), so
   // this page renders its pre-phase-2 self by default.
-  const { data: config } = useSiteConfig();
-  const hostingOn = config?.regenosLoginEnabled === true;
-  const { data: session } = useRegenosSession(hostingOn);
-  const signedIn = Boolean(session?.did);
-  const { data: registration } = useMyRegistration();
+  const { config, laneOn: hostingOn, session, signedIn, hold, settled } = useAuthState();
+  const { data: registration, isLoading: registrationLoading } = useMyRegistration();
   const today = currentDenverDate();
   const mine = useMyEvents(data?.events);
   const [params, setParams] = useSearchParams();
@@ -64,25 +63,37 @@ export default function CalendarPage() {
   // "My events · n" under Your next links here with ?mine=1, also from this page.
   const mineParam = params.get("mine") === "1";
   useEffect(() => { if (mineParam) setMode("my"); }, [mineParam]);
-  const [allDates, setAllDates] = useState(false);
   const [showMonth, setShowMonth] = useState(false);
   // Week is the default from 1024px, Day on phones and tablets; a choice the visitor makes sticks.
   const [chosenView, setChosenView] = useState<"day" | "week" | null>(readView);
-  // Picking a day (picker, trail, the week's header, or a link with ?day=) shows that day, whichever view is the default. It lasts this visit and does not overwrite the stored choice.
-  const [dayFocus, setDayFocus] = useState(() => Boolean(dayParam));
+  // The view lives in the URL, so a reload or a shared link shows what was on screen: ?view=week (anchored
+  // on ?day=), ?view=day&day=… one day, ?view=day alone every date. With no ?view, picking a day (picker,
+  // trail, the week's header, or a link with ?day=) shows that day, whichever view is the default.
+  const viewParam = params.get("view");
+  const urlView = viewParam === "day" || viewParam === "week" ? viewParam : null;
+  const everyDate = urlView === "day" && !dayParam;
   const xl = useMedia("(min-width: 1024px)");
   // Only the ecology look defaults to the week; every other look keeps the day list unless the visitor picks the week.
   const eco = useLook() === "ecology";
-  const view: "day" | "week" = dayFocus ? "day" : chosenView ?? (xl && eco ? "week" : "day");
+  const view: "day" | "week" = urlView ?? (dayParam ? "day" : chosenView ?? (xl && eco ? "week" : "day"));
   function setView(next: "day" | "week") {
-    setDayFocus(false);
     setChosenView(next);
     try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }
+    goTo({ view: next, day: selectedDay });
+  }
+  /** Rewrites ?day= and ?view=, keeping any other parameter (look, trail). ?mine=1 only opens the page on My events; the toggle isn't kept in the URL. */
+  function goTo(next: { day: string | null; view: "day" | "week" | null }) {
+    setParams((prev) => {
+      const out = new URLSearchParams(prev);
+      out.delete("mine");
+      for (const key of ["day", "view"] as const) { const value = next[key]; if (value) out.set(key, value); else out.delete(key); }
+      return out;
+    }, { replace: true });
   }
   const hasMine = mine.items.length > 0;
   const showingMine = hasMine && mode === "my";
   // Inside the festival the picker opens on today; outside it, every date.
-  const selectedDay = dayParam ?? (allDates ? null : isFestivalDate(today) ? today : null);
+  const selectedDay = dayParam ?? (everyDate ? null : isFestivalDate(today) ? today : null);
   const done = useMemo(() => practiceDoneDays(), []);
   const counts = useMemo(() => {
     const out: Record<string, number> = {};
@@ -94,13 +105,10 @@ export default function CalendarPage() {
     .map((i) => ({ event: i.event, seat: seatOf(i) })), [mine.items]);
 
   function pickDay(date: string) {
-    setDayFocus(true);
-    setAllDates(false);
-    setParams({ day: date }, { replace: true });
+    goTo({ day: date, view: null });
   }
   function showEveryDate() {
-    setAllDates(true);
-    setParams({}, { replace: true });
+    goTo({ day: null, view: "day" });
   }
 
   const allEvents = data?.events ?? [];
@@ -115,7 +123,7 @@ export default function CalendarPage() {
   const byDay = new Map<string, CommunityEvent[]>();
   for (const e of listed) { const k = denverDateKey(e.startsAt) ?? ""; byDay.set(k, [...(byDay.get(k) ?? []), e]); }
   const groups = [...byDay.entries()].sort(([x], [y]) => x.localeCompare(y));
-  const { data: roster } = useQuery({
+  const { data: roster, isLoading: rosterLoading } = useQuery({
     queryKey: ["scene-roster", config?.collectiveDid, session?.did],
     queryFn: () => fetchSceneRoster(config!.collectiveDid!),
     enabled: hostingOn && signedIn && Boolean(config?.collectiveDid),
@@ -123,6 +131,26 @@ export default function CalendarPage() {
   });
   const canHostCollective = canHostScene(session?.did ?? null, roster);
   const canCreate = hostingOn && signedIn && Boolean(config?.collectiveDid) && canHostCollective;
+  // First paint: the trail and a loading line until the events, who this is and (signed in) their RSVPs are
+  // all in, then the list arrives whole. The host card and the footer wait too: drawn early, they would sit
+  // in view under "Loading events…" and be pushed down when the list lands.
+  // Once in, they stay: a later refetch (after a delete, a sign-in, a new RSVP) must not blank the page again.
+  // The list waits for who this is only on a device that was signed in last time (useAuthState's `hold`,
+  // at most 3 s). It waits for a member's RSVP lookups only when the device remembers none of their answers
+  // (myEvents' seat cache), and not for long: they are one regenOS call per upcoming event, and the list
+  // matters more than a still layout. The same short wait bounds the roster and registration reads.
+  const [listSeen, setListSeen] = useState(false);
+  const [allSeen, setAllSeen] = useState(false);
+  const [waitOver, setWaitOver] = useState(false);
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = window.setTimeout(() => setWaitOver(true), WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
+  const listReady = listSeen || (!isLoading && !hold && (!mine.isLoading || waitOver));
+  const ready = allSeen || (listReady && settled && (!signedIn || waitOver || (!rosterLoading && !registrationLoading)));
+  if (listReady && !listSeen) setListSeen(true);
+  if (ready && !allSeen) setAllSeen(true);
 
   /** Which host surface is open: the sign-in panel, the create form, or an edit. */
   const [panel, setPanel] = useState<"none" | "signIn" | "create">("none");
@@ -153,6 +181,8 @@ export default function CalendarPage() {
       setDeletingRkey(null);
     }
   }
+
+  const trail = <HexTrail variant="pick" today={today} done={done} counts={counts} selected={selectedDay} onSelect={pickDay} />;
 
   const countLabel = (n: number) => (n === 1 ? tr("almanac.eventCountOne") : fill(tr("almanac.eventsCount"), { n }));
 
@@ -205,7 +235,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <AlmanacShell>
+    <AlmanacShell footer={ready}>
       <main className="page" style={{ paddingTop: 0 }}>
         <div style={{ paddingTop: ".9rem", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "1rem" }}>
           <h1 className="h1">{tr("almanac.calTitle")}</h1>
@@ -224,18 +254,14 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {isLoading ? (
-          <p className="small" style={{ padding: "3rem 0", textAlign: "center" }}>{tr("calendar.events.loading")}</p>
+        {!listReady ? (
+          <>
+            {trail}
+            <p className="small" role="status" style={{ padding: "3rem 0", textAlign: "center" }} data-testid="calendar-loading">{tr("calendar.events.loading")}</p>
+          </>
         ) : data?.source === "regenos" ? (
           <>
-            <HexTrail
-              variant="pick"
-              today={today}
-              done={done}
-              counts={counts}
-              selected={selectedDay}
-              onSelect={pickDay}
-            />
+            {trail}
             <div className={`flow2 flow2--side${hasMine ? "" : " flow2--solo"}`} style={{ marginTop: ".4rem" }}>
               {hasMine && <div className="flow2__a">
                 <div className="o1">
@@ -273,7 +299,7 @@ export default function CalendarPage() {
                       day={weekDay}
                       today={today}
                       onPick={pickDay}
-                      onWeek={(date) => { setAllDates(false); setParams({ day: date }, { replace: true }); }}
+                      onWeek={(date) => goTo({ day: date, view: "week" })}
                     />
                   ) : selectedDay ? (
                     <>
@@ -310,48 +336,51 @@ export default function CalendarPage() {
           <LumaCalendar />
         )}
 
-        {/* Propose an event: no account needed, lands in the organizers'
-            approval queue. */}
-        {!canCreate && <Card className="w-full mx-auto mt-12 bg-paper-3 border-ink/40 shadow-none">
-          <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-            <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
-            <p className="text-sm text-ink-2 flex-1">{tr(signedIn ? "calendar.proposeCallout.signedInText" : "calendar.proposeCallout.text")}</p>
-            <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
-              <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
-            </Button>
-          </CardContent>
-        </Card>}
+        {/* Until we know who this is, nothing: the signed-out wording must not flash at a member. */}
+        {ready && <div data-testid="calendar-host">
+          {/* Propose an event: no account needed, lands in the organizers'
+              approval queue. */}
+          {!canCreate && <Card className="w-full mx-auto mt-12 bg-paper-3 border-ink/40 shadow-none">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <Sparkles className="h-6 w-6 text-primary shrink-0" aria-hidden="true" />
+              <p className="text-sm text-ink-2 flex-1">{tr(signedIn ? "calendar.proposeCallout.signedInText" : "calendar.proposeCallout.text")}</p>
+              <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
+                <Link to="/propose">{tr("calendar.proposeCallout.button")}</Link>
+              </Button>
+            </CardContent>
+          </Card>}
 
-        {/* Hosting: only exists when the regenOS lane is enabled. */}
-        {hostingOn && (
-          <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
-            {signedIn ? (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  {!registration?.registered && <RegistrationAction className="btn btn--primary" />}
-                  {/* No collective DID means nothing to create an event
-                      under, so don't offer a button that does nothing. */}
-                  {panel !== "create" && !editing && canCreate && (
-                    <Button variant="community" size="sm" className="min-h-11 gap-2" onClick={() => { setEditing(null); setPanel("create"); }}>
-                      <CalendarPlus className="h-4 w-4" />
-                      {tr("calendar.host.addEvent")}
-                    </Button>
-                  )}
+          {/* Hosting: only exists when the regenOS lane is enabled. */}
+          {hostingOn && (
+            <div className={signedIn ? "mt-12 space-y-4" : "mt-2 space-y-4"}>
+              {signedIn ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {!registration?.registered && <RegistrationAction className="btn btn--primary" />}
+                    {/* No collective DID means nothing to create an event
+                        under, so don't offer a button that does nothing. */}
+                    {panel !== "create" && !editing && canCreate && (
+                      <Button variant="community" size="sm" className="min-h-11 gap-2" onClick={() => { setEditing(null); setPanel("create"); }}>
+                        <CalendarPlus className="h-4 w-4" />
+                        {tr("calendar.host.addEvent")}
+                      </Button>
+                    )}
+                  </div>
+                  {manageError && <p className="text-sm text-destructive text-center">{manageError}</p>}
+                </>
+              ) : panel === "signIn" ? (
+                <RegenosSignInPanel />
+              ) : (
+                <div className="text-center space-y-2">
+                  <span className="text-sm">{tr("calendar.proposeCallout.accountPrompt")}</span>{" "}
+                  <Button variant="link" size="sm" className="min-h-11 px-1 underline font-semibold" onClick={() => setPanel("signIn")}>
+                    {tr("calendar.proposeCallout.signIn")}
+                  </Button>
                 </div>
-                {manageError && <p className="text-sm text-destructive text-center">{manageError}</p>}
-              </>
-            ) : panel === "signIn" ? (
-              <RegenosSignInPanel />
-            ) : (
-              <div className="text-center space-y-2">
-                <span className="text-sm">{tr("calendar.proposeCallout.accountPrompt")}</span>{" "}
-                <Button variant="link" size="sm" className="min-h-11 px-1 underline font-semibold" onClick={() => setPanel("signIn")}>
-                  {tr("calendar.proposeCallout.signIn")}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>}
       </main>
     </AlmanacShell>
   );

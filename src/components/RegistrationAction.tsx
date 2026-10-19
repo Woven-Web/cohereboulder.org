@@ -2,15 +2,21 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
-import { useMyRegistration, useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
+import { useAuthState, useMyRegistration } from "@/hooks/useRegenos";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = React.HTMLAttributes<HTMLElement> & { anonymousKey?: string };
 export const RegistrationAction = forwardRef<HTMLElement, Props>(function RegistrationAction({ anonymousKey = "nav.register", ...props }, ref) {
   const { tr } = useLanguage();
-  const { data: config } = useSiteConfig();
-  const { data: session } = useRegenosSession(config?.regenosLoginEnabled === true);
-  const { data } = useMyRegistration();
+  const { session, hold } = useAuthState();
+  const { data, isLoading } = useMyRegistration();
+  // Not yet known whether this member is registered (or, on a device signed in last time, who this is):
+  // keep the button's place, empty, rather than flash "Join COhere" at a member.
+  if (hold || (session?.did && isLoading)) return (
+    <span ref={ref as React.Ref<HTMLSpanElement>} className={props.className} aria-hidden="true" style={{ visibility: "hidden" }} data-testid="registration-pending">
+      {tr(anonymousKey)}
+    </span>
+  );
   if (data?.registered) return (
     <span
       ref={ref as React.Ref<HTMLSpanElement>}

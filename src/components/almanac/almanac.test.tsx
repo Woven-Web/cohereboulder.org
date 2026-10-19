@@ -10,6 +10,8 @@ import { Ridgeline } from "./Folio";
 import { seatOf } from "./seat";
 import { fill } from "./format";
 import { AddressBlock } from "./AddressBlock";
+import { CalendarWeek } from "./CalendarWeek";
+import type { CommunityEvent } from "@/lib/events";
 
 const wrap = (node: React.ReactNode, client = new QueryClient()) => renderToStaticMarkup(<QueryClientProvider client={client}><MemoryRouter><LanguageProvider>{node}</LanguageProvider></MemoryRouter></QueryClientProvider>);
 
@@ -129,5 +131,14 @@ describe("ecology look", () => {
       expect(wrap(<HexTrail variant={variant} today="2026-10-17" />)).not.toContain("eco-ridges");
     }
     expect(at("/today?look=ecology", <HexTrail variant="fit" today="2026-10-17" />).match(/<a /g)).toHaveLength(11);
+  });
+});
+
+describe("CalendarWeek titles", () => {
+  it("puts each word of a title in its own box, so a line never breaks inside a word, and keeps the whole name as the tooltip", () => {
+    const event = { did: "did:plc:x", rkey: "walk", name: "Watershed  Walk", startsAt: "2026-10-20T16:00:00Z", endsAt: "2026-10-20T18:00:00Z", status: null } as CommunityEvent;
+    const html = wrap(<CalendarWeek events={[event]} day="2026-10-20" today="2026-10-20" onPick={() => {}} onWeek={() => {}} />);
+    expect(html).toContain('<b><span class="week__word">Watershed</span> <span class="week__word">Walk</span></b>');
+    expect(html).toContain('title="Watershed  Walk"');
   });
 });
