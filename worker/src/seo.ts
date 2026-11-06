@@ -4,8 +4,8 @@
 // fronts every route, so it rewrites the <head> of the served index.html:
 //
 //   - a single event page gets its own title / description / og / twitter
-//     tags, built from the same anonymous regenOS read /api/events/:did/:rkey
-//     uses (events.ts `handleEventDetail`);
+//     tags, built from the same anonymous read /api/events/:did/:rkey
+//     uses (events.ts `handleEventDetailWithArchive`);
 //   - every known page gets a canonical + og:url pointing at ITSELF, rather
 //     than all of them claiming to duplicate the homepage;
 //   - unknown paths (the SPA's 404) drop the canonical entirely.
@@ -16,7 +16,7 @@
 //
 // Also here: /sitemap.xml, and long-term caching for Vite's hashed /assets/*.
 
-import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
+import { handleEventDetailWithArchive, handleEventsList, type EventsEnv } from "./events";
 import { isPlaceholder } from "./event-completeness";
 
 /** Where canonical URLs point, whichever hostname served the request. */
@@ -271,7 +271,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 
 /** One event via the same anonymous read /api/events/:did/:rkey uses, or null. */
 async function lookupEvent(env: EventsEnv, did: string, rkey: string): Promise<MetaEvent | null> {
-  const res = await handleEventDetail(env, did, rkey, {});
+  const res = await handleEventDetailWithArchive(env, did, rkey, {});
   if (!res.ok) return null;
   const data = (await res.json()) as { event?: MetaEvent };
   return data.event?.name ? data.event : null;
