@@ -128,7 +128,8 @@ function MemberHarvests({ event, head, nameOf, did }: { event: CommunityEvent; h
             </div>
           ) : (
             <>
-              {!went && !seat.isLoading && <p className="small" style={{ marginTop: ".6rem" }} data-testid="harvest-didnt-rsvp">{tr("notify.harvest.didntRsvp")}</p>}
+              {/* Only on an answer: regenOS has no seat to report once an event has ended, and that isn't "you didn't RSVP". */}
+              {!went && seat.isSuccess && <p className="small" style={{ marginTop: ".6rem" }} data-testid="harvest-didnt-rsvp">{tr("notify.harvest.didntRsvp")}</p>}
               <Composer event={event} onShared={() => { refresh(); toast(tr("notify.harvest.shared")); window.setTimeout(() => document.getElementById("mine")?.scrollIntoView({ block: "center" }), 150); }} />
             </>
           )}

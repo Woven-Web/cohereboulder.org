@@ -49,6 +49,11 @@ describe("calendarView", () => {
     expect(keys(view.happened)).toEqual(["opening"]);
   });
 
+  it("a postponed festival event isn't part of what happened", () => {
+    const view = calendarView([opening, event("moved", "2026-10-20T18:00:00Z", { status: "postponed" })], AFTER, NOW);
+    expect(keys(view.happened)).toEqual(["opening"]);
+  });
+
   it("files a late-evening event under its Boulder day, not its UTC day", () => {
     // Oct 26 03:00 UTC is still the evening of Oct 25 in Boulder.
     const view = calendarView([event("late", "2026-10-26T03:00:00Z")], AFTER, NOW);

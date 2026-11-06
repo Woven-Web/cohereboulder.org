@@ -300,13 +300,14 @@ function endedAtMs(event: { startsAt: string | null; endsAt: string | null }): n
 
 /**
  * A PDS record as a calendar event, or null unless it is one worth keeping: ended, real, not
- * cancelled. A PDS need not validate a record against the lexicon, so a malformed one is skipped
+ * cancelled or postponed. A PDS need not validate a record against the lexicon, so a malformed one is skipped
  * here. Left to throw, one bad record would take the whole calendar down with it.
  */
 function toEndedEvent(row: GetEventsRow, now: number): CommunityEvent | null {
   try {
     const event = toCommunityEvent(row);
-    if (!event || event.status === "cancelled" || isTestRecord(event.name)) return null;
+    // Postponed joins cancelled: neither took place, and regenOS's own not-ended rule hides both.
+    if (!event || event.status === "cancelled" || event.status === "postponed" || isTestRecord(event.name)) return null;
     const ended = endedAtMs(event);
     return ended !== null && ended < now ? event : null;
   } catch {

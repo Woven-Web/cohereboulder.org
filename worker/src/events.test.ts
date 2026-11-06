@@ -42,6 +42,7 @@ describe("mergePastEvents", () => {
     const merged = mergePastEvents([], [
       record("kept", "2026-10-16T18:00:00Z"),
       record("gone", "2026-10-17T18:00:00Z", { status: `${COLLECTION}#cancelled` }),
+      record("later", "2026-10-18T18:00:00Z", { status: `${COLLECTION}#postponed` }),
     ], NOW);
     expect(merged.map((e) => e.rkey)).toEqual(["kept"]);
   });

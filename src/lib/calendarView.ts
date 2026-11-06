@@ -15,7 +15,7 @@ export interface CalendarView {
   mode: CalendarMode;
   /** Not ended yet (or undated), in the order given. Listed apart only in `upcoming-first`. */
   upcoming: CommunityEvent[];
-  /** The festival's own ended, uncancelled events. */
+  /** The festival's own ended events that took place: not cancelled, not postponed. */
   happened: CommunityEvent[];
   /** What the day list, week grid and day picker work from. */
   shown: CommunityEvent[];
@@ -23,7 +23,7 @@ export interface CalendarView {
 
 export function calendarView(events: CommunityEvent[], today: string, now: number): CalendarView {
   const upcoming = events.filter((e) => !eventHasEnded(e, now));
-  const happened = events.filter((e) => e.status !== "cancelled" && eventHasEnded(e, now) && isFestivalDate(denverDateKey(e.startsAt) ?? ""));
+  const happened = events.filter((e) => e.status !== "cancelled" && e.status !== "postponed" && eventHasEnded(e, now) && isFestivalDate(denverDateKey(e.startsAt) ?? ""));
   if (today > FESTIVAL_LAST && happened.length > 0) {
     // A cancelled event is not something to come to, so it doesn't hold the look back off the page.
     const mode = upcoming.some((e) => e.status !== "cancelled") ? "upcoming-first" : "happened";

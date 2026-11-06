@@ -169,6 +169,8 @@ if (mode === "nothing-upcoming") {
     check(new URL(page.url()).pathname.endsWith("ev-opening"), "member: the harvests link opens the event");
     // The appview no longer knows this event, so this only works if the write reads the repo too.
     await page.getByTestId("harvest-composer").waitFor({ timeout: 8000 });
+    await page.waitForLoadState("networkidle");
+    check(await page.getByTestId("harvest-didnt-rsvp").count() === 0, "member: no claim they didn't RSVP when regenOS can't say");
     await page.locator("#hv-t").fill("The opening stayed with me.");
     await page.getByTestId("harvest-share").click();
     await page.getByTestId("harvest-mine").waitFor({ timeout: 8000 }).catch(() => {});
