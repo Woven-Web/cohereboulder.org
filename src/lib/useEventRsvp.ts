@@ -67,5 +67,5 @@ export function useEventRsvp(event: CommunityEvent) {
     }
   }
 
-  return { rsvp, pending, upcoming, rsvpDone: rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted", handleRsvp };
+  return { signedIn, rsvp, pending, upcoming, rsvpDone: rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted", handleRsvp };
 }

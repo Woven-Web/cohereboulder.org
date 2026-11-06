@@ -64,6 +64,7 @@ if (mode === "nothing-upcoming") {
     check(list.indexOf("The Mock Invocation (Opening)") === 0 && list.at(-1) === "The Mock Integration (Closing)", "phone: runs from the opening to the close");
     check(await page.locator("[data-testid=card-rsvp]").count() === 0, "phone: no RSVP buttons");
     check(await page.locator("[data-testid=ev-ended]").count() === 0, "phone: no row is stamped Ended");
+    check(await page.locator("[data-testid=card-harvests]").count() === 0, "phone: signed out, no row leads to the members' gate");
     check(await noOverflow(page), "phone: no sideways scroll");
     await shot(page, "01-calendar-phone");
     await shot(page, "01-calendar-phone-full", true);
@@ -162,6 +163,10 @@ if (mode === "nothing-upcoming") {
     check((await titles(page)).length === REAL.length, "member: every event is listed");
     check(seatCalls.length === 0, `member: no seat lookups for rows that are over (${seatCalls.length})`);
     check(await page.getByRole("button", { name: /^Edit/ }).count() === 0, "member: no host controls on the look back");
+    check(await page.locator("[data-testid=card-harvests]").count() === REAL.length, "member: each row offers its harvests");
+    await page.locator("[data-testid=card-harvests]").first().click();
+    await page.getByRole("heading", { level: 1, name: "The Mock Invocation (Opening)" }).waitFor({ timeout: 8000 }).catch(() => {});
+    check(new URL(page.url()).pathname.endsWith("ev-opening"), "member: the harvests link opens the event");
     await context.close();
   }
 }

@@ -43,7 +43,7 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
   const { tr, language } = useLanguage();
   const { toast } = useShell();
   const navigate = useNavigate();
-  const { rsvp, pending, upcoming, rsvpDone, handleRsvp } = useEventRsvp(event);
+  const { signedIn, rsvp, pending, upcoming, rsvpDone, handleRsvp } = useEventRsvp(event);
   const { subscribed } = useReminders();
   const { offer } = useInstallOffer();
 
@@ -95,7 +95,11 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
           </p>
         )}
         {event.description && descLimit > 0 && <p className="ev__desc" data-testid="card-description">{clip(event.description.replace(/\s+/g, " ").trim(), descLimit)}</p>}
-        {valid && !cancelled && (
+        {/* In the look back, the row's only action is members' harvests, a quiet link. Signed out it would only lead to a sign-in gate, once per row. */}
+        {lookBack && signedIn && !cancelled && (
+          <div className="ev__acts"><Link className="link" to={`${eventPath(event)}#harvest`} data-testid="card-harvests">{tr("almanac.seeHarvests")}</Link></div>
+        )}
+        {!lookBack && valid && !cancelled && (
           <div className="ev__acts">
             {showButton && (
               <button
