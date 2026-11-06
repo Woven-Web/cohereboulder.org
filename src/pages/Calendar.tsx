@@ -29,7 +29,7 @@ import { describeWriteError, fetchSceneRoster, xrpcPost } from "@/lib/regenos";
 import { canHostScene } from "@/lib/hostAccess";
 import { buildDeleteEventInput } from "@/lib/eventForm";
 import { useMyEvents, removeMyEvent, eventKey } from "@/lib/myEvents";
-import { fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
+import { eventHasEnded, fetchCommunityCalendar, type CommunityEvent, denverDateKey } from "@/lib/events";
 
 const VIEW_KEY = "cohere.calendar.view";
 /** How long a first paint waits, once the events are in, for a member's RSVP lookups (and roster, registration) before showing what it has. */
@@ -125,6 +125,10 @@ export default function CalendarPage() {
   const mineKeys = new Set(mine.items.map((i) => eventKey(i.event)));
   const dayMineCount = dayEvents.filter((e) => mineKeys.has(eventKey(e))).length;
   const listed = showingMine ? dayEvents.filter((e) => mineKeys.has(eventKey(e))) : dayEvents;
+  // In upcoming-first the toggle speaks for the Coming up list as well as the festival's days.
+  const upcomingExtra = upcomingFirst ? calendar.upcoming : [];
+  const allCount = dayEvents.length + upcomingExtra.length;
+  const mineCount = dayMineCount + upcomingExtra.filter((e) => mineKeys.has(eventKey(e))).length;
   const upcomingListed = upcomingFirst ? (showingMine ? calendar.upcoming.filter((e) => mineKeys.has(eventKey(e))) : calendar.upcoming) : [];
   const itemFor = (event: CommunityEvent) => mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did);
   const byDay = new Map<string, CommunityEvent[]>();
@@ -239,7 +243,7 @@ export default function CalendarPage() {
           descLimit={showingMine ? 100 : 120}
           lookBack={lookBack}
           // The appview no longer holds an event once it's over, so an edit or delete there has nothing to act on.
-          hostControls={lookBack ? undefined : hostControlsFor(event) || undefined}
+          hostControls={eventHasEnded(event, Date.now()) ? undefined : hostControlsFor(event) || undefined}
         />
         {showingMine && item?.source === "email" && (
           <Button variant="ghost" size="sm" className="-mt-1 mb-2 text-muted-foreground" onClick={() => removeMyEvent(event)} data-testid="my-events-remove">
@@ -285,8 +289,8 @@ export default function CalendarPage() {
                   {hasMine && (
                     <div data-testid="my-events-toggle">
                       <div className="seg" role="group" aria-label={tr("almanac.segLabel")}>
-                        <button type="button" aria-pressed={!showingMine} onClick={() => setMode("all")}>{tr("almanac.allEvents")}<span className="count">{dayEvents.length}</span></button>
-                        <button type="button" aria-pressed={showingMine} onClick={() => setMode("my")}>{tr("calendar.events.myEventsFilter")}<span className="count">{dayMineCount}</span></button>
+                        <button type="button" aria-pressed={!showingMine} onClick={() => setMode("all")}>{tr("almanac.allEvents")}<span className="count">{allCount}</span></button>
+                        <button type="button" aria-pressed={showingMine} onClick={() => setMode("my")}>{tr("calendar.events.myEventsFilter")}<span className="count">{mineCount}</span></button>
                       </div>
                     </div>
                   )}

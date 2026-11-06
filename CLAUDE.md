@@ -385,8 +385,11 @@ in its `xrpc/scene.rs`), but the public record stays in the collective's repo.
 `getRecord`: `?past=1` adds the ended records (no cancelled, no TEST), and the event
 page and link previews fall back to the same record. A private event's record is not in
 the repo, so this exposes nothing new. An unended record never joins the list: the
-AppView alone says what is upcoming. `lookupLiveEvent` (RSVPs) keeps the live-only
-read, so an ended event stays "gone" there. `REGENOS_PDS_URL` only counts while
+AppView alone says what is upcoming. An ended record can't be checked that way: the
+AppView's listing records aren't in the repo, so an unlisted ended record would show,
+and an ended event from another author's repo wouldn't. `lookupLiveEvent` (RSVPs,
+check-ins, emailed RSVP links) keeps the live-only read, so an ended event stays "gone"
+there; harvests use `lookupEventWithArchive`, since they only open once an event ends. `REGENOS_PDS_URL` only counts while
 `REGENOS_PDS_DID` equals `REGENOS_COLLECTIVE_DID`, which keeps every local mock stack
 off the real PDS. If the collective moves PDS, update both vars.
 

@@ -29,7 +29,7 @@ import { eventImageUrl, imageVersions, type EventImagesEnv } from "./event-image
 // rough event would silently lose its address on the first edit. COhere events
 // are public invitations at published addresses.
 
-import { toCommunityEvent, type CommunityEvent, type GetEventsRow } from "./events";
+import { EVENT_LISTING_PATHS, toCommunityEvent, type CommunityEvent, type GetEventsRow } from "./events";
 import { missingDetails, type MissingDetail } from "./event-completeness";
 
 export interface RegenosServiceEnv extends EventImagesEnv {
@@ -250,7 +250,7 @@ const edgeCache = (caches as unknown as { default: Cache }).default;
  * next load instead of up to five minutes later.
  */
 export async function purgeEventsCache(url: URL): Promise<void> {
-  await edgeCache.delete(new Request(new URL("/api/events", url).toString())).catch(() => {});
+  await Promise.all(EVENT_LISTING_PATHS.map((path) => edgeCache.delete(new Request(new URL(path, url).toString())).catch(() => {})));
 }
 
 // --------------------------------------------------------------- validation

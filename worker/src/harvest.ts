@@ -26,7 +26,7 @@ import { eventEndMs } from "./notify-core";
 import { fetchSceneEvents } from "./notify-send";
 import { readVerifiedSessionDid, type RegenosAuthEnv } from "./regenos-auth";
 import { isRosterMember, type RosterEnv } from "./roster";
-import { lookupLiveEvent } from "./rsvps";
+import { lookupEventWithArchive } from "./rsvps";
 import type { EventsEnv } from "./events";
 
 export type HarvestEnv = AuthEnv & RegenosAuthEnv & RosterEnv & EventsEnv & { cohere: D1Database };
@@ -161,7 +161,7 @@ function validBody(value: unknown): string | null {
   return typeof value === "string" && value.trim() && Array.from(value.trim()).length <= HARVEST_TEXT_MAX ? value.trim() : null;
 }
 
-async function create(request: Request, env: HarvestEnv, did: string, lookup: typeof lookupLiveEvent): Promise<Response> {
+async function create(request: Request, env: HarvestEnv, did: string, lookup: typeof lookupEventWithArchive): Promise<Response> {
   const body = await readJson(request);
   if (!body) return json({ error: "invalid JSON" }, 400);
   const text = validBody(body.body);
@@ -267,7 +267,7 @@ async function photo(env: HarvestEnv, did: string, id: string): Promise<Response
 }
 
 /** Routes under /api/harvests. Null for any other path. */
-export async function handleHarvests(request: Request, env: HarvestEnv, url: URL, deps: { lookup?: typeof lookupLiveEvent; events?: typeof fetchSceneEvents } = {}): Promise<Response | null> {
+export async function handleHarvests(request: Request, env: HarvestEnv, url: URL, deps: { lookup?: typeof lookupEventWithArchive; events?: typeof fetchSceneEvents } = {}): Promise<Response | null> {
   const path = url.pathname;
   if (path !== "/api/harvests" && !path.startsWith("/api/harvests/")) return null;
   const method = request.method;
@@ -280,7 +280,7 @@ export async function handleHarvests(request: Request, env: HarvestEnv, url: URL
 
   if (path === "/api/harvests") {
     if (method === "GET") return list(env, who.did, url.searchParams.get("event") ?? "");
-    if (method === "POST") return create(request, env, who.did, deps.lookup ?? lookupLiveEvent);
+    if (method === "POST") return create(request, env, who.did, deps.lookup ?? lookupEventWithArchive);
     return json({ error: "method not allowed" }, 405);
   }
   if (path === "/api/harvests/mine" && method === "GET") return mine(env, who.did);

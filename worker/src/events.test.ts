@@ -134,11 +134,29 @@ describe("GET /api/events", () => {
     expect((await list("?past=true")).body.events.map((e) => e.rkey)).toEqual(["a", "b"]);
   });
 
-  it("the plain listing stays upcoming only, from the same cached copy", async () => {
+  it("the plain listing stays upcoming only and never touches the PDS", async () => {
     answers.appviewList = () => Response.json({ events: [record("next", "2026-12-01T18:00:00Z")] });
-    expect((await list("?past=1")).body.events.map((e) => e.rkey)).toEqual(["a", "b", "next"]);
     expect((await list()).body.events.map((e) => e.rkey)).toEqual(["next"]);
-    expect(pdsCalls).toHaveLength(3); // the second answer came from the cache
+    expect(pdsCalls).toEqual([]);
+    expect((await list("?past=1")).body.events.map((e) => e.rkey)).toEqual(["a", "b", "next"]);
+  });
+
+  it("the past listing is served from its own cached copy", async () => {
+    await list("?past=1");
+    const calls = pdsCalls.length;
+    expect((await list("?past=true")).body.events.map((e) => e.rkey)).toEqual(["a", "b"]);
+    expect(pdsCalls).toHaveLength(calls);
+  });
+
+  it("one malformed record is skipped, not the whole calendar", async () => {
+    answers.pdsList = () => Response.json({ records: [
+      record("bad-place", "2026-10-16T18:00:00Z", { locations: "somewhere" }),
+      record("bad-name", "2026-10-16T18:00:00Z", { name: 7 }),
+      record("good", "2026-10-17T18:00:00Z"),
+    ] });
+    const { body } = await list("?past=1");
+    expect(body.degraded).toBeUndefined();
+    expect(body.events.map((e) => e.rkey)).toEqual(["good"]);
   });
 
   it("with no PDS configured it behaves as before", async () => {
@@ -164,6 +182,8 @@ describe("GET /api/events", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     // The plain listing doesn't need the PDS, so its readers aren't told anything is wrong.
     expect((await list()).body.degraded).toBeUndefined();
+    // And the failure isn't kept for long: it clears on the next read once the short copy lapses.
+    expect(cacheStore.get("https://cohere.test/api/events?past=1")?.headers.get("Cache-Control")).toBe("public, max-age=60");
   });
 
   it("a failed PDS read keeps the upcoming events on screen", async () => {
@@ -216,6 +236,13 @@ describe("GET /api/events/:did/:rkey", () => {
   ])("answers 404 for a record that is %s", async (_label, row) => {
     answers.pdsRecord = () => Response.json(row);
     expect((await detail("x")).status).toBe(404);
+  });
+
+  it("a record with a malformed link list still opens", async () => {
+    answers.pdsRecord = () => Response.json(record("x", "2026-10-16T18:00:00Z", { uris: "not a list" }));
+    const res = await detail("x");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { event: { uris: unknown[] } }).event.uris).toEqual([]);
   });
 
   it("only ever reads the collective's own repo", async () => {

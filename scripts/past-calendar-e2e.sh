@@ -33,6 +33,7 @@ for mode in nothing-upcoming upcoming; do
   wait_for "http://127.0.0.1:$P_MOCK/xrpc/social.scenius.getEvents" "regenOS mock"
   setsid node node_modules/wrangler/bin/wrangler.js dev --port "$P_WORKER" --inspector-port "$P_INSPECT" "${PERSIST[@]}" \
     --var REGENOS_LOGIN_ENABLED:true \
+    --var REGENOS_SERVICE_TOKEN:mock-token \
     --var "REGENOS_BASE_URL:http://127.0.0.1:$P_MOCK" \
     --var "REGENOS_WEB_URL:http://127.0.0.1:$P_MOCK" \
     --var "REGENOS_PDS_URL:http://127.0.0.1:$P_MOCK" \

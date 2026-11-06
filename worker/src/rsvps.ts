@@ -21,7 +21,7 @@
 import type { AuthEnv, MailMessage } from "./auth";
 import { mailShell, rateLimited, sendMail } from "./auth";
 import type { EventsEnv } from "./events";
-import { handleEventDetail } from "./events";
+import { handleEventDetail, handleEventDetailWithArchive } from "./events";
 import { isPlaceholder } from "./event-completeness";
 import { icsEscape, icsJoin, icsTime } from "../../src/lib/icsCore";
 import { signLink } from "./notify-core";
@@ -188,9 +188,17 @@ export function formatWhen(iso: string, language: Lang, withDate = true): string
 
 // ------------------------------------------------------------ live event
 
-/** One anonymous regenOS read, through the same path the public detail page uses. */
+/** One anonymous regenOS read: "gone" once the event has ended and the appview stops serving it. */
 export async function lookupLiveEvent(env: EventsEnv, did: string, rkey: string): Promise<LiveLookup> {
-  const res = await handleEventDetail(env, did, rkey, {});
+  return toLookup(await handleEventDetail(env, did, rkey, {}));
+}
+
+/** The public event page's read: an ended event still answers, from the collective's repo. For what happens after an event: harvests. */
+export async function lookupEventWithArchive(env: EventsEnv, did: string, rkey: string): Promise<LiveLookup> {
+  return toLookup(await handleEventDetailWithArchive(env, did, rkey, {}));
+}
+
+async function toLookup(res: Response): Promise<LiveLookup> {
   if (res.status === 404) return { kind: "gone" };
   if (!res.ok) return { kind: "unavailable" };
   const data = (await res.json().catch(() => null)) as {

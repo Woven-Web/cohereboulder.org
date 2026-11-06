@@ -1,10 +1,12 @@
 # T-399 progress (attempt ixfrr7m7)
 
 Done:
-- Root cause verified. regenOS `xrpc/scene.rs` (not collective.rs) applies `not_ended_sql` unconditionally. The site's `/api/events?past=1` is `[]`; the PDS has 49 records (47 real + 2 TEST), the same 47 as `/calendar.ics`.
+- Root cause verified: regenOS `xrpc/scene.rs` applies `not_ended_sql` unconditionally.
+- Worker reads ended events from the PDS. Calendar and home look back. `past-calendar-e2e` lane.
+- Staging deployed once; live check passed. Review round 1 fixed.
 
 Next:
-- Worker: past events from the PDS, detail fallback. Calendar and home views. E2E lane. Staging deploy. Video. PR.
+- Review round 2, final full e2e against upstream baseline, redeploy staging, live check, film, PR.
 
 Open:
-- none yet
+- See the final report.

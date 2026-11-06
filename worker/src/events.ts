@@ -48,6 +48,11 @@ const FETCH_LIMIT = 200;
 const UPSTREAM_TIMEOUT_MS = 8_000;
 /** How long the edge may serve one trimmed listing before re-reading upstream. */
 const CACHE_SECONDS = 300;
+/**
+ * The edge's two copies of the listing, both dropped after a write. Separate so the plain one never
+ * waits on the PDS: home and the sitemap only want what is upcoming.
+ */
+export const EVENT_LISTING_PATHS = ["/api/events", "/api/events?past=1"];
 /** A listing missing its ended events is retried sooner. */
 const PARTIAL_CACHE_SECONDS = 60;
 /** The PDS's largest page, and enough pages for years of calendars. */
@@ -226,7 +231,7 @@ function isSafeUri(uri: string): boolean {
 /** `uris` has carried both bare strings and { uri, name } objects; take either, but only on a safe scheme. */
 function safeLinks(value: CalendarEventValue): { uri: string; name?: string }[] {
   const uris: { uri: string; name?: string }[] = [];
-  for (const entry of value.uris ?? []) {
+  for (const entry of Array.isArray(value.uris) ? value.uris : []) {
     const link: { uri?: unknown; name?: unknown } =
       typeof entry === "string" ? { uri: entry } : (entry ?? {});
     if (typeof link.uri !== "string" || !isSafeUri(link.uri)) continue;
@@ -293,18 +298,28 @@ function endedAtMs(event: { startsAt: string | null; endsAt: string | null }): n
   return Number.isNaN(end) ? start : end;
 }
 
-/** A PDS record as a calendar event, or null unless it is one worth keeping: ended, real, not cancelled. */
+/**
+ * A PDS record as a calendar event, or null unless it is one worth keeping: ended, real, not
+ * cancelled. A PDS need not validate a record against the lexicon, so a malformed one is skipped
+ * here. Left to throw, one bad record would take the whole calendar down with it.
+ */
 function toEndedEvent(row: GetEventsRow, now: number): CommunityEvent | null {
-  const event = toCommunityEvent(row);
-  if (!event || event.status === "cancelled" || isTestRecord(event.name)) return null;
-  const ended = endedAtMs(event);
-  return ended !== null && ended < now ? event : null;
+  try {
+    const event = toCommunityEvent(row);
+    if (!event || event.status === "cancelled" || isTestRecord(event.name)) return null;
+    const ended = endedAtMs(event);
+    return ended !== null && ended < now ? event : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * The AppView's list plus the collective's ended PDS records, soonest first, undated last. One row
  * per event, and the AppView's copy wins. A record that has not ended stays out: the AppView alone
- * says what is upcoming, so nothing it chose not to list can reach the calendar this way.
+ * says what is upcoming. Ended records can't be checked the same way: the AppView's listing records
+ * aren't in the repo, so an ended event record in the repo counts as a calendar event, and an ended
+ * event from another author's repo isn't seen. Today's records match the scene's .ics exactly.
  */
 export function mergePastEvents(listed: CommunityEvent[], records: GetEventsRow[], now: number): CommunityEvent[] {
   const byEvent = new Map(listed.map((event) => [`${event.did}/${event.rkey}`, event]));
@@ -378,15 +393,14 @@ export async function handleEventsList(
     return json({ events: [], unconfigured: true }, 200, { ...cors, ...NO_STORE });
   }
 
-  // The listing is viewer-independent by design, so one edge-cached copy per
-  // hostname serves everyone. (The Cache API is a no-op on workers.dev — it
-  // engages on the real domain.)
-  // The cached copy always carries the recent past; the plain listing is
-  // filtered down from it per request, so one cache entry (and the one purge
-  // after a write) serves both.
+  // The listing is viewer-independent by design, so edge-cached copies per
+  // hostname serve everyone. (The Cache API is a no-op on workers.dev — it
+  // engages on the real domain.) The plain copy carries whatever recent past
+  // the AppView returns and is filtered down per request; the past copy adds
+  // the PDS's ended events. See EVENT_LISTING_PATHS.
   const pastParam = new URL(request.url).searchParams.get("past");
   const withPast = pastParam === "1" || pastParam === "true";
-  const cacheKey = new Request(new URL("/api/events", request.url).toString());
+  const cacheKey = new Request(new URL(EVENT_LISTING_PATHS[withPast ? 1 : 0], request.url).toString());
   /** A past view whose ended events could not be read has only a blank to show: say so, and retry. */
   const answer = async (listing: Response): Promise<Response> => {
     if (withPast) {
@@ -403,13 +417,13 @@ export async function handleEventsList(
   upstream.searchParams.set("limit", String(FETCH_LIMIT));
 
   try {
-    // Together, so a healthy PDS adds no wait. The one cached copy always holds both.
+    // Together, so a healthy PDS adds no wait.
     const [res, repoEvents] = await Promise.all([
       fetch(upstream.toString(), {
         headers: { accept: "application/json" },
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       }),
-      readRepoEvents(env, scene),
+      withPast ? readRepoEvents(env, scene) : [],
     ]);
     if (!res.ok) {
       console.warn(`regenOS getEvents returned ${res.status} — degrading`);
@@ -527,8 +541,8 @@ export async function handleEventDetail(
 
 /**
  * The public event page's read: the AppView, then, once it has stopped serving the event, the
- * record in the collective's repo. Separate from handleEventDetail on purpose, because the RSVP
- * path (rsvps.ts) needs "gone" to keep meaning gone. The AppView's 401 and 404 both arrive here as
+ * record in the collective's repo. Separate from handleEventDetail on purpose, because the RSVP and
+ * check-in paths (rsvps.ts, checkins.ts) need "gone" to keep meaning gone. The AppView's 401 and 404 both arrive here as
  * 404, which is safe: a private event's record is not in the repo. Only ended, real, uncancelled
  * records open, the same ones the list shows, and only from the collective's own repo. A PDS
  * failure answers 503, so the page says "try again" and not "removed". Never throws.

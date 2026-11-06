@@ -43,7 +43,7 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
   const { tr, language } = useLanguage();
   const { toast } = useShell();
   const navigate = useNavigate();
-  const { signedIn, rsvp, pending, upcoming, rsvpDone, handleRsvp } = useEventRsvp(event);
+  const { signedIn, rsvp, pending, upcoming, rsvpDone, handleRsvp } = useEventRsvp(event, { skipSeat: lookBack });
   const { subscribed } = useReminders();
   const { offer } = useInstallOffer();
 

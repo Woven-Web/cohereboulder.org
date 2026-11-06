@@ -5,14 +5,15 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { eventHasEnded, eventPath, type CommunityEvent } from "@/lib/events";
+import { eventPath, type CommunityEvent } from "@/lib/events";
 import { useRegenosSession, useSiteConfig } from "@/hooks/useRegenos";
 import { fetchMySeat, rsvpOnRegenos } from "@/lib/regenos";
 import { MY_SEATS_QUERY_KEY, recordRegenosRsvp } from "@/lib/myEvents";
 
 export type RsvpState = "idle" | "going" | "requested" | "waitlisted" | "error";
 
-export function useEventRsvp(event: CommunityEvent) {
+/** `skipSeat`: this row has no RSVP to show or change, so don't ask regenOS. The festival's look back would ask once per row. */
+export function useEventRsvp(event: CommunityEvent, { skipSeat = false }: { skipSeat?: boolean } = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: config } = useSiteConfig();
@@ -27,8 +28,7 @@ export function useEventRsvp(event: CommunityEvent) {
   const { data: mySeat } = useQuery({
     queryKey: ["regenos-my-seat", event.did, event.rkey],
     queryFn: () => fetchMySeat(event.did, event.rkey),
-    // Over means no RSVP to show or change, and the festival's look back would otherwise ask regenOS once per row.
-    enabled: signedIn && !eventHasEnded(event, Date.now()),
+    enabled: signedIn && !skipSeat,
     staleTime: 30_000,
   });
   useEffect(() => {

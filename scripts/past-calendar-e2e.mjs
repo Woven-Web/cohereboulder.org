@@ -167,6 +167,12 @@ if (mode === "nothing-upcoming") {
     await page.locator("[data-testid=card-harvests]").first().click();
     await page.getByRole("heading", { level: 1, name: "The Mock Invocation (Opening)" }).waitFor({ timeout: 8000 }).catch(() => {});
     check(new URL(page.url()).pathname.endsWith("ev-opening"), "member: the harvests link opens the event");
+    // The appview no longer knows this event, so this only works if the write reads the repo too.
+    await page.getByTestId("harvest-composer").waitFor({ timeout: 8000 });
+    await page.locator("#hv-t").fill("The opening stayed with me.");
+    await page.getByTestId("harvest-share").click();
+    await page.getByTestId("harvest-mine").waitFor({ timeout: 8000 }).catch(() => {});
+    check(await page.getByTestId("harvest-mine").isVisible(), "member: a harvest can be shared on a festival event");
     await context.close();
   }
 }
