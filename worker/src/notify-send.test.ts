@@ -464,7 +464,7 @@ describe("the 8 PM note", () => {
     expect(soup.split("\n")[2]).toBe("✓ RSVP’d");
     const rsvpLinks = [...message.text!.matchAll(/RSVP: I’m going: (https:\/\/cohereboulder\.org\/n\/([A-Za-z0-9_.-]+))/g)];
     expect(rsvpLinks).toHaveLength(3);
-    const payload = await verifyLink(SECRET, rsvpLinks[0][2], new Date());
+    const payload = await verifyLink(SECRET, rsvpLinks[0][2], EVENING);
     expect(payload).toMatchObject({ p: "mailto:sam@example.org", k: "rsvp", d: "did:plc:mockscene" });
   });
   it("does not email an address that never opted in", async () => {
