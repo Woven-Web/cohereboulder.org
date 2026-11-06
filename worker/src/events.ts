@@ -33,6 +33,11 @@ export interface EventsEnv extends EventImagesEnv {
   REGENOS_WEB_URL?: string;
   /** The collective's PDS, no trailing slash. Unset: no ended events, the calendar behaves as before. */
   REGENOS_PDS_URL?: string;
+  /**
+   * The DID that PDS hosts. The URL only counts while this matches REGENOS_COLLECTIVE_DID, so a
+   * local stack pointed at a mock scene can never call the real PDS on the config it inherits.
+   */
+  REGENOS_PDS_DID?: string;
 }
 
 /** The borrowed event collection every regenOS event lives in. */
@@ -58,7 +63,7 @@ function baseUrl(env: EventsEnv): string | null {
 
 function pdsUrl(env: EventsEnv): string | null {
   const raw = env.REGENOS_PDS_URL?.trim();
-  return raw ? raw.replace(/\/+$/, "") : null;
+  return raw && env.REGENOS_PDS_DID?.trim() === collectiveDid(env) ? raw.replace(/\/+$/, "") : null;
 }
 
 function collectiveDid(env: EventsEnv): string | null {

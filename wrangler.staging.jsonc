@@ -43,6 +43,8 @@
     "REGENOS_WEB_URL": "https://scenius.social",
     // The collective's PDS: where ended events are read from, since the AppView stops serving them.
     "REGENOS_PDS_URL": "https://pds.techne.town",
+    // Only used while this equals REGENOS_COLLECTIVE_DID, which keeps local mock stacks off the real PDS.
+    "REGENOS_PDS_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_LOGIN_ENABLED": "false",
     "AUTO_MEMBER_ON_SIGNIN": "false"
   },

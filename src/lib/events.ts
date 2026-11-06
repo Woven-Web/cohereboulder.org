@@ -56,8 +56,8 @@ export interface CommunityCalendar {
 const LUMA_FALLBACK: CommunityCalendar = { source: "luma", events: [], icsUrl: null };
 
 /**
- * The upcoming community calendar, soonest first (`past`: with the last two
- * weeks' ended events too, for the Calendar page). Resolves to the Luma
+ * The upcoming community calendar, soonest first (`past`: with ended events too,
+ * for the Calendar page and the home page's look back). Resolves to the Luma
  * fallback only on the definite answers — unconfigured (no scene yet) or a
  * healthy-but-empty calendar. Throws on anything transient (degraded upstream,
  * bad status, network failure) so react-query retries and keeps prior data.
@@ -110,6 +110,14 @@ export async function fetchCommunityEvent(did: string, rkey: string): Promise<Co
   const data = (await res.json()) as { event?: CommunityEventDetail; icsUrl?: string | null };
   if (!data.event?.name) return null;
   return { event: data.event, icsUrl: typeof data.icsUrl === "string" ? data.icsUrl : null };
+}
+
+/** Over, by the same clock the calendar rows use (no usable end: an hour after it starts). An undated event hasn't ended. */
+export function eventHasEnded(event: Pick<CommunityEvent, "startsAt" | "endsAt">, now: number): boolean {
+  const start = Date.parse(event.startsAt ?? "");
+  if (Number.isNaN(start)) return false;
+  const end = Date.parse(event.endsAt ?? "");
+  return (Number.isNaN(end) || end <= start ? start + 3_600_000 : end) <= now;
 }
 
 /** In-site event page, mirroring scenius.social's route shape so links stay portable. */

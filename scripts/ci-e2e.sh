@@ -563,6 +563,14 @@ if ! WALK=0 bash scripts/calendar-desktop-e2e.sh; then
 fi
 echo "::endgroup::"
 
+# --- 18. past-calendar-e2e: the calendar after the festival, from the collective's PDS ---
+# Self-contained (its own scratch, servers and ports): see scripts/past-calendar-e2e.sh.
+echo "::group::past-calendar-e2e (after the festival lane)"
+if ! bash scripts/past-calendar-e2e.sh; then
+  fail=1
+fi
+echo "::endgroup::"
+
 rm -rf "$PERSIST_DIR"
 
 if [ "$fail" -ne 0 ]; then

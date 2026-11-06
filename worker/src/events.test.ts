@@ -79,7 +79,7 @@ describe("mergePastEvents", () => {
 
 // ------------------------------------------------------------- the two routes
 
-const env = { REGENOS_BASE_URL: "https://appview.test", REGENOS_COLLECTIVE_DID: SCENE, REGENOS_PDS_URL: "https://pds.test", REGENOS_WEB_URL: "https://appview.test" };
+const env = { REGENOS_BASE_URL: "https://appview.test", REGENOS_COLLECTIVE_DID: SCENE, REGENOS_PDS_URL: "https://pds.test", REGENOS_PDS_DID: SCENE, REGENOS_WEB_URL: "https://appview.test" };
 const PAGE_ONE = [record("a", "2026-10-16T18:00:00Z"), record("t", "2026-10-16T19:00:00Z", { name: "TEST" })];
 const PAGE_TWO = [record("b", "2026-10-25T18:00:00Z", { uris: [{ uri: "https://cohere.test/more", name: "More" }, { uri: "javascript:alert(1)" }] })];
 
@@ -145,6 +145,15 @@ describe("GET /api/events", () => {
     const { REGENOS_PDS_URL: _gone, ...noPds } = env;
     const res = await handleEventsList(new Request("https://cohere.test/api/events?past=1"), noPds, {});
     expect(await res.json()).toMatchObject({ events: [] });
+    expect(pdsCalls).toEqual([]);
+  });
+
+  it("a PDS configured for another DID is never called, so a mock scene can't reach the real one", async () => {
+    const res = await handleEventsList(new Request("https://cohere.test/api/events?past=1"), { ...env, REGENOS_COLLECTIVE_DID: "did:plc:mockscene" }, {});
+    expect(await res.json()).toMatchObject({ events: [] });
+    expect(pdsCalls).toEqual([]);
+    const detail = await handleEventDetailWithArchive({ ...env, REGENOS_COLLECTIVE_DID: "did:plc:mockscene" }, "did:plc:mockscene", "x", {});
+    expect(detail.status).toBe(404);
     expect(pdsCalls).toEqual([]);
   });
 

@@ -436,6 +436,45 @@ if (process.env.MOCK_GUIDE === "1") {
   }
 }
 
+// MOCK_PAST_FESTIVAL=nothing-upcoming|upcoming — the calendar after the festival (scripts/past-calendar-e2e.sh).
+// Like production since Oct 25: getEvents and getEvent no longer serve an ended event, and the
+// records live on in the collective's repo, read through com.atproto.repo.* on this same port
+// (REGENOS_PDS_URL). The repo also holds what the Worker must keep off the calendar: two TEST
+// records, a cancelled event, and a future record the appview doesn't list. Pages come five at a
+// time, with a cursor even on the last page that has records, as the real PDS does.
+const REPO_RECORDS = new Map();
+if (process.env.MOCK_PAST_FESTIVAL) {
+  events.delete("ev-seed0");
+  if (process.env.MOCK_PAST_FESTIVAL !== "upcoming") events.clear();
+  const place = { $type: "community.lexicon.location.address", name: "The Grange", street: "12 Mock Ln", locality: "Boulder", region: "CO", postalCode: "80302", country: "US" };
+  const add = (rkey, name, startsAt, hours = 2, extra = {}) => REPO_RECORDS.set(rkey, {
+    uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
+    cid: `mockcid-${rkey}`,
+    value: {
+      $type: "community.lexicon.calendar.event", name, startsAt,
+      endsAt: new Date(Date.parse(startsAt) + hours * 3600_000).toISOString(),
+      createdAt: "2026-09-01T00:00:00.000Z", locations: [place],
+      description: `${name}, as the hosts described it.\n\nA second paragraph, with more about the evening.`,
+      rsvpExpected: true, ...extra,
+    },
+  });
+  add("ev-opening", "The Mock Invocation (Opening)", "2026-10-15T23:30:00.000Z", 3);
+  add("ev-water", "Honoring the Creek", "2026-10-16T15:00:00.000Z", 1);
+  add("ev-test1", "TEST", "2026-10-16T21:36:00.000Z", 0.1);
+  add("ev-test2", "test", "2026-10-16T22:50:00.000Z", 0.1);
+  add("ev-birds", "Mindful Birding", "2026-10-17T15:00:00.000Z");
+  add("ev-market", "Free Market", "2026-10-17T16:00:00.000Z");
+  add("ev-skills", "Skill Share Fest", "2026-10-17T19:00:00.000Z", 6);
+  add("ev-film", "Film Night", "2026-10-19T00:30:00.000Z");
+  add("ev-called-off", "The Called-Off Picnic", "2026-10-20T18:00:00.000Z", 2, { status: "community.lexicon.calendar.event#cancelled" });
+  add("ev-trees", "Be More Like Trees", "2026-10-20T20:00:00.000Z", 1);
+  add("ev-stitch", "Social Stitchers", "2026-10-22T19:00:00.000Z");
+  add("ev-jam", "Writer's Block Jam", "2026-10-22T03:00:00.000Z", 1.5);
+  add("ev-song", "Community Song Circle", "2026-10-24T18:00:00.000Z", 1.5);
+  add("ev-closing", "The Mock Integration (Closing)", "2026-10-25T22:00:00.000Z", 4);
+  add("ev-not-listed", "Not On The Appview", new Date(Date.now() + 30 * 24 * 3600_000).toISOString());
+}
+
 function circleSubject(req, res, url) {
   const person = sessionPerson(req);
   if (!person) {
@@ -502,6 +541,20 @@ const server = http.createServer(async (req, res) => {
   }
 
   switch (nsid) {
+    case "com.atproto.repo.listRecords": {
+      if (url.searchParams.get("repo") !== SCENE_DID) return json(res, 400, { error: "RepoNotFound" });
+      const rows = [...REPO_RECORDS.values()];
+      const from = Number(url.searchParams.get("cursor") ?? 0);
+      const page = rows.slice(from, from + 5);
+      return json(res, 200, { records: page, ...(page.length ? { cursor: String(from + page.length) } : {}) });
+    }
+
+    case "com.atproto.repo.getRecord": {
+      const row = REPO_RECORDS.get(url.searchParams.get("rkey") ?? "");
+      if (url.searchParams.get("repo") !== SCENE_DID || !row) return json(res, 400, { error: "RecordNotFound" });
+      return json(res, 200, row);
+    }
+
     case "social.scenius.getEvents": {
       const rows = [...events.values()].map((e) => ({ ...e, hostName: "COhere Boulder" }));
       return json(res, 200, { scene: SCENE_DID, events: rows });

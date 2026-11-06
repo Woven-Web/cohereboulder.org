@@ -241,6 +241,14 @@ export const translations = {
     ended: { en: "Ended", es: "Terminó" },
     seeHarvests: { en: "Harvests", es: "Cosechas" },
     monthView: { en: "Month view", es: "Vista de mes" },
+    // After the festival: what happened
+    happenedTitle: { en: "COhere 2026 happened Oct 15–25", es: "COhere 2026 fue del 15 al 25 de octubre" },
+    happenedLede: { en: "{n} gatherings over ten days, made by this community. Here they are, day by day.", es: "{n} encuentros en diez días, creados por esta comunidad. Aquí están, día a día." },
+    happenedShort: { en: "{n} gatherings over ten days, made by this community.", es: "{n} encuentros en diez días, creados por esta comunidad." },
+    happenedNext: { en: "When something new is on the calendar, it shows up here first.", es: "Cuando haya algo nuevo en la agenda, aparecerá aquí primero." },
+    happenedSee: { en: "See what happened", es: "Ver lo que pasó" },
+    happenedPhotoAlt: { en: "People embracing in a circle at a COhere gathering", es: "Personas abrazándose en un círculo en un encuentro de COhere" },
+    comingUp: { en: "Coming up", es: "Próximamente" },
     // Event detail
     back: { en: "Calendar", es: "Agenda" },
     about: { en: "About", es: "Acerca de" },

@@ -26,6 +26,8 @@ interface Props {
   compact?: boolean;
   /** Edit / delete for hosts, and any extra row-level action. */
   hostControls?: ReactNode;
+  /** Part of the festival's look back: read as what happened, not as something that has lapsed. */
+  lookBack?: boolean;
 }
 
 const clip = (text: string, n: number) => (text.length > n ? `${text.slice(0, n - 1).replace(/\s+\S*$/, "")}…` : text);
@@ -35,7 +37,7 @@ const clip = (text: string, n: number) => (text.length > n ? `${text.slice(0, n 
  * description, and the three actions: RSVP, Add to calendar, Remind me. Used by
  * Today ("Later today") and Calendar.
  */
-export function EventRow({ event, item = null, showSource = false, descLimit = 110, compact = false, hostControls }: Props) {
+export function EventRow({ event, item = null, showSource = false, descLimit = 110, compact = false, hostControls, lookBack = false }: Props) {
   const seat: Seat | null = item ? seatOf(item) : null;
   const source = showSource ? item?.source ?? null : null;
   const { tr, language } = useLanguage();
@@ -69,7 +71,7 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
   const viaEmail = item?.source === "email";
   const showButton = upcoming && !viaEmail;
   const seatShown: Seat | null = seat ?? (rsvpDone ? (rsvp as Seat) : null);
-  const badgeShown = seatShown && !(showButton && rsvpDone);
+  const badgeShown = seatShown && !lookBack && !(showButton && rsvpDone);
   const rsvpLabel = rsvpDone ? tr(rsvp === "going" ? "calendar.events.cardGoing" : `calendar.rsvp.${rsvp}`).replace(/^✓ /, "") : rsvp === "error" ? tr("calendar.rsvp.error") : tr("calendar.events.cardRsvp");
 
   function remind() {
@@ -79,11 +81,11 @@ export function EventRow({ event, item = null, showSource = false, descLimit = 1
   }
 
   return (
-    <article className={`ev${compact ? " ev--compact" : ""}${status === "past" ? " is-past" : ""}${status === "now" ? " is-now" : ""}`} data-testid="event-card">
+    <article className={`ev${compact ? " ev--compact" : ""}${status === "past" && !lookBack ? " is-past" : ""}${status === "now" ? " is-now" : ""}`} data-testid="event-card">
       <div className="ev__time">{t1}<small>{t2}</small></div>
       <div>
         <h3 className={`ev__title${cancelled ? " line-through opacity-70" : ""}`}>
-          {(status === "now" || status === "past" || soon) && <span className="ev__soon" data-testid={status === "past" ? "ev-ended" : undefined}>{status === "now" ? tr("almanac.underway") : status === "past" ? tr("almanac.ended") : soon}</span>}
+          {(status === "now" || (status === "past" && !lookBack) || soon) && <span className="ev__soon" data-testid={status === "past" ? "ev-ended" : undefined}>{status === "now" ? tr("almanac.underway") : status === "past" ? tr("almanac.ended") : soon}</span>}
           <Link to={eventPath(event)}>{event.name}</Link>
         </h3>
         {(meta || badgeShown) && (

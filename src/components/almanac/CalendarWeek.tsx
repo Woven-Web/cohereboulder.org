@@ -14,6 +14,8 @@ interface Props {
   onPick: (date: string) => void;
   /** Step to the other week of the festival. */
   onWeek: (date: string) => void;
+  /** The festival's look back: every chip is over, so none is drawn as lapsed. */
+  lookBack?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * and title) that opens its page. The festival's ten days fall in two
  * weeks, so the arrows step between them.
  */
-export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: Props) {
+export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek, lookBack = false }: Props) {
   const { tr, language } = useLanguage();
   const days = weekOf(day);
   const first = FESTIVAL_DATES.indexOf(days[0]) === 0;
@@ -48,7 +50,7 @@ export function CalendarWeek({ events, mineKeys, day, today, onPick, onWeek }: P
               </button>
               {list.length === 0 && <p className="week__none" aria-label={tr("look.weekEmpty")}>·</p>}
               {list.map((e) => (
-                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} title={e.name} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined} data-past={Date.parse(e.endsAt ?? e.startsAt ?? "") < now ? "" : undefined}>
+                <Link key={`${e.did}/${e.rkey}`} className="week__ev" to={eventPath(e)} title={e.name} data-mine={mineKeys?.has(`${e.did}/${e.rkey}`) ? "" : undefined} data-past={!lookBack && Date.parse(e.endsAt ?? e.startsAt ?? "") < now ? "" : undefined}>
                   <span className="mono">{e.startsAt ? formatMinutes(denverMinutes(new Date(e.startsAt)), language) : ""}</span>
                   {/* Each word is its own box: lines break between words only, and a word wider than the chip ends in "…" in every browser. */}
                   <b>{e.name.split(/(\s+)/).filter(Boolean).map((part, i) => (/^\s+$/.test(part) ? " " : <span key={i} className="week__word">{part}</span>))}</b>

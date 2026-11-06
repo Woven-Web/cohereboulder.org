@@ -43,13 +43,13 @@ function addMonths(year: number, monthIndex: number, delta: number): { year: num
 const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6];
 const MAX_VISIBLE_PER_DAY = 3;
 
-export function CalendarMonthView({ events }: { events: CommunityEvent[] }) {
+export function CalendarMonthView({ events, openOn }: { events: CommunityEvent[]; /** "YYYY-MM-DD": open on this month, not today's. */ openOn?: string }) {
   const { language } = useLanguage();
   const tr = (key: string) => getTranslation(key, language);
 
   const todayKey = denverDateKey(new Date().toISOString());
   const [today] = useState(() => {
-    const [y, m] = (todayKey ?? "1970-01-01").split("-").map(Number);
+    const [y, m] = (openOn ?? todayKey ?? "1970-01-01").split("-").map(Number);
     return { year: y, monthIndex: m - 1 };
   });
   const [cursor, setCursor] = useState(today);

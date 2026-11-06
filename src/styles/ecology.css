@@ -55,7 +55,7 @@
 @media (min-width:768px){.alm.eco{--ridge-h:132px}}
 
 /* ---------- Type ---------- */
-.alm.eco :is(.h1,.h2,.h3,.wordmark,.home__title,.regcard__dates,.ev__title,.post__title,.next__title,.row__title,.profile__name,.daygroup__head h2,.df-card h2,.df-card h3,.skin h1,.skin h2,.skin h3,.foot__brand,.addr__lines b,.list-link,.btn,.seg button,.chip,.tabs a,.lang button,.prompt dd b,.post__by b,.opt b,.mode button b,.vis b){font-family:var(--head)}
+.alm.eco :is(.h1,.h2,.h3,.wordmark,.home__title,.regcard__dates,.ev__title,.post__title,.next__title,.row__title,.profile__name,.daygroup__head h2,.daygroup__head h3,.df-card h2,.df-card h3,.skin h1,.skin h2,.skin h3,.foot__brand,.addr__lines b,.list-link,.btn,.seg button,.chip,.tabs a,.lang button,.prompt dd b,.post__by b,.opt b,.mode button b,.vis b){font-family:var(--head)}
 .alm.eco :is(.h1,.h2,.h3,.home__title,.ev__title,.post__title,.df-card h2,.skin h1,.skin h2,.skin h3){letter-spacing:-.01em;color:var(--night)}
 /* titles are Lora Bold; card headings (h3, event/post titles) stay Poppins 600 */
 .alm.eco.eco :is(.h1,.h2,.home__title,.regcard__dates,.df-card h2,.skin h1,.skin h2,.wordmark,.foot__brand){font-family:var(--title);font-weight:700}
@@ -476,3 +476,8 @@
   .alm main.page--board .board__side{grid-column:1;position:static}
   .alm main.page--board .board__feed{grid-column:2;grid-row:1 / 6}
 }
+
+.alm.eco .happened__photo img{border:0;border-radius:110px 110px 24px 24px}
+/* The photo is this view's landscape: no ridge as well, so the festival's days stay near the top. */
+.alm.eco .happened ~ .eco-ridges--trail{display:none}
+.alm.eco .happened ~ .trail--pick{border-radius:28px}

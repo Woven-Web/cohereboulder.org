@@ -2,12 +2,14 @@ import { RegistrationAction } from "@/components/RegistrationAction";
 import { useEffect, useMemo, useState } from "react";
 import { AlmanacShell } from "@/components/almanac/AlmanacShell";
 import { HexTrail } from "@/components/almanac/HexTrail";
+import { HappenedHead } from "@/components/almanac/HappenedHead";
 import { YourNextStrip } from "@/components/almanac/YourNextStrip";
 import { EventRow } from "@/components/almanac/EventRow";
 import { fill, useMedia } from "@/components/almanac/format";
 import { CalendarWeek } from "@/components/almanac/CalendarWeek";
 import { seatOf } from "@/components/almanac/seat";
-import { FESTIVAL_DATES, formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
+import { FESTIVAL_DATES, FESTIVAL_FIRST, formatDay, isFestivalDate, practiceDoneDays } from "@/lib/festival";
+import { calendarView } from "@/lib/calendarView";
 import { useLook } from "@/lib/look";
 import { currentDenverDate } from "@/lib/companion";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
@@ -55,6 +57,8 @@ export default function CalendarPage() {
   const { config, laneOn: hostingOn, session, signedIn, hold, settled } = useAuthState();
   const { data: registration, isLoading: registrationLoading } = useMyRegistration();
   const today = currentDenverDate();
+  const calendar = useMemo(() => calendarView(data?.events ?? [], today, Date.now()), [data?.events, today]);
+  const upcomingFirst = calendar.mode === "upcoming-first";
   const mine = useMyEvents(data?.events);
   const [params, setParams] = useSearchParams();
   const dayParam = isFestivalDate(params.get("day") ?? "") ? params.get("day") : null;
@@ -75,7 +79,8 @@ export default function CalendarPage() {
   const xl = useMedia("(min-width: 1024px)");
   // Only the ecology look defaults to the week; every other look keeps the day list unless the visitor picks the week.
   const eco = useLook() === "ecology";
-  const view: "day" | "week" = urlView ?? (dayParam ? "day" : chosenView ?? (xl && eco ? "week" : "day"));
+  // The week grid only draws the festival's days, so it can't be what greets someone when something else is upcoming.
+  const view: "day" | "week" = urlView ?? (dayParam || upcomingFirst ? "day" : chosenView ?? (xl && eco ? "week" : "day"));
   function setView(next: "day" | "week") {
     setChosenView(next);
     try { window.localStorage.setItem(VIEW_KEY, next); } catch { /* private mode: the choice just lasts this visit */ }
@@ -111,7 +116,8 @@ export default function CalendarPage() {
     goTo({ day: null, view: "day" });
   }
 
-  const allEvents = data?.events ?? [];
+  const allEvents = calendar.shown;
+  const lookBackKeys = new Set(calendar.mode === "live" ? [] : calendar.happened.map(eventKey));
   const weekMode = xl && view === "week";
   // The week needs a day to anchor on: the chosen one, today in the festival, else day one.
   const weekDay = selectedDay ?? (isFestivalDate(today) ? today : FESTIVAL_DATES[0]);
@@ -119,10 +125,17 @@ export default function CalendarPage() {
   const mineKeys = new Set(mine.items.map((i) => eventKey(i.event)));
   const dayMineCount = dayEvents.filter((e) => mineKeys.has(eventKey(e))).length;
   const listed = showingMine ? dayEvents.filter((e) => mineKeys.has(eventKey(e))) : dayEvents;
+  const upcomingListed = upcomingFirst ? (showingMine ? calendar.upcoming.filter((e) => mineKeys.has(eventKey(e))) : calendar.upcoming) : [];
   const itemFor = (event: CommunityEvent) => mine.items.find((i) => i.event.rkey === event.rkey && i.event.did === event.did);
   const byDay = new Map<string, CommunityEvent[]>();
   for (const e of listed) { const k = denverDateKey(e.startsAt) ?? ""; byDay.set(k, [...(byDay.get(k) ?? []), e]); }
   const groups = [...byDay.entries()].sort(([x], [y]) => x.localeCompare(y));
+  const groupsOf = (list: CommunityEvent[]) => {
+    const days = new Map<string, CommunityEvent[]>();
+    for (const e of list) { const k = denverDateKey(e.startsAt) ?? ""; days.set(k, [...(days.get(k) ?? []), e]); }
+    // Undated events sort last here: what is coming up reads soonest first, then "date to be announced".
+    return [...days.entries()].sort(([x], [y]) => (x || "~").localeCompare(y || "~"));
+  };
   const { data: roster, isLoading: rosterLoading } = useQuery({
     queryKey: ["scene-roster", config?.collectiveDid, session?.did],
     queryFn: () => fetchSceneRoster(config!.collectiveDid!),
@@ -216,6 +229,7 @@ export default function CalendarPage() {
 
   const row = (event: CommunityEvent) => {
     const item = itemFor(event);
+    const lookBack = lookBackKeys.has(eventKey(event));
     return (
       <div key={`${event.did}/${event.rkey}`}>
         <EventRow
@@ -223,7 +237,9 @@ export default function CalendarPage() {
           item={item ?? null}
           showSource={showingMine}
           descLimit={showingMine ? 100 : 120}
-          hostControls={hostControlsFor(event) || undefined}
+          lookBack={lookBack}
+          // The appview no longer holds an event once it's over, so an edit or delete there has nothing to act on.
+          hostControls={lookBack ? undefined : hostControlsFor(event) || undefined}
         />
         {showingMine && item?.source === "email" && (
           <Button variant="ghost" size="sm" className="-mt-1 mb-2 text-muted-foreground" onClick={() => removeMyEvent(event)} data-testid="my-events-remove">
@@ -261,7 +277,8 @@ export default function CalendarPage() {
           </>
         ) : data?.source === "regenos" ? (
           <>
-            {trail}
+            {calendar.mode === "happened" && <HappenedHead count={calendar.happened.length} />}
+            {!upcomingFirst && trail}
             <div className={`flow2 flow2--side${hasMine ? "" : " flow2--solo"}`} style={{ marginTop: ".4rem" }}>
               {hasMine && <div className="flow2__a">
                 <div className="o1">
@@ -292,8 +309,26 @@ export default function CalendarPage() {
                       <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>{tr("look.calWeek")}</button>
                     </div>
                   )}
+                  {upcomingFirst && (
+                    <div data-testid="calendar-upcoming">
+                      <h2 className="h2" style={{ marginTop: ".6rem" }}>{tr("almanac.comingUp")}</h2>
+                      {upcomingListed.length === 0 && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyMineDay")}</p>}
+                      {groupsOf(upcomingListed).map(([date, list]) => (
+                        <section key={date || "undated"} className="daygroup">
+                          <div className="daygroup__head">
+                            <h3>{date ? formatDay(date, language, true) : tr("calendar.events.undated")}</h3>
+                            <span>{countLabel(list.length)}</span>
+                          </div>
+                          <div className="cal-list">{list.map(row)}</div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                  {upcomingFirst && <HappenedHead count={calendar.happened.length} sub />}
+                  {upcomingFirst && trail}
                   {weekMode ? (
                     <CalendarWeek
+                      lookBack={calendar.mode !== "live"}
                       events={showingMine ? allEvents.filter((e) => mineKeys.has(eventKey(e))) : allEvents}
                       mineKeys={showingMine ? undefined : mineKeys}
                       day={weekDay}
@@ -326,7 +361,7 @@ export default function CalendarPage() {
                   )}
                   {!weekMode && groups.length === 0 && !selectedDay && <p className="lede" style={{ marginTop: ".8rem" }}>{tr("almanac.emptyDay")}</p>}
                   <button type="button" className="link" style={{ marginTop: ".8rem", display: "block" }} aria-expanded={showMonth} onClick={() => setShowMonth((v) => !v)}>{tr("almanac.monthView")}</button>
-                  {showMonth && <div className="mt-3"><CalendarMonthView events={allEvents} /></div>}
+                  {showMonth && <div className="mt-3"><CalendarMonthView events={upcomingFirst ? [...calendar.upcoming, ...allEvents] : allEvents} openOn={calendar.mode === "happened" ? FESTIVAL_FIRST : undefined} /></div>}
                   {data.icsUrl && <div style={{ marginTop: ".6rem" }}><CalendarSubscribe feedUrl={data.icsUrl} /></div>}
                 </div>
               </div>
