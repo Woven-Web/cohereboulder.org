@@ -35,7 +35,7 @@ import {
   type AdminGateEnv,
 } from "./admin-gate";
 import { CALENDAR_FEED_PATH, handleCalendarFeed } from "./calendar-feed";
-import { handleEventDetail, handleEventsList, type EventsEnv } from "./events";
+import { handleEventDetailWithArchive, handleEventsList, type EventsEnv } from "./events";
 import { decorateAssetResponse, handleSitemap } from "./seo";
 import { handleXrpcProxy, isRegenosLoginEnabled, relayableCookies, type RegenosAuthEnv } from "./regenos-auth";
 // --- admin event + access management (feat/admin-events-access) ---
@@ -1018,7 +1018,7 @@ export default {
       const parts = path.slice("/api/events/".length).split("/");
       if (parts.length === 2 && parts[0] && parts[1]) {
         try {
-          return await handleEventDetail(
+          return await handleEventDetailWithArchive(
             env,
             decodeURIComponent(parts[0]),
             decodeURIComponent(parts[1]),

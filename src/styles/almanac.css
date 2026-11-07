@@ -256,7 +256,7 @@
 
 .alm .daygroup{margin-top:var(--sp-5)}
 .alm .daygroup__head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);padding-bottom:var(--sp-1)}
-.alm .daygroup__head h2{font-weight:600;font-size:var(--fs-h3)}
+.alm .daygroup__head :is(h2,h3){font-weight:600;font-size:var(--fs-h3)}
 .alm .daygroup__head span{font:500 calc(.75 * var(--u))/1 var(--mono);color:var(--ink-2)}
 .alm .agenda-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-top:var(--sp-4)}
 
@@ -683,3 +683,20 @@
 .alm .ev{grid-template-columns:calc(4.7 * var(--u)) minmax(0,1fr)}
 .alm .ev>div{min-width:0}
 .alm :is(.ev__title,.ev__meta,.ev__desc){overflow-wrap:anywhere}
+
+/* The Calendar's look back at the festival. On a phone it stays short, so the first day shows without
+   scrolling; from a tablet up, the words sit beside the photo at page-heading size. */
+.alm .happened{display:grid;gap:var(--sp-2);margin:var(--sp-2) 0 var(--sp-3)}
+.alm .happened__words{display:grid;gap:var(--sp-1);align-content:center}
+.alm .happened__title{text-wrap:balance}
+.alm .happened__words .lede{margin:0;max-width:34rem;text-wrap:pretty}
+.alm .happened__words .small{margin:0;max-width:34rem}
+.alm .happened__photo{margin:0}
+.alm .happened__photo img{display:block;width:100%;height:auto;aspect-ratio:5/2;object-fit:cover;object-position:60% 35%;border:var(--rule-w) solid var(--rule)}
+.alm .happened--sub{margin-top:var(--sp-6)}
+@media (min-width:768px){
+  .alm .happened:not(.happened--sub){grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:var(--sp-6);margin:var(--sp-3) 0 var(--sp-4)}
+  .alm .happened:not(.happened--sub) .happened__title{font-size:var(--fs-h1)}
+  .alm .happened__words{gap:var(--sp-2)}
+  .alm .happened__photo img{aspect-ratio:2/1}
+}

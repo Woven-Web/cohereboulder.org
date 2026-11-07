@@ -7,6 +7,7 @@ import { Check, Clock, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import {
+  eventHasEnded,
   eventPath,
   formatEventDate,
   formatEventTimeRange,
@@ -97,7 +98,7 @@ export function EventCard({ event, hostControls }: { event: CommunityEvent; host
               </Link>}
             </div>
           )}
-          {event.startsAt && !cancelled && (
+          {event.startsAt && !cancelled && !eventHasEnded(event, Date.now()) && (
             <div className="mt-4 flex flex-wrap gap-2">
               {upcoming && (
                 <Button

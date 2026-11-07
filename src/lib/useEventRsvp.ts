@@ -12,7 +12,8 @@ import { MY_SEATS_QUERY_KEY, recordRegenosRsvp } from "@/lib/myEvents";
 
 export type RsvpState = "idle" | "going" | "requested" | "waitlisted" | "error";
 
-export function useEventRsvp(event: CommunityEvent) {
+/** `skipSeat`: this row has no RSVP to show or change, so don't ask regenOS. The festival's look back would ask once per row. */
+export function useEventRsvp(event: CommunityEvent, { skipSeat = false }: { skipSeat?: boolean } = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: config } = useSiteConfig();
@@ -27,7 +28,7 @@ export function useEventRsvp(event: CommunityEvent) {
   const { data: mySeat } = useQuery({
     queryKey: ["regenos-my-seat", event.did, event.rkey],
     queryFn: () => fetchMySeat(event.did, event.rkey),
-    enabled: signedIn,
+    enabled: signedIn && !skipSeat,
     staleTime: 30_000,
   });
   useEffect(() => {
@@ -66,5 +67,5 @@ export function useEventRsvp(event: CommunityEvent) {
     }
   }
 
-  return { rsvp, pending, upcoming, rsvpDone: rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted", handleRsvp };
+  return { signedIn, rsvp, pending, upcoming, rsvpDone: rsvp === "going" || rsvp === "requested" || rsvp === "waitlisted", handleRsvp };
 }

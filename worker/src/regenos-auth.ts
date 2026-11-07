@@ -37,6 +37,7 @@
 //     cookie, and both must reach the browser or sign-in silently fails.
 //   * Never cached, in either direction.
 
+import { EVENT_LISTING_PATHS } from "./events";
 import { attendanceCache, attendanceKey } from "./attendance-cache";
 import { moderateRecords, type CircleRecord, type ModerationEnv } from "./board-moderation";
 import { refuseCrossSiteWrite } from "./csrf";
@@ -338,7 +339,7 @@ export async function handleXrpcProxy(
   // drop it here, where the write flows through, so the calendar page's next
   // refetch shows the change (worker/src/events.ts caches for 300s).
   if (EVENT_WRITE_NSIDS.has(nsid) && upstream.ok) {
-    await edgeCache.delete(new Request(new URL("/api/events", url).toString())).catch(() => {});
+    await Promise.all(EVENT_LISTING_PATHS.map((path) => edgeCache.delete(new Request(new URL(path, url).toString())).catch(() => {})));
   }
 
   // A landed RSVP changes who is confirmed for that event; drop our short-lived

@@ -29,7 +29,8 @@ no other backend.**
 cohereboulder.org ─→ Worker "cohere-signup"
         ├── /                    static assets (dist/, SPA fallback)
         ├── /api/form/:slug      a form's questions            (public)
-        ├── /api/events[/…]      community calendar, proxied from regenOS (public)
+        ├── /api/events[/…]      community calendar, proxied from regenOS; ended events from
+        │                        the collective's PDS (public)
         ├── /calendar.ics        the calendar as a subscribable feed (scenius feed, TEST
         │                        events dropped, 15-min edge cache; calendar-feed.ts)
         ├── /api/config          what the SPA needs to know (regenOS flag + DID)
@@ -54,6 +55,7 @@ cohereboulder.org ─→ Worker "cohere-signup"
                ↓
         D1 `cohere`  +  KV: COHERE_AUTH (sessions), SIGNUPS (legacy mirror)
                      +  regenOS (scenius.social), the calendar's only store
+                     +  the collective's PDS (pds.techne.town), read-only, for ended events
 ```
 
 `www.cohereboulder.org` and `cohere-signup.unforced.workers.dev` serve the same
@@ -375,6 +377,27 @@ Other things that have to stay true:
   access. `cohere-site.scenius.social` and `claudeji.scenius.social` are
   refused for role changes and revokes server-side — revoking the first would
   break the portal from inside the portal.
+
+**Ended events come from the PDS, not the AppView.** regenOS's `getEvents` and
+`getEvent` stop serving an event once it ends and have no past option (`not_ended_sql`
+in its `xrpc/scene.rs`), but the public record stays in the collective's repo.
+`worker/src/events.ts` reads it anonymously with `com.atproto.repo.listRecords` and
+`getRecord`: `?past=1` adds the ended records (no cancelled, no TEST), and the event
+page and link previews fall back to the same record. A private event's record is not in
+the repo, so this exposes nothing new. An unended record never joins the list: the
+AppView alone says what is upcoming. An ended record can't be checked that way: the
+AppView's listing records aren't in the repo, so an unlisted ended record would show,
+and an ended event from another author's repo wouldn't. `lookupLiveEvent` (RSVPs,
+check-ins, emailed RSVP links) keeps the live-only read, so an ended event stays "gone"
+there; harvests use `lookupEventWithArchive`, since they only open once an event ends. `REGENOS_PDS_URL` only counts while
+`REGENOS_PDS_DID` equals `REGENOS_COLLECTIVE_DID`, which keeps every local mock stack
+off the real PDS. If the collective moves PDS, update both vars.
+
+After the festival, `src/lib/calendarView.ts` decides what the page shows: with nothing
+upcoming, "COhere 2026 happened Oct 15–25" and its events by day; with anything
+upcoming, that first and the festival below. Home does the same. Moving
+`FESTIVAL_DATES` to next year needs the heading strings (`almanac.happened*`) updated
+too. Test it with `scripts/past-calendar-e2e.sh` (the mock's `MOCK_PAST_FESTIVAL`).
 
 **Rotating the token**: mint a new Lane-A agent token for `cohere-site` on
 regenOS carrying the seven scopes above, update the `REGENOS_SERVICE_TOKEN`

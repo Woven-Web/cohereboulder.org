@@ -66,7 +66,9 @@ it("uploads, serves, replaces, and removes a photo; JSON tracks the version", as
   expect((await call(publicPath)).status).toBe(404);
   const data = await (await call(`/api/events/${did}/ev1`)).json();
   expect(data.event.imageUrl).toBeNull();
-  expect(cacheDelete).toHaveBeenCalledTimes(3);
+  // Three writes, and each drops both cached copies of the listing.
+  expect(cacheDelete).toHaveBeenCalledTimes(6);
+  expect(new Set(cacheDelete.mock.calls.map(([request]) => new URL((request as Request).url).pathname + new URL((request as Request).url).search))).toEqual(new Set(["/api/events", "/api/events?past=1"]));
 });
 it("never serves metadata with a non-image type", async () => {
   await call(imagePath, "PUT", png);

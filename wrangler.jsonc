@@ -70,6 +70,10 @@
     "REGENOS_COLLECTIVE_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     "REGENOS_BASE_URL": "https://scenius.social",
     "REGENOS_WEB_URL": "https://scenius.social",
+    // The collective's PDS: where ended events are read from, since the AppView stops serving them.
+    "REGENOS_PDS_URL": "https://pds.techne.town",
+    // Only used while this equals REGENOS_COLLECTIVE_DID, which keeps local mock stacks off the real PDS.
+    "REGENOS_PDS_DID": "did:plc:w54s52ycbw5lreyhlzexredb",
     // Personal regenOS sign-in + on-site hosting (worker/src/regenos-auth.ts).
     // Enabled 2026-09-28 on Aaron's go-ahead; cohereboulder.org is in regenOS ALLOWED_APP_ORIGINS.
     "REGENOS_LOGIN_ENABLED": "true",
