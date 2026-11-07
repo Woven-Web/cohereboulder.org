@@ -54,6 +54,9 @@ const eveningStart=['05','06'].map(h=>`${nextDay}T${h}:30:00Z`).find(iso=>denver
 assert.ok(eveningStart,'could not place an evening event in Denver');
 const denverNoon=['18','19'].map(h=>`${date}T${h}:00:00Z`).find(iso=>denverClock.format(new Date(iso)).replace(',','')===`${date} 12:00`);
 assert.ok(denverNoon,'could not place noon in Denver');
+// Midnight in Denver is 06:00 UTC in daylight time and 07:00 UTC after the first Sunday of November.
+const denverMidnight=Date.parse(['06','07'].map(h=>`${nextDay}T${h}:00:00Z`).find(iso=>denverClock.format(new Date(iso)).replace(',','')===`${nextDay} 00:00`)??'');
+assert.ok(!Number.isNaN(denverMidnight),'could not place midnight in Denver');
 assert.equal((await api('/api/admin/events',{name:'Local evening gathering',startsAt:eveningStart,endsAt:new Date(Date.parse(eveningStart)+6*3600000).toISOString()},'POST',true)).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'=local formula',name:'<script>local</script>'})).status,200);
 assert.equal((await api('/api/companion/replies',{device_id:device,reply:'again'})).status,429);
@@ -162,14 +165,14 @@ try{
  // Freeze browser wall time across Denver midnight and provide local next-day content.
  const rolloverContext=await browser.newContext({serviceWorkers:'block'});
  await rolloverContext.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
- const rollover=await rolloverContext.newPage();await rollover.clock.setFixedTime(new Date(tomorrow.toISOString().slice(0,10)+'T05:59:59Z'));
+ const rollover=await rolloverContext.newPage();await rollover.clock.setFixedTime(new Date(denverMidnight-1000));
  let day=date,reads=0;
  await rollover.route('**/api/companion/today',route=>{reads++;return route.fulfill({json:{date:day,daily:{title:'Rollover practice',question:'Rollover question'},quests:[],pushKey:null}});});
  await rollover.route('**/api/companion/replies',route=>route.fulfill({json:{ok:true}}));
  await rollover.goto(base+'/today');await rollover.getByRole('button',{name:'Write an answer',exact:true}).click();await rollover.getByLabel('Your reply',{exact:true}).fill('Local answer');await rollover.getByRole('button',{name:'Send reply',exact:true}).click();await rollover.getByRole('status').filter({hasText:'Your reply is saved'}).waitFor();
  assert.equal(await rollover.locator('#reply-text').isDisabled(),true);
  day=tomorrow.toISOString().slice(0,10);const before=reads;
- await rollover.clock.setFixedTime(new Date(tomorrow.toISOString().slice(0,10)+'T06:00:01Z'));await rollover.getByRole('button',{name:'Write an answer',exact:true}).waitFor();
+ await rollover.clock.setFixedTime(new Date(denverMidnight+1000));await rollover.getByRole('button',{name:'Write an answer',exact:true}).waitFor();
  await rollover.waitForFunction(()=>!document.querySelector('#reply-text')?.disabled);
  assert(reads>before);assert.equal(await rollover.locator('#reply-text').inputValue(),'');await rolloverContext.close();
  process.stdout.write('PASS companion: Denver rollover refreshes content and resets answered form\n');

@@ -120,7 +120,7 @@ wait_for() {
 
 start_mock() {
   local port="$1" logfile="$2"
-  PORT="$port" MOCK_ROSTER_PAGE_SIZE="${MOCK_ROSTER_PAGE_SIZE:-0}" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
+  PORT="$port" MOCK_ROSTER_PAGE_SIZE="${MOCK_ROSTER_PAGE_SIZE:-0}" MOCK_NOW="${MOCK_NOW:-}" setsid node scripts/regenos-mock.mjs >"$logfile" 2>&1 &
   PIDS+=("$!")
   wait_for "http://127.0.0.1:$port/xrpc/social.scenius.getEvents" "regenOS mock on :$port"
 }
@@ -465,12 +465,17 @@ WRANGLER_LOCAL_ARGS=(--persist-to "$PERSIST_DIR-ecology")
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/schema.sql >/dev/null
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=scripts/fixtures/look-companion.sql >/dev/null
-start_mock ${P28964} "$PWA_SCRATCH/pwa-merge-mock-14.log"
+# The lane's browsers are fixed to Oct 17 (DAY3 in ecology-e2e.mjs, which checks it matches). The
+# Worker's event listing and the mock's relative seeds are pinned to the same instant, or after the
+# festival the Worker drops the lane's October events as long over.
+ECO_NOW=2026-10-17T16:00:00Z
+MOCK_NOW="$ECO_NOW" start_mock ${P28964} "$PWA_SCRATCH/pwa-merge-mock-14.log"
 start_worker ${P28965} ${P28244} "$PWA_SCRATCH/pwa-merge-worker-14.log" \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:${P28964} \
-  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
-if ! node scripts/ecology-e2e.mjs http://127.0.0.1:${P28965} http://127.0.0.1:${P28964} ${LOOK_SHOTS:+$LOOK_SHOTS/ecology}; then
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var "E2E_LISTING_NOW:$ECO_NOW"
+if ! E2E_LISTING_NOW="$ECO_NOW" node scripts/ecology-e2e.mjs http://127.0.0.1:${P28965} http://127.0.0.1:${P28964} ${LOOK_SHOTS:+$LOOK_SHOTS/ecology}; then
   tail -80 "$PWA_SCRATCH/pwa-merge-worker-14.log"
   fail=1
 fi

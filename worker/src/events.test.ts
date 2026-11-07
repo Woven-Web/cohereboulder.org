@@ -142,6 +142,32 @@ describe("GET /api/events", () => {
     expect((await list("?past=1")).body.events.map((e) => e.rkey)).toEqual(["a", "b", "next"]);
   });
 
+  it("an e2e lane's pinned clock moves the listing only against a loopback mock, never the real appview", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // 17:00–18:00Z on Oct 16: over by NOW (Nov 6), half way through at the pin. Oct 5 is over by
+    // either clock, but within ?past=1's 14 days only by the pinned one.
+    answers.appviewList = () => Response.json({ events: [record("festival", "2026-10-16T17:00:00Z"), record("early", "2026-10-05T17:00:00Z")] });
+    const pin = "2026-10-16T17:30:00Z";
+    const mock = { ...env, REGENOS_BASE_URL: "http://127.0.0.1:9945", REGENOS_PDS_URL: undefined };
+    const rkeys = async (extra: Record<string, string | undefined>, query = "") => {
+      cacheStore.clear();
+      const res = await handleEventsList(new Request(`https://cohereboulder.org/api/events${query}`), { ...env, E2E_LISTING_NOW: pin, ...extra }, {});
+      return ((await res.json()) as { events: CommunityEvent[] }).events.map((e) => e.rkey);
+    };
+    expect(await rkeys({})).toEqual([]);
+    // Once per isolate, so it is this first ignored pin that says so.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("E2E_LISTING_NOW ignored"));
+    expect(await rkeys({ REGENOS_BASE_URL: "https://scenius.social" })).toEqual([]);
+    expect(await rkeys({ REGENOS_BASE_URL: "http://127.0.0.1.nip.io:9945" })).toEqual([]);
+    expect(await rkeys({ ...mock, E2E_LISTING_NOW: "not a date" })).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(await rkeys(mock)).toEqual(["festival"]);
+    expect(await rkeys(mock, "?past=1")).toEqual(["early", "festival"]);
+    expect(await rkeys({ ...mock, E2E_LISTING_NOW: undefined }, "?past=1")).toEqual([]);
+    warn.mockRestore();
+  });
+
   it("the past listing is served from its own cached copy", async () => {
     await list("?past=1");
     const calls = pdsCalls.length;

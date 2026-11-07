@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Runs scripts/calendar-desktop-e2e.mjs (and, with a shots dir, scripts/desktop-walk.mjs)
-# hermetically: a fresh local D1/KV, the regenOS mock (MOCK_NOTIFY=1, so there are events that
-# just ended) and `wrangler dev`. Nothing leaves this machine; no production or scenius.social
-# endpoint is contacted and nothing is sent.
+# hermetically: a fresh local D1/KV, the regenOS mock (MOCK_NOTIFY=1: two events that just ended by
+# the real clock, so after the festival a member's upcoming seats here) and `wrangler dev`.
+# Nothing leaves this machine; no production or scenius.social endpoint is contacted and nothing
+# is sent.
 #
 #   npm run build && E2E_PORT_OFFSET=1800 bash scripts/calendar-desktop-e2e.sh [shots-dir]
 #
@@ -28,6 +29,13 @@ npx wrangler d1 execute cohere --local "${PERSIST[@]}" --file=worker/schema.sql 
 npx wrangler d1 execute cohere --local "${PERSIST[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
 npx wrangler d1 execute cohere --local "${PERSIST[@]}" --file=scripts/fixtures/look-companion.sql >/dev/null
 
+# The scripts' browsers are fixed to Oct 16 noon in Boulder (NOON, which calendar-desktop-e2e.mjs checks
+# matches), and so is the Worker's event listing, or after the festival it drops these October events
+# as long over. The mock stays on the real clock: MOCK_NOTIFY's "just ended" events (the member is
+# seated on both) end after the festival, so to this lane they are the member's upcoming RSVPs that
+# Your next shows. The mock's "Last Month's Potluck" (real now − 21 days) is listed for runs from
+# about Nov 6 on, on a festival day until about Nov 15; no check counts it or depends on its absence.
+export E2E_LISTING_NOW=2026-10-16T18:00:00Z
 MOCK_NOTIFY=1 PORT="$P_MOCK" setsid node scripts/regenos-mock.mjs >"$SCRATCH/mock.log" 2>&1 & PIDS+=("$!")
 wait_for "http://127.0.0.1:$P_MOCK/xrpc/social.scenius.getEvents" "regenOS mock"
 setsid node node_modules/wrangler/bin/wrangler.js dev --port "$P_WORKER" --inspector-port "$P_INSPECT" "${PERSIST[@]}" \
@@ -35,6 +43,7 @@ setsid node node_modules/wrangler/bin/wrangler.js dev --port "$P_WORKER" --inspe
   --var REGENOS_SERVICE_TOKEN:mock-token \
   --var "REGENOS_BASE_URL:http://127.0.0.1:$P_MOCK" \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var "E2E_LISTING_NOW:$E2E_LISTING_NOW" \
   >"$SCRATCH/worker.log" 2>&1 & PIDS+=("$!")
 wait_for "http://127.0.0.1:$P_WORKER/" "wrangler dev"
 
