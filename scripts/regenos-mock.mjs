@@ -131,10 +131,19 @@ const SCOPE_ERROR = {
   message: "this token is not authorized for this method (scope check)",
 };
 
+/**
+ * The instant the seeded events and posts are placed around ("a week out", "just ended").
+ * MOCK_NOW anchors it for a lane whose browser and Worker are pinned to a festival day
+ * (E2E_LISTING_NOW), so what the lane sees doesn't depend on the day CI runs. Unset: the real clock.
+ */
+const MOCK_NOW = process.env.MOCK_NOW ? Date.parse(process.env.MOCK_NOW) : NaN;
+if (process.env.MOCK_NOW && Number.isNaN(MOCK_NOW)) throw new Error(`MOCK_NOW is not an ISO instant: ${process.env.MOCK_NOW}`);
+const mockNow = () => (Number.isNaN(MOCK_NOW) ? Date.now() : MOCK_NOW);
+
 /** The mock calendar: starts with one scene-authored future event. */
 const events = new Map();
 function seedEvent() {
-  const startsAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+  const startsAt = new Date(mockNow() + 7 * 24 * 3600 * 1000).toISOString();
   events.set("ev-seed1", {
     uri: `at://${SCENE_DID}/community.lexicon.calendar.event/ev-seed1`,
     value: {
@@ -156,7 +165,7 @@ function seedEvent() {
       ],
     },
   });
-  const wasAt = new Date(Date.now() - 21 * 24 * 3600 * 1000).toISOString();
+  const wasAt = new Date(mockNow() - 21 * 24 * 3600 * 1000).toISOString();
   events.set("ev-seed0", {
     uri: `at://${SCENE_DID}/community.lexicon.calendar.event/ev-seed0`,
     value: {
@@ -164,7 +173,7 @@ function seedEvent() {
       description: "Already happened — the admin list keeps it, /api/events drops it.",
       createdAt: wasAt,
       startsAt: wasAt,
-      endsAt: new Date(Date.now() - 21 * 24 * 3600 * 1000 + 2 * 3600 * 1000).toISOString(),
+      endsAt: new Date(mockNow() - 21 * 24 * 3600 * 1000 + 2 * 3600 * 1000).toISOString(),
       mode: "community.lexicon.calendar.event#inperson",
       locations: [
         {
@@ -296,7 +305,7 @@ function seedPost(author, text, extra = {}, minutesAgo = 0) {
   const uri = `at://${author}/${POST_COLLECTION}/${rkey}`;
   circlePosts.set(uri, {
     uri, cid: `bafy${rkey}`, author, spaceUri: `at://${author}/coop.lexicon.space.circle/${SCENE_DID}`,
-    record: { text, createdAt: new Date(Date.now() - minutesAgo * 60_000).toISOString(), ...extra },
+    record: { text, createdAt: new Date(mockNow() - minutesAgo * 60_000).toISOString(), ...extra },
   });
   return uri;
 }
@@ -343,7 +352,7 @@ if (process.env.MOCK_RICH_SEED === "1") {
     });
   }
   const soon = (days, name, description, place) => {
-    const startsAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
+    const startsAt = new Date(mockNow() + days * 24 * 3600 * 1000).toISOString();
     const rkey = `ev-rich${days}`;
     events.set(rkey, {
       uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
@@ -373,7 +382,7 @@ if (process.env.MOCK_RICH_SEED === "1") {
 const CONTACT_EMAILS = new Map();
 if (process.env.MOCK_NOTIFY === "1") {
   const ended = (rkey, name, hoursAgo, lengthH, place, description) => {
-    const endsAt = new Date(Date.now() - hoursAgo * 3600_000);
+    const endsAt = new Date(mockNow() - hoursAgo * 3600_000);
     events.set(rkey, {
       uri: `at://${SCENE_DID}/community.lexicon.calendar.event/${rkey}`,
       value: { name, description, createdAt: new Date(endsAt.getTime() - 7 * 86_400_000).toISOString(),
@@ -472,7 +481,7 @@ if (process.env.MOCK_PAST_FESTIVAL) {
   add("ev-jam", "Writer's Block Jam", "2026-10-22T03:00:00.000Z", 1.5);
   add("ev-song", "Community Song Circle", "2026-10-24T18:00:00.000Z", 1.5);
   add("ev-closing", "The Mock Integration (Closing)", "2026-10-25T22:00:00.000Z", 4);
-  add("ev-not-listed", "Not On The Appview", new Date(Date.now() + 30 * 24 * 3600_000).toISOString());
+  add("ev-not-listed", "Not On The Appview", new Date(mockNow() + 30 * 24 * 3600_000).toISOString());
 }
 
 function circleSubject(req, res, url) {

@@ -29,6 +29,12 @@ const check = (cond, m) => { if (!cond) { fails.push(m); console.error(`FAIL ${m
 const browser = await chromium.launch();
 const SIZES = [[390, 844], [360, 780]];
 const DAY3 = "2026-10-17T16:00:00Z";
+// The Worker's listing and the mock are pinned to E2E_LISTING_NOW by the shell that starts them; a
+// browser on another instant would see the Worker drop or keep events it shouldn't.
+if (process.env.E2E_LISTING_NOW && Date.parse(process.env.E2E_LISTING_NOW) !== Date.parse(DAY3)) {
+  console.error(`E2E_LISTING_NOW (${process.env.E2E_LISTING_NOW}) must equal DAY3 (${DAY3})`);
+  process.exit(2);
+}
 const EV = "ev-eco-e2e-1";
 
 // Two events on Oct 17 in the mock, before the Worker's /api/events cache is filled.

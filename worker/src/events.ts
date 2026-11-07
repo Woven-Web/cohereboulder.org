@@ -277,13 +277,15 @@ const RECENT_PAST_DAYS = 14;
  * Worker reads a loopback regenOS mock. Production reads scenius.social, so a stray var can never
  * move what it calls upcoming. (Not the request's host: wrangler dev rewrites it to the route's.)
  */
+let warnedPinIgnored = false;
 function listingNow(env: EventsEnv): number {
   if (!env.E2E_LISTING_NOW) return Date.now();
   const pinned = Date.parse(env.E2E_LISTING_NOW);
   const mock = /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(baseUrl(env) ?? "");
   if (mock && !Number.isNaN(pinned)) return pinned;
-  // Say so, or a lane that meant to pin fails exactly as if it hadn't, with nothing in the log.
-  console.warn("E2E_LISTING_NOW ignored: it needs an ISO instant and REGENOS_BASE_URL at http://127.0.0.1:<port>");
+  // Say so (once per isolate), or a lane that meant to pin fails exactly as if it hadn't, silently.
+  if (!warnedPinIgnored) console.warn("E2E_LISTING_NOW ignored: it needs an ISO instant and REGENOS_BASE_URL at http://127.0.0.1:<port>");
+  warnedPinIgnored = true;
   return Date.now();
 }
 

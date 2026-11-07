@@ -27,6 +27,12 @@ const fails = [];
 const check = (cond, m) => { if (!cond) { fails.push(m); console.error(`FAIL ${m}`); } else console.log(`PASS ${m}`); };
 const browser = await chromium.launch();
 const NOON = "2026-10-16T18:00:00Z"; // Fri Oct 16, 12:00 in Boulder
+// The Worker's listing is pinned to E2E_LISTING_NOW by the shell that starts it; a
+// browser on another instant would see the Worker drop or keep events it shouldn't.
+if (process.env.E2E_LISTING_NOW && Date.parse(process.env.E2E_LISTING_NOW) !== Date.parse(NOON)) {
+  console.error(`E2E_LISTING_NOW (${process.env.E2E_LISTING_NOW}) must equal NOON (${NOON})`);
+  process.exit(2);
+}
 
 await seedEvents(mock);
 
