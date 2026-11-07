@@ -155,10 +155,13 @@ describe("GET /api/events", () => {
       return ((await res.json()) as { events: CommunityEvent[] }).events.map((e) => e.rkey);
     };
     expect(await rkeys({})).toEqual([]);
+    // Once per isolate, so it is this first ignored pin that says so.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("E2E_LISTING_NOW ignored"));
     expect(await rkeys({ REGENOS_BASE_URL: "https://scenius.social" })).toEqual([]);
     expect(await rkeys({ REGENOS_BASE_URL: "http://127.0.0.1.nip.io:9945" })).toEqual([]);
     expect(await rkeys({ ...mock, E2E_LISTING_NOW: "not a date" })).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("E2E_LISTING_NOW ignored"));
+    expect(warn).toHaveBeenCalledTimes(1);
     expect(await rkeys(mock)).toEqual(["festival"]);
     expect(await rkeys(mock, "?past=1")).toEqual(["early", "festival"]);
     expect(await rkeys({ ...mock, E2E_LISTING_NOW: undefined }, "?past=1")).toEqual([]);
