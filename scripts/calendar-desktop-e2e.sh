@@ -33,8 +33,8 @@ npx wrangler d1 execute cohere --local "${PERSIST[@]}" --file=scripts/fixtures/l
 # matches), and so is the Worker's event listing, or after the festival it drops these October events
 # as long over. The mock stays on the real clock: MOCK_NOTIFY's "just ended" events (the member is
 # seated on both) end after the festival, so to this lane they are the member's upcoming RSVPs that
-# Your next shows. The mock's "Last Month's Potluck" (real now − 21 days) does land on a festival day
-# for runs from about Nov 5 to Nov 15; no check counts it or depends on its absence.
+# Your next shows. The mock's "Last Month's Potluck" (real now − 21 days) is listed for runs from
+# about Nov 6 on, on a festival day until about Nov 15; no check counts it or depends on its absence.
 export E2E_LISTING_NOW=2026-10-16T18:00:00Z
 MOCK_NOTIFY=1 PORT="$P_MOCK" setsid node scripts/regenos-mock.mjs >"$SCRATCH/mock.log" 2>&1 & PIDS+=("$!")
 wait_for "http://127.0.0.1:$P_MOCK/xrpc/social.scenius.getEvents" "regenOS mock"
