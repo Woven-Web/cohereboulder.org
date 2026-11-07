@@ -142,6 +142,21 @@ describe("GET /api/events", () => {
     expect((await list("?past=1")).body.events.map((e) => e.rkey)).toEqual(["a", "b", "next"]);
   });
 
+  it("an e2e lane's pinned clock moves the listing only against a loopback mock, never the real appview", async () => {
+    // Over by NOW (Nov 6), under way at the pinned noon of Oct 16.
+    answers.appviewList = () => Response.json({ events: [record("festival", "2026-10-16T17:00:00Z")] });
+    const pin = "2026-10-16T18:00:00Z";
+    const rkeys = async (extra: Record<string, string>) => {
+      cacheStore.clear();
+      const res = await handleEventsList(new Request("https://cohereboulder.org/api/events"), { ...env, E2E_LISTING_NOW: pin, ...extra }, {});
+      return ((await res.json()) as { events: CommunityEvent[] }).events.map((e) => e.rkey);
+    };
+    expect(await rkeys({})).toEqual([]);
+    expect(await rkeys({ REGENOS_BASE_URL: "https://scenius.social" })).toEqual([]);
+    expect(await rkeys({ REGENOS_BASE_URL: "http://127.0.0.1.nip.io:9945" })).toEqual([]);
+    expect(await rkeys({ REGENOS_BASE_URL: "http://127.0.0.1:9945" })).toEqual(["festival"]);
+  });
+
   it("the past listing is served from its own cached copy", async () => {
     await list("?past=1");
     const calls = pdsCalls.length;

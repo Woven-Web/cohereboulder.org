@@ -466,10 +466,13 @@ npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=worker/migrations/0002_register_2026_refresh.sql >/dev/null
 npx wrangler d1 execute cohere --local "${WRANGLER_LOCAL_ARGS[@]}" --file=scripts/fixtures/look-companion.sql >/dev/null
 start_mock ${P28964} "$PWA_SCRATCH/pwa-merge-mock-14.log"
+# The lane's browsers are fixed to Oct 17 (DAY3 in ecology-e2e.mjs); the Worker's event listing is
+# pinned to the same instant, or after the festival it drops the lane's October events as long over.
 start_worker ${P28965} ${P28244} "$PWA_SCRATCH/pwa-merge-worker-14.log" \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_BASE_URL:http://127.0.0.1:${P28964} \
-  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene
+  --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var E2E_LISTING_NOW:2026-10-17T16:00:00Z
 if ! node scripts/ecology-e2e.mjs http://127.0.0.1:${P28965} http://127.0.0.1:${P28964} ${LOOK_SHOTS:+$LOOK_SHOTS/ecology}; then
   tail -80 "$PWA_SCRATCH/pwa-merge-worker-14.log"
   fail=1

@@ -38,6 +38,12 @@ export interface EventsEnv extends EventImagesEnv {
    * local stack pointed at a mock scene can never call the real PDS on the config it inherits.
    */
   REGENOS_PDS_DID?: string;
+  /**
+   * Hermetic e2e only (`wrangler dev --var`): the ISO instant the listing treats as now, so a lane
+   * that pins its browser to a festival day gets a Worker that agrees. No wrangler config sets it,
+   * and it counts only against a loopback regenOS mock (see listingNow), so production runs on the real clock.
+   */
+  E2E_LISTING_NOW?: string;
 }
 
 /** The borrowed event collection every regenOS event lives in. */
@@ -266,11 +272,21 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long an ended event stays in the list behind `?past=1`. */
 const RECENT_PAST_DAYS = 14;
 
+/**
+ * The listing's clock: the real one, unless a local e2e lane pinned E2E_LISTING_NOW while the
+ * Worker reads a loopback regenOS mock. Production reads scenius.social, so a stray var can never
+ * move what it calls upcoming. (Not the request's host: wrangler dev rewrites it to the route's.)
+ */
+export function listingNow(env: EventsEnv): number {
+  const pinned = env.E2E_LISTING_NOW ? Date.parse(env.E2E_LISTING_NOW) : NaN;
+  const mock = /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(baseUrl(env) ?? "");
+  return mock && !Number.isNaN(pinned) ? pinned : Date.now();
+}
+
 /** Drops ended events from a full listing unless the caller asked for the recent past. */
-async function shapeListing(res: Response, withPast: boolean): Promise<Response> {
+async function shapeListing(res: Response, withPast: boolean, now: number): Promise<Response> {
   if (withPast) return res;
   const body = (await res.clone().json()) as { events: CommunityEvent[] };
-  const now = Date.now();
   const events = body.events.filter((e) => {
     const start = e.startsAt ? Date.parse(e.startsAt) : NaN;
     if (Number.isNaN(start)) return true;
@@ -401,6 +417,7 @@ export async function handleEventsList(
   // the PDS's ended events. See EVENT_LISTING_PATHS.
   const pastParam = new URL(request.url).searchParams.get("past");
   const withPast = pastParam === "1" || pastParam === "true";
+  const now = listingNow(env);
   const cacheKey = new Request(new URL(EVENT_LISTING_PATHS[withPast ? 1 : 0], request.url).toString());
   /** A past view whose ended events could not be read has only a blank to show: say so, and retry. */
   const answer = async (listing: Response): Promise<Response> => {
@@ -408,7 +425,7 @@ export async function handleEventsList(
       const body = (await listing.clone().json()) as { events: CommunityEvent[]; pastUnavailable?: boolean };
       if (body.pastUnavailable && body.events.length === 0) return json({ events: [], degraded: true }, 200, { ...cors, ...NO_STORE });
     }
-    return withCors(await shapeListing(listing, withPast), cors);
+    return withCors(await shapeListing(listing, withPast, now), cors);
   };
   const cached = await edgeCache.match(cacheKey);
   if (cached) return answer(cached);
@@ -433,7 +450,6 @@ export async function handleEventsList(
 
     const data = (await res.json()) as { events?: GetEventsRow[] };
     const versions = await imageVersions(env);
-    const now = Date.now();
     const listed: CommunityEvent[] = [];
     for (const row of data.events ?? []) {
       const event = toCommunityEvent(row);

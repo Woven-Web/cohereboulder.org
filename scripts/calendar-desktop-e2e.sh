@@ -30,11 +30,14 @@ npx wrangler d1 execute cohere --local "${PERSIST[@]}" --file=scripts/fixtures/l
 
 MOCK_NOTIFY=1 PORT="$P_MOCK" setsid node scripts/regenos-mock.mjs >"$SCRATCH/mock.log" 2>&1 & PIDS+=("$!")
 wait_for "http://127.0.0.1:$P_MOCK/xrpc/social.scenius.getEvents" "regenOS mock"
+# The scripts' browsers are fixed to Oct 16 noon in Boulder; the Worker's event listing is pinned to
+# the same instant, or after the festival it would drop these October events as long over.
 setsid node node_modules/wrangler/bin/wrangler.js dev --port "$P_WORKER" --inspector-port "$P_INSPECT" "${PERSIST[@]}" \
   --var REGENOS_LOGIN_ENABLED:true \
   --var REGENOS_SERVICE_TOKEN:mock-token \
   --var "REGENOS_BASE_URL:http://127.0.0.1:$P_MOCK" \
   --var REGENOS_COLLECTIVE_DID:did:plc:mockscene \
+  --var E2E_LISTING_NOW:2026-10-16T18:00:00Z \
   >"$SCRATCH/worker.log" 2>&1 & PIDS+=("$!")
 wait_for "http://127.0.0.1:$P_WORKER/" "wrangler dev"
 
