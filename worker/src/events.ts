@@ -277,10 +277,14 @@ const RECENT_PAST_DAYS = 14;
  * Worker reads a loopback regenOS mock. Production reads scenius.social, so a stray var can never
  * move what it calls upcoming. (Not the request's host: wrangler dev rewrites it to the route's.)
  */
-export function listingNow(env: EventsEnv): number {
-  const pinned = env.E2E_LISTING_NOW ? Date.parse(env.E2E_LISTING_NOW) : NaN;
+function listingNow(env: EventsEnv): number {
+  if (!env.E2E_LISTING_NOW) return Date.now();
+  const pinned = Date.parse(env.E2E_LISTING_NOW);
   const mock = /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(baseUrl(env) ?? "");
-  return mock && !Number.isNaN(pinned) ? pinned : Date.now();
+  if (mock && !Number.isNaN(pinned)) return pinned;
+  // Say so, or a lane that meant to pin fails exactly as if it hadn't, with nothing in the log.
+  console.warn("E2E_LISTING_NOW ignored: it needs an ISO instant and REGENOS_BASE_URL at http://127.0.0.1:<port>");
+  return Date.now();
 }
 
 /** Drops ended events from a full listing unless the caller asked for the recent past. */

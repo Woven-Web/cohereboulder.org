@@ -118,8 +118,9 @@ Read these before "verifying" anything.
 
 > **An e2e lane that pins its browser to a festival day must pin the Worker
 > too.** `page.clock` only moves the browser; `/api/events` drops events by the
-> Worker's own clock (ended ones after 14 days), so after the festival a lane's
-> October mock events vanished and the deploy gate went red (2026-11-07). Pass
+> Worker's own clock (the moment they end; `?past=1` keeps 14 days of the
+> appview's), so after the festival a lane's October mock events vanished and
+> the deploy gate went red (2026-11-07). Pass
 > `--var E2E_LISTING_NOW:<the same ISO instant>` to `wrangler dev`; it counts
 > only while `REGENOS_BASE_URL` is a `http://127.0.0.1:<port>` mock. Also: Denver
 > is UTC−6 only until the first Sunday of November — compute local midnight,
