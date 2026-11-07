@@ -122,7 +122,10 @@ Read these before "verifying" anything.
 > appview's), so after the festival a lane's October mock events vanished and
 > the deploy gate went red (2026-11-07). Pass
 > `--var E2E_LISTING_NOW:<the same ISO instant>` to `wrangler dev`; it counts
-> only while `REGENOS_BASE_URL` is a `http://127.0.0.1:<port>` mock. Also: Denver
+> only while `REGENOS_BASE_URL` is a `http://127.0.0.1:<port>` mock. The mock's
+> own relative seeds ("a week out", "just ended") follow `MOCK_NOW` if set
+> (lane 14 sets both). Only the listing is pinned: harvest, RSVP and notify
+> code still read the real clock. Also: Denver
 > is UTC−6 only until the first Sunday of November — compute local midnight,
 > don't hard-code `T06:00Z`.
 
